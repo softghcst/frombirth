@@ -6,6 +6,7 @@
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const { store } = await import('../js/state.js');
+const { chanceWords } = await import('../js/util.js');
 const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
@@ -169,9 +170,10 @@ section('the list is the top places for the chosen subject, ranked, short, with 
   const rate = rows.find((r) => /Places offered/.test(r.label));
   check(rate && rate.values[0].best === false && rate.values[2].best === true && /%/.test(rate.values[0].text), 'places offered: shown as a percentage, with the easier place marked');
   const chances = by('Your chances');
-  check(chances && /^(Reach|Match|Safety): about \d+%$/.test(chances.values[0].text) && chances.values.every((v) => /\d+%/.test(v.text) && !/100%/.test(v.text)), `your chances are given for you: "${chances?.values[0].text}"`);
-  const pctOf = (t) => Number(/(\d+)%/.exec(t)[1]);
-  check(pctOf(chances.values[2].text) >= pctOf(chances.values[1].text) && pctOf(chances.values[1].text) >= pctOf(chances.values[0].text), 'and fall as the places get harder');
+  check(chances && /^(Reach|Match|Safety): (very likely|likely|a fair chance|a long shot|unlikely|very unlikely)$/.test(chances.values[0].text) && chances.values.every((v) => !/\d+%/.test(v.text) && !/^\w+: very likely$/.test(v.text)), `your chances are given for you, in words and never certain: "${chances?.values[0].text}"`);
+  const LADDER = ['very unlikely', 'unlikely', 'a long shot', 'a fair chance', 'likely', 'very likely'];
+  const rankOf = (t) => LADDER.indexOf(t.split(': ')[1]);
+  check(rankOf(chances.values[2].text) >= rankOf(chances.values[1].text) && rankOf(chances.values[1].text) >= rankOf(chances.values[0].text), 'and fall as the places get harder');
   check(rows.some((r) => r.label === 'Where') && rows.some((r) => r.label === 'Length of the course') && rows.some((r) => r.label === 'Help with the cost') && rows.some((r) => r.label === 'How it is decided'), 'where, length, help and how it is decided are there');
   check(/audition/i.test(by('How it is decided').values[0].text), 'it says an audition decides it');
   const sameTwo = uni.compare([mid.id, all.filter((r) => r.label.startsWith('Musical theater BFA'))[1].id]);
@@ -181,7 +183,7 @@ section('the list is the top places for the chosen subject, ranked, short, with 
   // Compared against what the engine says elsewhere.
   check(by('Tuition a year').values[0].text.replace(/\D/g, '') === String(elite.tuition), 'tuition agrees with the list');
   const direct = adm.chanceOf(uni.profile('musical_theater_bfa', uni.uniOf(elite.id)), uni.uniOf(elite.id), BFA);
-  check(pctOf(chances.values[0].text) === Math.min(99, Math.max(1, Math.round(direct * 100))), 'and the chance shown is the one the rules give (never 0 or 100)');
+  check(chances.values[0].text.endsWith(`: ${chanceWords(Math.min(0.89, direct))}`), 'and the words match the chance the rules give (never certain)');
 }
 section('comparison: one line per attribute, a value per place in words, better one marked, chances for this player');
 

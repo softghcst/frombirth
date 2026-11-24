@@ -16,7 +16,7 @@
 import { majorEdge, strongest, MAJOR_EDGE } from './aptitudes.js';
 import { universityAccess } from './history.js';
 import { rng } from '../rng.js';
-import { clamp, localCost, fmtMoney } from '../util.js';
+import { clamp, localCost, fmtMoney, chanceWords } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { UNIVERSITY_KIND_BY_ID, UNI_PLACES, UNI_SAINTS, MAX_APPLICATIONS, MAX_APPLICATIONS_AUDITION, STATEMENTS, BFA_PLANS, BFA_DEFAULT, AUDITION_COACHING } from '../data/universities.js';
@@ -262,7 +262,7 @@ export function compare(ids) {
     return { label, values: rows.map((r, i) => ({ id: r.u.id, name: r.u.name, text: get(r), best: flags ? flags[i] : false })) };
   };
   const pct = (x) => (x == null ? '—' : x >= 0.995 ? 'Open to all' : `${Math.max(1, Math.round(x * 100))}%`);
-  const odds = (x, u) => (u.open ? 'Open to all' : `about ${Math.min(99, Math.max(1, Math.round(x * 100)))}%`); // nobody is ever certain
+  const odds = (x, u) => (u.open ? 'Open to all' : chanceWords(Math.min(0.89, x))); // in words, and nobody is ever certain
   const out = [
     col('Where', (r) => `${r.u.city}, ${COUNTRIES[r.u.countryId]?.name ?? ''}`),
     col('Kind of place', (r) => r.u.label),

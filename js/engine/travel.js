@@ -28,7 +28,7 @@ import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, 
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
 import { languagesOf, speaks } from './languages.js';
-import { takeFrom } from './npcMoney.js';
+import { takeFrom, spendable } from './npcMoney.js';
 import { remember } from './conditions.js';
 import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
@@ -256,7 +256,7 @@ export function startPlan(typeId = 'vacation', p = player()) {
   const trip = { id: uid('trip'), type: typeId, status: 'draft', createdYear: year(), organizerId: p.id,
     origin: from, destination: null, depart: start, ret: addDays(start, 7),
     travelers: [{ id: p.id, status: 'organizer', pays: 'self' }], mode: null, cabin: 'economy', stay: null, activities: [], done: [],
-    insurance: false, payment: 'organizer', bookings: [], events: [], notes: [] };
+    insurance: false, payment: p.age < 18 && familyPayer(p) ? 'family' : 'organizer', bookings: [], events: [], notes: [] };
   t.trips.push(trip);
   if (['wedding', 'funeral'].includes(typeId)) updatePlan(trip.id, { type: typeId }, p); // straight to where it is
   return trip;
@@ -285,7 +285,7 @@ export function updatePlan(id, changes, p = player()) {
   if (changes.stay !== undefined) trip.stay = changes.stay;
   if (changes.activities) trip.activities = changes.activities.filter((a) => ACTIVITY_BY_ID[a]);
   if (changes.insurance != null) trip.insurance = !!changes.insurance;
-  if (changes.payment && choosesPayment(p)) trip.payment = changes.payment;
+  if (changes.payment && paymentOptions(p).some((o) => o.id === changes.payment)) trip.payment = changes.payment;
   return result(true, 'Plan updated.', 'neutral', { trip });
 }
 
@@ -341,11 +341,11 @@ export function invite(tripId, npcId, p = player()) {
     if ((n.traits ?? []).includes('worrier') && abroad) k -= 0.1;
     yes = rng.chance(clamp(k, 0.03, 0.97));
     reason = yes ? `${n.firstName} said yes.` : n.life?.job && nights > 10 ? `${n.firstName} cannot get the time off work.` : `${n.firstName} would rather not.`;
-    const selfPay = payMode(trip, p) !== 'organizer';
+    const selfPay = ['split', 'separate'].includes(payMode(trip, p));
     if (yes && selfPay && money < share) { yes = false; reason = `${n.firstName} cannot afford their share.`; }
     if (yes && abroad && !ensureOwnPassport(n, trip.depart, trip.ret)) { yes = false; reason = `${n.firstName} has no passport and could not get one in time.`; }
   }
-  trip.travelers.push({ id: n.id, status: yes ? 'accepted' : 'declined', reason, pays: payMode(trip, p) === 'organizer' ? 'organizer' : 'self' });
+  trip.travelers.push({ id: n.id, status: yes ? 'accepted' : 'declined', reason, pays: ['split', 'separate'].includes(payMode(trip, p)) ? 'self' : 'organizer' });
   return result(yes, reason, yes ? 'good' : 'neutral');
 }
 /** Takes back an invitation (or someone's place) before booking. */
@@ -406,7 +406,7 @@ export function quote(trip, p = player()) {
     if (employerPays && ['transport', 'stay', 'daily'].includes(l.kind) && (!l.personId || l.personId === p.id)) { l.payer = 'employer'; employer += l.amount; continue; }
     l.payer = 'organizer';
   }
-  if (payMode(trip, p) !== 'organizer') {
+  if (['split', 'separate'].includes(payMode(trip, p))) {
     // Each adult who came pays for themselves (their journey) and an equal part of the shared things; the organizer covers children.
     const adults = people.filter((x) => x === p || (x.age ?? 30) >= 18);
     for (const l of lines.filter((x) => x.payer === 'organizer')) {
@@ -420,7 +420,10 @@ export function quote(trip, p = player()) {
   }
   const total = lines.reduce((sum, l) => sum + l.amount, 0);
   const others = Object.values(shares).reduce((a, b) => a + b, 0);
-  return { lines, total, employer, shares, organizer: total - employer - others, nights };
+  // Asked the family: they pay their part of what would have been yours.
+  const famShare = payMode(trip, p) === 'family' ? (trip.familyAnswer?.share ?? 0) : 0;
+  const family = Math.round((total - employer - others) * famShare);
+  return { lines, total, employer, shares, family, famShare, organizer: total - employer - others - family, nights };
 }
 
 // ---------- Checking a plan ----------
@@ -480,7 +483,8 @@ export function problems(trip, p = player()) {
   for (const o of travelState(p).trips) if (o.id !== trip.id && LIVE.includes(o.status) && overlaps(o, trip)) out.push(`It clashes with your trip to ${COUNTRIES[o.destination.countryId].name} (${o.depart} to ${o.ret}).`);
   // Money.
   const q = quote(trip, p);
-  if (q.organizer > p.finance.cash && !familyPayer(p)) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
+  if (payMode(trip, p) === 'family' && !trip.familyAnswer) out.push(`Ask ${familyPayer(p).who.replace(/^Your/, 'your')} first, or pay it yourself.`);
+  else if (q.organizer > p.finance.cash) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
   return [...new Set(out)];
 }
 
@@ -500,9 +504,12 @@ export function entryCheck(trip, p = player()) {
 
 // ---------- Who pays ----------
 
-/** Who pays for a child's trip: the parents, or whoever looks after a child with none. Null from 18, when you pay your own way. */
+/**
+ * The people you can ask to pay: your parents, or whoever looks after you, for as long as you live with them (every
+ * child does, and a grown child still at home can ask too). Null once you have moved out.
+ */
 export function familyPayer(p = player()) {
-  if (p.age >= 18) return null;
+  if (p.age >= 18 && (!p.flags.livesWithParents || p.homeId)) return null;
   const close = livingNpcs().filter((n) => p.npcIds.includes(n.id) && (n.age ?? 0) >= 18);
   const parents = close.filter((n) => n.role === 'parent');
   const people = parents.length ? parents : close.filter((n) => n.role === 'guardian').length ? close.filter((n) => n.role === 'guardian') : close.filter((n) => n.role === 'grandparent');
@@ -511,13 +518,60 @@ export function familyPayer(p = player()) {
   const who = parents.length ? (one ? (one.gender === 'female' ? 'Your mom' : 'Your dad') : 'Your parents')
     : people[0].role === 'guardian' ? (one ? 'Your guardian' : 'Your guardians')
     : one ? (one.gender === 'female' ? 'Your grandmother' : 'Your grandfather') : 'Your grandparents';
-  return { people, who };
+  return { people, who, plural: people.length > 1 };
 }
 
-/** Whether you choose who pays: only from 18, or a child with nobody to pay for them. */
-export const choosesPayment = (p = player()) => !familyPayer(p);
-/** How a trip is paid: as planned, or all by the family while you are a child. */
-export const payMode = (trip, p = player()) => (choosesPayment(p) ? trip.payment : 'organizer');
+/** The ways a trip can be paid for, as the dropdown lists them. A child pays it themselves or asks; splitting with friends is for adults. */
+export function paymentOptions(p = player()) {
+  const fam = familyPayer(p);
+  const out = [];
+  if (fam) out.push({ id: 'family', name: `Ask ${fam.who.replace(/^Your/, 'your')}` });
+  out.push({ id: 'organizer', name: p.age < 18 ? 'Pay it yourself' : 'You pay for everyone' });
+  if (p.age >= 18) out.push({ id: 'split', name: 'Split equally' }, { id: 'separate', name: 'Each pays their own way' });
+  return out;
+}
+/** Whether there is anything to choose about paying. Kept for older callers. */
+export const choosesPayment = (p = player()) => paymentOptions(p).length > 1;
+/** How a trip is paid, from the ways open to you now. */
+export const payMode = (trip, p = player()) => (paymentOptions(p).some((o) => o.id === trip.payment) ? trip.payment : paymentOptions(p)[0].id);
+
+const SHARE_WORDS = { 1: 'the whole trip', 0.5: 'half', 0.25: 'a quarter' };
+
+/**
+ * Asks the family to pay. They may say no however close you are: what they can spare, how they feel about you, how
+ * generous they are, whether they are coming too and how old you are all count, and so does their mood that day.
+ * A yes is for all of it, half or a quarter. One ask per plan.
+ */
+export function askFamily(tripId, p = player()) {
+  const trip = tripById(tripId, p);
+  const fam = familyPayer(p);
+  if (!trip || trip.status !== 'draft') return result(false, 'Only a plan not yet booked.', 'neutral');
+  if (!fam) return result(false, 'There is nobody at home to ask.', 'neutral');
+  if (!trip.destination) return result(false, 'Choose where to go first.', 'neutral');
+  if (trip.familyAnswer) return result(trip.familyAnswer.share > 0, trip.familyAnswer.text, 'neutral');
+  const q = quote({ ...trip, payment: 'organizer', familyAnswer: null }, p);
+  const cost = Math.max(1, q.total - q.employer);
+  const avg = (f) => fam.people.reduce((sum, n) => sum + f(n), 0) / fam.people.length;
+  const rel = avg((n) => n.meters?.relationship ?? 50);
+  const giving = avg((n) => n.meters?.generosity ?? 50);
+  const spare = fam.people.reduce((sum, n) => sum + spendable(n), 0);
+  const afford = spare / cost;
+  const coming = fam.people.some((n) => going(trip).some((x) => x.id === n.id));
+  let score = (rel - 50) / 50 * 0.18 + (giving - 50) / 50 * 0.12 + (coming ? 0.05 : 0)
+    + (p.age < 14 ? 0.08 : p.age < 18 ? 0.04 : p.age < 22 ? -0.08 : -0.2)
+    + (afford < 1 ? -0.8 : afford < 3 ? -0.2 : afford > 25 ? 0.05 : 0)
+    + (rng.next() * 1.1 - 0.55); // a good day or a bad one: however close you are, never a sure thing
+  let share = score < -0.1 ? 0 : score < 0.08 ? 0.25 : score < 0.25 ? 0.5 : 1;
+  while (share > 0 && share * cost > spare * 0.5) share = share === 1 ? 0.5 : share === 0.5 ? 0.25 : 0; // never more than they can spare
+  const they = fam.plural ? 'They' : fam.people[0].gender === 'female' ? 'She' : 'He';
+  const say = fam.who;
+  const text = share === 1 ? rng.pick([`${say} said yes: ${they.toLowerCase()} will pay for the whole trip.`, `${say} thought about it and will cover all of it.`, `${say} said yes. The whole thing is on ${fam.plural ? 'them' : they === 'She' ? 'her' : 'him'}.`])
+    : share > 0 ? rng.pick([`${say} will pay ${SHARE_WORDS[share]}. The rest is up to you.`, `${say} said ${they.toLowerCase()} can help with ${SHARE_WORDS[share]} of it.`, `${they} will put in ${SHARE_WORDS[share]}, and no more.`])
+    : rng.pick([afford < 1 ? `${say} said there is no money for it right now.` : `${say} said no.`, `${say} said no this time.`, `${say} said you will have to save up for it yourself.`]);
+  trip.familyAnswer = { share, text, year: year() };
+  for (const n of fam.people) if (share === 0 && n.meters) n.meters.relationship = clamp(n.meters.relationship - 1);
+  return result(share > 0, text, share > 0 ? 'good' : 'neutral', { share });
+}
 
 // ---------- Booking ----------
 
@@ -530,10 +584,23 @@ export function confirm(tripId, p = player()) {
   if (bad.length) return result(false, bad[0], 'neutral', { problems: bad });
   const q = quote(trip, p);
   const family = familyPayer(p);
-  const parentsPay = !!family;
   const where = placeName(trip.destination.countryId, trip.destination.city);
   for (const [i, l] of q.lines.entries()) {
-    const payer = l.payer === 'employer' ? 'employer' : l.payer !== 'organizer' ? l.payer : parentsPay ? 'parent' : 'player';
+    const payer = l.payer === 'employer' ? 'employer' : l.payer !== 'organizer' ? l.payer : 'player';
+    // The family's part of each line is paid by them, out of their own money.
+    if (payer === 'player' && q.famShare > 0) {
+      const theirs = Math.round(l.amount * q.famShare);
+      const each = Math.ceil(theirs / family.people.length);
+      for (const n of family.people) takeFrom(n, each);
+      const fp = charge({ amount: theirs, kind: 'travel', memo: `${l.label}: ${where} (family)`, key: `trip:${trip.id}:${i}:family`, ref: { tripId: trip.id }, payer: 'parent' });
+      if (!fp.ok) return result(false, fp.why, 'neutral');
+      trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: theirs, payer: 'parent', txId: fp.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
+      if (l.amount - theirs <= 0) continue;
+      const own = charge({ amount: l.amount - theirs, kind: 'travel', memo: `${l.label}: ${where}`, key: `trip:${trip.id}:${i}`, ref: { tripId: trip.id }, payer });
+      if (!own.ok) return result(false, own.why, 'neutral');
+      trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: l.amount - theirs, payer, txId: own.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
+      continue;
+    }
     const mine = l.split ? l.amount - Math.floor(l.amount / l.split) * (l.split - 1) : l.amount;
     if (payer !== 'player' && payer !== 'employer' && payer !== 'parent') {
       const n = store.state.npcs[payer];
@@ -542,7 +609,6 @@ export function confirm(tripId, p = player()) {
     if (l.split && payer === 'player') {
       for (const x of going(trip)) if (x.id !== p.id) { const n = store.state.npcs[x.id]; if (n && (n.age ?? 0) >= 18) { const part = Math.floor(l.amount / l.split); if (n.life) n.life.savings -= part; else n.savings = (n.savings ?? 0) - part; } }
     }
-    if (payer === 'parent') { const share = Math.ceil(l.amount / family.people.length); for (const n of family.people) takeFrom(n, share); }
     const paid = charge({ amount: payer === 'player' ? mine : l.amount, kind: 'travel', memo: `${l.label}: ${where}`, key: `trip:${trip.id}:${i}`, ref: { tripId: trip.id }, payer });
     if (!paid.ok) return result(false, paid.why, 'neutral');
     trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: l.amount, payer, txId: paid.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
@@ -552,7 +618,7 @@ export function confirm(tripId, p = player()) {
   trip.confirmedOn = today();
   trip.confirmedYear = year();
   const others = going(trip).filter((x) => x.id !== p.id).map((x) => personById(x.id).firstName);
-  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${papers.notes.length ? `Sorted for the trip: ${list(papers.notes)}${papers.fees ? ` (${fmtMoney(papers.fees, country())} in fees)` : ''}. ` : ''}${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${parentsPay ? `${family.who} paid.` : `You paid ${fmtMoney(q.organizer, country())}.`}`;
+  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${papers.notes.length ? `Sorted for the trip: ${list(papers.notes)}${papers.fees ? ` (${fmtMoney(papers.fees, country())} in fees)` : ''}. ` : ''}${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${q.famShare >= 1 ? `${family.who} paid.` : q.famShare > 0 ? `${family.who} paid ${fmtMoney(q.family, country())}, and you paid ${fmtMoney(q.organizer, country())}.` : `You paid ${fmtMoney(q.organizer, country())}.`}`;
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
 }

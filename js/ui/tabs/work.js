@@ -15,7 +15,7 @@ import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
 import { athleticsCard, openAthletics } from '../sports.js';
 import { store, player, country, livingNpcs } from '../../state.js';
-import { esc, fmtMoney } from '../../util.js';
+import { esc, fmtMoney, chanceWords } from '../../util.js';
 import * as edu from '../../engine/education.js';
 import * as job from '../../engine/partTime.js';
 import { roleLabel } from '../../engine/relationships.js';
@@ -67,7 +67,7 @@ async function chooseClub(api) {
     options: edu.clubOptions().map((c) => ({
       value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
       sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.'
-        : `Try-out: roughly ${Math.round(c.chance * 100)}% chance.`].filter(Boolean).join(' '),
+        : `Try-out: ${chanceWords(c.chance)}.`].filter(Boolean).join(' '),
       disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
     })),
   });
@@ -155,7 +155,7 @@ async function chooseNewMajor(api) {
     options: edu.switchOptions().map((m) => ({
       value: m.id, label: m.name, disabled: !m.allowed,
       sub: !m.allowed ? `Needs a GPA of ${m.minGpa.toFixed(1)}.`
-        : m.audition ? `By audition: about ${Math.round(m.chance * 100)}% chance.` : 'Open to you.',
+        : m.audition ? `By audition: ${chanceWords(m.chance)}.` : 'Open to you.',
     })),
   });
   if (id) await report(api, edu.switchMajor(id));
@@ -174,7 +174,7 @@ function pickMajor(progId) {
     options: MAJORS.filter((m) => !(community && m.audition) && majorOpen(m.id)).map((m) => ({
       value: m.id, label: m.name, disabled: !community && gpa < m.minGpa,
       sub: m.audition
-        ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): about ${Math.round(edu.admissionChance('university', m.id) * 100)}% at a typical school.`
+        ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): ${chanceWords(edu.admissionChance('university', m.id))} at a typical school.`
         : `${m.difficulty >= 0.45 ? 'Demanding' : m.difficulty >= 0.25 ? 'Moderate' : 'Gentle'} workload`
           + (community ? '' : ` · needs ${sch.mark(m.minGpa)} at school`)
           + (m.tracks.length ? ` · opens ${m.tracks.join(' and ')} school` : ''),

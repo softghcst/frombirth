@@ -150,7 +150,9 @@ export function openExplore(api, start = {}) {
       const stays = dest ? travel.stayOptions(trip) : [];
       const acts = dest ? travel.activityOptions(trip) : [];
       const q = travel.quote(trip);
-      const fam = travel.familyPayer();
+      const kin = travel.familyPayer();
+      const payHow = travel.payMode(trip);
+      const kinWho = kin ? kin.who.replace(/^Your/, 'your') : '';
       const bad = travel.problems(trip);
       const entry = travel.entryCheck(trip);
       const going = travel.going(trip).map((x) => docs.personById(x.id)).filter(Boolean);
@@ -186,13 +188,14 @@ export function openExplore(api, start = {}) {
         ${m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
         <div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>
         <div class="card gl-step"><h3>9 · Paying</h3>
-          ${fam ? `<p class="muted">${esc(fam.who)} ${fam.people.length > 1 ? 'are' : 'is'} paying for this trip. You choose who pays once you are 18.</p>` : `<select data-planfield="payment" aria-label="Who pays">${[['organizer', 'You Pay for Everyone'], ['split', 'Split Equally'], ['separate', 'Each Pays Their Own Way']].map(([v2, l]) => `<option value="${v2}" ${trip.payment === v2 ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
+          <select data-planfield="payment" aria-label="Who pays">${travel.paymentOptions().map((o) => `<option value="${o.id}" ${payHow === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
+          ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
           ${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
-          ${kv(fam ? `${fam.who} ${fam.people.length > 1 ? 'pay' : 'pays'}` : 'You pay', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
+          ${q.family ? kvt(`${kin.who} ${kin.plural ? 'pay' : 'pays'}`, money(q.family)) : ''}${kv('You pay', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
           </div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}
-        <div class="btn-stack">${btn(`Book${bad.length || fam ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
+        <div class="btn-stack">${btn(`Book${bad.length || !q.organizer ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
         ${going.length > 1 ? `<p class="muted">${going.length} traveling.</p>` : ''}`;
     },
 
@@ -211,7 +214,7 @@ export function openExplore(api, start = {}) {
       const away = t.status === 'in_progress';
       const acts = away ? travel.activityOptions(t) : [];
       return `<div class="world-head"><div class="world-flag big">${c.flag}</div><div><h2 style="margin:0">${esc(c.where)}</h2><p class="muted" style="margin:0">${esc(c.type)} · ${esc(STATUS[c.status])}</p></div></div>
-        <div class="card"><h3>The trip</h3>${kvt('Dates', `${c.depart} to ${c.ret}`)}${c.mode ? kvt('Travel', c.mode) : ''}${c.stay ? kvt(t.status === 'completed' ? 'Stayed' : 'Staying', c.stay) : ''}${!c.spent && (t.bookings ?? []).some((b) => b.payer === 'parent') ? kvt('Paid by', 'Your family') : kvt('Your share', money(c.spent))}
+        <div class="card"><h3>The trip</h3>${kvt('Dates', `${c.depart} to ${c.ret}`)}${c.mode ? kvt('Travel', c.mode) : ''}${c.stay ? kvt(t.status === 'completed' ? 'Stayed' : 'Staying', c.stay) : ''}${(() => { const kinPaid = (t.bookings ?? []).filter((b) => b.payer === 'parent').reduce((sum, b) => sum + b.amount, 0); return `${kinPaid ? kvt('Your family paid', money(kinPaid)) : ''}${c.spent || !kinPaid ? kvt('Your share', money(c.spent)) : ''}`; })()}
           ${c.itinerary ? `<details ${ui.legs ? 'open' : ''} data-toggle="legs"><summary>Journey</summary>${[...c.itinerary.out, ...c.itinerary.back].map((l) => `<p>${esc(l.from.city)} ${esc(l.depart.date)} ${esc(l.depart.time)} → ${esc(l.to.city)} ${esc(l.arrive.date)} ${esc(l.arrive.time)}</p>`).join('')}</details>` : ''}
           ${c.notes.map((n) => `<p class="muted">${esc(n)}</p>`).join('')}</div>
         <div class="card"><h3>Travelers</h3>${c.travelers.map((x) => `<button type="button" class="tree-row" ${x.you ? '' : `data-npcperson="${x.id}"`}><strong>${esc(x.name)}</strong><small>${esc(x.relation)} · ${esc(x.status === 'organizer' ? 'organizer' : x.status === 'accepted' ? 'came' : x.status === 'stayed' ? 'could not come' : 'did not come')}</small></button>`).join('')}</div>
@@ -491,6 +494,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-act]')) && v.view === 'plan') { const trip = travel.tripById(v.params.id); const id = x.dataset.act; travel.updatePlan(trip.id, { activities: trip.activities.includes(id) ? trip.activities.filter((a) => a !== id) : [...trip.activities, id] }); return render(modal.el.scrollTop); }
       if ((x = t('[data-passport]'))) return tell(docs.applyPassport(x.dataset.passport, x.dataset.issuer));
       if ((x = t('[data-applyentry]'))) { const trip = travel.tripById(v.params.id); return tell(docs.applyEntry(x.dataset.applyentry, trip.destination.countryId, { from: trip.depart, to: trip.ret, purpose: { visit: 'visit', business: 'business', study: 'study' }[travel.tripTypes().find((k) => k.id === trip.type).purpose], tripId: trip.id, cost: travel.quote(trip).organizer })); }
+      if ((x = t('[data-askfamily]'))) return tell(travel.askFamily(x.dataset.askfamily));
       if ((x = t('[data-book]'))) { const r = travel.confirm(x.dataset.book); if (r.ok) { NAV.stack[NAV.stack.length - 1] = { view: 'trip', params: { id: x.dataset.book }, scroll: 0 }; } return tell(r); }
       if ((x = t('[data-discard]'))) { if (await confirmModal({ title: 'Discard this plan?', body: 'Nothing has been paid.', yes: 'Discard' })) { travel.discardPlan(x.dataset.discard); NAV.stack = [{ view: 'plan', params: {}, scroll: 0 }]; changed(); } return undefined; }
       if ((x = t('[data-trip]'))) { const trip = travel.tripById(x.dataset.trip); return trip ? go(trip.status === 'draft' ? 'plan' : 'trip', { id: trip.id }) : undefined; }

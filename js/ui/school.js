@@ -2,7 +2,7 @@
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
 import { player, country } from '../state.js';
-import { esc, fmtMoney } from '../util.js';
+import { esc, fmtMoney, chanceWords } from '../util.js';
 import * as sch from '../engine/schooling.js';
 import * as life from '../engine/schoollife.js';
 import { gradingNote } from '../engine/grades.js';
@@ -74,7 +74,6 @@ const SPORT_ICON = 'trophy';
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 /** A sport as people there say it: in the United States, American football is just football. */
 const sportName = (x) => (player().countryId === 'us' && x === 'American football' ? 'football' : x);
-const pct = (x) => Math.round(x * 100);
 
 /** What each club action looks like. */
 const ACT_ICON = { practice: 'calendar', help: 'people', feature: 'star', event: 'trophy', friend: 'heart', lead: 'id' };
@@ -105,8 +104,8 @@ function pageActivitiesHub() {
   const row = (attr, label, sub, ico) => navRow({ attrs: attr, label, sub, ico });
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
-    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : `Try out · about ${pct(team.chance)}%`, SPORT_ICON)).join('')}
-    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · about ${pct(c.chance)}%`, 'star')).join('')}</div>
+    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : `Try out · ${chanceWords(team.chance)}`, SPORT_ICON)).join('')}
+    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · ${chanceWords(c.chance)}`, 'star')).join('')}</div>
     ${outsideSchool()}`;
 }
 
@@ -251,7 +250,7 @@ export function openSchool(onChange) {
       const pick = await pickModal({ title: c.name, body: `${c.desc} ${c.who}${c.leader ? ` ${c.leader.firstName} ${c.leader.lastName} runs it.` : ''}${c.why && !c.current ? ` Right now: ${c.why}.` : ''}`,
         options: c.current ? [{ value: 'leave', label: 'Stop sitting with them' }]
           : cq === 'loners' ? [{ value: 'ask', label: 'Keep to yourself' }]
-            : [{ value: 'ask', label: 'Ask to join them', sub: `About ${pct(c.fit)}% they say yes` }, { value: 'hangout', label: 'Start hanging out with them' },
+            : [{ value: 'ask', label: 'Ask to join them', sub: `They might say yes: ${chanceWords(c.fit)}` }, { value: 'hangout', label: 'Start hanging out with them' },
               { value: 'compliment', label: `Compliment ${c.leader?.firstName ?? 'their leader'}` }, { value: 'insult', label: `Insult ${c.leader?.firstName ?? 'their leader'}` }] });
       return pick ? say(cliques.cliqueAct(cq, pick)) : undefined;
     }
