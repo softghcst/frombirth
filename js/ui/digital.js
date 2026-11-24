@@ -6,6 +6,7 @@
 // section, filters, the open post or conversation, how far down they had
 // scrolled — is remembered, so a trip to someone's profile and back loses
 // nothing, and neither does closing Digital Life and opening it again.
+import { fitBar } from './fitBars.js';
 import { getEra, erasBetween, eventsIn } from '../engine/history.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney, localMoney } from '../util.js';
@@ -413,7 +414,7 @@ function datingCard() {
   return `<div class="card" style="margin-top:14px"><h3>Online dating on ${esc(PLATFORM_BY_ID.kindling.name)}</h3>
     <p class="muted" style="margin-bottom:10px">Adults only.</p>
     ${!has ? '<button class="btn" data-do="datingProfile">Make a dating profile</button>' : blocks.length ? `<p class="muted">${esc(blocks[0])}</p>` : `<div class="dl-btns"><button class="btn small primary" data-do="findMatches">See new matches</button><button class="btn small" data-do="datingPrefs">What you are looking for</button></div>`}
-    ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')} · ${m.compat >= 0.75 ? 'a strong match' : m.compat >= 0.5 ? 'a good match' : 'an unlikely match'} on paper</small></div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
+    ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')}</small>${fitBar('How well you match', m.compat * 100)}</div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
   </div>`;
 }
 

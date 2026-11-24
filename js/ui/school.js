@@ -2,7 +2,8 @@
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
 import { player, country } from '../state.js';
-import { esc, fmtMoney, chanceWords } from '../util.js';
+import { esc, fmtMoney } from '../util.js';
+import { fitBars, fitBar } from './fitBars.js';
 import * as sch from '../engine/schooling.js';
 import * as life from '../engine/schoollife.js';
 import { gradingNote } from '../engine/grades.js';
@@ -20,6 +21,10 @@ import { clubTitle } from '../data/clubs.js';
 import { openClubs } from './leisure.js';
 import { CLUB_BY_ID as SCHOOL_CLUB } from '../data/schools.js';
 import { MAX_CLUBS, CLIQUE_BY_ID } from '../data/schools.js';
+
+/** Before a try-out: you, and what they look for, as two bars. Resolves true to go ahead. */
+const tryoutAsk = (name, bars, needLabel) => confirmModal({ title: `Try out: ${name}`, body: 'How you measure up right now. It can still go either way on the day.',
+  html: fitBars({ ...bars, youLabel: 'Your ability', needLabel }), yes: 'Try Out', no: 'Not Now' });
 
 const face = (n) => avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: 60 });
 
@@ -104,8 +109,8 @@ function pageActivitiesHub() {
   const row = (attr, label, sub, ico) => navRow({ attrs: attr, label, sub, ico });
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
-    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : `Try out · ${chanceWords(team.chance)}`, SPORT_ICON)).join('')}
-    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · ${chanceWords(c.chance)}`, 'star')).join('')}</div>
+    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : 'Try out for the team', SPORT_ICON)).join('')}
+    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try-out${c.blurb ? ` · ${c.blurb}` : ''}`, 'star')).join('')}</div>
     ${outsideSchool()}`;
 }
 
@@ -227,13 +232,20 @@ export function openSchool(onChange) {
     const leave = t.closest('[data-leave-club]')?.dataset.leaveClub;
     if (leave) return say(edu.quitClub(leave));
     const join = t.closest('[data-join]')?.dataset.join;
-    if (join) return say(edu.joinClub(join));
+    if (join) {
+      // A try-out first shows how you measure up: two bars, no odds. It can still go either way on the day.
+      const c = edu.clubOptions().find((x) => x.id === join);
+      if (c?.bars && !(await tryoutAsk(c.name, c.bars, 'What they look for'))) return undefined;
+      return say(edu.joinClub(join));
+    }
     const out = t.closest('[data-outclub]')?.dataset.outclub;
     if (out) { await openClubs({ changed: () => onChange?.() }, out); return draw(true); }
     const team = t.closest('[data-team]')?.dataset.team;
     if (team) {
       const e = player().education;
       if (e.clubs.includes('sports_team')) { life.setSport(team); return say({ ok: true, text: `You switched to the ${sportName(team)} team.`, tone: 'good' }); }
+      const bars = edu.clubOptions().find((x) => x.id === 'sports_team')?.bars;
+      if (bars && !(await tryoutAsk(`${cap(sportName(team))} team`, bars, 'What the coach looks for'))) return undefined;
       const r = edu.joinClub('sports_team');
       if (r.ok) life.setSport(team);
       return say(r.ok ? { ...r, text: `You made the ${sportName(team)} team.` } : r);
@@ -250,7 +262,7 @@ export function openSchool(onChange) {
       const pick = await pickModal({ title: c.name, body: `${c.desc} ${c.who}${c.leader ? ` ${c.leader.firstName} ${c.leader.lastName} runs it.` : ''}${c.why && !c.current ? ` Right now: ${c.why}.` : ''}`,
         options: c.current ? [{ value: 'leave', label: 'Stop sitting with them' }]
           : cq === 'loners' ? [{ value: 'ask', label: 'Keep to yourself' }]
-            : [{ value: 'ask', label: 'Ask to join them', sub: `They might say yes: ${chanceWords(c.fit)}` }, { value: 'hangout', label: 'Start hanging out with them' },
+            : [{ value: 'ask', label: 'Ask to join them', html: fitBar('How well you fit in', c.fit * 100) }, { value: 'hangout', label: 'Start hanging out with them' },
               { value: 'compliment', label: `Compliment ${c.leader?.firstName ?? 'their leader'}` }, { value: 'insult', label: `Insult ${c.leader?.firstName ?? 'their leader'}` }] });
       return pick ? say(cliques.cliqueAct(cq, pick)) : undefined;
     }

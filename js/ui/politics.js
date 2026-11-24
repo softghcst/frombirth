@@ -1,5 +1,6 @@
 // Screens for politics: the card on the Work tab, choosing an office to run
 // for, and governing. The campaign itself is in ui/campaign.js. Rules: engine/politics.js.
+import { fitBars } from './fitBars.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
 import * as pol from '../engine/politics.js';
@@ -92,7 +93,8 @@ async function run(api) {
     title: party ? 'Seek a post' : 'Run for office',
     body: party ? 'The committee decides. Loyalty, patience and usefulness are what it looks for.' : 'You can fight one campaign a year. Skipping rungs is possible, and hard.',
     options: pol.ladder().map((o) => ({ value: o.id, label: o.title, disabled: !!o.blocked,
-      sub: o.blocked || `${o.odds[0].toUpperCase()}${o.odds.slice(1)}${o.opponent ? ` against ${o.opponent}` : ''}. Polling in ${o.electionYear}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year${o.fullTime ? '' : ', alongside your job'}.` })),
+      html: o.blocked ? '' : fitBars({ ...o.bars, youLabel: party ? 'Your standing' : 'Your support', needLabel: 'What it takes' }),
+      sub: o.blocked || `${o.opponent ? `Against ${o.opponent}. ` : ''}Polling in ${o.electionYear}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year${o.fullTime ? '' : ', alongside your job'}.` })),
   });
   if (!officeId) return undefined;
   if (!party) {

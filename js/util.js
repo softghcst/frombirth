@@ -48,8 +48,6 @@ export function fmtMoney(amount, country) {
   return `${n < 0 ? '-' : ''}${country.currency.symbol}${body}`;
 }
 
-/** A chance in words, never a number: the game says how it looks, not the odds. */
-export const chanceWords = (x) => (x >= 0.9 ? 'very likely' : x >= 0.65 ? 'likely' : x >= 0.4 ? 'a fair chance' : x >= 0.2 ? 'a long shot' : x >= 0.08 ? 'unlikely' : 'very unlikely');
 export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** "the United Kingdom", but "Japan". */

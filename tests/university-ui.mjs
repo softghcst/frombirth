@@ -93,7 +93,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const blocks = await page.locator('#modal-root .cmp-block').count();
   check(blocks >= 9, `${label}: the comparison has a block per attribute (${blocks})`);
   const text = await page.locator('#modal-root .modal').last().innerText();
-  for (const word of ['Tuition a year', 'Your chances', 'Places offered', 'Help with the cost', 'Length of the course', 'How it is decided']) check(text.toLowerCase().includes(word.toLowerCase()), `${label}: the comparison has "${word}"`);
+  for (const word of ['Tuition a year', 'Where you stand', 'Places offered', 'Help with the cost', 'Length of the course', 'How it is decided']) check(text.toLowerCase().includes(word.toLowerCase()), `${label}: the comparison has "${word}"`);
+  check(await page.locator('#modal-root .fit-bars').count() >= 2 && !/likely|a long shot|a fair chance/i.test(text), `${label}: where you stand is drawn as bars, with no odds in words`);
   check(/✓/.test(text), `${label}: the better one on a line is marked`);
   check(await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); return m.scrollWidth <= m.clientWidth + 1; }), `${label}: the comparison does not scroll sideways`);
   check(await page.locator('#modal-root .modal').last().locator('.modal-back').count() === 1, `${label}: the comparison has a Back button`);

@@ -1,5 +1,6 @@
 // Pursuits tab: things to do, Digital Life, gambling, crime, moving abroad,
 // and, when it goes wrong, life inside.
+import { fitBars } from '../fitBars.js';
 import { store, player, country } from '../../state.js';
 import { openIdol } from '../kpop.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
@@ -57,15 +58,17 @@ function targetForm() {
           ${known.length ? `<optgroup label="People you know">${known.map((n) => `<option value="npc:${esc(n.id)}">${esc(`${n.firstName} ${n.lastName}`)} (${esc(roleLabel(n).toLowerCase())}, ${n.age})</option>`).join('')}</optgroup>` : ''}
         </select><p class="muted" data-who-note style="margin-top:4px"></p></div>
       <div class="field"><label for="k-how">How</label>
-        <select id="k-how">${methods.map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (chances: ${esc(x.odds)})</option>`).join('')}</select>
-        <p class="muted" data-how-note style="margin-top:4px"></p></div>
+        <select id="k-how">${methods.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>
+        <p class="muted" data-how-note style="margin-top:4px"></p><div data-how-bars></div></div>
       <div class="btn-row" style="margin-top:14px"><button type="button" class="btn" data-cancel>Never mind</button><button type="button" class="btn danger" data-go>Do it</button></div>`,
     { dismissable: true, onDismiss: () => resolve(null) });
     const who = m.el.querySelector('#k-who'); const how = m.el.querySelector('#k-how');
     const notes = () => {
       const s = strangers.find((x) => `stranger:${x.id}` === who.value);
       m.el.querySelector('[data-who-note]').textContent = s ? s.note ?? '' : 'They trust you, which makes it easier to get close.';
-      m.el.querySelector('[data-how-note]').textContent = methods.find((x) => x.id === how.value)?.blurb ?? '';
+      const mt = methods.find((x) => x.id === how.value);
+      m.el.querySelector('[data-how-note]').textContent = mt?.blurb ?? '';
+      m.el.querySelector('[data-how-bars]').innerHTML = mt?.bars ? fitBars({ ...mt.bars, youLabel: 'What you bring', needLabel: 'What it takes' }) : '';
     };
     who.addEventListener('change', notes); how.addEventListener('change', notes); notes();
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
@@ -77,7 +80,7 @@ async function commitCrime(api) {
   const id = await pickModal({
     title: 'Crime',
     body: 'Talent, brains and luck decide whether it works. Every crime wears your luck thinner and brings the police closer.',
-    options: law.crimeOptions().map((c) => ({ value: c.id, label: c.name, sub: `Your chances: ${c.odds}. ${c.stakes}` })),
+    options: law.crimeOptions().map((c) => ({ value: c.id, label: c.name, sub: c.stakes, html: fitBars({ ...c.bars, youLabel: 'What you bring', needLabel: 'What it takes' }) })),
   });
   if (!id) return;
   let targetId;

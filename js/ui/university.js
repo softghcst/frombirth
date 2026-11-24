@@ -1,6 +1,7 @@
 // Planning for university, as a book: the institutions of the country side
 // by side, the applications being put together, and each institution's
 // answer with its reasons and what it would cost. Rules: engine/university.js.
+import { fitBars } from './fitBars.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import * as uni from '../engine/university.js';
@@ -32,7 +33,7 @@ function pageCatalog(r, ui) {
       <div class="kv"><span>Getting in</span><span>${esc(u.entry)}${u.acceptance != null ? ` · ${esc(ratePhrase(u.acceptance))}` : ''}</span></div>
       <div class="kv"><span>Tuition</span><span>${u.tuition ? `${fmtMoney(u.tuition, c)} a year` : 'None'}</span></div>
       <div class="kv"><span>Living there</span><span>${u.living ? `about ${fmtMoney(u.living, c)} a year` : 'You study from home'}${u.nearHome ? ' · or live at home' : ''}</span></div>
-      ${major ? `<div class="kv"><span>For ${esc(major.name)}</span><span>${u.strong ? 'Known for it' : 'Taught, not famous for it'}</span></div><div class="kv"><span>Your chances</span><span><strong>${esc(u.chances)}</strong></span></div>` : ''}
+      ${major ? `<div class="kv"><span>For ${esc(major.name)}</span><span>${u.strong ? 'Known for it' : 'Taught, not famous for it'}</span></div>${u.bars ? fitBars({ ...u.bars, youLabel: 'Your application', needLabel: 'What they look for' }) : u.chances ? `<div class="kv"><span>Getting a place</span><span><strong>${esc(u.chances)}</strong></span></div>` : ''}` : ''}
       ${u.attempts ? `<p class="dyn-reach">${esc(triesLine(u))}</p>` : ''}
       ${u.family.length ? `<p class="dyn-reach">${esc(u.family.join(', '))} studied here.</p>` : ''}
       <div class="btn-row">
@@ -57,7 +58,7 @@ function pageApplying(r) {
   const st = uni.statements().find((s) => s.id === r.statement);
   return `<div class="kv"><span>Subject</span><span>${major ? esc(major.name) : 'Not chosen'}</span></div>
     <div class="kv"><span>Places</span><span>${chosen.length} of ${uni.maxApplications(r.majorId)}</span></div>
-    ${chosen.map((u) => `<div class="kv"><span>${esc(u.name)}${u.attempts ? ` <small>(applied ${u.attempts}×)</small>` : ''}</span><span>${esc(u.chances)}</span></div>`).join('') || '<p class="muted">Add places from the first page.</p>'}
+    ${chosen.map((u) => `<div class="kv"><span>${esc(u.name)}${u.attempts ? ` <small>(applied ${u.attempts}×)</small>` : ''}</span><span>${esc(u.chances)}</span></div>${u.bars ? fitBars({ ...u.bars, youLabel: 'Your application', needLabel: 'What they look for' }) : ''}`).join('') || '<p class="muted">Add places from the first page.</p>'}
     ${coachCard()}
     <div class="section-label">Your personal statement</div>
     <p class="muted">${st ? esc(st.name) : 'Not written yet.'}</p>
@@ -92,8 +93,8 @@ function openCompare(ids) {
     <div class="eyebrow">Compare</div>
     <h2>${names.length} places side by side</h2>
     ${rows.map((row) => `<div class="cmp-block"><div class="section-label">${esc(row.label)}</div>
-      ${row.values.map((v) => `<div class="kv ${v.best ? 'cmp-best' : ''}"><span>${esc(v.name)}</span><span>${v.best ? '✓ ' : ''}${esc(v.text)}</span></div>`).join('')}</div>`).join('')}
-    <p class="muted" style="margin-top:10px">✓ marks the better one on that line. Chances are for you as you are now, and change with your audition, marks and preparation.</p>`, { dismissable: true });
+      ${row.values.map((v) => `<div class="kv ${v.best ? 'cmp-best' : ''}"><span>${esc(v.name)}</span><span>${v.best ? '✓ ' : ''}${esc(v.text)}</span></div>${v.bars ? fitBars({ ...v.bars, youLabel: 'Your application', needLabel: 'What they look for' }) : ''}`).join('')}</div>`).join('')}
+    <p class="muted" style="margin-top:10px">✓ marks the better one on that line. Where you stand is for you as you are now, and changes with your audition, marks and preparation.</p>`, { dismissable: true });
 }
 
 /**

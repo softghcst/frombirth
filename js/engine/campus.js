@@ -234,17 +234,24 @@ export function postings() {
   }
   return c.postings.list;
 }
-/** How likely an application is to succeed. */
-function internChance(post) {
+/** The case an application makes, before it is kept between a long shot and a near thing. */
+function internRaw(post) {
   const p = player();
   const e = p.education;
   const c = state();
   const u = uniOf(e.schoolId);
   const led = Object.values(c.orgs).some((o) => o.role === 'leader');
   const before = (p.flags.internships ?? []).length;
-  return clamp((post.sought ? 0.12 : 0.4) + ((e.gpa || 2.5) - 2.6) * 0.28 + (led ? 0.1 : 0) + (p.flags.profRec ? 0.15 : 0) + ((u?.rep ?? 55) - 55) / 300 + (u?.perk === 'network' ? 0.06 : 0) + Math.min(0.15, before * 0.1) + (p.stats.charm - 50) / 400, 0.03, 0.93);
+  return ((post.sought ? 0.12 : 0.4) + ((e.gpa || 2.5) - 2.6) * 0.28 + (led ? 0.1 : 0) + (p.flags.profRec ? 0.15 : 0) + ((u?.rep ?? 55) - 55) / 300 + (u?.perk === 'network' ? 0.06 : 0) + Math.min(0.15, before * 0.1) + (p.stats.charm - 50) / 400);
 }
-export const internOutlook = (post) => { const x = internChance(post); return x >= 0.65 ? 'Likely' : x >= 0.4 ? 'A fair chance' : x >= 0.2 ? 'A reach' : 'A long shot'; };
+/** How likely an application is to succeed. */
+function internChance(post) { return clamp(internRaw(post), 0.03, 0.93); }
+/** An internship as two bars: your record (marks first), and the record that makes it an even call. */
+export function internBars(post) {
+  const gpa = player().education.gpa || 2.5;
+  const raw = internRaw(post);
+  return { you: clamp(gpa / 4 * 100), need: clamp((gpa - (raw - 0.5) / 0.28) / 4 * 100, 5, 95) };
+}
 
 /** Applies for a posting. One answer each; one internship a summer. */
 export function applyIntern(id) {

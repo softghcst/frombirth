@@ -6,7 +6,6 @@
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const { store } = await import('../js/state.js');
-const { chanceWords } = await import('../js/util.js');
 const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
@@ -164,16 +163,15 @@ section('the list is the top places for the chosen subject, ranked, short, with 
   const elite = all.find((r) => r.label.startsWith('Elite')); const mid = all.find((r) => r.label.startsWith('Musical theater BFA')); const unip = all.find((r) => r.label.startsWith('University'));
   const rows = uni.compare([elite.id, mid.id, unip.id]);
   const by = (label) => rows.find((r) => r.label === label);
-  check(rows.every((r) => r.values.length === 3 && r.values.every((v) => typeof v.text === 'string' && v.text.length)), 'every line has a value for every place, in words');
+  check(rows.every((r) => r.values.length === 3 && r.values.every((v) => typeof v.text === 'string' && (v.text.length || v.bars))), 'every line has a value for every place, in words or bars');
   const tuition = by('Tuition a year');
   check(tuition && tuition.values[0].text !== tuition.values[2].text && tuition.values[2].best && !tuition.values[0].best, 'tuition is shown for each, and the cheaper one is marked');
   const rate = rows.find((r) => /Places offered/.test(r.label));
   check(rate && rate.values[0].best === false && rate.values[2].best === true && /%/.test(rate.values[0].text), 'places offered: shown as a percentage, with the easier place marked');
-  const chances = by('Your chances');
-  check(chances && /^(Reach|Match|Safety): (very likely|likely|a fair chance|a long shot|unlikely|very unlikely)$/.test(chances.values[0].text) && chances.values.every((v) => !/\d+%/.test(v.text) && !/^\w+: very likely$/.test(v.text)), `your chances are given for you, in words and never certain: "${chances?.values[0].text}"`);
-  const LADDER = ['very unlikely', 'unlikely', 'a long shot', 'a fair chance', 'likely', 'very likely'];
-  const rankOf = (t) => LADDER.indexOf(t.split(': ')[1]);
-  check(rankOf(chances.values[2].text) >= rankOf(chances.values[1].text) && rankOf(chances.values[1].text) >= rankOf(chances.values[0].text), 'and fall as the places get harder');
+  const chances = by('Where you stand');
+  check(chances && chances.values.every((v) => v.bars && v.bars.you >= 0 && v.bars.you <= 100 && v.bars.need > 0 && v.bars.need <= 100 && !/\d+%|likely|chance/i.test(v.text)), `where you stand is two bars, with no odds in numbers or words (${JSON.stringify(chances?.values.map((v) => v.bars))})`);
+  const gap = (v) => v.bars.you - v.bars.need;
+  check(gap(chances.values[2]) >= gap(chances.values[1]) && gap(chances.values[1]) >= gap(chances.values[0]), 'and you fall further short as the places get harder');
   check(rows.some((r) => r.label === 'Where') && rows.some((r) => r.label === 'Length of the course') && rows.some((r) => r.label === 'Help with the cost') && rows.some((r) => r.label === 'How it is decided'), 'where, length, help and how it is decided are there');
   check(/audition/i.test(by('How it is decided').values[0].text), 'it says an audition decides it');
   const sameTwo = uni.compare([mid.id, all.filter((r) => r.label.startsWith('Musical theater BFA'))[1].id]);
@@ -182,8 +180,7 @@ section('the list is the top places for the chosen subject, ranked, short, with 
   check(uni.compare(all.slice(0, 6).map((r) => r.id))[0].values.length === 4, 'at most four at once');
   // Compared against what the engine says elsewhere.
   check(by('Tuition a year').values[0].text.replace(/\D/g, '') === String(elite.tuition), 'tuition agrees with the list');
-  const direct = adm.chanceOf(uni.profile('musical_theater_bfa', uni.uniOf(elite.id)), uni.uniOf(elite.id), BFA);
-  check(chances.values[0].text.endsWith(`: ${chanceWords(Math.min(0.89, direct))}`), 'and the words match the chance the rules give (never certain)');
+  check((gap(chances.values[0]) >= 0) === (adm.assess({ ...uni.profile('musical_theater_bfa', uni.uniOf(elite.id)), predicted: false }, uni.uniOf(elite.id), BFA, 0).outcome === 'accepted'), 'and reaching the bar is what brings an offer, on an ordinary year');
 }
 section('comparison: one line per attribute, a value per place in words, better one marked, chances for this player');
 
