@@ -59,42 +59,71 @@ const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}
 const money = (n) => fmtMoney(n, country());
 const flag = (id) => COUNTRIES[id]?.flag ?? '';
 const nameOf = (id) => COUNTRIES[id]?.name ?? id;
-/** The cruise planner's steps: the line and sailing, the stateroom, and what is extra on board. */
+/**
+ * The cruise planner's steps, kept calm: each choice is a short list until it is made, then one line that opens again
+ * to change it. Descriptions show only for what is chosen.
+ */
+const picked = (label, value, body, open = false) => `<details class="gl-pick" ${open ? 'open' : ''}><summary><span class="muted">${esc(label)}</span> <strong>${esc(value)}</strong> <span class="gl-change">Change</span></summary>${body}</details>`;
+const option = (field, name, id, on, title, sub = '', disabled = false) => `<label class="gl-radio"><input type="radio" name="${name}" data-cruise="${field}" value="${id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span class="gl-opt"><strong>${esc(title)}</strong>${sub ? `<small class="muted">${esc(sub)}</small>` : ''}</span></label>`;
 function cruiseStep(trip) {
   const c = trip.cruise ?? {};
   const lines = travel.cruiseLines(trip);
   const line = CRUISE_LINE_BY_ID[c.line];
+  const lineList = lines.map((l) => option('line', 'cline', l.id, c.line === l.id, l.name, `${l.tier}${l.kids === 'adults' ? ', 18 and over' : ''}`)).join('');
+  if (!lines.length) return '<div class="card gl-step"><h3>2 · Cruise</h3><p class="muted">No cruise lines sail in this period.</p></div>';
+  if (!line) return `<div class="card gl-step"><h3>2 · Cruise</h3>${lineList}</div>`;
   const list = travel.sailings(trip);
-  return `<div class="card gl-step"><h3>2 · Cruise line and sailing</h3>
-    ${lines.length ? lines.map((l) => `<label class="gl-radio"><input type="radio" name="cline" data-cruise="line" value="${l.id}" ${c.line === l.id ? 'checked' : ''}><span class="gl-opt"><strong>${esc(l.name)}</strong><small class="muted">${esc(l.tier)}${l.kids === 'adults' ? ' · 18 and over' : l.kids === 'club' ? ' · kids\' club' : ''}</small><small class="muted">${esc(l.blurb)}</small></span></label>`).join('') : '<p class="muted">No cruise lines sail in this period.</p>'}
-    ${line ? `<div class="section-label">Sailings</div>${list.map((it) => `<label class="gl-radio${it.why ? ' muted' : ''}"><input type="radio" name="citin" data-cruise="itin" value="${it.id}" ${c.itin === it.id ? 'checked' : ''} ${it.why ? 'disabled' : ''}><span class="gl-opt"><strong>${esc(it.name)}</strong><small>${it.nights} nights from ${esc(it.portName)}${it.oneWay ? ' (one way)' : ''}</small><small class="muted">${esc(it.ports.length ? it.ports.join(' · ') : 'Days at sea')}${it.why ? ` · ${esc(it.why)}` : ''}</small></span></label>`).join('')}` : ''}
+  const open = list.filter((it) => !it.why);
+  const closed = list.filter((it) => it.why);
+  const it = list.find((x) => x.id === c.itin);
+  const sailList = `${open.map((x) => option('itin', 'citin', x.id, c.itin === x.id, x.name, `${x.nights} nights from ${x.portName.replace(/, .*$/, '')}${x.oneWay ? ', one way' : ''}`)).join('')}
+    ${closed.length ? `<details class="gl-more"><summary class="muted">${closed.length} not sailing on these dates</summary>${closed.map((x) => `<p class="muted gl-why"><strong>${esc(x.name)}</strong>: ${esc(x.why)}</p>`).join('')}</details>` : ''}`;
+  return `<div class="card gl-step"><h3>2 · Cruise</h3>
+    ${picked('Line', line.name, lineList)}
+    <p class="muted gl-note">${esc(line.blurb)}</p>
+    ${it ? `${picked('Sailing', `${it.name}, ${it.nights} nights`, sailList)}<p class="muted gl-note">From ${esc(it.portName)}. ${esc(it.ports.length ? it.ports.join(' · ') : 'Days at sea')}.</p>` : `<div class="section-label">Sailings</div>${sailList}`}
   </div>`;
 }
 function stateroomStep(trip) {
   const c = trip.cruise ?? {};
   if (!c.itin) return '';
   const room = STATEROOM_BY_ID[c.room];
+  const list = travel.staterooms(trip).map((r) => option('room', 'croom', r.id, c.room === r.id, r.name)).join('');
+  if (!room) return `<div class="card gl-step"><h3>7 · Stateroom</h3>${list}<p class="muted gl-note">Prices are for two sharing.</p></div>`;
   return `<div class="card gl-step"><h3>7 · Stateroom</h3>
-    ${travel.staterooms(trip).map((r) => `<label class="gl-radio"><input type="radio" name="croom" data-cruise="room" value="${r.id}" ${c.room === r.id ? 'checked' : ''}><span class="gl-opt"><strong>${esc(r.name)}</strong><small class="muted">Sleeps ${r.sleeps}. ${esc(r.blurb)}</small></span></label>`).join('')}
-    ${room && room.views.length > 1 ? `<label class="field">View <select data-cruise="view">${room.views.map((v) => `<option value="${v}" ${c.view === v ? 'selected' : ''}>${esc(VIEW_BY_ID[v].name)}</option>`).join('')}</select></label>` : ''}
-    ${room ? `<label class="field">Deck <select data-cruise="deck">${DECKS.map((d) => `<option value="${d.id}" ${c.deck === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>` : ''}
-    <p class="muted">Fares are for two sharing; a third and fourth guest pay much less, and one alone pays nearly double.</p></div>`;
+    ${picked('Room', room.name, list)}
+    <p class="muted gl-note">${esc(room.blurb)} Sleeps ${room.sleeps}.</p>
+    <div class="gl-pair">${room.views.length > 1 ? `<label class="field">View <select data-cruise="view">${room.views.map((v) => `<option value="${v}" ${c.view === v ? 'selected' : ''}>${esc(VIEW_BY_ID[v].name)}</option>`).join('')}</select></label>` : ''}
+    <label class="field">Deck <select data-cruise="deck">${DECKS.map((d) => `<option value="${d.id}" ${c.deck === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label></div></div>`;
 }
+/** Short names for the extras' chips. */
+/** The bill, with a cruise's many charges folded into one line that opens to show them all. */
+function billLines(lines, trip) {
+  if (trip.type !== 'cruise') return lines;
+  const cruise = lines.filter((l) => l.kind === 'cruise');
+  if (cruise.length < 2) return lines;
+  const at = lines.indexOf(cruise[0]);
+  const rest = lines.filter((l) => l.kind !== 'cruise');
+  rest.splice(at, 0, { label: 'Cruise, fees and extras', amount: cruise.reduce((s2, l) => s2 + l.amount, 0), group: cruise });
+  return rest;
+}
+const EXTRA_SHORT = { drinks: 'Drinks package', soda: 'Soft drinks', dining: 'Specialty dining', wifi_basic: 'Wi-Fi', wifi_stream: 'Streaming Wi-Fi', excursions: 'Shore excursions' };
 function onboardStep(trip) {
   const c = trip.cruise ?? {};
   const it = ITINERARY_BY_ID[c.itin];
-  if (!it) return '';
+  if (!it || !c.room) return '';
   const extras = travel.cruiseExtras(trip);
   const inc = extras.filter((e) => e.included);
   const wifiOn = c.extras.some((id) => /^wifi/.test(id)) && !extras.some((e) => /^wifi/.test(e.id) && e.included);
   const ashore = c.extras.includes('excursions') || extras.some((e) => e.id === 'excursions' && e.included);
-  return `<div class="card gl-step"><h3>8 · On board and ashore</h3>
-    <p class="muted">The fare covers the stateroom, the main dining room, the buffet, the shows and the pools.${inc.length ? ` This line also includes: ${esc(inc.map((e) => e.name.replace(/ \(.*\)$/, '').toLowerCase()).join(', '))}.` : ''}</p>
-    <div class="chips">${extras.filter((e) => !e.included).map((e) => chip(e.name, c.extras.includes(e.id), `data-cruise="extra" data-value="${e.id}"`)).join('')}</div>
-    ${extras.filter((e) => !e.included && c.extras.includes(e.id) && e.blurb).map((e) => `<p class="muted">${esc(e.name)}: ${esc(e.blurb)}</p>`).join('')}
+  const notes = [c.extras.includes('drinks') ? `Every adult in the room needs it (drinking age ${travel.drinkingAge(it)}).` : '', wifiOn ? 'Wi-Fi is per device.' : ''].filter(Boolean).join(' ');
+  return `<div class="card gl-step"><h3>8 · Extras</h3>
+    <p class="muted gl-note">Meals, shows and pools are in the fare.${inc.length ? ` ${esc(CRUISE_LINE_BY_ID[c.line].name)} also includes ${esc(inc.map((e) => (EXTRA_SHORT[e.id] ?? e.name).toLowerCase()).join(', '))}.` : ''}</p>
+    <div class="chips">${extras.filter((e) => !e.included).map((e) => chip(EXTRA_SHORT[e.id] ?? e.name, c.extras.includes(e.id), `data-cruise="extra" data-value="${e.id}"`)).join('')}</div>
+    ${notes ? `<p class="muted gl-note">${esc(notes)}</p>` : ''}
     ${wifiOn ? `<label class="field">Devices <select data-cruise="devices">${[1, 2, 3, 4, 5, 6].map((d) => `<option ${c.devices === d ? 'selected' : ''}>${d}</option>`).join('')}</select></label>` : ''}
-    ${ashore ? (it.ports.length ? `<div class="section-label">Excursions, by port</div><div class="chips">${it.ports.map((port, i) => chip(port, c.ports.includes(i), `data-cruise="port" data-value="${i}"`)).join('')}</div>` : '<p class="muted">No ports on this crossing.</p>') : ''}
-    <p class="muted">Drinking age on board: ${travel.drinkingAge(it)}.</p></div>`;
+    ${ashore && it.ports.length ? `<div class="section-label">Excursions</div><div class="chips">${it.ports.map((port, i) => chip(port.replace(/ \(.*\)$/, ''), c.ports.includes(i), `data-cruise="port" data-value="${i}"`)).join('')}</div>` : ''}
+  </div>`;
 }
 
 const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', canceled: 'Canceled', disrupted: 'Disrupted',
@@ -208,8 +237,8 @@ export function openExplore(api, start = {}) {
           \${dest ? \`<label class="field">City <select data-planfield="city">\${COUNTRIES[dest.countryId].cities.map((c) => \`<option \${c === dest.city ? 'selected' : ''}>\${esc(c)}</option>\`).join('')}</select></label>\` : ''}</div>`}
         <div class="card gl-step"><h3>3 · Dates</h3>
           <div class="gl-dates"><label class="field">Leave <input type="date" data-planfield="depart" value="${esc(trip.depart)}" min="${docs.today()}" max="${y + 1}-12-31"></label>
-          <label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label></div>
-          <p class="muted">${cruise && trip.cruise?.sail ? `You leave on ${esc(trip.depart)}${trip.cruise.sail !== trip.depart ? ', a day early, so as not to miss the ship' : ''}; it sails on ${esc(trip.cruise.sail)} and is back on ${esc(trip.ret)}. The sailing sets the dates: choose when you leave.` : `${docs.daysBetween(trip.depart, trip.ret)} nights. It is ${esc(docs.today())}; a trip ends in the year it starts.`}</p></div>
+          ${cruise ? '' : `<label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label>`}</div>
+          <p class="muted">${cruise ? (trip.cruise?.sail ? `Sails ${esc(trip.cruise.sail)}, back ${esc(trip.ret)}.${trip.cruise.sail !== trip.depart ? ' You leave a day early.' : ''}` : 'The sailing you choose sets how long.') : `${docs.daysBetween(trip.depart, trip.ret)} nights. It is ${esc(docs.today())}; a trip ends in the year it starts.`}</p></div>
         <div class="card gl-step"><h3>4 · Who is going</h3>
           ${trip.travelers.map((x) => { const who = docs.personById(x.id); return who ? kv(x.status === 'organizer' ? 'You' : `${who.firstName}`, `${esc(({ organizer: 'Organizer', accepted: 'Coming', declined: 'Not coming', stayed: 'Could not come' })[x.status] ?? x.status)}${x.reason && x.status !== 'organizer' ? ` <small class="muted">${esc(x.reason)}</small>` : ''}${x.status !== 'organizer' ? ` <button type="button" class="btn small" data-uninvite="${x.id}">Remove</button>` : ''}`) : ''; }).join('')}
           ${dest ? `<details ${ui.inviteOpen ? 'open' : ''} data-toggle="inviteOpen"><summary>Invite someone</summary>${travel.invitable(trip).map((n) => `<button type="button" class="tree-row" data-invite="${n.id}"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(n.age)} · they decide for themselves</small></button>`).join('') || '<p class="muted">Nobody else to ask.</p>'}</details>` : ''}</div>
@@ -232,7 +261,7 @@ export function openExplore(api, start = {}) {
           <select data-planfield="payment" aria-label="Who pays">${travel.paymentOptions().map((o) => `<option value="${o.id}" ${payHow === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
           ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>${travel.canAskFamilyAgain(trip) ? btn(`Ask ${kinWho} again`, `data-askfamily="${trip.id}"`, 'small') : ''}` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
-          <div class="gl-bill">${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
+          <div class="gl-bill">${billLines(q.lines, trip).map((l) => (l.group ? `<details class="gl-more"><summary>${kv(l.label, esc(money(l.amount)))}</summary>${l.group.map((g) => kvt(g.label, money(g.amount))).join('')}</details>` : kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount)))).join('')}
           ${q.family ? kvt(`${kin.who} ${kin.plural ? 'pay' : 'pays'}`, money(q.family)) : ''}${kv('You pay', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}</div>
           </div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}

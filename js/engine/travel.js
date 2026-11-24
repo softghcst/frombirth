@@ -432,6 +432,7 @@ export function updatePlan(id, changes, p = player()) {
     if (ch.devices != null) c.devices = Math.max(1, Math.min(6, Math.round(Number(ch.devices)) || 1));
     if (ch.port != null) { const i = Number(ch.port); c.ports = c.ports.includes(i) ? c.ports.filter((x) => x !== i) : [...c.ports, i].sort((a, b) => a - b); }
     syncCruise(trip);
+    if (!c.itin) trip.ret = addDays(trip.depart, 7); // no sailing yet: a placeholder week, never a return before leaving
   }
   return result(true, 'Plan updated.', 'neutral', { trip });
 }
@@ -589,7 +590,7 @@ function overlaps(a, b) { return a.depart <= b.ret && b.depart <= a.ret; }
 export function problems(trip, p = player()) {
   const out = [];
   const t = TRIP_TYPE_BY_ID[trip.type];
-  if (!trip.destination) return ['Choose where to go.'];
+  if (!trip.destination) return trip.type === 'cruise' ? cruiseProblems(trip, goingPeople(trip)) : ['Choose where to go.'];
   if (trip.type !== 'cruise' && trip.destination.countryId === trip.origin.countryId && trip.destination.city === trip.origin.city) out.push('That is where you live. Choose somewhere else.');
   if (trip.type === 'cruise') out.push(...cruiseProblems(trip, goingPeople(trip)));
   const block = typeBlock(trip.type, trip.destination.countryId, p);

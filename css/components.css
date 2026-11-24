@@ -1249,3 +1249,18 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .fit-you { background: var(--accent); }
 .fit-need { background: var(--peach-strong); }
 .choice-btn .fit-bars, .nav-row .fit-bars { margin-top: 6px; }
+/* The cruise planner: a made choice folds to one line; descriptions only for what is chosen. */
+.gl-pick { margin: 2px 0 4px; }
+.gl-pick > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 6px 0; }
+.gl-pick > summary::-webkit-details-marker { display: none; }
+.gl-pick > summary strong { flex: 1; min-width: 0; }
+.gl-pick .gl-change { font-size: 0.8rem; color: var(--accent, #6b4fa0); font-weight: 600; }
+.gl-pick[open] .gl-change { visibility: hidden; }
+.gl-note { margin: 0 0 8px; font-size: 0.85rem; }
+.gl-more > summary { cursor: pointer; font-size: 0.85rem; padding: 4px 0; }
+.gl-more .gl-why { margin: 2px 0; font-size: 0.82rem; }
+.gl-bill .gl-more > summary { list-style: none; }
+.gl-bill .gl-more > summary::-webkit-details-marker { display: none; }
+.gl-bill .gl-more > summary .kv span:first-child::after { content: ' ▾'; font-size: 0.75em; }
+.gl-bill .gl-more[open] > .kv { padding-left: 10px; font-size: 0.85rem; }
+.gl-pair { display: grid; gap: 4px; }
