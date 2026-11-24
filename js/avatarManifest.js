@@ -262,6 +262,7 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_45_princess_sweetheart", "file": "avatars/clothes/outfit_45_princess_sweetheart.svg", "label": "Princess sweetheart", "tags": {"royal": true}},
     {"id": "outfit_46_prince_epaulettes", "file": "avatars/clothes/outfit_46_prince_epaulettes.svg", "label": "Prince epaulettes", "tags": {"royal": true}},
     {"id": "outfit_47_sovereign_ermine", "file": "avatars/clothes/outfit_47_sovereign_ermine.svg", "label": "Sovereign ermine", "tags": {"royal": true}},
+    {"id": "outfit_48_noble_cameo", "file": "avatars/clothes/outfit_48_noble_cameo.svg", "label": "Noble cameo", "tags": {"royal": true}},
     {"id": "outfit_baby_01_bib_onesie", "file": "avatars/clothes/outfit_baby_01_bib_onesie.svg", "label": "Bib onesie", "tags": {"age": "baby"}},
     {"id": "outfit_baby_02_overalls", "file": "avatars/clothes/outfit_baby_02_overalls.svg", "label": "Overalls", "tags": {"age": "baby"}},
     {"id": "outfit_baby_03_peterpan_dress", "file": "avatars/clothes/outfit_baby_03_peterpan_dress.svg", "label": "Peterpan dress", "tags": {"age": "baby"}},
