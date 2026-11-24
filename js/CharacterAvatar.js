@@ -180,6 +180,8 @@ const clothesLayer = (id, headId, extra = '') => {
  * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
  * neck, and moved down, on top of the usual placement under the chin.
  */
+/** Children's clothes, drawn on a template of the child's own head (assets/clothes_templates/): already in place, drawn as they are. */
+const ASDRAWN = /^outfit_(baby|kid)_/;
 const snapped = (id, tf = '', headId = null) => {
   const k = CLOTHES_SNAP[id];
   // Measured against the grown-up bodies only: a child's shoulders are shaped differently, so a child wears it as drawn.
@@ -403,7 +405,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     d.binky ? `<use href="${BINKY}#art"${f.lips ?? ''}/>` : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    clothesLayer(d.clothes, d.head, snapped(d.clothes, f.clothes, d.head)),
+    clothesLayer(d.clothes, d.head, ASDRAWN.test(d.clothes ?? '') ? '' : snapped(d.clothes, f.clothes, d.head)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),

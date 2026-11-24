@@ -267,6 +267,7 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_52_princess_starlight", "file": "avatars/clothes/outfit_52_princess_starlight.svg", "label": "Princess starlight", "tags": {"royal": true}},
     {"id": "outfit_53_imperial_ruby", "file": "avatars/clothes/outfit_53_imperial_ruby.svg", "label": "Imperial ruby", "tags": {"royal": true}},
     {"id": "outfit_54_denim_jacket_tee", "file": "avatars/clothes/outfit_54_denim_jacket_tee.svg", "label": "Denim jacket tee"},
+    {"id": "outfit_baby_01_cream_onesie", "file": "avatars/clothes/outfit_baby_01_cream_onesie.svg", "label": "Cream onesie", "tags": {"age": "baby"}},
     {"id": "outfit_firefighter_01", "file": "avatars/clothes/outfit_firefighter_01.svg", "label": "Firefighter", "tags": {"career": "firefighter"}},
     {"id": "outfit_military_01", "file": "avatars/clothes/outfit_military_01.svg", "label": "Military", "tags": {"career": "military"}},
     {"id": "outfit_police_01", "file": "avatars/clothes/outfit_police_01.svg", "label": "Police", "tags": {"career": "police"}},

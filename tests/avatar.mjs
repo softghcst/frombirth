@@ -730,6 +730,22 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
   check(![...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS.female, ...CUR.KID_OUTFITS.male, ...CUR.OUTFITS.baby].some((id) => !PART_BY_ID[id]), 'every children\'s outfit listed exists');
 }
 
+// Baby clothes, drawn on the baby head's own template: worn from birth to 6, placed exactly as drawn (no refitting),
+// in the colors they were drawn in.
+{
+  for (const id of CUR.OUTFITS.baby) {
+    check(PART_BY_ID[id], `${id} exists`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(!svg.includes('var(--outfit-color'), `${id} keeps the colors it was drawn in`);
+    const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'babyfit', 'female'), babyClothes: id };
+    for (const age of [0, 2, 3, 6]) check(dressFor(look, { age, gender: 'female' }).clothes === id, `a child of ${age} wears ${id}`);
+    check(dressFor(look, { age: 7, gender: 'female' }).clothes !== id, `a child of 7 does not wear ${id}`);
+    const out = characterAvatarSvg(look, { age: 1, gender: 'female' });
+    const use = out.match(new RegExp(`<use href="[^"]*${id}[^"]*"([^/]*)/>`));
+    check(use && !/transform/.test(use[1]), `${id} is drawn where it was drawn, not moved (${use?.[1]})`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
