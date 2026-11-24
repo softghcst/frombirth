@@ -118,7 +118,7 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 export const OUTFITS = {
   any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket'],
+    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_45_denim_jacket_tee'],
   female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
   male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
   baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',

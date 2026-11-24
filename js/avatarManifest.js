@@ -259,6 +259,7 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_42_imperial_tunic", "file": "avatars/clothes/outfit_42_imperial_tunic.svg", "label": "Imperial tunic", "tags": {"royal": true}},
     {"id": "outfit_43_noble_jabot", "file": "avatars/clothes/outfit_43_noble_jabot.svg", "label": "Noble jabot", "tags": {"royal": true}},
     {"id": "outfit_44_prince_doublet", "file": "avatars/clothes/outfit_44_prince_doublet.svg", "label": "Prince doublet", "tags": {"royal": true}},
+    {"id": "outfit_45_denim_jacket_tee", "file": "avatars/clothes/outfit_45_denim_jacket_tee.svg", "label": "Denim jacket tee"},
     {"id": "outfit_baby_01_bib_onesie", "file": "avatars/clothes/outfit_baby_01_bib_onesie.svg", "label": "Bib onesie", "tags": {"age": "baby"}},
     {"id": "outfit_baby_02_overalls", "file": "avatars/clothes/outfit_baby_02_overalls.svg", "label": "Overalls", "tags": {"age": "baby"}},
     {"id": "outfit_baby_03_peterpan_dress", "file": "avatars/clothes/outfit_baby_03_peterpan_dress.svg", "label": "Peterpan dress", "tags": {"age": "baby"}},
