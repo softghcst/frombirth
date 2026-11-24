@@ -11,7 +11,7 @@
 //   { "outfit_54_denim_jacket_tee": "athletic" }
 // Writes assets/clothes_fit/<outfit>__<head>.svg, and js/avatar/fittedClothes.js listing them.
 // Needs Playwright's Chromium (to measure the necks from the head drawings).
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -196,6 +196,8 @@ for (const [outfit, how] of Object.entries(drawnFor)) {
   }
   const r = { half: drawn.half * scale, base: T.clothesTop + (drawn.base - T.clothesTop) * scale };
   fitted[outfit] = [];
+  // Copies made before are cleared first: a head that now needs none keeps none.
+  for (const f of readdirSync(at('assets', 'clothes_fit'))) if (f.startsWith(`${outfit}__`)) unlinkSync(at('assets', 'clothes_fit', f));
   const drawnGap = await shoulderGap(src, ref, necks[refName]);
   // Shoulders bare on the head it was drawn on (a tank top): the drawing means them to show, on every head.
   const bare = Math.max(...drawnGap.gap) > 10;
@@ -219,5 +221,5 @@ if (changedDrawnFor) writeFileSync(at('assets', 'clothes_drawn_for.json'), `${JS
 writeFileSync(at('js', 'avatar', 'fittedClothes.js'), `// Written by scripts/fit-clothes.mjs (\`npm run fit-clothes\`): do not edit by hand.
 // Outfits with a copy fitted to each head's neck, in assets/clothes_fit/<outfit>__<head>.svg. On the head an
 // outfit was drawn for (assets/clothes_drawn_for.json), and on any head not listed, the outfit's own file is used.
-export const FITTED_CLOTHES = ${JSON.stringify(fitted)};
+export const FITTED_CLOTHES = ${JSON.stringify(Object.fromEntries(Object.entries(fitted).filter(([, v]) => v.length)))};
 `);
