@@ -140,7 +140,7 @@ def to_template(traced, per_unit, fit, T):
     body = max(0.8, min(1.06, fit['shoulderW'] / T['shoulderW']))
     def point(x, y):
         X, Y = x / per_unit, y / per_unit  # the head's own frame
-        return 256 + (X - fit['cx']) / body, T['clothesTop'] + (Y - (fit['chin'] + 8)) / body
+        return 256 + (X - fit.get('bodyX', fit['cx'])) / body, T['clothesTop'] + (Y - fit.get('collar', fit['chin'] + 8)) / body
     paths = []
     for m in re.finditer(r'<path d="([^"]*)" fill="(#[0-9A-Fa-f]{6})"(?: transform="translate\(([-\d.]+),([-\d.]+)\)")?', traced):
         d, fill = m.group(1), m.group(2).lower()
@@ -184,7 +184,7 @@ def main():
             print(f'widened outside the collar by x{k:.2f}, to reach past the shoulders')
         # The drawing stops at the bottom of the canvas, and some portraits show a little below that: its hem is
         # moved down, so the outfit runs past the bottom of every portrait.
-        hem = T['clothesTop'] + (512 - (fit['chin'] + 8)) / body
+        hem = T['clothesTop'] + (512 - fit.get('collar', fit['chin'] + 8)) / body
         def lower(m):
             y = float(m.group(2))
             return f'{m.group(1)} {y + 24 if y >= hem - 1.5 else y:.1f}'

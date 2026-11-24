@@ -83,7 +83,7 @@ async function measure() {
 /** A head's neck in the outfit's own frame (the template's), where the outfit's top sits at T.clothesTop. */
 function inTemplate(h, n) {
   const body = Math.max(0.8, Math.min(1.06, h.fit.shoulderW / T.shoulderW));
-  return { half: (n.R - n.L) / 2 / body, base: T.clothesTop + (n.base - (h.fit.chin + 8)) / body };
+  return { half: (n.R - n.L) / 2 / body, base: T.clothesTop + (n.base - (h.fit.collar ?? h.fit.chin + 8)) / body };
 }
 
 /**
@@ -112,8 +112,9 @@ function warper(k, ref) {
 /** The transform the portrait puts an outfit through on this head (fitTransforms in js/CharacterAvatar.js). */
 function placement(h) {
   const body = Math.max(0.8, Math.min(1.06, h.fit.shoulderW / T.shoulderW));
-  return { body, toHead: (x, y) => [h.fit.cx + (x - 256) * body, h.fit.chin + 8 + (y - T.clothesTop) * body],
-    attr: `translate(${h.fit.cx} ${h.fit.chin + 8}) scale(${body}) translate(-256 ${-T.clothesTop})` };
+  // The adult heads share one neck and shoulders: clothes sit on that body (collar, bodyX), others under the chin.
+  const cx = h.fit.bodyX ?? h.fit.cx; const top = h.fit.collar ?? h.fit.chin + 8;
+  return { body, cx, top, attr: `translate(${cx} ${top}) scale(${body}) translate(-256 ${-T.clothesTop})` };
 }
 
 /**
@@ -121,15 +122,15 @@ function placement(h) {
  * units; 0 where the outfit is above them, or not there). Skin showing there.
  */
 async function shoulderGap(svgText, h, neck) {
-  const { body, attr } = placement(h);
+  const { body, cx, top: collar, attr } = placement(h);
   const inner = svgText.match(/<g id="art">([\s\S]*)<\/g>\s*<\/svg>/)[1];
   const top = await tops(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><g transform="${attr}">${inner}</g></svg>`, 360);
   const gap = []; const topT = [];
   for (let xt = 0; xt < 512; xt++) {
-    const hx = Math.round(h.fit.cx + (xt - 256) * body);
+    const hx = Math.round(cx + (xt - 256) * body);
     const t = hx >= 0 && hx < 512 ? top[hx] : -1; const b = hx >= 0 && hx < 512 ? neck.shoulders[hx] : -1;
     gap.push(t >= 0 && b >= 0 ? Math.max(0, (t - b) / body) : 0);
-    topT.push(t >= 0 ? T.clothesTop + (t - (h.fit.chin + 8)) / body : null);
+    topT.push(t >= 0 ? T.clothesTop + (t - collar) / body : null);
   }
   return { gap, topT };
 }
@@ -172,6 +173,7 @@ function warpSvg(svg, f) {
 const necks = await measure();
 mkdirSync(at('assets', 'clothes_fit'), { recursive: true });
 const fitted = {};
+let changedDrawnFor = false;
 for (const [outfit, how] of Object.entries(drawnFor)) {
   // "athletic", or { head: "athletic", scale: 1.25 } for an outfit drawn on that head and then scaled up about the
   // middle of its neckline (scripts/import_outfit.py): its neckline is then wider than the neck it was drawn on, so
@@ -184,17 +186,24 @@ for (const [outfit, how] of Object.entries(drawnFor)) {
   const ref = heads.find((h) => h.name === refName);
   if (!ref || !PART_BY_ID[outfit]) { console.warn(`skipped ${outfit}: unknown outfit or head ${refName}`); continue; }
   const src = readFileSync(at('assets', PART_BY_ID[outfit].file), 'utf8');
-  const drawn = inTemplate(ref, necks[refName]);
+  // The neck it was drawn on, as it was then: remembered the first time it is fitted, so redrawing that head later
+  // (the adult heads were given one shared neck) does not change what the outfit's neckline was cut for.
+  const drawn = typeof how === 'object' && how.neck ? how.neck : inTemplate(ref, necks[refName]);
+  if (!(typeof how === 'object' && how.neck)) {
+    drawnFor[outfit] = { ...(typeof how === 'object' ? how : { head: refName }), neck: { half: Math.round(drawn.half * 10) / 10, base: Math.round(drawn.base * 10) / 10 } };
+    changedDrawnFor = true;
+  }
   const r = { half: drawn.half * scale, base: T.clothesTop + (drawn.base - T.clothesTop) * scale };
   fitted[outfit] = [];
   const drawnGap = await shoulderGap(src, ref, necks[refName]);
   // Shoulders bare on the head it was drawn on (a tank top): the drawing means them to show, on every head.
   const bare = Math.max(...drawnGap.gap) > 10;
   for (const h of heads) {
-    const own = h.name === refName && scale === 1;
     const t = inTemplate(h, necks[h.name]);
-    const k = own ? 1 : open ? Math.max(1, t.half / r.half) : t.half / r.half;
-    let svg = own || k === 1 ? src : warpSvg(src, warper(k, r));
+    // Every head is measured against the neck the outfit was drawn on (that head itself may have been redrawn since).
+    const raw = open ? Math.max(1, t.half / r.half) : t.half / r.half;
+    const k = Math.abs(raw - 1) < 0.03 ? 1 : raw;
+    let svg = k === 1 ? src : warpSvg(src, warper(k, r));
     const lift = bare ? null : shoulderLift(await shoulderGap(svg, h, necks[h.name]), drawnGap);
     if (lift) svg = warpSvg(svg, lift);
     if (k === 1 && !lift) continue; // nothing to change on this head: the outfit's own file
@@ -204,6 +213,7 @@ for (const [outfit, how] of Object.entries(drawnFor)) {
   }
 }
 await browser.close();
+if (changedDrawnFor) writeFileSync(at('assets', 'clothes_drawn_for.json'), `${JSON.stringify(drawnFor, null, 2)}\n`);
 writeFileSync(at('js', 'avatar', 'fittedClothes.js'), `// Written by scripts/fit-clothes.mjs (\`npm run fit-clothes\`): do not edit by hand.
 // Outfits with a copy fitted to each head's neck, in assets/clothes_fit/<outfit>__<head>.svg. On the head an
 // outfit was drawn for (assets/clothes_drawn_for.json), and on any head not listed, the outfit's own file is used.

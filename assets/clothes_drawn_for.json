@@ -1,13 +1,39 @@
 {
-  "outfit_54_denim_jacket_tee": "athletic",
-  "outfit_55_zip_hoodie": "athletic",
+  "outfit_54_denim_jacket_tee": {
+    "head": "athletic",
+    "neck": {
+      "half": 59.4,
+      "base": 455.2
+    }
+  },
+  "outfit_55_zip_hoodie": {
+    "head": "athletic",
+    "neck": {
+      "half": 59.4,
+      "base": 455.2
+    }
+  },
   "outfit_56_vneck_sweater": {
     "head": "athletic",
-    "neckline": "open"
+    "neckline": "open",
+    "neck": {
+      "half": 59.4,
+      "base": 455.2
+    }
   },
-  "outfit_57_polo_shirt": "dimple_oval",
+  "outfit_57_polo_shirt": {
+    "head": "dimple_oval",
+    "neck": {
+      "half": 45.9,
+      "base": 453.4
+    }
+  },
   "outfit_58_tank_top": {
     "head": "dimple_oval",
-    "neckline": "open"
+    "neckline": "open",
+    "neck": {
+      "half": 45.9,
+      "base": 453.4
+    }
   }
 }
