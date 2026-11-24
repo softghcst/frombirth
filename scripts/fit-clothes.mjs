@@ -21,8 +21,8 @@ const at = (...p) => path.join(ROOT, ...p);
 const { PART_BY_ID, AVATAR_TEMPLATE: T } = await import(at('js', 'avatarManifest.js'));
 const drawnFor = JSON.parse(readFileSync(at('assets', 'clothes_drawn_for.json'), 'utf8'));
 
-// The heads that wear everyday clothes (babies and toddlers have their own).
-const heads = Object.values(PART_BY_ID).filter((p) => p.fit && p.file.startsWith('heads/') && !/baby|toddler/.test(p.file))
+// The heads that wear everyday clothes: the grown-up ones (babies, toddlers and children have their own, js/avatar/curation.js).
+const heads = Object.values(PART_BY_ID).filter((p) => p.fit && p.file.startsWith('heads/') && !/baby|toddler|kid/.test(p.file))
   .map((p) => ({ id: p.id, name: path.basename(p.file, '.svg'), fit: p.fit }));
 
 /** Each head's neck, measured from its drawing: the narrowest the outline gets below the chin, and where it widens into the shoulders. */
