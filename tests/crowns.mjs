@@ -5,6 +5,10 @@ import { resolveLook } from '../js/avatar/catalog.js';
 import { royalDress } from '../js/avatar/render.js';
 import { AVATAR_MANIFEST as MANIFEST } from '../js/avatarManifest.js';
 import { existsSync } from 'node:fs';
+import { avatarSvg } from '../js/avatar/render.js';
+import { frameFor } from '../js/avatar/hairFit.js';
+import { CROWN_SEATS } from '../js/avatar/curation.js';
+import { PART_BY_ID } from '../js/avatarManifest.js';
 
 const problems = [];
 const check = (ok, what) => { if (!ok) problems.push(what); };
@@ -69,6 +73,26 @@ for (const gender of ['male', 'female']) {
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('consort', false, 'se') }).crown === 'crown_15_queen', 'and so in the dynasty view');
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'mc') }).crown === 'crown_13_obsidian_sovereign', 'a woman who rules Monaco wears obsidian');
   check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('heir', false, 'uk') }).crown === 'crown_16_crown_princess', 'a crown princess wears the crown princess tiara');
+}
+// Every crown is worn on the head: its seat is near the top of the skull (never floating high above it, never down on
+// the face), and the whole crown is inside the picture.
+for (let i = 0; i < 160; i++) {
+  const gender = i % 2 ? 'female' : 'male';
+  const age = [1, 4, 9, 16, 30, 70][i % 6];
+  const rank = ['monarch', 'heir', 'royal'][i % 3];
+  const svg = avatarSvg({ age, gender, seed: `seat${i}`, royal: royalDress(rank, false, ['uk', 'sa', 'jp'][i % 3]) });
+  const m = svg.match(/crowns\/(crown_\w+)\.svg#art" transform="translate\(([\d.-]+) ([\d.-]+)\) scale\(([\d.]+)\) translate\(-256 (-?[\d.]+)\)/);
+  if (!m) { check(false, `portrait ${i} has a placed crown`); continue; }
+  const [, id, , y, k, negSeat] = m;
+  const royal = royalDress(rank, false, ['uk', 'sa', 'jp'][i % 3]);
+  const head = dressFor(resolveLook(undefined, `seat${i}`, gender, { child: age < 13 }), { age, gender, royal }).head;
+  const fit = PART_BY_ID[head]?.fit;
+  check(!!fit, `portrait ${i}: its head (${head}) is measured`);
+  if (!fit) continue;
+  const wr = fit.w / 238;
+  check(+y >= fit.top - 40 * wr && +y <= fit.top + 50 * wr, `portrait ${i} (${id}, age ${age}): the crown sits on the head (seat ${y}, skull top ${fit.top})`);
+  const top = +y - (-negSeat - (CROWN_SEATS[id]?.top ?? -negSeat - 132)) * +k;
+  check(top >= frameFor(head).y, `portrait ${i} (${id}): the crown is inside the picture`);
 }
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');

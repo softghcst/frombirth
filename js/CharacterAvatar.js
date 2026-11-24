@@ -29,9 +29,10 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
+import { HAIR_TOPS } from './data/hairTops.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -76,8 +77,13 @@ export function ageStage(age = 25) {
   if (age < 50) return 'adult';
   return 'older';
 }
-/** How a crown is worn: larger than the template's and raised above the face, so it rests on the hair. */
-const CROWN = { scale: 1.3, lift: 34, baby: 0.8, babyDrop: 30 };
+/**
+ * How a crown is worn (crownAt). The middle of its lower edge (its seat: CROWN_SEATS, in the crown art's 512 frame)
+ * goes a little below the top of the hair (`dip`), so the band wraps the head the way a worn crown does, rather than
+ * balancing on the top of it. On very tall hair it rides no more than `lift` above the skull, in front of the hair,
+ * and it never leaves the picture. `scale`: its size against the width of the head, by age.
+ */
+const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
 const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
 
 /** Lines that come with age, from fifty on. */
@@ -198,9 +204,6 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
     glasses: feature(T.anchor.eyes, wr * young.k),
     hair: crown, hat: crown,
-    // A crown sits up on top of the hair and is big enough to read at a glance, even in a small portrait.
-    crown: stage === 'baby' || stage === 'toddler' ? move(256, T.face.top, fit.cx, fit.top + CROWN.babyDrop * wr, wr * CROWN.baby)
-      : move(256, T.face.top, fit.cx, fit.top - CROWN.lift * wr, wr * CROWN.scale),
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
     clothes: move(256, T.clothesTop, fit.cx, fit.chin + 8, body), necklace: move(256, T.clothesTop, fit.cx, fit.chin + 8, body),
   };
@@ -251,6 +254,26 @@ function colorVars(look, ctx) {
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
+}
+
+/**
+ * Where a crown goes on this person: on the top of their hair as it is drawn on their head (see CROWN).
+ * @returns {string} an SVG transform attribute, with a leading space
+ */
+function crownAt(d, stage, fitted, hf, frame) {
+  const fit = PART_BY_ID[d.head]?.fit;
+  if (!fit) return '';
+  const wr = fit.w / T.face.w;
+  // The top of the hair: measured from the fitted drawing. An older style (a child's, mostly) sits close to the skull.
+  let top = fit.top;
+  if (fitted && HAIR_TOPS[fitted] != null) top = Math.min(top, HAIR_TOPS[fitted]);
+  const k = wr * (CROWN.scale[stage] ?? CROWN.scale.adult);
+  const seat = CROWN_SEATS[d.crown]?.seat ?? CROWN.seat;
+  const crownTop = CROWN_SEATS[d.crown]?.top ?? seat - CROWN.height;
+  let y = Math.max(top, fit.top - CROWN.lift * wr) + CROWN.dip * wr;
+  const over = frame.y + 3 - (y - (seat - crownTop) * k);
+  if (over > 0) y += over;
+  return ` transform="translate(${n1(fit.cx)} ${n1(y)}) scale(${n1(k)}) translate(-256 ${-seat})"`;
 }
 
 /**
@@ -343,7 +366,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     earrings.map((j) => use(j, f.ears)).join(''),
     piercings.map((j) => use(j, f.lips)).join(''),
     d.glasses ? use(d.glasses, f.glasses) : '',
-    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, f.crown) : '',
+    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, crownAt(d, ageStage(ctx.age ?? 25), fitted, hf, frameFor(d.head))) : '',
     d.emotion ? use(d.emotion, f.emotion) : '',
   ];
   const size = opts.size != null ? ` width="${opts.size}" height="${opts.size}"` : '';

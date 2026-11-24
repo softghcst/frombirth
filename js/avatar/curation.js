@@ -134,6 +134,12 @@ export const ROYAL = {
     royal: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' }, child: 'crown_11_prince_band', princess: 'crown_10_princess_tiara', crownPrincess: 'crown_16_crown_princess', crownPrince: 'crown_17_crown_prince', noble: 'crown_06_noble_coronet' },
 };
 
+/** Where each crown drawing meets the head: the middle of its lower edge (seat) and its highest point (top), in its 512 frame. */
+export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, crown_10_princess_tiara: { seat: 154, top: 68.5 },
+  crown_11_prince_band: { seat: 173.2, top: 111.4 }, crown_12_empress: { seat: 169, top: 73 }, crown_13_obsidian_sovereign: { seat: 164.2, top: 50.9 },
+  crown_14_imperial_laurel: { seat: 161, top: 84 }, crown_15_queen: { seat: 169.6, top: 42.6 }, crown_16_crown_princess: { seat: 161.8, top: 86.8 },
+  crown_17_crown_prince: { seat: 172.5, top: 78.8 } };
+
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
   police: { outfit: 'outfit_police_01', senior: { outfit: 'outfit_swat_02', level: 4 } },
