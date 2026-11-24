@@ -131,7 +131,7 @@ for (let i = 0; i < 400; i++) {
   const g = i % 2 ? 'female' : 'male';
   const a = randomAppearance(i % TONES.length, g);
   valid(normalize(a, `r${i}`), `random ${i}`);
-  check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
+  check((CUR.RESTING.eyes.includes(a.inherited.eyes) || /^eyes_[fm]_/.test(a.inherited.eyes)) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
   if (i % TONES.length >= SKIN_DEPTH.chestnut) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
 }
 check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
@@ -288,8 +288,9 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
 const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
-check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
-check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
+const drawnEyes = (list) => list.map((e) => e.id ?? e).filter((id) => !/^eyes_[fm]_/.test(id));  // traced eyes (eyes_f_*, eyes_m_*) come and go
+check(drawnEyes(AVATAR_MANIFEST.eyes).join() === EYES.join(), 'the eye shapes in the manifest have changed');
+check(drawnEyes(CATALOG.eyes).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
 check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
 for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
   for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
@@ -313,7 +314,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const seen = {};
   rng.seed(7);
   for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, i % 2 ? 'female' : 'male').inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
-  check(Object.keys(seen).sort().join() === [...CUR.RESTING.eyes].sort().join(), 'random faces draw on a different set of eyes');
+  check(drawnEyes(Object.keys(seen)).sort().join() === [...CUR.RESTING.eyes].sort().join() && CATALOG.eyes.filter((e) => /^eyes_[fm]_/.test(e.id)).every((e) => seen[e.id]), 'random faces draw on a different set of eyes');
   check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
 }
 
@@ -340,6 +341,13 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     check(eye(lashed, 'male').includes(`eyes/${plain}.svg`) && !eye(lashed, 'male').includes(`eyes/${lashed}.svg`), `a man is drawn with ${lashed}, which has lashes`);
     check(eye(lashed, 'female').includes(`eyes/${lashed}.svg`), `a woman's ${lashed} is changed`);
     check(!EYE_MATCH.male[plain], `${plain}, a man's eyes, has lashes of its own`);
+  }
+  // Eyes made for one gender (eyes_f_*, eyes_m_*) are never drawn on the other.
+  for (const e of CATALOG.eyes.filter((x) => /^eyes_[fm]_/.test(x.id))) {
+    const other = e.id.startsWith('eyes_f_') ? 'male' : 'female';
+    check(!eye(e.id, other).includes(`eyes/${e.id}.svg`), `${e.id} is drawn on a ${other === 'male' ? 'man' : 'woman'}`);
+    check(eye(e.id, other === 'male' ? 'female' : 'male').includes(`eyes/${e.id}.svg`), `${e.id} is not drawn on its own gender`);
+    check(!/^[FM] /.test(e.name), `${e.id} is named ${e.name}`);
   }
 }
 

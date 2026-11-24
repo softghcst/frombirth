@@ -66,7 +66,7 @@ export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'an
 
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
-  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying), // crying eyes appear only when something sad is happening
+  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying).map((e) => (/^eyes_[fm]_/.test(e.id) ? { ...e, name: e.name.replace(/^[FM] /, '').replace(/^./, (ch) => ch.toUpperCase()) } : e)), // crying eyes appear only when something sad is happening
   eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
@@ -109,8 +109,27 @@ export function lipsFor(id, gender) {
   return match?.[id] ?? id;
 }
 
-/** Eyes, drawn to suit a gender: a man's are drawn without lashes or winged liner (EYE_MATCH in js/avatar/curation.js). */
-export const eyesFor = (id, gender) => (gender === 'male' ? EYE_MATCH.male[id] ?? id : id);
+/**
+ * Eyes, drawn to suit a gender. A man's are drawn without lashes or winged liner (EYE_MATCH in js/avatar/curation.js).
+ * Eyes made for one gender (traced from pictures: eyes_f_* women's, eyes_m_* men's, scripts/trace_eyes_png.py) are
+ * drawn on the other as one of that gender's own, always the same one for the same eyes. Eyes are inherited as they
+ * are, so a son passes on his mother's.
+ */
+export const isWomensEyes = (id) => /^eyes_f_/.test(id ?? '');
+export const isMensEyes = (id) => /^eyes_m_/.test(id ?? '');
+const MENS_PLAIN = ['eyes_18', 'eyes_19', 'eyes_8', 'eyes_9'];
+export function eyesFor(id, gender) {
+  if (gender === 'male') {
+    if (!isWomensEyes(id)) return EYE_MATCH.male[id] ?? id;
+    const own = [...MENS_PLAIN, ...CATALOG.eyes.map((e) => e.id).filter(isMensEyes)];
+    return own[hash(id) % own.length];
+  }
+  if (gender === 'female' && isMensEyes(id)) {
+    const own = [...RESTING.eyes, ...CATALOG.eyes.map((e) => e.id).filter(isWomensEyes)];
+    return own[hash(id) % own.length];
+  }
+  return id;
+}
 
 /** The option with this id, or undefined. */
 export const part = (key, id) => INDEX[key]?.[id];

@@ -13,7 +13,8 @@ const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).
 const weighted = (table) => rng.weighted(Object.keys(table), (k) => table[k]);
 const FOLDER = { eyes: 'eyes', brows: 'eyebrows', nose: 'noses', lips: 'lips' };
 /** The options a random face is drawn from: resting faces only, never expressions. */
-const pool = (key) => (FOLDER[key] ? CATALOG[key].filter((x) => RESTING[FOLDER[key]].includes(x.id)) : CATALOG[key]);
+// Eyes traced from pictures (eyes_f_*, eyes_m_*) are resting faces too.
+const pool = (key) => (FOLDER[key] ? CATALOG[key].filter((x) => RESTING[FOLDER[key]].includes(x.id) || (key === 'eyes' && /^eyes_[fm]_/.test(x.id))) : CATALOG[key]);
 
 /** A face with no parents to take after. Hair and eye color lean with skin depth. */
 export function randomInherited(skinDepthHint) {
