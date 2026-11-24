@@ -420,8 +420,10 @@ export function quote(trip, p = player()) {
   }
   const total = lines.reduce((sum, l) => sum + l.amount, 0);
   const others = Object.values(shares).reduce((a, b) => a + b, 0);
-  // Asked the family: they pay their part of what would have been yours.
-  const famShare = payMode(trip, p) === 'family' ? (trip.familyAnswer?.share ?? 0) : 0;
+  // Asked the family: they pay their part of what would have been yours, as long as the plan is no dearer and no bigger
+  // than the one they said yes to (otherwise it has to be asked again).
+  const asked = trip.familyAnswer;
+  const famShare = payMode(trip, p) === 'family' && asked && (asked.cost == null || (total - employer <= asked.cost && people.length <= asked.people)) ? (asked.share ?? 0) : 0;
   const family = Math.round((total - employer - others) * famShare);
   return { lines, total, employer, shares, family, famShare, organizer: total - employer - others - family, nights };
 }
@@ -483,7 +485,7 @@ export function problems(trip, p = player()) {
   for (const o of travelState(p).trips) if (o.id !== trip.id && LIVE.includes(o.status) && overlaps(o, trip)) out.push(`It clashes with your trip to ${COUNTRIES[o.destination.countryId].name} (${o.depart} to ${o.ret}).`);
   // Money.
   const q = quote(trip, p);
-  if (payMode(trip, p) === 'family' && !trip.familyAnswer) out.push(`Ask ${familyPayer(p).who.replace(/^Your/, 'your')} first, or pay it yourself.`);
+  if (payMode(trip, p) === 'family' && !familyAnswerStands(trip, p)) out.push(trip.familyAnswer ? `The plan has grown since you asked ${familyPayer(p).who.replace(/^Your/, 'your')}: ask again, or pay it yourself.` : `Ask ${familyPayer(p).who.replace(/^Your/, 'your')} first, or pay it yourself.`);
   else if (q.organizer > p.finance.cash) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
   return [...new Set(out)];
 }
@@ -537,10 +539,37 @@ export const payMode = (trip, p = player()) => (paymentOptions(p).some((o) => o.
 
 const SHARE_WORDS = { 1: 'the whole trip', 0.5: 'half', 0.25: 'a quarter' };
 
+/** Lavish travel a family is slow to pay for: a premium cabin, a grand hotel. */
+const LAVISH = { cabins: ['business', 'first'], stays: ['luxury'] };
+/** A trip's cost before anyone else pays (what the family would be asked to cover), and how many are going. */
+function askedSize(trip, p) {
+  const q = quote({ ...trip, payment: 'organizer', familyAnswer: null }, p);
+  return { cost: Math.max(1, q.total - q.employer), people: going(trip).length };
+}
+/** Whether the family's answer still holds for the plan as it is now: not dearer, not more people than they were asked about. */
+export function familyAnswerStands(trip, p = player()) {
+  const a = trip.familyAnswer;
+  if (!a) return false;
+  if (a.cost == null) return true;
+  const now = askedSize(trip, p);
+  return now.cost <= a.cost && now.people <= a.people;
+}
+
+/** Whether asking again would get a new answer: the plan has grown past the answer, or been made cheaper or smaller after a no or a part. */
+export function canAskFamilyAgain(trip, p = player()) {
+  const a = trip.familyAnswer;
+  if (!a) return true;
+  if (!familyAnswerStands(trip, p)) return true;
+  const now = askedSize(trip, p);
+  return a.cost != null && a.share < 1 && (now.cost < a.cost || now.people < a.people);
+}
+
 /**
- * Asks the family to pay. They may say no however close you are: what they can spare, how they feel about you, how
- * generous they are, whether they are coming too and how old you are all count, and so does their mood that day.
- * A yes is for all of it, half or a quarter. One ask per plan.
+ * Asks the family to pay. They may say no however close you are. What counts: what they can spare against the cost,
+ * how well off they are, how they feel about you, how generous they are, whether they are coming too, how old you are;
+ * and, against it, paying for people who are not family, a premium cabin or a grand hotel, and having paid for a trip
+ * already this year. Their mood that day counts too. A yes is for all of it, half or a quarter. One answer per plan:
+ * asking again gets the same answer, unless the plan has been made cheaper or smaller since (then they think again).
  */
 export function askFamily(tripId, p = player()) {
   const trip = tripById(tripId, p);
@@ -548,27 +577,44 @@ export function askFamily(tripId, p = player()) {
   if (!trip || trip.status !== 'draft') return result(false, 'Only a plan not yet booked.', 'neutral');
   if (!fam) return result(false, 'There is nobody at home to ask.', 'neutral');
   if (!trip.destination) return result(false, 'Choose where to go first.', 'neutral');
-  if (trip.familyAnswer) return result(trip.familyAnswer.share > 0, trip.familyAnswer.text, 'neutral');
-  const q = quote({ ...trip, payment: 'organizer', familyAnswer: null }, p);
-  const cost = Math.max(1, q.total - q.employer);
+  const { cost, people: count } = askedSize(trip, p);
+  const prev = trip.familyAnswer;
+  if (prev) {
+    const smaller = prev.cost != null && prev.share < 1 && (cost < prev.cost || count < prev.people);
+    if (!smaller && prev.share === 0) return result(false, `${prev.text} Make it cheaper or smaller, and ask again.`, 'neutral');
+    if (!smaller && familyAnswerStands(trip, p)) return result(prev.share > 0, prev.text, 'neutral');
+  }
   const avg = (f) => fam.people.reduce((sum, n) => sum + f(n), 0) / fam.people.length;
   const rel = avg((n) => n.meters?.relationship ?? 50);
   const giving = avg((n) => n.meters?.generosity ?? 50);
+  const wealth = avg((n) => n.wealth ?? 50);
   const spare = fam.people.reduce((sum, n) => sum + spendable(n), 0);
   const afford = spare / cost;
   const coming = fam.people.some((n) => going(trip).some((x) => x.id === n.id));
-  let score = (rel - 50) / 50 * 0.18 + (giving - 50) / 50 * 0.12 + (coming ? 0.05 : 0)
+  // Paying for people who are not family: friends, a partner, their families.
+  const kin = ['parent', 'sibling', 'guardian', 'grandparent', 'child'];
+  const extras = goingPeople(trip).filter((x) => x !== p && !kin.includes(x.role)).length;
+  const lavish = LAVISH.cabins.includes(trip.cabin) || LAVISH.stays.includes(trip.stay);
+  const paidThisYear = (p.flags.familyPaidTrips ?? {})[year()] ?? 0;
+  let score = (rel - 50) / 50 * 0.18 + (giving - 50) / 50 * 0.12 + (wealth - 50) / 50 * 0.1 + (coming ? 0.05 : 0)
     + (p.age < 14 ? 0.08 : p.age < 18 ? 0.04 : p.age < 22 ? -0.08 : -0.2)
     + (afford < 1 ? -0.8 : afford < 3 ? -0.2 : afford > 25 ? 0.05 : 0)
+    - extras * 0.08 - (lavish ? 0.15 : 0) - paidThisYear * 0.2
     + (rng.next() * 1.1 - 0.55); // a good day or a bad one: however close you are, never a sure thing
   let share = score < -0.1 ? 0 : score < 0.08 ? 0.25 : score < 0.25 ? 0.5 : 1;
   while (share > 0 && share * cost > spare * 0.5) share = share === 1 ? 0.5 : share === 0.5 ? 0.25 : 0; // never more than they can spare
   const they = fam.plural ? 'They' : fam.people[0].gender === 'female' ? 'She' : 'He';
   const say = fam.who;
+  // Why not all of it, when it is not: the biggest thing against it.
+  const why = afford < 3 ? 'It is a lot of money for them.'
+    : extras ? `${they} will not pay for ${extras === 1 ? 'someone else' : `${extras} other people`} as well.`
+      : lavish ? `Not ${LAVISH.cabins.includes(trip.cabin) ? `${trip.cabin === 'first' ? 'first' : 'business'} class` : 'a grand hotel'}.`
+        : paidThisYear ? `${they} already paid for a trip this year.`
+          : rel < 45 ? `${they} are not in the mood to do you favors.`.replace('She are', 'She is').replace('He are', 'He is') : '';
   const text = share === 1 ? rng.pick([`${say} said yes: ${they.toLowerCase()} will pay for the whole trip.`, `${say} thought about it and will cover all of it.`, `${say} said yes. The whole thing is on ${fam.plural ? 'them' : they === 'She' ? 'her' : 'him'}.`])
-    : share > 0 ? rng.pick([`${say} will pay ${SHARE_WORDS[share]}. The rest is up to you.`, `${say} said ${they.toLowerCase()} can help with ${SHARE_WORDS[share]} of it.`, `${they} will put in ${SHARE_WORDS[share]}, and no more.`])
-    : rng.pick([afford < 1 ? `${say} said there is no money for it right now.` : `${say} said no.`, `${say} said no this time.`, `${say} said you will have to save up for it yourself.`]);
-  trip.familyAnswer = { share, text, year: year() };
+    : share > 0 ? `${rng.pick([`${say} will pay ${SHARE_WORDS[share]}. The rest is up to you.`, `${say} said ${they.toLowerCase()} can help with ${SHARE_WORDS[share]} of it.`, `${they} will put in ${SHARE_WORDS[share]}, and no more.`])}${why ? ` ${why}` : ''}`
+    : afford < 1 ? `${say} said there is no money for it right now.` : `${rng.pick([`${say} said no.`, `${say} said no this time.`, `${say} said you will have to save up for it yourself.`])}${why ? ` ${why}` : ''}`;
+  trip.familyAnswer = { share, text, year: year(), cost, people: count };
   for (const n of fam.people) if (share === 0 && n.meters) n.meters.relationship = clamp(n.meters.relationship - 1);
   return result(share > 0, text, share > 0 ? 'good' : 'neutral', { share });
 }
@@ -614,6 +660,8 @@ export function confirm(tripId, p = player()) {
     trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: l.amount, payer, txId: paid.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
   }
   const papers = sortPapers(trip, p);
+  // A trip the family paid toward makes another one this year a harder ask.
+  if (q.famShare > 0) { const paid = (p.flags.familyPaidTrips ??= {}); paid[year()] = (paid[year()] ?? 0) + 1; }
   trip.status = 'confirmed';
   trip.confirmedOn = today();
   trip.confirmedYear = year();
