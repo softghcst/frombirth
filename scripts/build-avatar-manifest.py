@@ -533,6 +533,8 @@ LAYOUT = {
 }
 # Parts whose place depends on what they are, matched on the filename.
 BY_NAME = [
+    # A gown with a tall fan collar: placed by its shoulders, like every other outfit, so the collar rises beside the neck.
+    ('clothes', r'fan_collar', (466, 999, 256, 333, 'top')),
     ('jewelry', r'choker|chain|necklace|pendant', (120, 999, 256, FACE['neck_y'], 'top')),
     ('jewelry', r'lip_ring', (60, 999, 256, FACE['mouth_y'] + 6, 'center')),
     ('jewelry', r'helix', (FACE['ear_span'] + 8, 999, 256, FACE['ear_y'] - 22, 'center')),

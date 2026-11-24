@@ -624,6 +624,21 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   }
 }
 
+// The imperial fan-collar gown: for a reigning queen or empress, grown up.
+{
+  const id = 'outfit_51_imperial_fan_collar';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the imperial gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.monarch.female.includes(id) && !CUR.ROYAL.outfits.monarch.male.includes(id), 'a queen may wear it, a king not');
+  check(!CUR.ROYAL.outfits.female.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'nor a princess, nor a child');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'imp', 'female'), monarchOutfit: id };
+  check(dressFor(look, { age: 40, gender: 'female', royal: { rank: 'monarch' } }).clothes === id, 'a reigning queen wears it');
+  check(dressFor(look, { age: 15, gender: 'female', royal: { rank: 'monarch' } }).clothes !== id, 'a girl on the throne does not');
+  // Placed by its shoulders: the gown reaches the bottom of the portrait, and its collar rises beside the face.
+  const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+  const ys = [...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]);
+  check(Math.max(...ys) >= 512 && Math.min(...ys) < 380, `the gown reaches the bottom and its collar rises beside the face (${Math.min(...ys)}–${Math.max(...ys)})`);
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
