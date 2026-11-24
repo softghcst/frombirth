@@ -164,9 +164,10 @@ const clothesLayer = (id, headId, extra = '') => {
  * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
  * neck, and moved down, on top of the usual placement under the chin.
  */
-const snapped = (id, tf = '') => {
+const snapped = (id, tf = '', headId = null) => {
   const k = CLOTHES_SNAP[id];
-  if (!k || !tf) return tf;
+  // Measured against the grown-up bodies only: a child's shoulders are shaped differently, so a child wears it as drawn.
+  if (!k || !tf || PART_BY_ID[headId]?.tags?.age !== 'adult') return tf;
   const top = T.clothesTop;
   return `${tf.slice(0, -1)} translate(256 ${top}) scale(${k.s}) translate(-256 ${-top}) translate(0 ${n1(k.dy / k.s)})"`;
 };
@@ -386,7 +387,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    clothesLayer(d.clothes, d.head, snapped(d.clothes, f.clothes)),
+    clothesLayer(d.clothes, d.head, snapped(d.clothes, f.clothes, d.head)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
