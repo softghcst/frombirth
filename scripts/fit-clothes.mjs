@@ -8,7 +8,7 @@
 // to that head's neck, easing back to the drawing as it was by the shoulders.
 //
 // Which outfits, and which head each was drawn on: assets/clothes_drawn_for.json, e.g.
-//   { "outfit_45_denim_jacket_tee": "athletic" }
+//   { "outfit_54_denim_jacket_tee": "athletic" }
 // Writes assets/avatars/clothes_fit/<outfit>__<head>.svg, and js/avatar/fittedClothes.js listing them.
 // Needs Playwright's Chromium (to measure the necks from the head drawings).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';

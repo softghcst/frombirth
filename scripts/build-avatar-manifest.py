@@ -533,6 +533,11 @@ LAYOUT = {
 }
 # Parts whose place depends on what they are, matched on the filename.
 BY_NAME = [
+    # Short drawings, cut off flat at the bottom: anchored by that edge, just past the lowest point any portrait shows
+    # (about 524, for the broadest face), so no shoulder shows beneath them. The fan-collar gown is also a little wider,
+    # so its shoulders match every other outfit's while its collar rises beside the face.
+    ('clothes', r'fan_collar', (466, 999, 256, 530, 'bottom')),
+    ('clothes', r'imperial_ruby|princess_starlight', (420, 999, 256, 530, 'bottom')),
     ('jewelry', r'choker|chain|necklace|pendant', (120, 999, 256, FACE['neck_y'], 'top')),
     ('jewelry', r'lip_ring', (60, 999, 256, FACE['mouth_y'] + 6, 'center')),
     ('jewelry', r'helix', (FACE['ear_span'] + 8, 999, 256, FACE['ear_y'] - 22, 'center')),

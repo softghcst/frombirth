@@ -118,7 +118,7 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 export const OUTFITS = {
   any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_45_denim_jacket_tee'],
+    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee'],
   female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
   male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
   baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
@@ -127,12 +127,24 @@ export const OUTFITS = {
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
-    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: 'outfit_37_emperor_ermine', female: 'outfit_10_queen_collar' } },
-  crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
-    royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
+  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
+    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
+      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+    // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
+    noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
+    // Some titles have their own dress: a duke or a duchess wears this instead.
+    nobleByTitle: { duke: { male: ['outfit_50_duke_mantle'], female: ['outfit_50_duke_mantle'] } } },
+  // Grown-up dress: worn from 18. A younger royal wears one of the others on their list.
+  grownOnly: ['outfit_45_princess_sweetheart', 'outfit_46_prince_epaulettes', 'outfit_47_sovereign_ermine', 'outfit_48_noble_cameo', 'outfit_49_noble_cravat', 'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar', 'outfit_52_princess_starlight', 'outfit_53_imperial_ruby'],
+  crowns: { sovereign: 'crown_09_sovereign', obsidian: 'crown_13_obsidian_sovereign', empress: 'crown_12_empress', emperor: 'crown_14_imperial_laurel', monarch: { male: 'crown_01_king', female: 'crown_15_queen' }, queen: 'crown_15_queen', heir: { male: 'crown_17_crown_prince', female: 'crown_16_crown_princess' },
+    royal: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' }, child: 'crown_11_prince_band', princess: 'crown_10_princess_tiara', crownPrincess: 'crown_16_crown_princess', crownPrince: 'crown_17_crown_prince', noble: 'crown_06_noble_coronet' },
 };
+
+/** Where each crown drawing meets the head: the middle of its lower edge (seat) and its highest point (top), in its 512 frame. */
+export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, crown_10_princess_tiara: { seat: 154, top: 68.5 },
+  crown_11_prince_band: { seat: 173.2, top: 111.4 }, crown_12_empress: { seat: 169, top: 73 }, crown_13_obsidian_sovereign: { seat: 164.2, top: 50.9 },
+  crown_14_imperial_laurel: { seat: 161, top: 84 }, crown_15_queen: { seat: 169.6, top: 42.6 }, crown_16_crown_princess: { seat: 161.8, top: 86.8 },
+  crown_17_crown_prince: { seat: 172.5, top: 78.8 } };
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {

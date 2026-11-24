@@ -26,13 +26,15 @@
 //   { head, eyes, eyebrows, nose, lips, hair, makeup: [], jewelry: [], glasses, clothes, hat, crown, emotion,
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
+import { CLOTHES_SNAP } from './avatar/clothesSnap.js';
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
+import { HAIR_TOPS } from './data/hairTops.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { FITTED_CLOTHES } from './avatar/fittedClothes.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -77,6 +79,13 @@ export function ageStage(age = 25) {
   if (age < 50) return 'adult';
   return 'older';
 }
+/**
+ * How a crown is worn (crownAt). The middle of its lower edge (its seat: CROWN_SEATS, in the crown art's 512 frame)
+ * goes a little below the top of the hair (`dip`), so the band wraps the head the way a worn crown does, rather than
+ * balancing on the top of it. On very tall hair it rides no more than `lift` above the skull, in front of the hair,
+ * and it never leaves the picture. `scale`: its size against the width of the head, by age.
+ */
+const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
 const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
 
 /** Lines that come with age, from fifty on. */
@@ -116,11 +125,18 @@ export function dressFor(look, ctx = {}) {
   const rank = ctx.royal?.rank;
   if (ctx.jailed) { out.clothes = PRISON; out.hat = null; out.crown = null; }
   else if (rank && ['monarch', 'heir', 'royal'].includes(rank)) {
-    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? ROYAL.outfits.monarch[gender] : look.royalOutfit ?? ROYAL.outfits[gender][0];
-    out.crown = stage === 'adult' || stage === 'older' ? (ROYAL.crowns[rank]?.[gender] ?? null) : stage === 'kid' ? ROYAL.crowns.child : null;
+    // Under 18, nothing from the grown-up wardrobe (ROYAL.grownOnly).
+    const minor = age < 18;
+    const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
+    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
+      : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
+    out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : gender === 'female' ? ROYAL.crowns.queen : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank === 'heir' ? (gender === 'female' ? ROYAL.crowns.crownPrincess : ROYAL.crowns.crownPrince) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
     out.hat = null;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {
     out.crown = ROYAL.crowns.noble;
+    const titled = ROYAL.outfits.nobleByTitle[ctx.royal?.title]?.[gender];
+    if (age >= 18 && titled) out.clothes = titled[0];
+    else if (age >= 18 && ROYAL.outfits.noble[gender]) out.clothes = look.nobleOutfit && ROYAL.outfits.noble[gender].includes(look.nobleOutfit) ? look.nobleOutfit : ROYAL.outfits.noble[gender][0];
   } else if (ctx.career?.id && CAREER_DRESS[ctx.career.id] && !young) {
     const d = CAREER_DRESS[ctx.career.id];
     const pick = d.senior && (ctx.career.level ?? 0) >= d.senior.level ? d.senior : d;
@@ -143,6 +159,16 @@ const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h
 const clothesLayer = (id, headId, extra = '') => {
   const head = headName(headId);
   return id && FITTED_CLOTHES[id]?.includes(head) ? `<use href="${AVATAR_BASE}avatars/clothes_fit/${id}__${head}.svg#art"${extra}/>` : use(id, extra);
+};
+/**
+ * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
+ * neck, and moved down, on top of the usual placement under the chin.
+ */
+const snapped = (id, tf = '') => {
+  const k = CLOTHES_SNAP[id];
+  if (!k || !tf) return tf;
+  const top = T.clothesTop;
+  return `${tf.slice(0, -1)} translate(256 ${top}) scale(${k.s}) translate(-256 ${-top}) translate(0 ${n1(k.dy / k.s)})"`;
 };
 
 /** What one step of each personal adjustment changes. Steps run from -2 to 2. */
@@ -255,6 +281,26 @@ function colorVars(look, ctx) {
 }
 
 /**
+ * Where a crown goes on this person: on the top of their hair as it is drawn on their head (see CROWN).
+ * @returns {string} an SVG transform attribute, with a leading space
+ */
+function crownAt(d, stage, fitted, hf, frame) {
+  const fit = PART_BY_ID[d.head]?.fit;
+  if (!fit) return '';
+  const wr = fit.w / T.face.w;
+  // The top of the hair: measured from the fitted drawing. An older style (a child's, mostly) sits close to the skull.
+  let top = fit.top;
+  if (fitted && HAIR_TOPS[fitted] != null) top = Math.min(top, HAIR_TOPS[fitted]);
+  const k = wr * (CROWN.scale[stage] ?? CROWN.scale.adult);
+  const seat = CROWN_SEATS[d.crown]?.seat ?? CROWN.seat;
+  const crownTop = CROWN_SEATS[d.crown]?.top ?? seat - CROWN.height;
+  let y = Math.max(top, fit.top - CROWN.lift * wr) + CROWN.dip * wr;
+  const over = frame.y + 3 - (y - (seat - crownTop) * k);
+  if (over > 0) y += over;
+  return ` transform="translate(${n1(fit.cx)} ${n1(y)}) scale(${n1(k)}) translate(-256 ${-seat})"`;
+}
+
+/**
  * The portrait as SVG markup.
  * @param {object} look  a resolved look
  * @param {object} [ctx]
@@ -338,13 +384,13 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    clothesLayer(d.clothes, d.head, f.clothes),
+    clothesLayer(d.clothes, d.head, snapped(d.clothes, f.clothes)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
     piercings.map((j) => use(j, f.lips)).join(''),
     d.glasses ? use(d.glasses, f.glasses) : '',
-    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, f.hat) : '',
+    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, crownAt(d, ageStage(ctx.age ?? 25), fitted, hf, frameFor(d.head))) : '',
     d.emotion ? use(d.emotion, f.emotion) : '',
   ];
   const size = opts.size != null ? ` width="${opts.size}" height="${opts.size}"` : '';
