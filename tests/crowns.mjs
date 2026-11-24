@@ -40,6 +40,16 @@ for (const gender of ['male', 'female']) {
   }
   check(!['crown_10_princess_tiara', 'crown_11_prince_band'].includes(dressFor(him, { age: 40, gender: 'male', royal: royalDress('monarch') }).crown), 'a king wears neither');
 }
+// An empress (Japan) wears the empress's crown, reigning or by marriage; the emperor wears the sovereign's.
+{
+  const her = resolveLook({}, 'emp-f', 'female'); const him = resolveLook({}, 'emp-m', 'male');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', true, 'jp') }).crown === 'crown_12_empress', 'the Empress consort of Japan wears the empress crown');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('consort', false, 'jp') }).crown === 'crown_12_empress', 'and so in the dynasty view');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'jp') }).crown === 'crown_12_empress', 'a reigning empress wears it too');
+  check(dressFor(him, { age: 50, gender: 'male', royal: royalDress('monarch', false, 'jp') }).crown === 'crown_09_sovereign', 'the Emperor wears the sovereign crown');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', true, 'gb') }).crown !== 'crown_12_empress', 'a queen consort elsewhere does not');
+  check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('royal', false, 'jp') }).crown === 'crown_10_princess_tiara', 'a princess of Japan keeps her tiara');
+}
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }

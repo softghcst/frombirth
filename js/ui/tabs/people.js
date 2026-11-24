@@ -60,7 +60,7 @@ const GROUPS = [
 
 export const portrait = (npc) => (npc.role === 'pet'
   ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
-  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank, npc.flags.royal?.consort), label: npc.firstName })}</div>`);
+  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank, npc.flags.royal?.consort, player().royal?.countryId), label: npc.firstName })}</div>`);
 
 async function report(api, r) {
   api.changed();

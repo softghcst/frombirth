@@ -5,13 +5,16 @@
 import { resolveLook } from './catalog.js';
 import { characterAvatarSvg } from '../CharacterAvatar.js';
 import { mixHex } from './color.js';
+import { MONARCHIES } from '../data/royalty.js';
 
 /** A royal or noble rank as portraits dress it: crowns for the royal family, a coronet for the peerage. */
-export function royalDress(rank, consort = false) {
+export function royalDress(rank, consort = false, countryId = null) {
   if (!rank || rank === 'knight') return null;
+  // An empire's crowned head is an Emperor or Empress (Japan): an empress wears the empress's crown.
+  const imperial = MONARCHIES[countryId]?.ranks?.find(([r]) => r === 'monarch')?.[1] === 'Emperor';
   // The one who reigns wears the sovereign's crown; a king or queen by marriage wears a consort's.
-  if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false };
-  if (rank === 'monarch') return { rank, sovereign: true };
+  if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false, imperial };
+  if (rank === 'monarch') return { rank, sovereign: true, imperial };
   return { rank: ['heir', 'royal'].includes(rank) ? rank : 'noble' };
 }
 
@@ -34,7 +37,7 @@ export function faceGenderOf(p) {
 }
 
 export function dressOfPlayer(p) {
-  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank, p.royal.rank === 'monarch' && !p.royal.reigning) : null,
+  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank, p.royal.rank === 'monarch' && !p.royal.reigning, p.royal.countryId) : null,
     career: p.career?.careerId && !p.career.retired ? { id: p.career.careerId, level: p.career.level ?? 0 } : null };
 }
 
