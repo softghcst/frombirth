@@ -195,6 +195,26 @@
       "minAge": 13
     },
     {
+      "id": "elder_short_curls",
+      "name": "Elder Short Curls",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
+    },
+    {
       "id": "elder_short_layers",
       "name": "Elder Short Layers",
       "clipToHead": false,
