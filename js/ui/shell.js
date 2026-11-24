@@ -1,12 +1,13 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country, prunePending } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
 import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
-import { getEvent, resolveChoice } from '../engine/eventEngine.js';
+import { getEvent, resolveChoice, stillFits } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
@@ -15,22 +16,28 @@ import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { syncMeters } from './meter.js';
 import { eventModal, outcomeModal, confirmModal, openModal, pickModal } from './modals.js';
 import { summarize } from '../engine/yearSummary.js';
+import { idolWork } from '../engine/kpop.js';
+import { portrait } from './tabs/people.js';
+import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
 import { careWaiting } from '../engine/health/index.js';
-import { openMoney } from './tabs/holdings.js';
+import { openMoney, drivingTest } from './tabs/holdings.js';
+import * as vehicles from '../engine/vehicles.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
 import { icon } from './kit.js';
-import { sectionize, show as showSection } from './sections.js';
+import { sectionize, show as showSection, SEP } from './sections.js';
 import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
 import { openSettings } from './settings.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
   if (p.politics) return `${p.politics.title}${p.career.title && p.politics.tier < 2 ? ` · ${p.career.title}` : ''}`;
+  const idol = idolWork(p);
+  if (idol?.current) return idol.title;
   if (p.career.title) return p.career.title;
   if (p.royal && ROYAL_RANKS.includes(p.royal.rank) && (p.age >= 18 || !p.education.enrolled)) return standing(p);
   if (p.education.enrolled) return educationLine(p);
@@ -44,6 +51,7 @@ function occupationLine(p) {
  * @param {{onExit:Function, onDeath:Function, onRestore:(state:object)=>void}} hooks
  */
 export function mountGame(app, hooks) {
+  watchTitles();
   let activeTab = null;
   /** The section open inside the tab (its title), or null for the tab's list. */
   let openSection = null;
@@ -121,6 +129,8 @@ export function mountGame(app, hooks) {
       btn.textContent = `← ${label}`;
       btn.hidden = false;
     },
+    /** Plays any scenes an action has queued (a sleepover's night), now rather than at the next turn. */
+    async pending() { if (store.state.pendingEvents.length) await runPending(); render(); },
     /** Takes any open court case through to its verdict. */
     async justice() { busy = true; renderHeader(); await runJustice(tabApi); busy = false; render(); },
   };
@@ -236,8 +246,7 @@ export function mountGame(app, hooks) {
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
     openSection = sectionize(panelBody, openSection);
-    $('[data-panel-title]').textContent = openSection ?? tab.title;
-    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    titleSection(tab);
     // Keyboard focus moves into the section: the tab that opened it is out of sight now.
     if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
@@ -248,17 +257,23 @@ export function mountGame(app, hooks) {
   /** Opens a section of the tab, or goes back to the tab's list (null). Focus follows: into the section, or back to its row. */
   function goSection(title) {
     const tab = TABS.find((t) => t.id === activeTab);
+    if (!tab) return; // (the tab was closed under it: nothing to open a section of)
     const was = openSection;
     openSection = showSection(panelBody, title);
-    $('[data-panel-title]').textContent = openSection ?? tab.title;
-    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    titleSection(tab);
     panelBody.scrollTop = 0;
-    const target = openSection ? panelBody.querySelector('.sec-body.shown button:not([disabled])')
+    const target = openSection && (!was || openSection.length > was.length) ? [...panelBody.querySelectorAll('.sec-body.shown')].pop().querySelector('button:not([disabled])')
       : was && panelBody.querySelector(`.sec-row[data-sec="${CSS.escape(was)}"]`);
     (target ?? $('[data-panel-close]')).focus({ preventScroll: true });
   }
-  // Back: out of a section to the tab's list, then out of the tab.
-  const goBack = () => (openSection ? goSection(null) : closePanel());
+  /** The header names the section open (its last part), and the back button says where it goes. */
+  function titleSection(tab) {
+    const parts = openSection ? openSection.split(SEP) : [];
+    $('[data-panel-title]').textContent = parts.at(-1) ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', parts.length ? `Back to ${parts.at(-2) ?? tab.title}` : 'Back to your life');
+  }
+  // Back: out of a section to the one around it, then to the tab's list, then out of the tab.
+  const goBack = () => (openSection ? goSection(openSection.split(SEP).slice(0, -1).join(SEP) || null) : closePanel());
   panelBody.addEventListener('click', (e) => { const row = e.target.closest('.sec-row[data-sec]'); if (row) goSection(row.dataset.sec); });
   function leaveStory() { storyReturn = null; $('[data-story-back]').hidden = true; journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit')); }
 
@@ -272,22 +287,25 @@ export function mountGame(app, hooks) {
     const state = store.state;
     busy = true;
     renderHeader();
+    // Each result is shown at the top of the next scene's card, and only the last one gets a card of its own.
+    let previous = null;
     while (state.pendingEvents.length && player().alive) {
       // An earlier scene may have taken someone away (a pet that died, a person who left): scenes about them go too.
       prunePending(state);
       if (!state.pendingEvents.length) break;
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
-      if (!ev) { state.pendingEvents.shift(); continue; }
-      const index = await eventModal(ev, pending.cast, turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {});
+      if (!ev || !stillFits(pending, state)) { state.pendingEvents.shift(); continue; } // gone, or no longer fits the life
+      const index = await eventModal(ev, pending.cast, { ...(turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {}), previous });
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();
       persist();
       render();
-      await outcomeModal(result);
-      if (result.death) { busy = false; return finish(die(result.death)); }
-      if (player().stats.health <= 0) { busy = false; return finish(die('failing health')); }
+      previous = result;
+      if (result.death) { await outcomeModal(result); busy = false; return finish(die(result.death)); }
+      if (player().stats.health <= 0) { await outcomeModal(result); busy = false; return finish(die('failing health')); }
     }
+    if (previous && player().alive) await outcomeModal(previous);
     busy = false;
     renderHeader();
     // The button was disabled while the year ran, which drops keyboard focus; give it back.
@@ -311,21 +329,81 @@ export function mountGame(app, hooks) {
     keepFocus = document.activeElement === yearBtn;
     closePanel();
     pushUndo(store.state); // so this turn can be taken back
+    const aliveBefore = player().npcIds.filter((id) => store.state.npcs[id]?.alive);
+    const knownBefore = new Set(player().npcIds);
     advanceTurn(); // a year, or six or three months of one (engine/turns.js)
     if (!player().alive) return finish(store.lastObituary);
     persist();
     render();
     await runPending();
+    if (player().alive) await deathNotice(aliveBefore);
+    if (player().alive) await birthNotice(knownBefore);
     if (player().alive && player().legal.pending) await tabApi.justice();
     await yearUpdate();
     await healthNotice();
+    if (player().alive) await drivingNotice();
+  }
+
+  /** Old enough to drive: the test is offered once, so nobody has to go looking for it (Holdings has it after that). */
+  async function drivingNotice() {
+    const p = player();
+    if (p.flags.drivingOffered || !vehicles.canTakeDrivingTest() || p.legal.incarceration) return;
+    p.flags.drivingOffered = true;
+    persist();
+    const yes = await confirmModal({ title: "Time for Your Driver's License", body: `You are ${p.age}: old enough to drive here. Take driving lessons and sit the test now? You can also take it later, from Holdings.`, yes: 'Take the test', no: 'Not yet' });
+    if (yes) await drivingTest(tabApi);
+  }
+
+  /** Someone in the player's life died this turn: a notice for each, before anything else about the year. */
+  /**
+   * Someone died this turn. The ones closest get the funeral scene ('close_death', with their face); everyone else
+   * who mattered, and animals, get a notice of their own: their face, who they were, the age they died at and what of.
+   */
+  async function deathNotice(aliveBefore) {
+    const state = store.state;
+    const gone = aliveBefore.map((id) => state.npcs[id]).filter((n) => n && !n.alive && !n.flags.deathScene);
+    for (const n of gone) {
+      const pet = n.role === 'pet';
+      const who = roleLabel(n);
+      const name = `${n.firstName}${pet ? '' : ` ${n.lastName}`}`;
+      const they = pet ? 'They' : n.gender === 'male' ? 'He' : n.gender === 'female' ? 'She' : 'They';
+      const line = `${n.firstName}, your ${who.toLowerCase()}, has died. ${they} ${they === 'They' ? 'were' : 'was'} ${n.age}.`;
+      await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="notice-head">${portrait(n)}<div class="notice-who"><strong>${esc(name)}</strong><small>${esc(who)}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">🕯️</span>In memory</h2>
+          <p class="body pick-body">${esc(line)}</p>
+          ${n.flags.cause ? `<p class="body pick-body">It was ${esc(n.flags.cause)}.</p>` : ''}
+          <button class="btn primary" data-ok style="width:100%">OK</button>`, { tone: 'neutral' });
+        m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      });
+    }
+  }
+
+  /** A baby brother or sister was born this turn: a notice with their portrait. */
+  async function birthNotice(knownBefore) {
+    const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
+      .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
+    for (const b of babies) {
+      const kind = b.gender === 'male' ? 'brother' : b.gender === 'female' ? 'sister' : 'sibling';
+      const mom = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.role === 'parent' && n.gender === 'female' && n.alive);
+      await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="notice-head">${portrait(b)}<div class="notice-who"><strong>${esc(b.firstName)} ${esc(b.lastName)}</strong><small>Your ${esc(kind)}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">👶</span>A Baby ${kind.charAt(0).toUpperCase()}${kind.slice(1)}</h2>
+          <p class="body pick-body">${mom ? 'Your mother gave birth to' : 'The family welcomes'} a baby ${esc(kind)}, ${esc(b.firstName)}. ${player().age < 6 ? 'Everyone is looking at the baby now.' : `You hold ${b.gender === 'male' ? 'him' : b.gender === 'female' ? 'her' : 'them'} for the first time.`}</p>
+          <button class="btn primary" data-ok style="width:100%">Welcome, ${esc(b.firstName)}</button>`, { tone: 'good' });
+        m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      });
+    }
   }
 
   /** The yearly life update: what this year changed, from the saved state. Shown once per year. */
   async function yearUpdate() {
     const state = store.state;
     const r = state.yearReport;
-    if (!r || r.shown || !player().alive || state.settings?.yearSummary === false) return;
+    // The yearly update is there to look at (Pursuits, Your life this year), and pops up only for players who turn it on.
+    if (!r || r.shown || !player().alive || state.settings?.yearSummary !== true) return;
     r.shown = true;
     persist();
     const s = summarize(r.before, state, r.planLines);
@@ -334,7 +412,7 @@ export function mountGame(app, hooks) {
         <div class="eyebrow">${s.year}</div>
         <h2>Age ${s.from} → ${s.to}</h2>
         ${s.quiet ? '<p class="body">A quiet year. Those count too.</p>' : s.sections.map((x) => `<div class="section-label">${esc(x.title)}</div>${x.lines.map((l) => `<p class="yu-line">${esc(l)}</p>`).join('')}`).join('')}
-        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
+        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these after each year</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
       m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
       m.el.querySelector('[data-off]').addEventListener('click', () => { state.settings = { ...(state.settings ?? {}), yearSummary: false }; persist(); m.close(); resolve(); });
     });

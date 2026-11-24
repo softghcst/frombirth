@@ -1,4 +1,7 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { noticed } from '../../engine/talentGrowth.js';
+import { faceGenderOf } from '../../avatar/render.js';
+import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
@@ -6,7 +9,7 @@ import { openNews } from '../leisure.js';
 import { openWorld } from '../world.js';
 import { player, country } from '../../state.js';
 import * as living from '../../engine/living.js';
-import { esc } from '../../util.js';
+import { esc, theCountry } from '../../util.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
@@ -14,7 +17,6 @@ import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
-import { openExplore } from '../globalLife.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
@@ -23,6 +25,7 @@ import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
 import { navRow, navGroup } from '../kit.js';
+import { loveFamilyGroup, openLoveFamily } from './people.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -40,53 +43,50 @@ export default {
       ? `<button class="kv hl-milestone" data-milestone="${i}"><span>Age ${m.age}</span><span>${esc(m.text)} <span class="hl-lock" title="Private">🔒</span></span></button>`
       : `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`)).join('');
 
+    const sick = med.treatable().some((x) => !x.managed && !x.seen);
+    const crownLine = !p.royal && !p.flags.formerRoyal ? royalCard() : '';
     el.innerHTML = `
-      <div class="card"><h3>Wellbeing</h3>
+      <div class="card"><h3>Health and mood</h3>
         ${meterHtml('Mood', p.stats.mood, true)}${meterHtml('Health', p.stats.health, true)}
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
+        <div class="section-label">Conditions</div>${conditions}
+        ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
+        <div style="margin-top:10px">${navGroup([
+          navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
+          navRow({ attrs: 'data-health', label: 'My Health' }),
+          ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
+          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty Salon' })] : []),
+        ])}</div>
       </div>
-      <div class="card"><h3>Aptitudes</h3>
-        ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
-        ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
-        ${meterHtml('Dance', p.talents.dance, true)}
-        ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>` : ''}
+      <div class="card"><h3>Talents and skills</h3>
+        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
+        <p class="muted" style="margin-top:6px">${p.age < 3 ? 'Everyone starts somewhere. What you are good at grows with the years, and with practice.' : 'How good you are now: the years bring it on, and practice takes it further.'}</p>
+        ${(() => { const seen = noticed(p); return `<div class="section-label">What you have noticed about yourself</div>${seen.length ? seen.map((x) => `<div class="kv"><span>${esc(x.name)}</span><span>${esc(x.text)}</span></div>`).join('') : '<p class="muted">Nothing yet. Try things: a gift shows itself sooner when you do.</p>'}`; })()}
+        ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}
+        ${skillsCard({ inner: true })}
+        <div class="section-label">Traits</div>
+        ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}
       </div>
-      ${royalCard()}
-      ${skillsCard()}
+      ${p.royal || p.flags.formerRoyal ? royalCard() : ''}
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn small" data-identity style="margin-top:10px;width:100%">Edit identity</button>
       </div>
-      ${(() => { const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return era.id === 'now' && !now.length ? '' : `<div class="card"><h3>The times: ${esc(era.name)}</h3>
-        <p class="muted">${esc(era.description)}</p>${now.length ? `<div class="kv"><span>Under way</span><span>${now.map((e) => esc(e.name)).join(', ')}</span></div>` : ''}
-        <div class="kv"><span>Born into</span><span>${esc(getEra(p.birthYear).name)} (${p.birthYear})</span></div></div>`; })()}
-      ${(() => { const here = living.summary(); return `<div class="card"><h3>Life in ${esc(country().name)}</h3>
+      ${(() => { const here = living.summary(); const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return `<div class="card"><h3>Life in ${esc(theCountry(country().name))}${era.id === 'now' ? '' : ` · ${esc(era.name)}`}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
         <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>
         <div class="kv"><span>The economy</span><span>${esc(outlook().name)}</span></div>
+        ${era.id === 'now' && !now.length ? '' : `<div class="kv"><span>The times</span><span>${esc(era.name)}${now.length ? ` · ${now.map((e) => esc(e.name)).join(', ')}` : ''}</span></div>`}
         <details class="more"><summary>More about ${esc(country().name)}</summary>
+        ${era.id === 'now' ? '' : `<p class="muted">${esc(era.description)} You were born into ${esc(getEra(p.birthYear).name)} (${p.birthYear}).</p>`}
         ${here.rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
-        </details></div>`; })()}
-      <div class="card"><h3>Traits</h3>
-        ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}
-      </div>
-      ${born.length ? `<div class="card"><h3>Born with</h3>
-        ${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}
-      </div>` : ''}
-      <div class="card"><h3>Conditions</h3>${conditions}</div>
-      ${navGroup([
-    navRow({ attrs: 'data-health', label: 'My Health', ico: 'health' }),
-    navRow({ attrs: 'data-doctor', label: 'See a doctor', sub: med.treatable().some((x) => !x.managed && !x.seen) ? 'Something needs looking at' : '', ico: 'doctor', tone: med.treatable().some((x) => !x.managed && !x.seen) ? 'peach' : '' }),
-    ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic surgery', ico: 'sparkle' })] : []),
-    ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty salon', ico: 'scissors' })] : []),
-  ], 'Health and looks')}
-      ${navGroup([
-    navRow({ attrs: 'data-explore', label: 'Explore the World', ico: 'globe' }),
-    navRow({ attrs: 'data-passport', label: 'Passport & Documents', ico: 'passport' }),
-    navRow({ attrs: 'data-world', label: 'The world', ico: 'compass' }),
-    navRow({ attrs: 'data-news', label: 'World news', ico: 'news' }),
-  ], 'The world')}
+        </details>
+        ${crownLine ? crownLine.replace(/^<div class="card"><h3>[^<]*<\/h3>/, '<div class="section-label">The crown</div>').replace(/<\/div>$/, '') : ''}</div>`; })()}
+      <div class="card"><h3>The world</h3>
+        <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
+        <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
+      ${loveFamilyGroup()}
       ${navGroup([
     navRow({ attrs: 'data-settings', label: 'Settings', ico: 'settings' }),
     navRow({ attrs: 'data-exit', label: 'Save and quit', ico: 'exit' }),
@@ -96,13 +96,12 @@ export default {
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-health]').onclick = () => openHealth(api);
+    el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
-    el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
-    el.querySelector('[data-explore]').onclick = () => openExplore(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
-      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id,
+      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,
         scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });
       if (!next) return;
       const r = salon.applySalon(next);

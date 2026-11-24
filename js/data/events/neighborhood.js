@@ -19,7 +19,7 @@ export default [
     choices: [
       { label: 'Go over and introduce yourself', outcomes: [any('You knocked, said hello and pointed out where the good bakery is. {person} seemed glad of it.', 'good', hood({ do: 'meet', rel: 38 }), st('mood', 2))] },
       { label: 'Take round something to eat, as a welcome', requires: teen, outcomes: [any('A tray of something warm and a note with your name on it. {person} came round the next day to return the tray, and stayed to talk.', 'good', cash(-15), hood({ do: 'meet', rel: 46, help: true }), hid('karma', 2))] },
-      { label: 'Invite them over once they are settled', requires: adult, outcomes: [any('They came for supper a fortnight later, tired and grateful. {person} knows your street better now.', 'good', cash(-30), hood({ do: 'meet', rel: 48 }))] },
+      { label: 'Invite them over once they are settled', requires: adult, outcomes: [any('They came for dinner two weeks later, tired and grateful. {person} knows your street better now.', 'good', cash(-30), hood({ do: 'meet', rel: 48 }))] },
       { label: 'Give them space to settle in', outcomes: [any('You nodded across the street and let them unpack in peace. There will be time.', 'neutral')] },
     ],
   },
@@ -50,7 +50,7 @@ export default [
   },
   {
     ...base, id: 'hood_community_event', ageRange: [4, 120],
-    text: '{person} is organizing {event} in the neighborhood: {what}.',
+    text: '{person} is organizing a {event} in the neighborhood: {what}.',
     choices: [
       { label: 'Go along', outcomes: [any('A good afternoon. You talked to more neighbors than you had all year.', 'good', hood({ do: 'attend', how: 'attend' }))] },
       { label: 'Offer to help organize it', requires: teen, outcomes: [any('Tables, signs, a cashbox and a lot of tape. {person} could not have done it without you, and says so.', 'good', hood({ do: 'attend', how: 'help' }), st('mood', 2))] },
@@ -213,7 +213,7 @@ export default [
   },
   {
     ...base, id: 'hood_rumor', ageRange: [16, 120],
-    text: '{person} asks, carefully, whether it is true that you {rumor}. It seems people on the street have been saying so. It is not true.',
+    text: '{person} asks, carefully, whether it is true that you {rumor}. People on the street have been saying so. It is not true.',
     choices: [
       { label: 'Set it straight, kindly', outcomes: [any('You explain what really happened. {person} is relieved, and says they will put people right.', 'good', hood({ do: 'rumor', how: 'correct' }))] },
       { label: 'Laugh it off', outcomes: [any('You laugh, and say people will talk. It will blow over.', 'neutral', hood({ do: 'rumor', how: 'laugh' }))] },

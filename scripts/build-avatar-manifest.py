@@ -40,6 +40,7 @@ HEADS = os.path.join(ASSETS_ROOT, 'heads')
 HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
             'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
             'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+SHARED_BODY = 'dimple_oval'  # whose neck and shoulders the adult heads share (scripts/unify_head_necks.mjs: BASE)
 
 
 def folder_dir(folder):
@@ -51,12 +52,12 @@ def part_id(folder, stem):
     return HEAD_IDS.get(stem, stem) if folder == 'heads' else stem
 MANIFEST = os.path.join(ROOT, 'js', 'avatarManifest.js')
 FOLDERS = ['heads', 'eyes', 'eyebrows', 'noses', 'lips', 'hair', 'clothes', 'crowns', 'hats', 'glasses', 'jewelry',
-           'facial_hair', 'makeup', 'aging', 'emotions', 'pacifiers', 'baby_eyes']
+           'makeup', 'aging', 'emotions', 'pacifiers', 'baby_eyes']
 
 # ---------- 1. Unpacking and sorting ----------
 
 PREFIXES = [  # longest first
-    ('facial_hair', 'facial_hair'), ('pacifier', 'pacifiers'), ('baby_eyes', 'baby_eyes'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
+    ('pacifier', 'pacifiers'), ('baby_eyes', 'baby_eyes'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
     ('glasses', 'glasses'), ('outfit', 'clothes'), ('makeup', 'makeup'), ('eyebrow', 'eyebrows'), ('brows', 'eyebrows'),
     ('crown', 'crowns'), ('aging', 'aging'), ('head', 'heads'), ('face', 'heads'), ('hair', 'hair'), ('eyes', 'eyes'),
     ('nose', 'noses'), ('lips', 'lips'), ('hat', 'hats'),
@@ -80,11 +81,14 @@ EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05
             'brows_02.svg', 'brows_03.svg', 'brows_7.svg', 'brows_13.svg', 'brows_17_puppy.svg', 'brows_18_unibrow.svg', 'brows_19_glam_arch.svg',
             'brows_22_skeptical.svg',
             'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
+            'hair_boy_long_06.svg', 'hair_boy_long_08.svg', 'hair_girl_long_02.svg', 'hair_girl_long_05.svg', 'hair_boy_medium_07.svg', 'hair_boy_medium_06.svg', 'hair_boy_medium_08.svg', 'hair_boy_medium_05.svg', 'hair_boy_medium_14.svg', 'hair_girl_long_14.svg', 'hair_boy_long_14.svg', 'hair_girl_medium_02.svg', 'hair_girl_medium_06.svg', 'hair_girl_short_06.svg', 'hair_girl_medium_07.svg', 'hair_girl_medium_05.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 
 def folder_for(name):
     if name in EXCLUDED or name.startswith('hat'):  # hats are withdrawn: only crowns and tiaras are worn on the head
+        return None
+    if name.startswith('facial_hair'):  # facial hair has been taken out of the game
         return None
     for prefix, folder in PREFIXES:
         if name.startswith(prefix):
@@ -454,7 +458,7 @@ def hue_gap(a, b):
 
 
 # What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
-RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color', 'facial_hair': 'hair-color',
+RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color',
             'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
 FIXED_OUTFITS = re.compile(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
@@ -472,9 +476,9 @@ def recolour(folder, name, elements):
         return None
     darkest = min(weights, key=lum)
     marked = [e['fill'] for e in elements if (e.get('id') or '').startswith(('hair-color', 'hair-fill', 'skin')) or e.get('layer') == 'skin-color']
-    hairlike = folder in ('hair', 'facial_hair', 'eyebrows')
+    hairlike = folder in ('hair', 'eyebrows')
     # Outlines are ink: never recoloured. Hair can itself be nearly black, so there only the darkest of several tones counts as ink.
-    # Outlines are never recoloured. In hair, brows and beards the darkest of several tones is the outline, however dark or light it is.
+    # Outlines are never recoloured. In hair and brows the darkest of several tones is the outline, however dark or light it is.
     browns = [c for c in weights if not is_white(c)]
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
@@ -530,6 +534,11 @@ LAYOUT = {
 }
 # Parts whose place depends on what they are, matched on the filename.
 BY_NAME = [
+    # Short drawings, cut off flat at the bottom: anchored by that edge, just past the lowest point any portrait shows
+    # (about 524, for the broadest face), so no shoulder shows beneath them. The fan-collar gown is also a little wider,
+    # so its shoulders match every other outfit's while its collar rises beside the face.
+    ('clothes', r'fan_collar', (466, 999, 256, 530, 'bottom')),
+    ('clothes', r'imperial_ruby|princess_starlight', (420, 999, 256, 530, 'bottom')),
     ('jewelry', r'choker|chain|necklace|pendant', (120, 999, 256, FACE['neck_y'], 'top')),
     ('jewelry', r'lip_ring', (60, 999, 256, FACE['mouth_y'] + 6, 'center')),
     ('jewelry', r'helix', (FACE['ear_span'] + 8, 999, 256, FACE['ear_y'] - 22, 'center')),
@@ -547,25 +556,6 @@ BY_NAME = [
     ('makeup', r'beauty_mark', (14, 999, 290, FACE['mouth_y'] - 16, 'center')),
     ('makeup', r'egirl|heart', (176, 999, 256, FACE['eye_y'] + 34, 'center')),
     ('makeup', r'.', (190, 999, 256, FACE['eye_y'] - 6, 'center')),
-]
-
-
-# Facial hair, style by style: (width, the point down the drawing that is anchored, where that point goes).
-# A beard is anchored by its mouth opening to the mouth; a moustache sits between nose and mouth;
-# a chinstrap or stubble by its lowest point just under the chin.
-MOUSTACHE_Y = (FACE['nose_y'] + 22 + FACE['mouth_y'] - 14) / 2 + 2
-BEARDS = [
-    (r'shaped_beard', (208, 0.40, FACE['mouth_y'])),
-    (r'bushy_full_beard', (226, 0.33, FACE['mouth_y'] - 2)),
-    (r'vandyke', (112, 0.47, FACE['mouth_y'])),
-    (r'handlebar', (108, 0.5, MOUSTACHE_Y)),
-    (r'chevron|mustache|moustache', (92, 0.5, MOUSTACHE_Y)),
-    (r'goatee', (204, 1.0, FACE['chin_y'] + 20)),
-    (r'chinstrap', (220, 1.0, FACE['chin_y'] + 10)),
-    (r'stubble', (212, 1.0, FACE['chin_y'] + 6)),
-    (r'muttonchop', (246, 0.5, FACE['mouth_y'] - 34)),
-    (r'soulpatch', (24, 0.0, FACE['mouth_y'] + 17)),
-    (r'.', (200, 0.4, FACE['mouth_y'])),
 ]
 
 
@@ -669,11 +659,6 @@ def place(folder, name, elements):
         return 'no face opening found: fitted to the crown of the head' + lifted
     if folder == 'jewelry' and not re.search(r'choker|chain|necklace|pendant|lip_ring', name):
         return hang_from_ears(name, elements, box)
-    if folder == 'facial_hair':
-        width, frac, ay = next(r for pat, r in BEARDS if re.search(pat, name))
-        s = width / w
-        transform_elements(elements, s, 256 - (x0 + w / 2) * s, ay - (y0 + frac * h) * s)
-        return f'beard fitted: {width} wide, anchored {frac:.2f} of the way down at y={ay:.0f}'
     rule = rule_for(folder, name)
     if not rule:
         return 'left as drawn'
@@ -1497,9 +1482,24 @@ def write_manifest():
         data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
+                text = open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read()
+                _, els = read_svg(text)
                 item['fit'] = measure_head(els)
                 item['edge'] = measure_head_edge(els)
+                # A head given the shared neck keeps the chin its face was measured with before (see
+                # scripts/unify_head_necks.mjs): the features are placed between the top of the head and the chin.
+                kept = re.search(r'data-face-chin="(\d+(?:\.\d+)?)"', text)
+                if kept:
+                    chin = float(kept.group(1))
+                    chin = int(chin) if chin.is_integer() else chin
+                    item['fit']['chin'], item['fit']['neck'] = chin, chin + 4
+            # The adult heads share one neck and one pair of shoulders (scripts/unify_head_necks.mjs, which marks
+            # them data-shared-neck), so clothes and necklaces sit on all of them where they sit on that body's own
+            # head, not under each head's chin: `collar` (the clothes' top) and `bodyX` (their centre).
+            shared = [i for i in data[folder] if 'data-shared-neck="1"' in open(os.path.join(ASSETS_ROOT, i['file']), encoding='utf-8').read()]
+            body = next((i['fit'] for i in shared if i['id'] == HEAD_IDS[SHARED_BODY]), None)
+            for item in shared if body else []:
+                item['fit']['collar'], item['fit']['bodyX'] = body['chin'] + 8, body['cx']
         if folder == 'hair':  # and each hairstyle, so it can be fitted to each head
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())

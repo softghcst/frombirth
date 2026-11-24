@@ -8,6 +8,20 @@ const scene = (id, ageRange, text, choices) => ({ id, category: 'school', ageRan
   choices: choices.map(([label, line, value]) => ({ label, outcomes: [any(line, 'neutral', school(value))] })) });
 
 export default [
+  // A new school: where, what kind, and for how long. Told when a stage of school begins (engine/schooling.js enter).
+  scene('school_start', [4, 19], 'A new school: {school}. {kind}, {stage}, {years} years. New corridors, new faces, a timetable you cannot read yet. How do you want to start?', [
+    ['Make friends from day one', 'You sit next to someone you do not know.', 'startFriends'],
+    ['Get ahead with the work', 'You read the first chapter before anyone asks you to.', 'startStudy'],
+    ['Join a club or a team', 'You put your name on a list on the noticeboard.', 'startJoin'],
+    ['Keep your head down and see', 'You find your classroom and a seat by the window.', 'startOk'],
+  ]),
+  // The last year of high school: nominated for prom {title} (engine/schoollife.js). Each pitch rests on something different.
+  scene('prom_royalty', [16, 19], 'You have been nominated for prom {title} at {school}, and every nominee gives a short speech in the gym. What is yours?', [
+    ['"I\'m the smartest one here"', 'You step up to the microphone.', 'promSmart'],
+    ['"Look at me"', 'You step up to the microphone.', 'promLooks'],
+    ['"I\'m the strongest, and the most fun"', 'You step up to the microphone.', 'promStrong'],
+    ['Make them laugh', 'You step up to the microphone.', 'promFunny'],
+  ]),
   scene('first_day_school', [4, 8], 'Your first day of school. The room is loud and smells of floor polish, and everyone seems to know where to sit except you. The child at the next peg is called {mate}.', [
     ['Say hello', 'You say your name, too quietly, and then again.', 'firstHello'],
     ['Stay close to the wall', 'You hold on to the strap of your bag.', 'firstHide'],

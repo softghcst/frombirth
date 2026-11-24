@@ -184,6 +184,11 @@ let offered = false;
 for (let y = 0; y < 14 && !offered; y++) { year(); offered = celebs.comebackOffers(p).length > 0; }
 check(offered && celebs.phaseName(p) === 'Out of the spotlight', 'fame fades, and comeback offers come');
 if (offered) {
+  // The same offers, to a child: none of them is open until eighteen.
+  const realAge = p.age;
+  p.age = 11;
+  check(celebs.comebackOffers(p).length === 0 && !celebs.takeComeback('reality').ok && fame.fameOf(p).arc.offers.length > 0, 'a child is offered no reality show, memoir or tribute (they wait until eighteen)');
+  p.age = realAge;
   check(celebs.takeComeback('reality').ok, 'a reality show can be taken');
   const fee = fame.fameOf(p).arc.paid[0].fee;
   const cash = p.finance.cash;

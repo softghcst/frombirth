@@ -4,13 +4,14 @@
 //
 // The records themselves (incidents, evidence, cases, sentences) are kept by
 // engine/cases.js. This file applies their consequences to the player's life.
+import { fightEdge } from './martial.js';
 import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
-import { resolve } from './conditions.js';
+import { resolve, checkBars } from './conditions.js';
 import { fire, currentCareer } from './career.js';
 import { leaveForPrison } from './education.js';
 import { CRIMES, CRIME_BY_ID, LIFE_SENTENCE, STRANGERS, METHODS, METHOD_BY_ID } from '../data/crimes.js';
@@ -47,6 +48,9 @@ export function successChance(crime, edge = 0) {
   return clamp(chance - legal().heat / 400, 0.03, 0.95);
 }
 
+/** A crime as two bars: what you bring to it, and what it takes (the police's attention raises that bar). */
+export const crimeBars = (crime, edge = 0) => checkBars({ base: crime.base, factors: crime.factors }, edge - legal().heat / 400);
+
 /** A handful of strangers who happen to be around this year. */
 export function strangerOptions() {
   const p = player();
@@ -65,7 +69,7 @@ export function methodOptions() {
   const murder = CRIME_BY_ID.murder;
   return METHODS.filter((m) => !m.needs || resolve(m.needs)).map((m) => {
     const chance = successChance(murder, m.edge);
-    return { id: m.id, name: m.name, blurb: m.blurb,
+    return { id: m.id, name: m.name, blurb: m.blurb, bars: crimeBars(murder, m.edge),
       odds: chance >= 0.7 ? 'good' : chance >= 0.45 ? 'fair' : chance >= 0.25 ? 'poor' : 'terrible' };
   });
 }
@@ -82,7 +86,7 @@ export function crimeOptions() {
   const p = player();
   return CRIMES.filter((c) => p.age >= c.minAge).map((c) => {
     const chance = successChance(c);
-    return { id: c.id, name: c.name, target: !!c.target,
+    return { id: c.id, name: c.name, target: !!c.target, bars: crimeBars(c),
       odds: chance >= 0.7 ? 'good' : chance >= 0.45 ? 'fair' : chance >= 0.25 ? 'poor' : 'terrible',
       stakes: stakes(OFFENSE_BY_ID[c.offense]) };
   });
@@ -110,7 +114,8 @@ export function commitCrime(crimeId, targetId, how = {}) {
   const stranger = crime.target && !known ? STRANGERS.find((x) => x.id === how.strangerId) ?? STRANGERS[0] : null;
   const method = crime.target ? METHOD_BY_ID[how.methodId] ?? METHOD_BY_ID.knife : null;
   const who = known ? `${known.firstName} ${known.lastName}` : stranger ? stranger.name.replace(/^an? /, 'The ').replace(/^the /, 'The ') : '';
-  const edge = (method?.edge ?? 0) - (stranger?.guard ?? 0) + (method?.id === 'bare_hands' ? (p.stats.health - 50) / 250 : 0);
+  // With bare hands, fitness counts, and so does training: a black belt knows what to do with them (engine/martial.js).
+  const edge = (method?.edge ?? 0) - (stranger?.guard ?? 0) + (method?.id === 'bare_hands' ? (p.stats.health - 50) / 250 + fightEdge(p) : 0);
   const worked = rng.chance(successChance(crime, edge)); // judged on who you were before you did it
   p.counters.crimes += 1;
   p.hidden.karma = clamp(p.hidden.karma + crime.karma);
@@ -144,7 +149,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
 
   // It went wrong. Either you are caught there and then, or you get away with nothing.
   if (crime.danger && rng.chance(crime.danger)) p.stats.health = clamp(p.stats.health - rng.int(15, 35));
-  if (stranger && stranger.guard >= 0.25 && rng.chance(0.3)) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
+  if (stranger && stranger.guard >= 0.25 && rng.chance(Math.max(0.05, 0.3 - fightEdge(p)))) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
   const failed = crime.target ? `${who} is still very much alive. ${crime.failed}` : crime.failed;
   if (crime.target) inc.attempted = true;
   if (rng.chance(clamp(crime.caught + (method?.caught ?? 0) + l.heat / 300 + policingShift(p.countryId), 0.05, 0.97))) {

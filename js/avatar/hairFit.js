@@ -38,6 +38,46 @@ function at(values, start, step, v) {
   return a + (b - a) * Math.max(0, Math.min(1, f - i));
 }
 
+/**
+ * The cost of hair reaching d units past the eyes: gentle at first, then rising steadily. It used to stop rising
+ * at 14, so on a broad face (cherubic, pixie, the kid) where a style closed in further than that, no small move
+ * made things any better and the fitter left it hanging over the eyes.
+ */
+const overEye = (d) => (d <= 0 ? 0 : 0.15 * Math.min(d, 14) ** 2 + 4.2 * Math.max(0, d - 14));
+
+/** How far the hair's inner edges reach past either eye ([left, right], frame units; 0 or less: clear) for fit f. */
+function overEyes(hair, fit, f) {
+  const hr = (fit.chin - fit.top) / (T.face.chin - T.face.top);
+  const eyeY = fit.top + (T.anchor.eyes - T.face.top) * hr;
+  const eyeReach = fit.w * 0.36;
+  const hy = T.face.top + (eyeY - f.ty) / f.sy;
+  const l = at(hair.L, R0, RSTEP, hy);
+  const r = at(hair.R, R0, RSTEP, hy);
+  // No hair at the eye line on a side, or hair right across the face (both edges at the center): nothing to measure.
+  const open = l === r;
+  return [l == null || open ? 0 : f.tx + f.sx * (l - 256) - (fit.cx - eyeReach), r == null || open ? 0 : fit.cx + eyeReach - (f.tx + f.sx * (r - 256))];
+}
+
+/**
+ * How much of the eyes a style is meant to cover, as a share of the face's width: what it still covers when
+ * fitted to the reference head, the one every hairstyle is checked on first. A lock swept across one eye covers
+ * it there too and is left alone; hair that only closes in on a broader face is not.
+ */
+const REFERENCE_HEAD = 'head_17_dimple_oval';
+const allowances = new Map();
+function eyeAllowance(hairId, hair) {
+  if (allowances.has(hairId)) return allowances.get(hairId);
+  const ref = PART_BY_ID[REFERENCE_HEAD];
+  let out = null;
+  if (ref?.edge && ref.fit) {
+    const f = solve(hair, ref.edge, ref.fit, LIMITS, frameFor(REFERENCE_HEAD).y);
+    const [l, r] = overEyes(hair, ref.fit, f);
+    out = { l: Math.max(0, l) / ref.fit.w, r: Math.max(0, r) / ref.fit.w };
+  }
+  allowances.set(hairId, out);
+  return out;
+}
+
 const cache = new Map();
 
 /** The picture every portrait is drawn in unless a screen asks for its own: [x, y, size] of the 512 frame. */
@@ -82,21 +122,19 @@ export function hairFit(hairId, headId) {
   let out = null;
   // A baby's hair is a tuft set on top of the head, with no opening for the face to fit: it stays as placed.
   const tuft = PART_BY_ID[hairId]?.tags?.age === 'baby';
-  if (head?.fit) out = hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit);
+  if (head?.fit) out = hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y, headId === REFERENCE_HEAD ? null : eyeAllowance(hairId, hair)) : plain(head.fit);
   cache.set(key, out);
   return out;
 }
 
 const plain = (fit) => ({ sx: fit.w / T.face.w, sy: fit.w / T.face.w, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top });
 
-function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
+function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop, allow = null) {
   const base = plain(fit);
   const faceH = fit.chin - fit.top;
   const hr = faceH / (T.face.chin - T.face.top);
   // Where the brows and the eyes are on this head (as CharacterAvatar places them).
   const browTop = fit.top + (T.anchor.eyebrows - T.face.top) * hr - 14 * Math.sqrt(base.sx * hr);
-  const eyeY = fit.top + (T.anchor.eyes - T.face.top) * hr;
-  const eyeReach = fit.w * 0.36;
   // Rows that can show a gap at the temples: below the curve of the crown, above the ears.
   const rows = [];
   for (let i = 0; i < RN; i++) if (typeof hair.L[i] === 'number' || typeof hair.R[i] === 'number') rows.push(i);
@@ -150,12 +188,10 @@ function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
       const d = ty + sy * (hairline - T.face.top) - (browTop - 2);
       if (d > 0) c += 0.5 * Math.min(d, 20) ** 2;
     }
-    // Hair closing in over the eyes.
-    const hy = T.face.top + (eyeY - ty) / sy;
-    const l = at(hair.L, R0, RSTEP, hy);
-    const r = at(hair.R, R0, RSTEP, hy);
-    if (l != null && l !== r) { const d = tx + sx * (l - 256) - (fit.cx - eyeReach); if (d > 0) c += 0.15 * Math.min(d, 14) ** 2; }
-    if (r != null && l !== r) { const d = fit.cx + eyeReach - (tx + sx * (r - 256)); if (d > 0) c += 0.15 * Math.min(d, 14) ** 2; }
+    // Hair closing in over the eyes, beyond what the style covers on the reference head (a lock swept over one eye is meant to).
+    const [dl, dr] = overEyes(hair, fit, { sx, sy, tx, ty });
+    if (allow) c += overEye(dl - allow.l * fit.w) + overEye(dr - allow.r * fit.w);
+    else c += 0.15 * Math.min(Math.max(0, dl), 14) ** 2 + 0.15 * Math.min(Math.max(0, dr), 14) ** 2;
     // Leave the style as it was drawn unless there is a reason not to.
     const a = sx / base.sx - 1;
     const b = sy / base.sy - 1;

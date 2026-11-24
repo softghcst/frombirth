@@ -16,7 +16,9 @@ import { catalog } from './university.js';
 import * as sp from './sports.js';
 import { internals as life } from './sportsLife.js';
 
-const { seeded, overall } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** The high school grade the player is in (9 to 12), or null when not at high school. */

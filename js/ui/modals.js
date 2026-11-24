@@ -1,6 +1,8 @@
 // Promise-based modals. Scenario modals cannot be dismissed without choosing.
 import { esc, fmtMoney } from '../util.js';
-import { country } from '../state.js';
+import { store, country } from '../state.js';
+import { avatarSvg } from '../avatar/render.js';
+import { roleLabel } from '../engine/relationships.js';
 import { renderText, choiceStates } from '../engine/eventEngine.js';
 
 const root = () => document.getElementById('modal-root');
@@ -20,7 +22,7 @@ export function openModal(html, opts = {}) {
   const close = () => {
     scrim.remove();
     const still = document.querySelector('#modal-root .scrim:last-child .modal');
-    if (still) { (still.querySelector('button:not([disabled])') ?? still).focus({ preventScroll: true }); return; }
+    if (still) { (still.querySelector('button:not([disabled]):not(.modal-back)') ?? still).focus({ preventScroll: true }); return; }
     const target = returnTo?.isConnected ? returnTo : document.querySelector('[data-year]');
     target?.focus?.({ preventScroll: true });
   };
@@ -33,10 +35,40 @@ export function openModal(html, opts = {}) {
   root().appendChild(scrim);
   const card = scrim.firstElementChild;
   card._returnTo = returnTo;
+  // Every page that can be closed has a way back, in plain sight: "‹ Back", top left, staying there however far
+  // down the page has been scrolled, unless the page shows its own back button (see sync below). (Scenes that must be answered have none. A page that draws its own ✕ in a header
+  // keeps working, but that one is tucked away: there is one way back, and it is always in the same place.) Opened from
+  // inside another page, Back returns to it; opened from a tab, it returns to the tab.
+  // back: false, for a pop-up with its own way out (Close, Cancel, Not yet): tapping outside still closes it, with no
+  // Back as well. The question, choice and text pop-ups below all have their own.
+  if (opts.dismissable && opts.back !== false) {
+    const row = document.createElement('div');
+    row.className = 'modal-backrow';
+    row.innerHTML = '<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>';
+    // A page with levels of its own (a screen opened from a screen) has its own back control: this one presses it, so Back
+    // steps out one level at a time and only leaves the page from the first.
+    row.firstElementChild.addEventListener('click', () => {
+      const inner = card.querySelector('[data-back]:not(.modal-back)');
+      if (inner && !inner.disabled) { inner.click(); return; }
+      close(); opts.onDismiss?.();
+    });
+    card.prepend(row);
+    card.classList.add('has-back');
+    // One way back, never two: while the page shows a back button of its own ("← All places", "← Back" on a deeper
+    // level), this one is hidden, and it returns when the page has none (its first level).
+    const sync = () => {
+      const own = [...card.querySelectorAll('[data-back]:not(.modal-back)')].some((b) => !b.disabled && b.getClientRects().length > 0);
+      if (row.hidden !== own) row.hidden = own;
+    };
+    // Pages redraw their own contents; the row is put back if one wipes it.
+    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); sync(); })
+      .observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'disabled', 'class', 'style'] });
+    sync();
+  }
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
   // Only things that can take focus: an SVG <use href> inside a portrait matches [href] but cannot.
-  (card.querySelector('button:not([disabled]), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
+  (card.querySelector('button:not([disabled]):not(.modal-back), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
   return { el: card, close };
 }
 
@@ -50,6 +82,19 @@ function nameDialog(card) {
   card.setAttribute('aria-labelledby', head.id);
 }
 
+/**
+ * A scene that is news about someone (ev.notice = {who, emoji, title}): their face, name and who they are to the
+ * player on a band, then the emoji and the title, as a notice. '' when the scene is not one, or they are not known.
+ */
+function noticeOf(ev, cast) {
+  const id = ev.notice && (cast?.[ev.notice.who] ?? cast?.words?.[ev.notice.who]);
+  const n = id && store.state.npcs[id];
+  if (!n) return '';
+  const face = `<div class="avatar">${avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: n.meters?.relationship ?? 60, label: n.firstName })}</div>`;
+  return `<div class="notice-head">${face}<div class="notice-who"><strong>${esc(n.firstName)} ${esc(n.lastName ?? '')}</strong><small>${esc(roleLabel(n))}</small></div></div>
+    <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">${esc(renderText(ev.notice.emoji, cast))}</span>${esc(renderText(ev.notice.title, cast))}</h2>`;
+}
+
 /** Shows a scenario and resolves with the index of the chosen option. */
 export function eventModal(ev, cast, opts = {}) {
   return new Promise((resolve) => {
@@ -58,8 +103,11 @@ export function eventModal(ev, cast, opts = {}) {
         ${esc(renderText(c.label, cast))}
         ${c.enabled ? '' : '<small>Not available to you right now</small>'}
       </button>`)).join('');
+    // What came of the scene before, on this card: one tap per scene instead of two.
+    const before = opts.previous ? `<div class="prev-outcome tone-${esc(opts.previous.tone ?? 'neutral')}"><p>${esc(opts.previous.text)}</p>${changeChips(opts.previous.changes)}</div>` : '';
     const m = openModal(`
-      <div class="eyebrow">${esc(ev.category)}</div>
+      ${before}
+      ${noticeOf(ev, cast) || `<div class="eyebrow">${esc(ev.category)}</div>`}
       <p class="scene">${esc(renderText(ev.text, cast))}</p>
       ${choices}
       ${opts.onFork ? '<button class="whatif-btn" data-fork>What if? <small>Keep this moment, and live both choices</small></button>' : ''}`);
@@ -109,15 +157,15 @@ export function messageModal({ eyebrow, title, body, tone = 'neutral', changes, 
 }
 
 /** @returns {Promise<boolean>} */
-export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', danger = false }) {
+export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', danger = false, html = '' }) {
   return new Promise((resolve) => {
     const m = openModal(`
       <h2>${esc(title)}</h2>
-      <p class="body">${esc(body)}</p>
+      <p class="body">${esc(body)}</p>${html}
       <div class="btn-row">
         <button class="btn" data-no>${esc(no)}</button>
         <button class="btn ${danger ? 'danger' : 'primary'}" data-yes>${esc(yes)}</button>
-      </div>`, { dismissable: true, onDismiss: () => resolve(false) });
+      </div>`, { dismissable: true, back: false, onDismiss: () => resolve(false) });
     m.el.querySelector('[data-no]').addEventListener('click', () => { m.close(); resolve(false); });
     m.el.querySelector('[data-yes]').addEventListener('click', () => { m.close(); resolve(true); });
   });
@@ -135,10 +183,10 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
       ${body ? `<p class="body">${esc(body)}</p>` : ''}
       ${options.map((o, i) => `
         <button class="choice-btn" data-i="${i}" ${o.disabled ? 'disabled' : ''}>
-          ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}
+          ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}${o.html ?? ''}
         </button>`).join('')}
       <button class="btn" data-cancel style="margin-top:14px">${esc(cancel)}</button>`,
-    { dismissable: true, onDismiss: () => resolve(null) });
+    { dismissable: true, back: false, onDismiss: () => resolve(null) });
     m.el.addEventListener('click', (e) => {
       if (e.target.closest('[data-cancel]')) { m.close(); return resolve(null); }
       const btn = e.target.closest('.choice-btn');
@@ -164,13 +212,38 @@ export function inputModal({ title, label, value = '', maxLength = 24 }) {
           <button type="button" class="btn" data-cancel>Cancel</button>
           <button type="submit" class="btn primary">Save</button>
         </div>
-      </form>`, { dismissable: true, onDismiss: () => resolve(null) });
+      </form>`, { dismissable: true, back: false, onDismiss: () => resolve(null) });
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
     m.el.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
       const text = m.el.querySelector('#m-input').value.trim();
       m.close();
       resolve(text || null);
+    });
+  });
+}
+
+/**
+ * A short dialog with one choice made from a dropdown, so a long list does not crowd the screen: an emoji and a title,
+ * a line of text, "Pick an activity:" and the dropdown, and one button. Resolves the chosen value, or null if left.
+ * @param {{eyebrow?:string, emoji?:string, title:string, body?:string, label?:string, button?:string,
+ *          options:{value:any, label:string, disabled?:boolean}[]}} o
+ */
+export function selectModal({ eyebrow, emoji, title, body, label = 'Choose', button = 'Go', options }) {
+  return new Promise((resolve) => {
+    const first = options.findIndex((o) => !o.disabled);
+    const m = openModal(`
+      ${eyebrow ? `<div class="eyebrow">${esc(eyebrow)}</div>` : ''}
+      <h2 class="pick-title">${emoji ? `<span class="pick-emoji" aria-hidden="true">${emoji}</span>` : ''}${esc(title)}</h2>
+      ${body ? `<p class="body pick-body">${esc(body)}</p>` : ''}
+      <div class="field pick-field"><label for="m-pick">${esc(label)}</label>
+        <select id="m-pick">${options.map((o, i) => `<option value="${i}" ${o.disabled ? 'disabled' : ''} ${i === first ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></div>
+      <button class="btn primary" data-go ${first < 0 ? 'disabled' : ''}>${esc(button)}</button>`,
+    { dismissable: true, onDismiss: () => resolve(null) });
+    m.el.querySelector('[data-go]').addEventListener('click', () => {
+      const i = Number(m.el.querySelector('#m-pick').value);
+      m.close();
+      resolve(options[i]?.value ?? null);
     });
   });
 }

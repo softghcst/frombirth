@@ -353,15 +353,24 @@ check(loans.loanOptions().every((x) => !x.approved), 'lenders who can see a rece
 section('hardship and the lending record: savings first; marks from real events; no invented scores');
 
 // ---------- 10. Budget: planned against actual ----------
-p = life('us', { cash: 20000 });
-hire(office, 1, 60, 'Hired.');
-advanceYear();
-let b = bank.budgetView();
-check(b.income > 0 && b.spent > 0 && b.left === b.income - b.spent && b.rows.some((x) => x.cat === 'housing' && x.actual > 0), 'the budget shows what was actually earned and spent');
-check(bank.setLimit('housing', 1).ok && !bank.setLimit('salary', 100).ok && !bank.setLimit('housing', -4).ok, 'limits are for spending, and are whole amounts');
-const lines = store.state.journal.length;
-advanceYear();
-check(store.state.journal.slice(lines).some((e) => e.text.startsWith('You spent more than you planned on')), 'going over a limit is noticed at the end of the year');
+// (A life is begun again if the player does not survive the two years: nothing is written for a year that ends in a death.)
+let b; let noticed = false; let shown = false; let limitsOk = false;
+for (let tries = 0; tries < 12 && !(shown && noticed); tries++) {
+  p = life('us', { cash: 20000 });
+  hire(office, 1, 60, 'Hired.');
+  p.stats.health = 100; advanceYear();
+  if (!p.alive) continue;
+  b = bank.budgetView();
+  shown = b.income > 0 && b.spent > 0 && b.left === b.income - b.spent && b.rows.some((x) => x.cat === 'housing' && x.actual > 0);
+  limitsOk = bank.setLimit('housing', 1).ok && !bank.setLimit('salary', 100).ok && !bank.setLimit('housing', -4).ok;
+  const lines = store.state.journal.length;
+  p.stats.health = 100; advanceYear();
+  if (!p.alive) continue;
+  noticed = store.state.journal.slice(lines).some((e) => e.text.startsWith('You spent more than you planned on'));
+}
+check(shown, 'the budget shows what was actually earned and spent');
+check(limitsOk, 'limits are for spending, and are whole amounts');
+check(noticed, 'going over a limit is noticed at the end of the year');
 bank.setLimit('housing', null);
 b = bank.budgetView();
 check(b.rows.find((x) => x.cat === 'housing').limit === null, 'a limit can be removed');

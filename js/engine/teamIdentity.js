@@ -8,7 +8,8 @@ import { store } from '../state.js';
 import { JERSEY_COLORS, LEVEL_NAMES, sportOf } from '../data/sports.js';
 import * as sp from './sports.js';
 
-const { seeded } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const HEX = /^#[0-9a-f]{6}$/i;
 

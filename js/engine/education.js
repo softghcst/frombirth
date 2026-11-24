@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { majorEdge } from './aptitudes.js';
 import { majorOpen } from './history.js';
 import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
@@ -11,7 +12,7 @@ import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
-import { resolve, tripleThreat, remember } from './conditions.js';
+import { resolve, tripleThreat, remember, checkBars } from './conditions.js';
 import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, PROGRAMS, HOUSING, CLIQUES, CLIQUE_BY_ID,
   CLUBS, CLUB_BY_ID, MAX_CLUBS, TRADE_BY_ID, SCHOOL_TYPES, SCHOOL_TYPE_BY_ID, GAP_YEARS, PRIORITIES,
   PRIORITY_BY_ID } from '../data/schools.js';
@@ -116,7 +117,9 @@ export function currentTuition() {
   const e = player().education;
   // Part-time, the same fees are spread over more years.
   const pace = e.partTime && PROGRAMS[e.stage]?.partYears ? PROGRAMS[e.stage].years / PROGRAMS[e.stage].partYears : e.partTime && e.stage === 'university' ? 2 / 3 : 1;
-  return Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1) * pace);
+  const fee = Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1) * pace);
+  // A private conservatory charges fees even where the state pays for university (engine/university.js).
+  return fee || (e.stage === 'university' && e.privateFee ? Math.round(e.privateFee * pace) : 0);
 }
 
 export const studentLoan = () => player().finance.loans.find((l) => l.kind === 'student');
@@ -140,6 +143,8 @@ function chargeTuition() {
   // What is owed is what is charged less whatever help came with the offer.
   const fee = Math.round(currentTuition() * (1 - (e.aid ?? 0)));
   if (!fee || e.funding === 'scholarship' || e.funding === 'parents' || e.funding === 'employer') return;
+  // A veteran who served a full contract has years of tuition paid (engine/military.js).
+  if (p.flags.vetEducation > 0 && isHigher(e.stage)) { p.flags.vetEducation -= 1; log(`Your veterans' education benefit paid this year's tuition (${fmtMoney(fee, c)}).`, 'system', 'good'); return; }
   if (e.funding === 'self' && p.finance.cash >= fee) {
     p.finance.cash -= fee;
     log(`You paid ${fmtMoney(fee, c)} in tuition.`);
@@ -268,6 +273,7 @@ function yearGpa(p) {
   if (marked == null) g -= studyBarrier(p);
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
   if (e.stage === 'university' && uniOf(e.schoolId)?.strong.includes(e.majorId)) g += 0.1;
+  if (hasMajor(e.stage)) g += majorEdge(e.majorId, p) * 0.3; // arriving already able to do it: coding for computer science
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;
   // Professional and graduate study builds on the degree before it: a strong student stays strong.
   if (PROGRAMS[e.stage]?.needs === 'university') {
@@ -599,7 +605,7 @@ export function joinClique(id) {
   const p = player();
   const e = p.education;
   const c = CLIQUE_BY_ID[id];
-  if (e.stage !== 'high' || !e.enrolled) return result(false, 'Cliques are a high-school thing.');
+  if (!['middle', 'high'].includes(e.stage) || !e.enrolled) return result(false, 'Cliques start in middle school.');
   if (acts().clique >= 1) return result(false, 'You already changed who you sit with this year.', 'neutral');
   acts().clique += 1;
   if (!cliqueOptions().find((o) => o.id === id).allowed) {
@@ -619,7 +625,7 @@ export function clubOptions() {
   const p = player();
   const e = p.education;
   return CLUBS.filter((c) => p.age >= c.from).map((c) => ({ id: c.id, name: c.name, blurb: c.blurb ?? '',
-    joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1 }));
+    joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1, bars: c.tryout ? checkBars(c.tryout) : null }));
 }
 /** Children can take classes before they start school; adults need to be enrolled. */
 export const canJoinClubs = () =>
@@ -756,6 +762,15 @@ export function programOptions() {
 }
 
 /** Chance of getting in. Audition majors are judged on performance, not grades. */
+/** An audition course drawn as two bars: what you would show the panel, and what it takes to make it an even call. */
+export function auditionBars(subjectId) {
+  const p = player();
+  const m = MAJOR_BY_ID[subjectId];
+  const shown = m.auditionSkill ? Number(resolve(m.auditionSkill)) || 0 : tripleThreat(p);
+  const need = 50 + (0.5 - m.auditionBase - (p.flags.directorRec ? 0.2 : 0)) * 100 / 1.1;
+  return { you: clamp(shown), need: clamp(need, 5, 95) };
+}
+
 export function admissionChance(progId, subjectId) {
   const p = player();
   const iq = p.stats.intellect;
@@ -768,7 +783,8 @@ export function admissionChance(progId, subjectId) {
     const gpa = entryGpa();
     if (gpa < m.minGpa) return 0;
     if (m.audition) {
-      return clamp(m.auditionBase + (tripleThreat(p) - 50) / 100 * 1.1 + (p.flags.directorRec ? 0.2 : 0), 0.03, 0.97);
+      const shown = m.auditionSkill ? Number(resolve(m.auditionSkill)) || 0 : tripleThreat(p); // dance majors are judged on dancing
+      return clamp(m.auditionBase + (shown - 50) / 100 * 1.1 + (p.flags.directorRec ? 0.2 : 0), 0.03, 0.97);
     }
     const backing = (p.flags.teacherRec ? 0.12 : 0) + (p.flags.gapVolunteer ? 0.08 : 0) + (isTransfer() ? 0.1 : 0);
     return clamp(0.45 + (gpa - m.minGpa) * 0.45 + (iq - 50) / 200 - m.difficulty * 0.2 + backing, 0.05, 0.97);
@@ -915,6 +931,7 @@ export function enroll(progId, subjectId, funding, living = {}, school = null) {
   e.schoolId = school?.id ?? null;
   e.schoolName = school?.name ?? null;
   e.tuitionMult = uniOf(school?.id)?.tuitionMult ?? 1;
+  e.privateFee = progId === 'university' && uniOf(school?.id)?.private ? Math.round(localCost(PROGRAMS.university.tuition, country()) * e.tuitionMult) : 0;
   // Help with the cost, as offered: a share of tuition waived, and the mark that keeps it.
   e.aid = school?.aid?.fraction ?? 0;
   e.aidKeep = school?.aid?.keep ?? 0;
@@ -952,7 +969,7 @@ export function switchOptions() {
   const gpa = e.gpa || entryGpa();
   return MAJORS.filter((m) => m.id !== e.majorId && majorOpen(m.id)).map((m) => ({ id: m.id, name: m.name, audition: !!m.audition,
     allowed: gpa >= m.minGpa, minGpa: m.minGpa,
-    chance: m.audition ? admissionChance('university', m.id) : 1 }));
+    chance: m.audition ? admissionChance('university', m.id) : 1, bars: m.audition ? auditionBars(m.id) : null }));
 }
 export const canSwitchMajor = () => {
   const e = player().education;

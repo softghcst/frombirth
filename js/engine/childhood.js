@@ -9,12 +9,13 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
+import { neighborKidsFor, befriend as befriendNeighbor } from './neighborhood.js';
 import { ensureLife } from './npcLives.js';
 import { remember } from './conditions.js';
 import { spendable, takeFrom } from './npcMoney.js';
 import { book } from './ledger.js';
 import { workLaw } from './worklife.js';
-import { CHILD_ACTIVITIES, CHILD_ACTS_A_YEAR, EARLY_CAP, ALLOWANCE, CHORE_PAY, SMALL_JOBS, SMALL_JOBS_A_YEAR } from '../data/childhood.js';
+import { CHILD_ACTIVITIES, CHILD_ACTS_A_YEAR, EARLY_CAP, LESSON_CAP, ALLOWANCE, CHORE_PAY, SMALL_JOBS, SMALL_JOBS_A_YEAR } from '../data/childhood.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const C = () => (player().flags.childhood ??= { acts: {}, early: {}, jobs: {}, allowance: null, saving: null });
@@ -39,14 +40,14 @@ export function childActivities() {
   });
 }
 
-function grow(path, by) {
+function grow(path, by, lesson = false) {
   const p = player();
   const [where, key] = path.split('.');
   if (where === 'talents') {
-    // A small child's classes add up to a head start and no more.
-    const c = C(); c.talentGain ??= {};
-    if ((c.talentGain[key] ?? 0) >= EARLY_CAP) return;
-    c.talentGain[key] = (c.talentGain[key] ?? 0) + by;
+    // A small child's classes add up to a head start and no more; lessons, kept separately, to a little more.
+    const c = C(); const tally = lesson ? (c.lessonGain ??= {}) : (c.talentGain ??= {});
+    if ((tally[key] ?? 0) >= (lesson ? LESSON_CAP : EARLY_CAP)) return;
+    tally[key] = (tally[key] ?? 0) + by;
   }
   p[where][key] = clamp(p[where][key] + by);
 }
@@ -69,18 +70,21 @@ export function doActivity(id) {
     else if (k === 'bond') { if (parent) parent.meters.relationship = clamp(parent.meters.relationship + v); }
     else if (k === 'siblings') { if (sibling) sibling.meters.relationship = clamp(sibling.meters.relationship + v); }
     else if (k === 'friend') { if (friend) { friend.meters.relationship = clamp(friend.meters.relationship + v); friend.lastInteractionAge = p.age; } }
-    else grow(k, v);
+    else grow(k, v, !!a.lesson);
   }
   // Other children: someone new, someone known, a game, a quarrel. Or nobody, and that is fine too.
   if (a.friend && p.age >= 2) {
     const made = livingNpcs().filter((n) => n.flags.metAt === 'playground' || n.flags.metAt === 'club').length;
     const roll = rng.next();
+    // At the playground, the other children are the ones from the player's own street, where there are some (engine/neighborhood.js).
+    const local = a.id === 'playground' ? neighborKidsFor(store.state, p.age, 1, { school: false })[0] : null;
     if (roll < a.friend && made < 4) {
-      friend = makeNpc({ role: 'friend', countryId: p.countryId, age: Math.max(1, p.age + rng.int(-1, 1)), relationship: rng.int(45, 65) });
+      friend = local ? befriendNeighbor(store.state, local, rng.int(45, 65), 'friend') : makeNpc({ role: 'friend', countryId: p.countryId, age: Math.max(1, p.age + rng.int(-1, 1)), relationship: rng.int(45, 65) });
+      if (local) friend.role = 'friend';
       ensureLife(friend);
       friend.flags.metAt = a.id === 'playground' ? 'playground' : 'club'; friend.flags.metAge = p.age; friend.flags.title = a.id === 'playground' ? 'Friend from the playground' : null;
       if (!friend.flags.title) delete friend.flags.title;
-      store.state.npcs[friend.id] = friend; p.npcIds.push(friend.id);
+      store.state.npcs[friend.id] = friend; if (!p.npcIds.includes(friend.id)) p.npcIds.push(friend.id);
       remember(friend, 'met', a.id === 'playground' ? 'You met at the playground, when you were small.' : 'You met at a club after school.');
       text += ` A child called ${friend.firstName} ${a.id === 'playground' ? 'shares the sandpit with you, and then the afternoon' : 'is put next to you, and you get on'}.`;
       if (made === 0) milestone(`Made a friend: ${friend.firstName}.`, 'life');

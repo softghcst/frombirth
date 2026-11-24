@@ -97,7 +97,7 @@ export const ACTIVITIES = [
   { id: 'lessons', name: 'Take a week of language lessons', cost: 120, days: 5, needs: 'language', tags: ['education'], skill: 'language', mood: 1, significance: 1 },
   { id: 'park', name: 'Spend a day at a theme park', cost: 90, days: 1, from: 1955, tags: ['family'], mood: 6, significance: 2, kids: true },
   { id: 'wildlife', name: 'Go out to see the wildlife', cost: 200, days: 2, region: 'Africa', tags: ['nature', 'adventure'], mood: 7, significance: 3 },
-  { id: 'campus', name: 'Look round a university', cost: 0, days: 0, tags: ['education'], intellect: 1, mood: 1, significance: 1 },
+  { id: 'campus', name: 'Tour a university', cost: 0, days: 0, tags: ['education'], intellect: 1, mood: 1, significance: 1 },
   { id: 'spa', name: 'A day at the spa', cost: 80, days: 1, from: 1900, tags: ['romantic'], health: 1, mood: 5, significance: 1 },
 ];
 export const ACTIVITY_BY_ID = Object.fromEntries(ACTIVITIES.map((a) => [a.id, a]));
@@ -127,6 +127,8 @@ export const TRIP_TYPES = [
   { id: 'cruise', group: 'Leisure', name: 'Cruise', purpose: 'visit', from: 1900, mode: 'ship' },
   { id: 'visiting', group: 'Personal', name: 'Visiting relatives', purpose: 'visit', needs: 'kinThere' },
   { id: 'scouting', group: 'Personal', name: 'Relocation scouting visit', purpose: 'visit', minAge: 18 },
+  { id: 'wedding', group: 'Personal', name: 'Family wedding', purpose: 'visit', needs: 'wedding', maxDays: 14 },
+  { id: 'funeral', group: 'Personal', name: 'Funeral', purpose: 'visit', needs: 'funeral', maxDays: 10 },
   { id: 'business', group: 'Professional', name: 'Business trip', purpose: 'business', needs: 'job', maxDays: 14 },
   { id: 'conference', group: 'Professional', name: 'Work conference', purpose: 'business', needs: 'professional', maxDays: 7 },
   { id: 'interview', group: 'Professional', name: 'Job interview abroad', purpose: 'business', needs: 'offer', maxDays: 5 },

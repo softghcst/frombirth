@@ -1,6 +1,7 @@
 // University, as a book: the course and how it is going, who the player
 // lives with and what they belong to, and the experience they are building.
 // Rules: engine/campus.js. Everything shown comes from the saved life.
+import { fitBars } from './fitBars.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { degreeMark } from '../engine/schooling.js';
@@ -44,8 +45,8 @@ function pageExperience(v) {
   const abroad = campus.abroadOptions();
   return `<div class="section-label">This summer's internships</div>
     ${posts.length ? posts.map((p) => `<div class="card sub-card"><div class="sub-head"><strong>${esc(p.employer)}</strong><span>${fmtMoney(p.pay, c)}</span></div>
-      <p class="muted">${esc(p.title)}.${p.sought ? ' The one everybody wants.' : ''} Your chances: ${esc(campus.internOutlook(p))}.</p>
-      <button class="btn" data-intern="${p.id}" ${p.applied ? 'disabled' : ''}>${p.applied ? 'You have their answer' : 'Apply'}</button></div>`).join('') : '<p class="muted">Internships open after your first year at university.</p>'}
+      <p class="muted">${esc(p.title)}.${p.sought ? ' The one everybody wants.' : ''} </p>${fitBars({ ...campus.internBars(p), youLabel: 'Your Record', needLabel: 'Employer Wants' })}
+      <button class="btn" data-intern="${p.id}" ${p.applied ? 'disabled' : ''}>${p.applied ? 'You have their answer' : 'Apply'}</button></div>`).join('') : '<p class="muted">Internships open after your first year in college.</p>'}
     ${v.internships.length ? `<div class="section-label">Where you have worked</div>${v.internships.map((i) => `<div class="dyn-event"><span class="num">Age ${i.age}</span><span>${esc(i.title)}, ${esc(i.employer)}${i.went >= 70 ? ' · they wanted you back' : ''}</span></div>`).join('')}` : ''}
     ${v.returnOffer ? `<p class="dyn-reach">${esc(v.returnOffer.employer)} is holding a job for you.</p>` : ''}
     <div class="section-label">A year abroad</div>
@@ -67,7 +68,7 @@ export function openCampus(api) {
   function draw(keep = false) {
     const top = body.scrollTop;
     m.el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    if (!campus.atUniversity()) { body.innerHTML = '<p class="muted">You are not at university.</p>'; return; }
+    if (!campus.atUniversity()) { body.innerHTML = '<p class="muted">You are not in college.</p>'; return; }
     const v = campus.view();
     body.innerHTML = tab === 'studies' ? pageStudies(v) : tab === 'life' ? pageLife(v) : pageExperience(v);
     body.scrollTop = keep ? top : 0;

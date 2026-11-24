@@ -51,8 +51,8 @@ const worldOf = (state) => state?.worldId ?? state?.timeline?.root ?? state?.slo
 const nowT = (state) => T(state.year, state.month ?? 0);
 /** Keyed luck: the same for everyone in this world asking the same thing. Never the game's dice. */
 export const luck = (state, key) => seeded(`hood/${worldOf(state)}/${key}`);
-/** How many neighborhood scenes one year may bring the player. */
-export const SCENES_A_YEAR = 3;
+/** How many neighborhood scenes one year may bring the player. Neighbors are background, not a to-do list. */
+export const SCENES_A_YEAR = 1;
 /** Neighborhoods nobody in the family has had anything to do with for this many years rest until someone returns. */
 const DORMANT_AFTER = 30;
 
@@ -515,7 +515,8 @@ export function syncHousehold(state = store.state) {
   const want = [meId(state.player), ...housemates(state, d)];
   const home = H.homes[hh.home];
   // Who moves in and out of the player's home is plain to see from next door (engine/neighborhoodTalk.js).
-  const seen = (kind, words) => { if (home && H.cur.since < nowT(state)) Talk.hear(state, home.h, kind, Talk.watchers(state, home.id), words); };
+  // Only the player's own home, as an adult: a sibling leaving the family home is the family's business.
+  const seen = (kind, words) => { if (home && hh.me && state.player.age >= 18 && H.cur.since < nowT(state)) Talk.hear(state, home.h, kind, Talk.watchers(state, home.id), words); };
   for (const id of want) if (!hh.m.includes(id) && !isPlayerRef(id)) { const n = state.npcs[id]; seen(n?.role === 'child' && n.age <= 1 ? 'baby' : 'partner', { partner: ['spouse', 'partner'].includes(n?.role) }); }
   for (const id of hh.m) if (!want.includes(id) && !isPlayerRef(id) && personOf(state, id)?.alive) { const n = state.npcs[id]; seen('left', { partner: ['spouse', 'partner', 'ex'].includes(n?.role) || !!n?.flags?.wasSpouse }); }
   for (const id of want) if (!hh.m.includes(id)) {
@@ -541,7 +542,17 @@ export function syncHousehold(state = store.state) {
  * anywhere in the game (buying a house, a new city, leaving home, emigrating), and after the turn of a year. Running it
  * again changes nothing.
  */
-export function settle(state = store.state) {
+export function settle(state = store.state, { quiet = false } = {}) {
+  if (!quiet) return settleNow(state);
+  // Loading a save only brings the neighborhood up to date: no scene is queued (or used up) by opening a game.
+  muted = true;
+  try { return settleNow(state); } finally { muted = false; }
+}
+
+/** While a save is being loaded: scenes are not queued, and not marked as seen, so they can still come in play. */
+let muted = false;
+
+function settleNow(state) {
   if (!state?.player) return null;
   const H = hoods(state);
   H.at ??= nowT(state);
@@ -736,13 +747,13 @@ export function groundFloorOption(state = store.state) {
 }
 
 /** Children on the player's street who go to the local school and are in the player's year: at most `max`. */
-export function neighborKidsFor(state, age, max = 2) {
+export function neighborKidsFor(state, age, max = 2, { school = true } = {}) {
   if (!state?.hoods || max <= 0) return [];
   const home = currentHome(state);
   if (!home) return [];
   const H = hoods(state);
   return around(state, home.id).filter((x) => x.hh && !x.hh.me && !x.hh.fam).flatMap((x) => x.hh.m).map((id) => H.res[id])
-    .filter((r) => r && aliveRes(r) && r.school && Math.abs(ageOf(r, state) - age) <= 1 && !(state.npcs[r.id] && state.player.npcIds.includes(r.id) && state.npcs[r.id].role === 'classmate'))
+    .filter((r) => r && aliveRes(r) && (!school || r.school) && Math.abs(ageOf(r, state) - age) <= (school ? 1 : 2) && !(state.npcs[r.id] && state.player.npcIds.includes(r.id) && (school ? state.npcs[r.id].role === 'classmate' : true)))
     .slice(0, Math.min(2, max)).map((r) => r.id);
 }
 
@@ -800,18 +811,66 @@ export function residentsOf(state, hoodId) {
 export function note(state, e) {
   const H = hoods(state);
   H.log.push(e);
-  if (H.log.length > 1500) H.log.splice(0, H.log.length - 1500);
+  if (H.log.length > 1000) {
+    // The oldest lines about strangers go first; what concerns people the player knew is kept longest.
+    const knew = (x) => x.k === 'remembered' || (x.who && (H.res[x.who]?.met || H.res[x.who]?.fam || state.npcs?.[x.who])) || H.hhs[x.hh]?.me || H.hhs[x.hh]?.fam;
+    const keep = H.log.slice(0, -200).filter(knew);
+    H.log = [...keep.slice(-600), ...H.log.slice(-200)].slice(-1000);
+  }
   return e;
 }
 
-/** Queues one neighborhood scene for the player, once per story key, a few a year at most. */
+/**
+ * People nobody in the family ever met, who left or died twenty years and more ago, leave no trace but the name on a
+ * home's history. Keeps a long life's neighborhoods from growing without end.
+ */
+export function forget(state = store.state) {
+  const H = hoods(state);
+  const cutoff = T(state.year - 20);
+  const held = new Set([...Object.values(H.blocks).map((b) => b.mgr), ...H.disputes.filter((d) => d.status === 'open').map((d) => d.res)].filter(Boolean));
+  const gone = new Set();
+  for (const r of Object.values(H.res)) {
+    if (r.met || r.fam || r.owns || state.npcs[r.id] || held.has(r.id)) continue;
+    const when = r.dead ?? r.gone?.t;
+    if (when == null || when > cutoff) continue;
+    if (H.hhs[r.hh]?.home) continue;
+    gone.add(r.id);
+    delete H.res[r.id];
+  }
+  if (!gone.size) return;
+  // Their households stay on record (a home's history and the chronicle point at them), only without them.
+  for (const hh of Object.values(H.hhs)) if (hh.m.some((x) => gone.has(x))) hh.m = hh.m.filter((x) => !gone.has(x));
+}
+
+/** Scenes that are all, at heart, "a neighbor would like your company": one of these is plenty for a while. */
+const COMPANY = new Set(['hood_invitation', 'hood_invitation_upstairs', 'hood_different_neighbor', 'hood_unexpected_friendship', 'hood_kindness_returned', 'hood_block_party', 'hood_building_gathering', 'hood_community_event', 'hood_friend_across_street']);
+const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
+
+/** Queues one neighborhood scene for the player, once per story key, one a year at most. */
+/** Years before the same neighborhood scene can come again, whoever it is about. */
+const SCENE_GAP = 10;
+/** Years between any two neighborhood scenes: the neighborhood is background, and the rest of life comes first. */
+const ANY_GAP = 2;
+/** Scenes that are the same story told about a different occasion: one gap for all of them. */
+const STORY_OF = { hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation' };
+
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
-  if (!state.player.alive) return false;
+  if (muted || !state.player.alive) return false;
   if (H.seen[key] != null) return false;
   const thisYear = Object.values(H.seen).filter((x) => yearOf(x) === yearOf(t)).length;
   if (thisYear >= SCENES_A_YEAR) return false;
+  // The same sort of scene (another invitation, another neighbor wanting company) not two years running.
+  if (H.lastScene?.sort === sceneSort(id) && yearOf(t) - H.lastScene.y <= 1) return false;
+  // One neighborhood scene every couple of years at most, whatever it is about.
+  if (H.lastScene && yearOf(t) - H.lastScene.y < ANY_GAP) return false;
+  // And the same story (another community event, another neighbor needing a hand) not again for ten years.
+  H.byId ??= {};
+  const story = STORY_OF[id] ?? id;
+  if (H.byId[story] != null && yearOf(t) - H.byId[story] < SCENE_GAP) return false;
+  H.byId[story] = yearOf(t);
   H.seen[key] = t;
+  H.lastScene = { sort: sceneSort(id), y: yearOf(t) };
   state.pendingEvents.push({ id, cast });
   return true;
 }
@@ -826,6 +885,18 @@ function queueAbout(state, sceneId, resId, words, key, t) {
   const knows = state.player.npcIds.includes(resId) && state.npcs[resId]?.alive;
   const cast = knows ? { person: resId, words: { ...words } } : { words: { ...words, person: r.f, res: resId } };
   return queueScene(state, sceneId, cast, key, t);
+}
+
+/**
+ * Routine neighborhood news (a family moving in, a baby next door, a house standing empty) is a line in the life
+ * story, not a scene to answer: scenes are kept for the moments that ask something of the player.
+ */
+export function tell(state, text, tone = 'neutral', key = null) {
+  const H = hoods(state);
+  if (key) { if (H.seen[key] != null) return; H.seen[`line:${key}`] = nowT(state); }
+  const e = { age: state.player.age, text, kind: 'system', tone, hood: true };
+  if (state.month) e.month = state.month;
+  state.journal.push(e);
 }
 
 // ---------- The year in a neighborhood ----------
@@ -1041,7 +1112,7 @@ function apply(state, hood, e, y, quiet = false) {
       note(state, { t, h: hood.id, k: 'left', text: `The ${hh.n} household left ${home.label}, ${MOVE_REASONS[e.why] ?? 'to live somewhere else'}${e.to === 'abroad' ? ', abroad' : e.to !== hood.city ? `, to ${e.to}` : ''}.`, home: home.id, hh: hh.id });
       const friend = people.find((r) => known(r.id));
       if (playerHere && friend) queueScene(state, 'hood_moving_away', { person: friend.id, words: { where: e.to === 'abroad' ? 'abroad' : e.to === hood.city ? `another part of ${hood.city}` : e.to } }, `away/${friend.id}`, t);
-      else if (playerHere && near(home.id) >= 4 && yearOf(t) - yearOf(hh.from) >= 15) queueScene(state, 'hood_empty_house', { words: { family: `the ${hh.n} family`, label: home.label, years: String(yearOf(t) - yearOf(hh.from)) } }, `empty/${home.id}/${hh.id}`, t);
+      else if (playerHere && near(home.id) >= 4 && yearOf(t) - yearOf(hh.from) >= 15) tell(state, `The ${hh.n} family moved away from ${home.label} after ${yearOf(t) - yearOf(hh.from)} years. The street feels different.`);
       return;
     }
     case 'arrive': {
@@ -1067,7 +1138,7 @@ function apply(state, hood, e, y, quiet = false) {
         const head = hh.m.map((id) => H.res[id]).filter((x) => x && y - x.by >= 18)[0] ?? H.res[hh.m[0]];
         const knewThem = hh.back && Object.keys(head.met ?? {}).includes(archiveIdOf(p));
         if (knewThem) queueAbout(state, 'hood_old_friend_returns', head.id, {}, `back/${head.id}`, t);
-        else queueAbout(state, 'hood_new_neighbors', head.id, { family: hh.m.length > 1 ? `the ${hh.n} family` : `someone new`, label: home.label, who: composition(state, hh) }, `new/${hh.id}`, t);
+        else tell(state, `${hh.m.length > 1 ? `The ${hh.n} family` : `Someone new, ${head.f} ${head.l},`} moved in ${proximity(state, here.id, home.id).word === 'next door' ? 'next door' : `at ${home.label}`}: ${composition(state, hh)}. You could go and say hello (My Neighborhood).`);
       }
       return;
     }
@@ -1106,7 +1177,7 @@ function apply(state, hood, e, y, quiet = false) {
       hh.m.push(id);
       if (hh.kind === 'couple') hh.kind = 'family';
       note(state, { t, h: hood.id, k: 'born', text: `A baby, ${H.res[id].f}, was born to the ${hh.n} household.`, who: id, home: hh.home });
-      if (playerHere && near(hh.home) >= 4) queueAbout(state, 'hood_family_next_door', (hh.m.map((x) => H.res[x]).find((x) => x && y - x.by >= 18) ?? H.res[id]).id, { baby: H.res[id].f, family: `the ${hh.n} family` }, `baby/${id}`, t);
+      if (playerHere && near(hh.home) >= 4) tell(state, `There is a new baby next door: ${H.res[id].f}, the newest of the ${hh.n} family.`, 'good');
       return;
     }
     case 'partner': {
@@ -1323,7 +1394,7 @@ function removeFrom(state, r, t, why) {
     hh.to = t;
     const here = currentHome(state);
     if (here && here.h === home.h && proximity(state, here.id, home.id).near >= 4 && yearOf(t) - yearOf(hh.from) >= 10) {
-      queueScene(state, 'hood_empty_house', { words: { family: `the ${hh.n} household`, label: home.label, years: String(yearOf(t) - yearOf(hh.from)) } }, `empty/${home.id}/${hh.id}`, t);
+      tell(state, `${home.label} stands empty now. The ${hh.n} household lived there for ${yearOf(t) - yearOf(hh.from)} years.`);
     }
   }
 }
@@ -1433,13 +1504,14 @@ export function openYear(state = store.state) {
   }
   // Old disagreements fade: nobody is still cross about the bins after two years.
   for (const d of H.disputes) if (d.status === 'open' && state.year - yearOf(d.t) >= 2) d.status = 'faded';
-  // People next door see each other without trying: closeness there does not fade from neglect. An acquaintance who
-  // has faded to nothing drops out of the player's life (they are still there, and can be met again).
+  // People in the same neighborhood see each other without trying: closeness there does not fade from neglect, so
+  // neighbors are never a chore to keep up with. An acquaintance who has soured to nothing drops out of the player's
+  // life (they are still there, and can be met again).
   const p = state.player;
   const here = currentHome(state);
   for (const n of p.npcIds.map((id) => state.npcs[id]).filter((x) => x?.alive && H.res[x.id])) {
     const home = H.hhs[H.res[n.id].hh]?.home;
-    if (here && home && proximity(state, here.id, home).near >= 4) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
+    if (here && home && proximity(state, here.id, home).near >= 2) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
     if (n.role === 'neighbor' && n.meters.relationship < 10 && !n.flags.tag) { p.npcIds = p.npcIds.filter((id) => id !== n.id); n.flags.drifted = { year: state.year, age: p.age, role: 'neighbor' }; }
   }
     // A year of talk, for the year just lived; and a wrong story going round the player's own street.
@@ -1454,6 +1526,7 @@ export function openYear(state = store.state) {
   }
   // Friend groups: three or more people who live near each other and are friends with the player.
   groups(state);
+  forget(state);
 }
 
 /** A turn between years: the months just lived, and where the player lives now. */
@@ -1468,20 +1541,23 @@ export { syncAssets };
 
 // ---------- Friend groups ----------
 
-/** Children and teenagers on the same streets who are all friends of the player become a group, with a name. */
+/**
+ * Children and teenagers on the same street who are all the player's friends become a group of friends: the same
+ * friend groups as anywhere else in the game (engine/together.js, `flags.circle`), with their nights out and falling
+ * outs. There is no second kind of group for neighbors.
+ */
 export function groups(state = store.state) {
   const H = hoods(state);
   const p = state.player;
   const here = currentHome(state);
-  if (!here || p.age > 19) return H.groups;
+  if (!here || p.age > 19) return;
   const friends = knownIn(state, here.h).filter((n) => n.role === 'friend' && Math.abs(n.age - p.age) <= 4);
-  if (friends.length >= 2 && !H.groups.some((g) => g.h === here.h && g.to == null)) {
-    const block = H.blocks[here.b];
-    H.groups.push({ id: `g${H.groups.length + 1}`, name: block.kind === 'building' ? `the kids from ${block.name}` : `the ${block.name} crowd`, h: here.h, m: [meId(p), ...friends.map((n) => n.id)], since: nowT(state) });
-    note(state, { t: nowT(state), h: here.h, k: 'group', text: `${p.firstName}, ${friends.map((n) => n.firstName).join(' and ')} became a group of friends.`, who: meId(p) });
-  }
-  for (const g of H.groups) if (g.to == null && g.h === here.h) for (const n of friends) if (!g.m.includes(n.id)) g.m.push(n.id);
-  return H.groups;
+  if (friends.length < 2 || friends.some((n) => n.flags.circle)) return;
+  const circle = `circle_${friends[0].id}`;
+  for (const n of friends) n.flags.circle = circle;
+  (p.flags.circles ??= {})[circle] = state.year;
+  note(state, { t: nowT(state), h: here.h, k: 'group', text: `${p.firstName}, ${friends.map((n) => n.firstName).join(' and ')} became a group of friends.`, who: meId(p) });
+  void H;
 }
 
 // ---------- Views ----------

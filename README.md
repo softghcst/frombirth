@@ -27,6 +27,14 @@ what CI runs on every pull request, `.github/workflows/tests.yml`):
 node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
 ```
 
+The checks play the same lives every run: outside a browser the dice are pinned (`js/rng.js`), so a new life carries on
+the seeded sequence instead of drawing a fresh seed from the clock, and a failure can be played again exactly. To roll
+fresh dice each run instead, and shake out checks that only pass for some lives:
+
+```bash
+PATHWAYS_RANDOM=1 node scripts/test-all.mjs
+```
+
 `node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
 prices, positions and saves after every year (each life is reproducible from its seed).
 
@@ -45,6 +53,8 @@ node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
+node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
+node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
@@ -66,6 +76,14 @@ node tests/estate.mjs          # wills: one notice when someone named dies, noth
 node tests/childhood.mjs       # childhood from birth: things to do by age, playground friends, early likings capped, pocket money from the family's own money, chores, small jobs
 node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
 node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
+node tests/family-stories.mjs   # fifty-four stories of relationships, marriages, households, family secrets, inheritance and teenage life: each told only when true
+node tests/idol-student.mjs   # a young trainee abroad goes to school where they live; the performer week cap; talent schools cost more; a crowd from middle school
+node tests/animal-entry-ui.mjs   # animals have one home in the menus (People → Pets & Animals, with the house chronicle)
+node tests/menu-layout.mjs   # every tab is a list of rows with pictures and a line each; what is not open yet is greyed with why; Special careers
+node tests/family-news.mjs   # causes of death and funerals; lessons asked of parents; sleepovers; relatives' diagnoses and everyday illnesses as news
+node tests/family-news-ui.mjs   # the sleepover and lessons dropdowns, the death notice with the funeral, an illness notice, in a browser
+node tests/military.mjs   # joining from 18 with a branch, basic training, deployments with medals and wounds, contracts, veterans' college help, national service (idols, athletes, medal exemptions)
+node tests/talents.mjs   # born low whatever the gift; the years bring a talent on, practice further; a gift shows itself; sport ceilings from the gift
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
@@ -89,6 +107,9 @@ node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medi
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/dance.mjs           # a dancer's life: BFA/BA in dance, gigs from commercials to tours and TV, competitions, dance ensemble parts
+node tests/stage-difficulty.mjs # the major stage is very hard to reach: odds by skill, what a BFA in musical theater adds, agents
+node tests/child-stage.mjs     # the child stage path: lessons from 6, children's parts up to the major stage, children against children, the work permit, a theater childhood counted at 18
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
 node tests/fame2.mjs           # sport played match by match (fame from results only), modeling, books, celebrity brands, famous lives, comebacks, the family record
 node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
@@ -258,7 +279,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | The head shapes (shared with the hair-warping pipeline) | `assets/heads/` — clean names (`pixie.svg`, `dimple_oval.svg`, …); the save ids stay `head_11_pixie` etc. (`HEAD_IDS` in the build script) |
 | Eyes from pictures | `assets/eyes_png/` (`TEMPLATE_eyes.png`, `women/`, `men/`): `npm run trace-eyes` turns a pair of eyes drawn over the template into `assets/avatars/eyes/eyes_f_<name>.svg` or `eyes_m_<name>.svg` in the shared eye frame (`scripts/trace_eyes_png.py`, frame from `scripts/make_eye_template.mjs`), so they fit every head; women's eyes are only drawn on women and men's on men (`eyesFor` in `js/avatar/catalog.js`); guide in `assets/eyes_png/README.md` |
 | Hair-warping pipeline | `assets/hair_raw/` (hairstyles drawn on the base head), `assets/hair_fitted/` (each style fitted to each head, `<style>_<head>.svg`), `assets/landmarks.json` (six landmarks per head, and `base_head`: athletic, chosen by hand with `python3 scripts/select_base_head.py --base <head>`; each style records the head it was drawn on, `data-drawn-on`, and is fitted from that one, so changing the base keeps every style fitting), `assets/CHATGPT_HAIR_PROMPT.md` (the prompt for new styles). New style: save ChatGPT's SVG in `assets/hair_raw/`, run `npm run fit-hair` (several at once: paste the reply into `assets/raw_batch.txt` and run `npm run split-hair`); or draw it as a PNG over `assets/hair_png/TEMPLATE_base_head.png`, save it in `assets/hair_png/` and run `npm run trace-hair`, which rebuilds it as clean, dyeable hair and fits it (`scripts/trace_hair_png.py`; how to draw so it traces well: `assets/hair_png/README.md`; compare in `scripts/debug_hair_png.html`); `npm run soften-hair` turns the heavy outline inside the hair (a fringe over the cap, curls over curls) into soft lines, keeping it on the silhouette (needs `pip install -r scripts/requirements.txt`), check `scripts/debug_hair_fit.html`. The game reads `assets/hair_manifest.json` (written by the same command; loaded by `js/avatar/fittedHair.js`), so a new style appears in the creator with no code change, and draws its `hair_back` behind the head and its other layers in front (`fittedHairFile` in `js/CharacterAvatar.js`). A style whose file name contains `fade` or `buzz`, or whose SVG has `data-clip-to-head="true"`, is clipped to the head's skin |
-| The artwork, one folder per kind of part | `assets/avatars/` — `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The artwork, one folder per kind of part | `assets/avatars/` — `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
 | Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |
@@ -272,9 +293,9 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | The salon's prices | `js/engine/salon.js` |
 
 **How a portrait is built.** Each layer is an SVG `<use>` of a part file, in this order: back hair, head, make-up
-(clipped to the head), age lines (clipped to the head too), eyes, eyebrows, nose, facial hair, mouth, clothes,
-necklaces, front hair, earrings and piercings, glasses, hat or crown, emotions. The mouth is drawn over a beard, so
-a full beard does not swallow it. Hair is drawn twice — the whole style behind the head, and the part above that
+(clipped to the head), age lines (clipped to the head too), eyes, eyebrows, nose, mouth, clothes,
+necklaces, front hair, earrings and piercings, glasses, hat or crown, emotions. There is no facial hair: it has been
+taken out of the game, and a beard or mustache in an old save is dropped. Hair is drawn twice — the whole style behind the head, and the part above that
 head's chin again in front — so a fringe falls over the forehead while long hair falls behind the shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
 (`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
 that reach into the part files.
@@ -387,7 +408,7 @@ hair filtered by length or by what suits your texture, a preview at other ages, 
 appearance: {
   v: 3,
   inherited: { head, skin, eyes, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [], tweaks: {} }, // set once, at birth
-  style: { hair, hairDye, glasses, facialHair, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
+  style: { hair, hairDye, glasses, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
 }
 ```
 
@@ -891,7 +912,7 @@ the Digital World because the game has no separate hobby-project system.
 | Property tax by country | `PROPERTY_TAX` in `js/data/countries.js` |
 | Monarchies: which countries have a crown, the titles used there, allowances, public duties, how rare a royal birth is | `js/data/royalty.js` |
 | How each country is governed, what its offices are called, campaign platforms, budgets and moves, what office-holders can do | `js/data/politics.js` |
-| Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
+| Political scenes (class president, Election Day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
 | Royal and noble scenes (palace invitation, honors, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
@@ -916,6 +937,8 @@ the Digital World because the game has no separate hobby-project system.
 | Scenes that depend on the country | `js/data/events/country.js` |
 | First names and surnames for each country (people are named from where they live) | `js/data/names.js` |
 | Child acting: ages, levels, pay, and the head start it gives an adult actor | `child_actor` in `js/data/careers.js` |
+| Children's parts on stage: how often, how strong the other children are, a child's hours | `CHILD_PARTS` in `js/data/fame.js` |
+| Dance gigs, the TV dance competition, dance competitions | `js/data/dance.js` |
 | Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
@@ -1309,7 +1332,7 @@ whether or not the player takes any part.
     few points, the same way all campaign long.
   - *The debate.* Three questions. A straight answer, a crowd-pleasing promise
     (which comes due in office), an attack, or a dodge.
-  - *Polling day.* The result is worked out once and stored; election night
+  - *Election Day.* The result is worked out once and stored; election night
     shows it arriving area by area, after an exit poll that may be wrong.
   A campaign left unfinished when the year ends plays itself out. One-party
   states have no voters to win: the committee decides.

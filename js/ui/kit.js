@@ -1,6 +1,7 @@
 // Afterglow building blocks shared by every screen: the Pathways mark, outline icons, navigation rows and
 // paired actions. Markup only; the look lives in css/components.css.
 import { esc } from '../util.js';
+import { menuInfo } from '../data/menus.js';
 
 /** The Pathways mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
 export const markSvg = (cls = 'title-mark') => `
@@ -46,23 +47,40 @@ const PATHS = {
   id: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.3"/><path d="M5.8 16c.6-1.6 1.8-2.4 3.2-2.4s2.6.8 3.2 2.4M14.5 10h3.5M14.5 13.5h3.5"/>',
   family: '<circle cx="8" cy="7" r="2.5"/><circle cx="16" cy="7" r="2.5"/><circle cx="12" cy="13.5" r="2"/><path d="M3.5 20c0-3 2-5 4.5-5M20.5 20c0-3-2-5-4.5-5M9 20.5c0-2 1.3-3.5 3-3.5s3 1.5 3 3.5"/>',
   home: '<path d="M4 11 12 4l8 7v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5z"/><path d="M10 21v-6h4v6"/>',
+  crown: '<path d="M4 18 3 7l5 4 4-6 4 6 5-4-1 11z"/><path d="M4 21h16"/>',
+  chat: '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h4"/>',
+  medal: '<circle cx="12" cy="15" r="5"/><path d="m8.5 11-3-8h4l2.5 6M15.5 11l3-8h-4L12 9"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5v1.5A3.5 3.5 0 0 0 8 11M16 6h3.5v1.5A3.5 3.5 0 0 1 16 11M12 13v4M8.5 20h7M9.5 17h5"/>',
 };
 
 /** An outline icon. */
 export const icon = (name, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name] ?? PATHS.sparkle}</svg>`;
 
+/** The tile at the start of a row: the row's picture (data/menus.js) where it has one, else the drawn icon. */
+export function rowTile(label, ico = 'sparkle') {
+  const info = menuInfo(label);
+  return info ? `<span class="nr-icon emoji" aria-hidden="true">${info.emoji}</span>` : `<span class="nr-icon">${icon(ico)}</span>`;
+}
+
 /**
- * A row that opens another screen: icon, label (and an optional line under it), chevron.
+ * A row that opens another screen: picture, label, a line saying what it is for, chevron.
  * `attrs` is the data attribute(s) the screen's click handler listens for, e.g. 'data-top="tree"'.
+ * A row that is not open to the player yet is shown greyed, with why in place of its line (`why`), and cannot be tapped.
  */
-export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false }) {
-  return `<button class="nav-row${tone ? ` ${tone}` : ''}" ${attrs} ${disabled ? 'disabled' : ''}>
-    <span class="nr-icon">${icon(ico)}</span>
-    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
-    ${icon('chevron', 'nr-chev')}
+export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '', extra = '' }) {
+  const line = (disabled && why) || sub || menuInfo(label)?.desc || '';
+  return `<button class="nav-row${tone ? ` ${tone}` : ''}${disabled ? ' locked' : ''}" ${attrs} ${disabled ? 'disabled aria-disabled="true"' : ''}>
+    ${rowTile(label, ico)}
+    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${line ? `<small>${esc(line)}</small>` : ''}${extra}</span>
+    ${disabled ? '<span class="nr-lock" aria-hidden="true">🔒</span>' : icon('chevron', 'nr-chev')}
   </button>`;
 }
+
+/** A row for something not open yet, greyed with the reason: "From age 18". */
+export const lockedRow = (label, why, ico) => navRow({ attrs: 'data-locked', label, disabled: true, why, ico });
+/** "From age 18", or '' when the player is old enough. */
+export const fromAge = (age, min) => (age < min ? `From age ${min}` : '');
 
 /** A group of navigation rows on one card. */
 export const navGroup = (rows, title = '') => (rows.length

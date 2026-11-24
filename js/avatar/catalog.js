@@ -7,7 +7,7 @@
 //   inherited: what they were born with. Set once, at birth, never changed.
 //              head, skin, eyes, eyeColor, brows, nose, lips, hairColor (natural), hairTexture, marks[]
 //   style:     how they wear it today. Changed at the salon or in the wardrobe.
-//              hair (cut), hairDye, glasses, facialHair, makeup, lipColor, jewelry[], outfit, outfitColor, hat
+//              hair (cut), hairDye, glasses, makeup, lipColor, jewelry[], outfit, outfitColor, hat
 // Children are built from their parents' `inherited` halves only, so a
 // parent's dye, haircut or clothes never reach a child.
 //
@@ -17,9 +17,9 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR as BABY_HAIR_STYLES, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR as BABY_HAIR_STYLES, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
-import { FITTED_HAIR, FITTED_LOADED } from './fittedHair.js';
+import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
 const parts = (folder, keep = () => true) => AVATAR_MANIFEST[folder].filter(keep).map((p) => ({ id: p.id, name: p.label, file: p.file, tags: p.tags ?? {} }));
@@ -52,7 +52,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: with
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
  * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short', gender: s.gender === 'any' ? undefined : s.gender }, type: s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null, elderOk: s.elderOk ?? null }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short', gender: s.gender === 'any' ? undefined : s.gender }, type: s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null, elderOk: s.elderOk ?? null }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = {
   textured_crop: 'textured_pixie_cut',
@@ -69,7 +69,7 @@ export const CATALOG = {
   head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying).map((e) => (/^eyes_[fm]_/.test(e.id) ? { ...e, name: e.name.replace(/^[FM] /, '').replace(/^./, (ch) => ch.toUpperCase()) } : e)), // crying eyes appear only when something sad is happening
   eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
-  hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
+  hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
   outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: [],
 };
@@ -90,7 +90,7 @@ export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Ma
 /** Born with: one id each, except marks, which is a list of ids. */
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
-export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat'];
+export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat'];
 /** The proportions of someone's face. */
 export const shownTweaks = (a) => ({ ...a.inherited.tweaks });
 
@@ -166,8 +166,6 @@ const OLD_HAIRSTYLE = {
   long_straight: 'hair_girl_long_02', long_wavy: 'hair_girl_long_01', long_curly: 'hair_girl_long_07', ponytail: 'hair_boy_updo_11_high_ponytail', bun: 'hair_updo_03', puffs: 'hair_updo_09',
 };
 const OLD_GLASSES = { round: 'glasses_1', square: 'glasses_3', cat_eye: 'glasses_2', aviator: 'glasses_4' };
-const OLD_BEARD = { stubble: 'facial_hair_06_stubble', mustache: 'facial_hair_02_handlebar_mustache', goatee: 'facial_hair_03_pointed_goatee',
-  beard: 'facial_hair_01_shaped_beard', full_beard: 'facial_hair_04_bushy_full_beard' };
 const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_eyeliner', bold: 'makeup_12_smoky_wing' };
 /**
  * The random pools as they were when the earlier avatar system's saves were first converted. An old shape
@@ -219,17 +217,19 @@ export function normalize(a, seed = 'x') {
 
   let st = a?.style ?? {};
   const style = {};
-  const oldCut = v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]];
+  const oldCut = current('hair', v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]]);
   const suited = stylesFor(inherited.hairTexture);
   // A fitted style that has been withdrawn is replaced by the closest one kept, not one picked at random.
   if (GONE_FITTED[st.hair]) st = { ...st, hair: GONE_FITTED[st.hair] };
+  // An older style that has been taken out of the game becomes the nearest one kept (WITHDRAWN.hair).
+  if (WITHDRAWN.hair[st.hair]) st = { ...st, hair: WITHDRAWN.hair[st.hair] };
   // A saved fitted style is kept even if the hair manifest could not be loaded this time (offline, say):
   // it is simply not drawn until it loads, rather than being replaced for good.
   const unloadedFitted = !FITTED_LOADED && !v2 && typeof st.hair === 'string' && /^[a-z0-9_]+$/.test(st.hair) && !PART_BY_ID[st.hair] && st.hair !== 'bald';
   style.hair = has('hair', st.hair) || unloadedFitted ? st.hair : oldCut ?? seeded(suited.length ? suited : HAIR_STYLES, seed, 'hair').id;
   style.hairDye = INDEX.anyHair[st.hairDye] ? st.hairDye : null;
   style.glasses = has('glasses', st.glasses) ? st.glasses : (v2 && OLD_GLASSES[st.glasses]) || null;
-  style.facialHair = has('facialHair', st.facialHair) ? st.facialHair : (v2 && OLD_BEARD[st.facialHair]) || null;
+  // Facial hair has been taken out of the game: a beard or mustache in an old save is dropped.
   style.makeup = has('makeup', st.makeup) ? st.makeup : (v2 && OLD_MAKEUP[st.makeup]) || null;
   style.lipColor = has('lipColor', st.lipColor) ? st.lipColor : null;
   style.jewelry = Array.isArray(st.jewelry) ? st.jewelry.filter((id) => has('jewelry', id)) : [];
@@ -280,13 +280,15 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
-    // What a child is drawn with while their own style is a grown-up one (minAge): a style for their gender and hair
-    // that anyone may wear, always the same one for the same person.
-    childHair: ((list) => (list.length ? seeded(list, seed, 'childhair').id : null))(
-      [...stylesFor(g.hairTexture), ...fittedFor(g.hairTexture)].filter((s) => !s.minAge && !s.elder && hairSuitsGender(s, sex))),
-    facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
+    // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
+    // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
+    kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? ((own) => seeded(own.length ? own : stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id)(stylesFor(g.hairTexture).filter((s) => hairSuitsGender(s, sex))) : null,
+    makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
-    babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
+    babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), kidClothes: seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
+    // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.
+    royalOutfitYoung: seeded(ROYAL.outfits[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'royal'),
+    monarchOutfitYoung: seeded(ROYAL.outfits.monarch[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'monarch'), nobleOutfit: ROYAL.outfits.noble[sex] ? seeded(ROYAL.outfits.noble[sex], seed, 'noble') : null,
     colors: {
       skin: skin.hex, hair: hairHex(a), dyed: !!st.hairDye, brow: mixHex(natural, '#1c1210', 0.22), eye: part('eyeColor', g.eyeColor).hex,
       ...colors,

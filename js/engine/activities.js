@@ -14,7 +14,7 @@ import { remember } from './conditions.js';
 import { readiness, today, addDays } from './documents.js';
 import { charge } from './chronicle.js';
 import { recordQuickTrip } from './travel.js';
-import { GYM_COST, NIGHT_OUT_COST, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
+import { CHARM_ACTIVITIES, GYM_COST, NIGHT_OUT_COST, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -37,6 +37,7 @@ export function activityOptions() {
   if (p.age >= 6) a.push({ id: 'library', label: 'Spend time at the library' });
   if (p.age >= 10) a.push({ id: 'meditate', label: 'Meditate' });
   if (p.age >= 18) a.push({ id: 'holiday', label: 'Take a vacation' });
+  for (const x of CHARM_ACTIVITIES) if (p.age >= x.minAge) a.push({ id: x.id, label: `${x.label} (${fmtMoney(localMoney(x.cost, c), c)})`, charm: true });
   if (may('drink').ok) a.push({ id: 'night', label: `Go out for the night (${fmtMoney(localMoney(NIGHT_OUT_COST, c), c)})` });
   return a.map((x) => ({ ...x, done: !!acts()[x.id] }));
 }
@@ -58,6 +59,29 @@ export function gym() {
   p.stats.mood = clamp(p.stats.mood + 2);
   p.hidden.discipline = clamp(p.hidden.discipline + 1);
   const text = 'Three times a week, all year. You are fitter, and your clothes sit better.';
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** A year of something done to be more likeable: classes, a new look, speaking in public. */
+export function charmActivity(id) {
+  const p = player();
+  const x = CHARM_ACTIVITIES.find((y) => y.id === id);
+  if (!x || p.age < x.minAge) return result(false, 'That is not something you can do yet.', 'neutral');
+  if (!free()) return result(false, 'Not from here.', 'neutral');
+  const cost = localMoney(x.cost, country());
+  if (p.finance.cash < cost) return result(false, 'You cannot afford it this year.', 'neutral');
+  if (!once(x.id)) return result(false, 'You have done that this year.', 'neutral');
+  p.finance.cash -= cost;
+  // The more charming someone is already, the less a class adds.
+  const gain = Math.max(p.stats.charm >= 90 ? 0 : 1, Math.round(rng.int(x.charm[0], x.charm[1]) * Math.min(1, (100 - p.stats.charm) / 40)));
+  p.stats.charm = clamp(p.stats.charm + gain);
+  if (x.mood) p.stats.mood = clamp(p.stats.mood + x.mood);
+  if (x.health) p.stats.health = clamp(p.stats.health + x.health);
+  if (x.willpower) p.hidden.willpower = clamp(p.hidden.willpower + x.willpower);
+  if (x.discipline) p.hidden.discipline = clamp(p.hidden.discipline + x.discipline);
+  if (x.acting && p.talents?.acting != null) p.talents.acting = clamp(p.talents.acting + x.acting);
+  const text = gain ? `${x.text} (Charm +${gain})` : `${x.text} You were already about as charming as people get.`;
   log(text, 'system', 'good');
   return result(true, text);
 }

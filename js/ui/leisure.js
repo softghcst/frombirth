@@ -1,5 +1,6 @@
 // Flows for health care, cosmetic surgery, holidays, social media and
 // emigrating. The Self and Pursuits tabs call into these.
+import { faceGenderOf } from '../avatar/render.js';
 import * as sys from '../engine/systems.js';
 import * as econ from '../engine/economy.js';
 import { player, country } from '../state.js';
@@ -9,6 +10,9 @@ import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
 import * as med from '../engine/medical.js';
 import * as fun from '../engine/activities.js';
+import { CHARM_ACTIVITIES } from '../data/activities.js';
+import * as clubs from '../engine/clubs.js';
+import { clubTitle } from '../data/clubs.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
 import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
@@ -57,7 +61,7 @@ export async function cosmeticSurgery(api) {
   let tweaks;
   if (proc === 'reshape') {
     const p = player();
-    const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'tweaks',
+    const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, scope: 'tweaks',
       confirm: 'Choose a surgeon', note: () => 'Eye spacing, eye size and height, nose and mouth size.' });
     if (!next) return undefined;
     tweaks = next.inherited.tweaks;
@@ -138,7 +142,7 @@ export async function moveCity(api) {
   if (block) return messageModal({ body: block });
   const now = towns.hereCity();
   const name = await pickModal({ title: 'Move to another city',
-    body: `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: homes ${now.housingWord}, pay ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`,
+    body: `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`,
     options: towns.moveOptions().map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
   if (!name) return undefined;
   const sure = await confirmModal({ title: `Move to ${name}?`, body: `It costs ${fmtMoney(towns.moveCost(), c)}. Property you own stays where it is.`, yes: 'Move' });
@@ -153,6 +157,7 @@ export const quick = (api) => ({
   night: () => report(api, fun.nightOut()),
   holiday: () => takeHoliday(api),
   post: () => report(api, net.post()),
+  ...Object.fromEntries(CHARM_ACTIVITIES.map((x) => [x.id, () => report(api, fun.charmActivity(x.id))])),
 });
 
 /** Money in other currencies: what is held, changing it, and the record of every exchange. */
@@ -202,4 +207,34 @@ export function openNews() {
     
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
   m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
+}
+
+/** Clubs and classes: find one to join, or look after a membership. */
+export async function openClubs(api, id = 'find') {
+  const c = country();
+  if (id !== 'find') {
+    const m = clubs.memberships().find((x) => x.id === id);
+    if (!m) return undefined;
+    const next = clubs.nextRank(id);
+    const dues = clubs.duesOf(m.club);
+    const friends = m.friends.length;
+    const pick = await pickModal({ title: clubTitle(m.club),
+      body: `${m.club.blurb} You joined in ${m.since}${m.years ? ` and have been a member for ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}. ${m.rankName === 'Member' ? 'You are a member.' : `You are ${m.rankName.toLowerCase()}.`} Dues: ${dues ? `${fmtMoney(dues, c)} a year` : 'nothing for you'}.${friends ? ` Friends made here: ${friends}.` : ''}`,
+      cancel: 'Back',
+      options: [...(next ? [{ value: 'stand', label: next.rank === 1 ? 'Run for the Committee' : `Run for ${next.name}`, sub: next.why || 'The members vote. Charm and loyalty count.', disabled: !!next.why }] : []),
+        { value: 'leave', label: 'Leave' }] });
+    if (pick === 'stand') return report(api, clubs.standFor(id));
+    if (pick === 'leave' && await confirmModal({ title: 'Leave?', body: m.rank ? 'Someone else will take your place on the committee.' : 'You can always join again.', yes: 'Leave', danger: true })) return report(api, clubs.leave(id));
+    return undefined;
+  }
+  const kinds = clubs.clubOptions();
+  const kind = await pickModal({ title: 'Clubs and Classes', body: 'Each year a club costs its dues, makes you a little better at it, and brings new people. Up to four at once.',
+    options: kinds.map((k) => ({ value: k.id, label: k.name, sub: `${k.clubs.filter((x) => !x.why).length} of ${k.clubs.length} open to you` })) });
+  if (!kind) return undefined;
+  const list = kinds.find((k) => k.id === kind).clubs;
+  const pick = await pickModal({ title: kinds.find((k) => k.id === kind).name, cancel: 'Back',
+    options: list.map((x) => ({ value: x.club.id, label: clubTitle(x.club), disabled: !!x.why,
+      sub: `${x.why || x.club.blurb} ${x.dues ? `· ${fmtMoney(x.dues, c)} a year` : x.why ? '' : '· free'}`.trim() })) });
+  if (!pick) return openClubs(api);
+  return report(api, clubs.join(pick));
 }

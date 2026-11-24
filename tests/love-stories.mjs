@@ -111,6 +111,23 @@ section('nothing is invented: no relationship, no story');
   check(!queued('love_more_than_friends').length, 'and a no is remembered: the question is not put again');
 }
 {
+  // Several close friends who could all ask: the question comes once in a while, never for two of them in one year.
+  life();
+  const friends = [person('friend', 29, 92, { commitment: 80 }), person('friend', 30, 92, { commitment: 80 }, 'male'), person('friend', 31, 92, { commitment: 80 })];
+  const years = [];
+  for (let i = 0; i < 24; i++) {
+    for (const f of friends) f.meters.relationship = 92;
+    stories.tickLoveStories(); mineOnly();
+    const asked = queued('love_more_than_friends');
+    check(asked.length <= 1, `"More than friends?" at most once a year, whoever asks (${asked.length} in one year)`);
+    if (asked.length) years.push(S().year);
+    // Kept as friends, with time to think: they might ask again one day.
+    while (queued('love_more_than_friends').length) play('love_more_than_friends', 'more_than_friends:time');
+    S().pendingEvents = []; S().year += 1;
+  }
+  check(years.length >= 1 && years.every((y, i) => i === 0 || y - years[i - 1] >= 6), `and years apart (${years.join(', ')})`);
+}
+{
   life();
   const friend = person('friend', 29, 90, { casual: 100, commitment: 80 });
   begin(friend, 'fwb');
@@ -304,5 +321,31 @@ if (problems.length) {
   for (const p of [...new Set(problems)]) console.log(' ✗', p);
   process.exit(1);
 }
+// Being intimate: as often as the two of you like, with no once-a-year limit.
+{
+  life(30, 'female');
+  const n = person('spouse', 32, 80, {}, 'male');
+  const nights = [1, 2, 3, 4].map(() => love.hookUp(n.id));
+  check(nights.every((r) => r.ok), `a spouse can be intimate more than once a year (${nights.map((r) => r.text).join(' | ')})`);
+  check(n.flags.times?.hookUp?.n === 4, 'each night is counted');
+  check(n.meters.relationship <= 100, 'and closeness stays in bounds');
+}
+section('being intimate is not limited to once a year');
+
+// Spending time with everyone at once: each person counts as seen this year, and nobody twice.
+{
+  const rel = await import('../js/engine/relationships.js');
+  life(30);
+  const a = person('friend', 30, 40); const b = person('friend', 28, 40);
+  const owed = rel.timeStillOwed();
+  check(owed.includes(a) && owed.includes(b), 'friends not yet seen this year are owed time');
+  const r = rel.spendTimeWithAll();
+  check(r.ok && a.meters.relationship > 40 && b.meters.relationship > 40, `spending time with everyone brings each of them closer (${r.text})`);
+  check(rel.timeStillOwed().length === 0 && !rel.spendTimeWithAll().ok, 'and then nobody is owed time until next year');
+  check(!rel.interact(a.id, 'spendTime').ok, 'it counts as this year\'s time with each person');
+  check(P().stats.mood <= 100, 'mood stays in bounds');
+}
+section('spend time with everyone');
+
 for (const m of ok) console.log(' ✓', m);
 console.log('Every story told is a true one.');

@@ -262,6 +262,45 @@ const size = JSON.stringify(store.state).length;
 check(size < 1_200_000, `a long acting life stays a reasonable size (${Math.round(size / 1024)} KB)`);
 section(`a 25-year acting career runs cleanly: ${ent.workOf(p).credits.length} credits, ${fame.scope(p).name.toLowerCase()}, ${Math.round(size / 1024)} KB`);
 
+// ---------- The casting board: parts that are open to you, parts that are not, and what each is worth ----------
+{
+  for (const [age, who] of [[9, 'a child'], [22, 'a newcomer'], [47, 'a newcomer in middle age'], [71, 'an older newcomer']]) {
+    const p = life('us', age);
+    p.flags.guardianWork = true; // a child's parents said yes (they may not: that is checked above)
+    const board = ent.castingBoard(p);
+    const open = board.filter((x) => !x.why);
+    check(open.length >= 3, `${who} (${age}) with no credits has parts to go for (${open.length} of ${board.length})`);
+    check(board.some((x) => x.why), `${who}: some parts are not open, and say why`);
+    check(open.every((x) => p.age >= x.role.ages[0] - 2 && p.age <= x.role.ages[1] + 4), `${who}: the open parts fit their age`);
+    const again = ent.castingBoard(p).filter((x) => !x.why).map((x) => `${x.production.id}:${x.role.idx}`).join();
+    check(again === open.map((x) => `${x.production.id}:${x.role.idx}`).join(), `${who}: the board is the same when looked at again`);
+  }
+  const prods = Object.values(ent.ent().productions);
+  const qs = prods.map((x) => ent.scriptOf(x));
+  check(qs.every((q) => q >= 15 && q <= 97) && new Set(prods.map((x) => ent.scriptWord(x))).size >= 3, 'scripts run from weak to great');
+  check(prods.every((x) => /director$/.test(ent.directorWord(x))), 'every production has a director with a standing');
+  const x = prods[0]; const q = ent.scriptOf(x); delete x.script;
+  check(ent.scriptOf(x) === q, 'a production keeps its script quality (an old save gets the same one)');
+  section('the casting board: parts that fit, parts that do not and why, a script and a director to weigh');
+}
+
+// ---------- Born famous: a royal baby is known everywhere but uses none of it ----------
+{
+  const career = await import('../js/engine/career.js');
+  const p = life('uk', 0);
+  p.hidden.fame = 71;
+  const avail = () => career.fameOptions().filter((o) => o.available).map((o) => o.id).sort().join();
+  check(!career.canUseFame() && avail() === '' && career.fameOptions().every((o) => /From age/.test(o.reason)), 'a famous baby cannot use their fame');
+  check(!career.doFameAction('book').ok && !p.milestones.some((m) => /book/i.test(m.text)), 'nor write a book');
+  p.age = 5;
+  check(career.canUseFame() && avail() === 'commercial,photoshoot', `at five: a photoshoot or a commercial (${avail()})`);
+  p.age = 10;
+  check(avail() === 'commercial,photoshoot,talk_show', `at ten: a talk show too (${avail()})`);
+  p.age = 12;
+  check(avail() === 'book,commercial,photoshoot,talk_show', `at twelve: a book too (${avail()})`);
+  section('fame is used only by those old enough: nothing for a baby, a book from twelve');
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('The show goes on.');

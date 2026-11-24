@@ -9,13 +9,14 @@ import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
 import { ELDER_BROWS, ELDER_HAIR_AGE } from './curation.js';
 import { elderHair } from '../CharacterAvatar.js';
+import { kidsMayWear } from './fittedHair.js';
 import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
 // Zoomed views for option thumbnails, in the 512 frame.
 const ZOOM = { eyes: '146 214 220 160', brows: '146 196 220 140', nose: '196 290 120 110', lips: '186 336 140 100', glasses: '126 214 260 170',
-  makeup: '126 206 260 230', marks: '126 206 260 230', facialHair: '116 250 280 260', jewelry: '70 220 372 330', outfit: '20 360 472 220', hat: '40 -10 432 380' };
+  makeup: '126 206 260 230', marks: '126 206 260 230', jewelry: '70 220 372 330', outfit: '20 360 472 220', hat: '40 -10 432 380' };
 
 // kind: 'thumb' draws a small portrait for each option; 'swatch' a color dot; 'chip' a word.
 // half: which half of the appearance the key lives in. none: the control has a "none" option.
@@ -40,7 +41,6 @@ const CONTROLS = {
   glasses: { label: 'Glasses', half: 'style', kind: 'thumb', none: 'None' },
   jewelry: { label: 'Jewelry', half: 'style', kind: 'thumb', multi: true, minAge: 8 },
   makeup: { label: 'Make-up', half: 'style', kind: 'thumb', none: 'None', minAge: 13 },
-  facialHair: { label: 'Facial hair', half: 'style', kind: 'thumb', none: 'None', minAge: 16 },
 };
 
 const TABS = [
@@ -49,7 +49,7 @@ const TABS = [
   { id: 'features', name: 'Nose and mouth', keys: ['nose', 'lips', 'lipColor'], tweaks: ['noseSize', 'lipSize'] },
   { id: 'hair', name: 'Hair', keys: ['hair', 'hairDye', 'hairColor', 'hairTexture'] },
   { id: 'style', name: 'Clothes', keys: ['outfit', 'outfitColor'] },
-  { id: 'extras', name: 'Extras', keys: ['glasses', 'jewelry', 'makeup', 'facialHair'] },
+  { id: 'extras', name: 'Extras', keys: ['glasses', 'jewelry', 'makeup'] },
 ];
 const HAIR_FILTERS = [['suits', 'Suits my hair'], ['short', 'Short'], ['medium', 'Medium'], ['long', 'Long'], ['updo', 'Up'], ['all', 'All']];
 const PREVIEWS = [['now', 'Now'], [1, 'Baby'], [9, 'Child'], [72, 'At 72']];
@@ -78,7 +78,7 @@ export function mountAppearanceEditor(el, o = {}) {
   if (scope === 'style') tabs.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
   let tab = tabs[0].id;
 
-  const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
+  const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, face: o.face ?? o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
   const withValue = (key, value) => {
     const next = cloneAppearance(a);
     const c = CONTROLS[key];
@@ -95,7 +95,9 @@ export function mountAppearanceEditor(el, o = {}) {
     if (key === 'hair') {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
-      list = list.filter((h) => age >= (h.minAge ?? 0));  // grown-up styles are not offered to children
+      // A child is not offered the grown-ups' styles.
+      if (age < 13) list = list.filter((h) => kidsMayWear(h.id));
+      list = list.filter((h) => age >= (h.minAge ?? 0));
       list = list.filter((h) => hairSuitsGender(h, o.gender));  // men's styles to men, women's to women, unisex to both
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.

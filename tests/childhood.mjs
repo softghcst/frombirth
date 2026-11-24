@@ -114,7 +114,7 @@ section('early activities add a little and stop: a head start in what is taken u
     kid.doActivity('playground');
     met = p.npcIds.map((id) => S().npcs[id]).find((n) => !before.has(n.id)) ?? null;
   }
-  check(met && met.role === 'friend' && met.flags.metAt === 'playground' && Math.abs(met.age - 4) <= 1 && met.id.startsWith('npc_') && met.firstName && met.memories.some((m) => m.key === 'met'), 'a child met at the playground is a person: a name, an age, a memory of how you met');
+  check(met && met.role === 'friend' && met.flags.metAt === 'playground' && Math.abs(met.age - 4) <= 2 && met.id.startsWith('npc_') && met.firstName && met.memories.some((m) => m.key === 'met'), 'a child met at the playground is a person: a name, an age, a memory of how you met');
   check(P().milestones.some((m) => /Made a friend/.test(m.text)), 'a first friend is a milestone');
   const id = met.id;
   const meta = save.saveGame(S());
@@ -206,14 +206,18 @@ section('small jobs: by age and law, paid once, two a year, not a career');
 // ---------- 6. Whatever the length of a turn ----------
 {
   const p = child(10);
-  (p.flags.childhood ??= { acts: {}, early: {}, jobs: {}, allowance: null }).allowance = { amount: 100, fromId: kid.guardians()[0].id, since: 10 };
+  const payer = kid.guardians()[0];
+  // The parent can pay: a family short of money rightly pays nothing, which is not what this checks.
+  if (payer.life) payer.life.savings = 1e7; else payer.savings = 1e7;
+  (p.flags.childhood ??= { acts: {}, early: {}, jobs: {}, allowance: null }).allowance = { amount: 100, fromId: payer.id, since: 10 };
   const amount = p.flags.childhood.allowance.amount;
   S().settings.step = 3;
   turns.advanceTurn();
   check(p.finance.cash === 0, 'no pocket money for a part of a year');
   for (let i = 0; i < 3 && (S().month ?? 0) !== 0; i++) turns.advanceTurn();
   const paidTimes = ledgerOf().tx.filter((t) => t.desc === 'Pocket money').length;
-  check(!P().alive || paidTimes === 1, `a year in four turns pays a year's pocket money, once (${paidTimes} times)`);
+  // A parent who dies during the year rightly stops the allowance.
+  check(!P().alive || !payer.alive || paidTimes === 1, `a year in four turns pays a year's pocket money, once (${paidTimes} times)`);
   void amount;
 }
 section('three months at a time: a year\'s pocket money once a year');

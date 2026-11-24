@@ -1,10 +1,10 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
+import { TALENTS as TALENT_LIST } from '../../data/talents.js';
 import { getEra } from '../../engine/history.js';
 import { technologies } from '../../engine/digital/tech.js';
 import { cityLine } from '../../engine/cities.js';
 import { esc } from '../../util.js';
-import { inheritanceShort } from '../../engine/inheritance.js';
-import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../data/countries.js';
+import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg } from '../../avatar/render.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
@@ -12,25 +12,33 @@ import { openWorld } from '../world.js';
 import { browse } from '../../engine/world.js';
 import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
-import { summary } from '../../engine/living.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
-const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
+const TALENTS = Object.fromEntries(TALENT_LIST.map((t) => [t.id, t.name]));
 
-/** A row of options where the first one means "let the game decide". */
+/** A dropdown whose first option means "let the game decide". */
+const optionsHtml = (autoLabel, options) => `<option value="">${esc(autoLabel)}</option>${options.map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}`;
 function picker(key, label, autoLabel, options) {
   return `
-    <div class="field"><label>${esc(label)}</label>
-      <div class="picker" data-pick="${key}" role="radiogroup" aria-label="${esc(label)}">
-        <button type="button" class="pick on" data-value="" role="radio" aria-checked="true">${esc(autoLabel)}</button>
-        ${options.map((o) => `
-          <button type="button" class="pick ${o.color ? 'swatch' : ''}" data-value="${esc(o.value)}" role="radio"
-            aria-checked="false" aria-label="${esc(o.label)}" ${o.color ? `style="background:${o.color}"` : ''}>
-            ${o.color ? '' : esc(o.label)}</button>`).join('')}
-      </div>
+    <div class="field"><label for="f-${key}">${esc(label)}</label>
+      <select id="f-${key}" data-pick="${key}">${optionsHtml(autoLabel, options)}</select>
     </div>`;
+}
+
+/** The births a monarchy offers, with the titles they come with there, for the sex chosen (or both). */
+function rankOptions(countryId, gender) {
+  const crown = MONARCHIES[countryId];
+  if (!crown) return [];
+  const row = (rank) => crown.ranks.find((r) => r[0] === rank);
+  const title = (r) => (!r ? '' : gender === 'male' ? r[1] : gender === 'female' ? r[2] : r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}`);
+  const nobles = crown.ranks.filter((r) => !['monarch', 'heir', 'royal', 'knight'].includes(r[0]));
+  const out = [{ value: 'commoner', label: 'Commoner' }];
+  if (nobles.length) out.push({ value: 'noble', label: `Nobility: a future ${nobles.slice(0, 2).map(title).join(', ')}${nobles.length > 2 ? '…' : ''}` });
+  out.push({ value: 'royal', label: `Royal family: ${title(row('royal')) || 'a royal'}` });
+  if (!(crown.law?.order === 'maleOnly' && gender === 'female')) out.push({ value: 'heir', label: `Heir to the throne: ${title(row('heir')) || 'the heir'}` });
+  return out;
 }
 
 /** A small die: the button beside each name box that picks a name at random. */
@@ -60,7 +68,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '', health: '' };
+  const choice = { talent: '', background: '', sex: '', trans: '', orientation: '', birthRank: '', health: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -68,7 +76,7 @@ export function renderCreator(app, hooks) {
     <main class="title-screen creator">
       <div class="creator-head">
         <div class="avatar preview" data-preview></div>
-        <div><h1>Design a life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
+        <div><h1>Design a Life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
       </div>
       <button type="button" class="btn randomize-all" data-randomize>${DIE}<span>Randomize everything</span></button>
       <form novalidate>
@@ -81,15 +89,20 @@ export function renderCreator(app, hooks) {
               <div class="with-dice"><input id="f-last" maxlength="24" autocomplete="off" placeholder="Random">
                 <button type="button" class="dice-btn" data-dice="last" aria-label="Pick a random last name">${DIE}</button></div></div>
           </div>
-          ${picker('gender', 'Gender', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
-          ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No' }))}
+          ${picker('sex', 'Sex', 'Random', named({ female: 'Female', male: 'Male' }))}
+          ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No', nonbinary: 'Non-binary' }))}
           ${picker('orientation', 'Sexuality', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>
           <div class="field"><label for="f-country">Country</label>
             <select id="f-country"><option value="">Random</option>
+              <optgroup label="👑 Monarchies: you can be born royal">${Object.keys(MONARCHIES).filter((id) => COUNTRIES[id]).map((id) => COUNTRIES[id]).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>
               ${browse().map((g) => `<optgroup label="${esc(g.group)}">${[...g.places].sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}
             </select></div>
+          <div data-rank-field hidden>
+            ${picker('birthRank', 'Born into', 'Random', [])}
+            <p class="muted" data-rank-note></p>
+          </div>
           <div class="field"><label for="f-city">City</label>
             <select id="f-city"><option value="">Random</option></select><p class="muted" data-city-note style="margin-top:4px"></p></div>
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
@@ -110,10 +123,6 @@ export function renderCreator(app, hooks) {
           <div class="field"><label for="f-year">Year of birth</label>
             <input id="f-year" type="number" inputmode="numeric" min="1800" max="${new Date().getFullYear()}" placeholder="${new Date().getFullYear()} (now)">
             <div class="era-note" data-era-note aria-live="polite"></div></div>
-          <div data-rank-field hidden>
-            ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
-            <p class="muted" data-rank-note></p>
-          </div>
         </div>
         <div class="btn-row">
           <button type="button" class="btn" data-cancel>Back</button>
@@ -124,8 +133,11 @@ export function renderCreator(app, hooks) {
 
   const q = (sel) => app.querySelector(sel);
 
+  /** Who the person grows up to be, as far as the choices say: the other sex if transgender. */
+  const grownGender = () => (choice.sex && choice.trans === 'yes' ? (choice.sex === 'male' ? 'female' : 'male') : choice.sex || undefined);
+
   function preview() {
-    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: choice.gender || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
+    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: grownGender() || 'female', face: choice.sex || grownGender() || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
     q('[data-preview]').style.opacity = look ? '1' : '0.45';
     q('[data-look-note]').textContent = look ? 'This is the face you will grow into. Your family will take after you.' : 'Left alone, you will take after your parents.';
     q('[data-clear-look]').hidden = !look;
@@ -133,23 +145,34 @@ export function renderCreator(app, hooks) {
   }
 
   q('[data-design-look]').addEventListener('click', async () => {
-    const result = await openAppearanceEditor({ title: 'Your look', appearance: look ?? sample, age: 24, gender: choice.gender || undefined, seed: 'creator' });
+    const result = await openAppearanceEditor({ title: 'Your look', appearance: look ?? sample, age: 24, gender: grownGender(), seed: 'creator' });
     if (result) { look = result; preview(); }
   });
   q('[data-clear-look]').addEventListener('click', () => { look = null; preview(); });
 
-  app.querySelectorAll('[data-pick]').forEach((group) => {
-    group.addEventListener('click', (e) => {
-      const btn = e.target.closest('.pick');
-      if (!btn) return;
-      choice[group.dataset.pick] = btn.dataset.value;
-      group.querySelectorAll('.pick').forEach((b) => {
-        b.classList.toggle('on', b === btn);
-        b.setAttribute('aria-checked', String(b === btn));
-      });
+  app.querySelectorAll('select[data-pick]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      choice[sel.dataset.pick] = sel.value;
+      if (sel.dataset.pick === 'sex' || sel.dataset.pick === 'trans') ranks();
       preview();
     });
   });
+
+  /** The "Born into" dropdown, for the country chosen: shown only for a monarchy, with its own titles. */
+  function ranks() {
+    const c = COUNTRIES[q('#f-country').value];
+    const crown = c ? MONARCHIES[c.id] : null;
+    q('[data-rank-field]').hidden = !crown;
+    const sel = q('#f-birthRank');
+    const opts = crown ? rankOptions(c.id, grownGender()) : [];
+    const keep = opts.some((o) => o.value === choice.birthRank) ? choice.birthRank : '';
+    sel.innerHTML = optionsHtml('Random (a royal birth is very rare)', opts);
+    sel.value = keep;
+    choice.birthRank = keep;
+    if (crown) {
+      q('[data-rank-note]').textContent = `${c.name} is a monarchy.${crown.law?.order === 'maleOnly' ? ' Only men inherit the throne.' : ''} Nobody is born a king or queen: the heir is crowned when the monarch dies.`;
+    }
+  }
 
   q('[data-browse-world]').addEventListener('click', () => openWorld({ start: q('#f-country').value || undefined, choose: 'Be born here',
     onChoose: (id) => { q('#f-country').value = id; q('#f-country').dispatchEvent(new Event('change')); } }));
@@ -159,24 +182,17 @@ export function renderCreator(app, hooks) {
     const c = COUNTRIES[e.target.value];
     q('#f-city').innerHTML = '<option value="">Random</option>'
       + (c?.cities ?? []).map((city) => `<option>${esc(city)}</option>`).join('');
-    const crown = c ? MONARCHIES[c.id] : null;
-    const nobles = !!crown && crown.ranks.some((r) => !['monarch', 'heir', 'royal', 'knight'].includes(r[0]));
-    q('[data-rank-field]').hidden = !crown;
-    q('[data-rank-field] [data-value="noble"]').hidden = !nobles;
-    if (!crown || (!nobles && choice.birthRank === 'noble')) q('[data-rank-field] [data-value=""]').click();
-    if (crown) {
-      q('[data-rank-note]').textContent = `${c.name} is a monarchy: ${crown.ranks.map((r) => (r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}`)).filter((t, i, a) => a.indexOf(t) === i).join(', ')}.${crown.maleOnly ? ' Only men inherit the throne.' : ''} Left on Random, a royal birth is very rare.`;
-    }
+    ranks();
     q('[data-country-info]').textContent = c
-      ? `${c.place?.status ? `${c.place.status} ` : ''}Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, inheritance tax ${inheritanceShort(c)}, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
+      ? `${c.currency.code} (${c.currency.symbol}) · income tax ${Math.round(c.incomeTax * 100)}% · ${c.freeHealthcare ? 'public' : 'private'} health care`
       : 'Each country has its own currency and taxes.';
   });
 
   // The dice: a name from the chosen country (or any country, if that is left on Random),
-  // a first name to suit the chosen gender. Each box rolls on its own.
+  // a first name to suit the sex chosen (the name a baby is given). Each box rolls on its own.
   function rollName(which) {
     const c = COUNTRIES[q('#f-country').value] ?? pickFrom(COUNTRY_LIST);
-    const gender = choice.gender === 'male' || choice.gender === 'female' ? choice.gender : pickFrom(['male', 'female']);
+    const gender = choice.sex || pickFrom(['male', 'female']);
     const box = q(which === 'first' ? '#f-first' : '#f-last');
     let name;
     for (let tries = 0; tries < 6 && (!name || name === box.value); tries++) {
@@ -189,7 +205,7 @@ export function renderCreator(app, hooks) {
   app.querySelectorAll('[data-dice], [data-randomize]').forEach((btn) => btn.addEventListener('animationend', () => btn.classList.remove('rolling')));
 
   /** Sets a row of options as if the player had tapped one. */
-  const setPick = (key, value) => q(`[data-pick="${key}"] [data-value="${value}"]`)?.click();
+  const setPick = (key, value) => { const sel = q(`select[data-pick="${key}"]`); if (!sel) return; sel.value = value; sel.dispatchEvent(new Event('change')); };
 
   // Everything at once: a whole random person, every choice filled in and
   // showing, so the player can keep what they like and change the rest.
@@ -200,12 +216,12 @@ export function renderCreator(app, hooks) {
     q('#f-country').dispatchEvent(new Event('change'));
     q('#f-city').value = pickFrom(c.cities);
     cityNote();
-    setPick('gender', weightedKey({ female: 49, male: 49, nonbinary: 2 }));
-    setPick('trans', Math.random() < 0.03 ? 'yes' : 'no');
+    setPick('sex', Math.random() < 0.5 ? 'female' : 'male');
+    setPick('trans', weightedKey({ no: 95, yes: 3, nonbinary: 2 }));
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
     rollName('first');
     rollName('last');
-    look = randomAppearance(undefined, choice.gender === 'male' || choice.gender === 'female' ? choice.gender : undefined);
+    look = randomAppearance(undefined, choice.sex || grownGender()); // the face they are born with: a trans boy's changes with hormones, later
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
     const crown = MONARCHIES[c.id];
@@ -223,8 +239,9 @@ export function renderCreator(app, hooks) {
     e.preventDefault();
     hooks.onCreate({
       firstName: q('#f-first').value, lastName: q('#f-last').value,
-      gender: choice.gender || undefined,
-      trans: choice.trans === '' ? undefined : choice.trans === 'yes',
+      sex: choice.sex || undefined,
+      gender: choice.trans === 'nonbinary' ? 'nonbinary' : undefined,
+      trans: choice.trans === '' ? undefined : choice.trans !== 'no',
       orientation: choice.orientation || undefined,
       countryId: q('#f-country').value || undefined,
       city: q('#f-city').value || undefined,

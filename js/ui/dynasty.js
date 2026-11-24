@@ -18,7 +18,7 @@ const LAW = {
 };
 const list = (words) => (words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
 
-const face = (x, year, d) => avatarSvg({ age: Math.max(0, dyn.ageOf(x, year)), gender: x.gender, appearance: x.look, seed: x.id, mood: 62, royal: d ? royalDress(dyn.rankOf(d, x)) : null });
+const face = (x, year, d) => avatarSvg({ age: Math.max(0, dyn.ageOf(x, year)), gender: x.gender, appearance: x.look, seed: x.id, mood: 62, royal: d ? royalDress(dyn.rankOf(d, x), false, d.countryId) : null });
 const years = (x) => `${x.born}–${x.died ?? ''}`;
 
 /** What someone is to the player: "your grandmother", "your cousin", or '' for no relation worth naming. */

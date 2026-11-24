@@ -5,6 +5,19 @@ const kidAged = (lo, hi) => [need('cast.kid.age', '>=', lo), need('cast.kid.age'
 
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
+  // Queued when someone close dies (engine/relationships.js): the funeral, and whether you go.
+  {
+    id: 'close_death', category: 'loss', ageRange: [6, 120], queuedOnly: true, priority: true, notice: { who: 'goneId', emoji: '🕯️', title: 'In memory' },
+    text: 'Your {role}, {deceased}, has died at {age}. {cause}',
+    choices: [
+      { label: 'Go to the funeral', outcomes: [any('You stand with the family and say goodbye. It is hard, and you are glad you were there.', 'neutral', st('mood', 3), hid('karma', 2), { type: 'funeral', value: 'attend' })] },
+      { label: 'Speak at the funeral', check: chk(0.5, { 'stats.charm': 0.5, 'hidden.willpower': 0.3 }), outcomes: [
+        ok('You tell a story about {first} that has the whole room smiling through it. People thank you afterward.', st('mood', 5), st('charm', 1), hid('karma', 3), { type: 'funeral', value: 'speak' }),
+        bad('Halfway through, your voice goes. Someone squeezes your hand, and you finish it anyway.', st('mood', 1), hid('karma', 2), { type: 'funeral', value: 'speak' })] },
+      { label: 'Stay away', outcomes: [any('You do not go. People notice, and so do you, for a long time.', 'bad', st('mood', -4), hid('karma', -3), { type: 'funeral', value: 'skip' })] },
+    ],
+  },
+
   {
     id: 'sleepless', category: 'parenthood', ageRange: [18, 60], cooldown: 3, weight: 3,
     cast: { kid: 'child' }, castRequires: kidAged(0, 1),
@@ -40,7 +53,7 @@ export default [
   },
   {
     id: 'kid_in_trouble', category: 'parenthood', ageRange: [25, 70], cooldown: 5, cast: { kid: 'child' }, castRequires: kidAged(7, 15),
-    text: 'The school rings: {kid} has hit another child, and says the other child started it.',
+    text: 'The school calls: {kid} has hit another child, and says the other child started it.',
     choices: [
       { label: 'Hear {kid}\'s side before anything else', outcomes: [any('It takes an hour to come out: the other child has been at them for weeks. You go back to the school together.', 'good', rel('kid', 10), hid('karma', 3),
         mem('kid', 'listened', 'When the school rang, you heard their side first.'))] },
@@ -62,7 +75,7 @@ export default [
   },
   {
     id: 'kid_asks_deposit', category: 'parenthood', ageRange: [40, 95], cooldown: 8, cast: { kid: 'child' }, castRequires: kidAged(20, 40),
-    text: '{kid} rings, working up to something: they have found a flat and are {$8000} short of the deposit.',
+    text: '{kid} calls, working up to something: they have found an apartment and are {$8000} short of the deposit.',
     choices: [
       { label: 'Give it to them', requires: [need('cashBase', '>=', 8000)], outcomes: [any('"Do not pay it back. Pay it forward." {kid} does not know what to say.', 'good', cash(-8000), rel('kid', 15), hid('karma', 6), count('donated', 8000),
         mem('kid', 'deposit', 'You gave them the deposit for their first flat.'))] },

@@ -403,6 +403,9 @@ button.tree-row:active { background: var(--accent-soft); }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
 .world-row { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+/* A news story is read, not scanned: the whole headline, over as many lines as it needs. */
+.news-row { align-items: flex-start; }
+.news-row .main strong { white-space: normal; overflow: visible; text-overflow: clip; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 .world-flag { font-size: 1.7rem; line-height: 1; width: 40px; text-align: center; flex: none; }
 .world-flag.big { font-size: 2.6rem; width: 56px; }
 .world-head { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
@@ -511,6 +514,8 @@ button.dyn-event { cursor: pointer; }
 .hl-card { margin-bottom: 12px; }
 .hl-card .btn-row { flex-wrap: wrap; }
 .hl-small { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; }
+.btn.hl-small { gap: 6px; padding: 6px 10px; }
+.btn.hl-small .ico { width: 16px; height: 16px; }
 .hl-pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; background: var(--line); color: var(--ink); }
 .hl-pill.good { background: var(--accent-soft); color: var(--good); }
 .hl-meter { display: grid; grid-template-columns: 6.5em 1fr 5.5em; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.9rem; }
@@ -681,6 +686,7 @@ div.row { cursor: default; }
 .gl-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gl-radio { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.93rem; }
 .gl-radio input { width: 20px; height: 20px; flex: none; }
+.gl-answer { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, rgba(127,127,127,.1)); font-weight: 600; }
 .gl-legs p { font-size: 0.85rem; margin: 4px 0; }
 .gl-entry { padding: 8px 0; border-top: 1px dashed var(--line); }
 .gl-entry small { display: block; color: var(--bad); font-size: 0.82rem; }
@@ -1137,7 +1143,9 @@ details.more[open] summary::after { transform: rotate(90deg); }
 
 /* ---------- Every tab a list; each section its own screen (js/ui/sections.js) ---------- */
 .sec-body:not(.shown) { display: none !important; }
-.panel-body.sec-open > :not(.sec-body.shown) { display: none !important; }
+.panel-body.sec-open > :not(.sec-body.shown), .sec-body.sec-open > :not(.sec-body.shown) { display: none !important; }
+/* A section inside a section fills the same screen, with no frame of its own. */
+.sec-body .sec-body.shown { background: none; border: 0; padding: 0; margin: 0; }
 .panel-body .sec-body.shown { border: 0; padding-top: 4px; }
 .sec-body.shown > h3, .sec-body.shown > .info-head { display: none; }
 .sec-body.shown .nav-group { margin: 10px -16px 0; border-bottom: 0; }
@@ -1145,3 +1153,95 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .sec-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nr-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--peach-strong); }
 .panel-body > .nav-group + .nav-group { margin-top: 14px; }
+/* Rows show their name and one line saying what is behind them (data/menus.js), like a phone's settings list. */
+.nav-row .nr-main small { display: block; }
+.nav-row { min-height: 56px; }
+
+/* The result of the scene before, at the top of the next scene's card (ui/shell.js). */
+.prev-outcome { border-left: 3px solid var(--line); padding: 4px 0 6px 10px; margin-bottom: 12px; color: var(--muted); font-size: 0.9rem; }
+.prev-outcome p { margin: 0 0 4px; }
+.prev-outcome.tone-good { border-color: var(--good); }
+.prev-outcome.tone-bad { border-color: var(--bad); }
+.prev-outcome .chips { margin-top: 2px; }
+
+/* A death notice: one card for each person. */
+.death-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.death-card:first-of-type { border-top: 0; }
+.death-card > :first-child { flex: 0 0 64px; width: 64px; height: 64px; overflow: hidden; filter: grayscale(0.6); }
+.death-card > :first-child svg { width: 100%; height: 100%; }
+.death-card .main { flex: 1; }
+.death-card .main { min-width: 0; }
+.death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
+.death-card small { display: block; color: var(--muted); }
+.death-card .body { margin: 6px 0 0; }
+
+/* A profile's actions, folded by group: the group's name, how many it holds, and the first two groups open. */
+details.action-group { margin-top: 2px; border-top: 1px solid var(--line-soft); }
+details.action-group summary small { color: var(--muted); font-weight: 600; }
+details.action-group .btn-stack { margin: 2px 0 10px; }
+details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 4px; }
+
+/* University planner: the comparison, stacked so it reads on a phone, and the fit chips. */
+.cmp-block { margin-bottom: 6px; }
+.cmp-block .kv { align-items: flex-start; gap: 12px; }
+.cmp-block .kv span:last-child { text-align: right; max-width: 62%; }
+.cmp-block .cmp-best span:last-child { font-weight: 800; color: var(--good, var(--accent-text)); }
+.chip.good { background: color-mix(in srgb, var(--good) 18%, var(--paper)); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); }
+
+/* Menu rows with a picture: just the emoji, no tile behind it, and a line under the name saying what it is for. */
+.nr-icon.emoji { font-size: 1.5rem; line-height: 1; background: none; border: 0; }
+.nav-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Not open yet: greyed, untappable, with the reason in place of the line and a small lock where the chevron goes. */
+.nav-row.locked, .nav-row:disabled { cursor: default; }
+.nav-row.locked .nr-label, .nav-row.locked .nr-main small { color: var(--muted); }
+.nav-row.locked .nr-icon { filter: grayscale(1); opacity: 0.55; }
+.nav-row.locked .nr-lock { flex: none; font-size: 0.85rem; opacity: 0.55; }
+
+/* My Passport (ui/passportBook.js): a little book, the photo page then pages of stamps. */
+.pp-book { border-radius: 14px; background: linear-gradient(135deg, #fbf6ea, #f3ead6); color: #2b2418; border: 1px solid #d9ccae; min-height: 330px; padding: 14px; box-shadow: inset 0 0 0 6px rgba(255,255,255,.35); touch-action: pan-y; }
+.pp-photo { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: start; }
+.pp-pic { width: 110px; height: 136px; overflow: hidden; border-radius: 6px; background: #e8dcc0; border: 1px solid #cdbd99; }
+.pp-pic svg { width: 150px; height: 150px; margin: -6px 0 0 -20px; }
+.pp-photo dl { margin: 0; display: grid; gap: 2px; font-size: 0.82rem; }
+.pp-photo dt { font-size: 0.62rem; letter-spacing: .08em; color: #7a6b4c; text-transform: uppercase; }
+.pp-photo dd { margin: 0 0 4px; font-weight: 700; letter-spacing: .02em; }
+.pp-mrz { grid-column: 1 / -1; font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem; letter-spacing: .12em; color: #5a4e36; margin: 8px 0 0; overflow: hidden; white-space: nowrap; }
+.pp-pagehead { font-size: 0.66rem; letter-spacing: .18em; color: #8a7a58; text-align: center; margin-bottom: 8px; }
+.pp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 10px; justify-items: center; }
+.pp-stamp { color: var(--ink); border: 3px double var(--ink); width: 128px; min-height: 112px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1px; opacity: .88; mix-blend-mode: multiply; }
+.pp-round { border-radius: 50%; width: 120px; min-height: 120px; }
+.pp-oval { border-radius: 50% / 40%; }
+.pp-rect { border-radius: 6px; }
+.pp-stamp .pp-flag { font-size: 1.3rem; line-height: 1; }
+.pp-stamp strong { font-size: 0.7rem; letter-spacing: .06em; line-height: 1.1; }
+.pp-stamp small { font-size: 0.6rem; letter-spacing: .06em; }
+.pp-stamp em { font-style: normal; font-size: 0.56rem; letter-spacing: .14em; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 0 4px; margin-top: 2px; }
+.pp-stamp b { font-size: 0.66rem; letter-spacing: .05em; }
+.pp-empty { text-align: center; color: #8a7a58; margin-top: 110px; }
+.pp-count { text-align: center; margin: 8px 0 4px; }
+.pp-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.pp-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.pp-dots span.on { background: var(--accent); }
+
+/* A sport's page (ui/sports.js sportDesk), practice and the league. */
+.sd-head, .sd-team { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; }
+.sd-glyph { font-size: 2.2rem; width: 48px; text-align: center; flex: none; }
+.sd-main { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.sd-strength { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+.sd-skill { display: grid; grid-template-columns: 110px 1fr 32px; gap: 10px; align-items: center; margin: 6px 0; }
+.sd-skill small { text-align: right; }
+.sd-lrow.mine { outline: 2px solid var(--accent); border-radius: 14px; }
+.sd-lrow .main { display: grid; gap: 3px; }
+.sd-head .mini, .sd-team .mini, .sd-skill .mini, .sd-lrow .mini { width: 100% !important; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; margin: 0; }
+.sd-head .mini .fill, .sd-team .mini .fill, .sd-skill .mini .fill, .sd-lrow .mini .fill { display: block; height: 100%; border-radius: 99px; }
+.sd-lrow strong { white-space: normal; }
+
+/* How you measure up: two bars, no numbers (ui/fitBars.js). */
+.fit-bars { display: grid; gap: 5px; margin: 6px 0 2px; width: 100%; }
+.fit-row { display: grid; grid-template-columns: minmax(7.5em, 34%) 1fr; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.fit-track { position: relative; height: 9px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.fit-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; }
+.fit-you { background: var(--accent); }
+.fit-need { background: var(--peach-strong); }
+.choice-btn .fit-bars, .nav-row .fit-bars { margin-top: 6px; }

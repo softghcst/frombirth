@@ -81,7 +81,7 @@ export function careerButtons() {
   // My Fame: for anyone with a performer's skills, credits, or a name people know.
   if (p.age >= 5 && (Math.max(p.talents.acting, p.talents.singing, p.talents.dance) >= 25 || workOf(p).credits.length || career.fame() >= 5)) list.push(['myfame', 'My Fame']);
   if (p.age >= 12 && (store.state.kpop || (store.state.year >= 1996 && Math.max(p.talents.singing, p.talents.dance) >= 30))) list.push(['myidol', 'K-pop Idol']);
-  if (career.fame() >= 10) list.push(['fame', 'Use your fame']);
+  if (career.canUseFame()) list.push(['fame', 'Use your fame']);
   if (career.canRetire()) list.push(['retire', 'Retire']);
   if (cur) list.push(['quitcareer', 'Quit your job']);
   if (k.partTime) list.push(['quit', 'Quit your part-time job']);

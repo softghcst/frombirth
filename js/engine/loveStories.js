@@ -15,6 +15,7 @@ import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
 import { decide } from './pregnancyChoice.js';
+import { tickFamilyStories, familyChoice, FAMILY_IDS } from './familyStories.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -42,8 +43,9 @@ const STORIES = [
 export function tickLoveStories() {
   const p = player();
   teenYear();
-  if (p.age < bonds.ADULT) return;
   const d = DRAMA[dramaOf()];
+  if (p.age >= 14) tickFamilyStories(d); // (the stories of a family and a household, engine/familyStories.js)
+  if (p.age < bonds.ADULT) return;
   const year = store.state.year;
   const can = [];
   for (const s of STORIES) {
@@ -53,13 +55,19 @@ export function tickLoveStories() {
       const key = `${s.id}/${npc.id}`;
       const last = told()[key];
       if (last === 'closed' || (last != null && (!s.again || year - last < s.again))) continue;
+      // Each story waits its years whoever it is about: three close friends do not mean "More than friends?" three
+      // years running, or twice in one.
+      const any = told()[`story/${s.id}`];
+      if (any != null && year - any < Math.max(s.again ?? 0, 6)) continue;
       can.push({ s, npc, key });
     }
   }
   let n = 0;
   for (const c of can.map((x) => [rng.next(), x]).sort((a, b) => a[0] - b[0]).map(([, x]) => x)) {
     if (n >= d.most || !rng.chance(d.chance)) continue;
+    if (told()[`story/${c.s.id}`] === year) continue; // never the same story twice in a year
     told()[c.key] = year;
+    told()[`story/${c.s.id}`] = year;
     store.state.pendingEvents.push({ id: `love_${c.s.id}`, cast: { them: c.npc.id } });
     n++;
   }
@@ -71,6 +79,7 @@ export function loveChoice(value, cast) {
   const c = country();
   const [story, choice] = value.split(':');
   if (story === 'pregnancy') return decide(choice, cast);
+  if (FAMILY_IDS.has(story)) return familyChoice(story, Number(choice), cast);
   if (story.startsWith('teen')) return teenChoice(story, choice, cast);
   const npc = npcOf(cast.them);
   if (!npc?.alive) return '';

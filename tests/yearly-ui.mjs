@@ -50,6 +50,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     const p = S.store.state.player;
     p.age = 30; p.birthYear = S.store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = 40000 * S.country().currency.scale;
     S.store.state.pendingEvents = [];
+    S.store.state.settings = { ...(S.store.state.settings ?? {}), yearSummary: true }; // after each year only when turned on
   });
   await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(150);
   await openSection(page, 'Your life this year');
@@ -74,6 +75,20 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (saw) {
     check(await page.locator('.modal', { hasText: 'Swimming' }).count(), `${label}: the update reports the hobby practiced through the year`);
   }
+  // And it can be looked back on at any time, from Your life this year.
+  // Answer or close whatever is still open (a scene, a notice, or a page with a Back button), allowing for one that
+  // arrives a moment late on a slow machine.
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    if (!(await page.locator('#modal-root .scrim').count())) break;
+    const b = page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .choice-btn:not([disabled]), #modal-root .scrim:last-child .modal-back, #modal-root .scrim:last-child [data-no]');
+    if (await b.count()) await b.first().click();
+  }
+  await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(150);
+  await openSection(page, 'Your life this year');
+  await page.locator('[data-year-plan="lookback"]').click(); await page.waitForTimeout(200);
+  check(await update(), `${label}: last year can be looked back on from Your life this year`);
+  await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(120);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }

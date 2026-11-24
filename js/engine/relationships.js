@@ -1,9 +1,11 @@
 // Everyone in the player's life: aging, mortality, inheritance, relationship
 // decay, and the everyday interactions. Romance is in romance.js and
 // children in children.js.
+import { illnessCause } from './passing.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
+import { TALENTS } from '../data/talents.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
@@ -11,6 +13,7 @@ import { forgetNpc } from './digital/core.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
+import { SPECIES } from '../data/animals.js';
 import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
 
@@ -44,7 +47,7 @@ export function roleLabel(npc) {
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
-    case 'pet': return `Pet ${npc.species}`;
+    case 'pet': return `Pet ${SPECIES[npc.species]?.name ?? String(npc.species ?? 'animal').replace(/_/g, ' ')}`;
     case 'clinician': return npc.occupation ?? 'Clinician';
     case 'groupmate': return 'From your group';
     // People met through the justice system: what they do, or where they are.
@@ -54,8 +57,11 @@ export function roleLabel(npc) {
   }
 }
 
+/** Family, by role: their deaths are always told. */
+const KIN_ROLES = ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
+
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
+  neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
   // Gone from the player's life; kept in the save only if their digital life is part of the record.
@@ -113,8 +119,26 @@ export function inheritFrom(npc) {
   record(gross - tax, `You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, a ${heirs === 2 ? 'half' : `1/${heirs}`} share with your ${heirs === 2 ? 'sibling' : 'siblings'}` : ''}.`);
 }
 
+/**
+ * What someone died of, as a family would say it: more likely to be an accident when young, cancer or the heart in
+ * middle age, and simply age when old. Fixed by who they were, so it uses none of the game's dice.
+ */
+export function causeOfDeath(npc) {
+  // A serious illness they really had is what the family names first (engine/passing.js).
+  const ill = illnessCause(npc);
+  if (ill) return ill;
+  let h = 7;
+  for (const ch of String(npc.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const pick = (list) => list[h % list.length];
+  if (npc.age < 35) return pick(['a car accident', 'an accident at work', 'a sudden heart condition', 'an infection that turned serious', 'an overdose', 'a rare cancer']);
+  if (npc.age < 65) return pick(['cancer', 'a heart attack', 'a stroke', 'complications after surgery', 'liver failure', 'cancer, after a long illness', 'a car accident']);
+  if (npc.age < 85) return pick(['a heart attack', 'cancer', 'a stroke', 'pneumonia', 'heart failure', 'complications of diabetes', 'dementia, after a long decline']);
+  return pick(['old age, in their sleep', 'pneumonia', 'heart failure', 'a fall, and what came after', 'old age, peacefully, with family near']);
+}
+
 export function tickRelationships() {
   const p = player();
+  const drifted = [];
   for (const npc of livingNpcs()) {
     npc.age += 1;
 
@@ -128,9 +152,24 @@ export function tickRelationships() {
       npc.alive = false;
       npc.flags.diedYear = store.state.year;
       // An animal's death is written into the family's record, which tells it in the life story.
+      // Someone close is a loss in the life story; an acquaintance (a neighbor met once, an old classmate) is not news to
+      // be told, and is felt only a little.
+      const close = KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 40;
       if (npc.role === 'pet') animalDied(npc);
-      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
-      p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));
+      else if (close) {
+        const cause = causeOfDeath(npc);
+        npc.flags.cause = cause;
+        // Someone who lived abroad: the funeral is there, and can be traveled to (engine/travel.js).
+        const away = typeof npc.flags.abroad === 'string' ? ` The funeral is in ${theCountry(COUNTRIES[npc.flags.abroad]?.name ?? npc.flags.abroad)}; you could travel for it (Explore the World).` : '';
+        log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}${cause ? `, of ${cause}` : ''}.${away}`, 'system', 'bad');
+        // The ones who matter most get a moment of their own: the funeral, and whether you go. Two a year at most.
+        const told = store.state.pendingEvents.filter((e) => e.id === 'close_death').length;
+        if (told < 2 && p.age >= 6 && (KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 60)) {
+          npc.flags.deathScene = true;
+          store.state.pendingEvents.push({ id: 'close_death', cast: { words: { goneId: npc.id, deceased: `${npc.firstName} ${npc.lastName}`, first: npc.firstName, role: roleLabel(npc).toLowerCase(), age: String(npc.age), cause: cause ? `It was ${cause}.` : '' } } });
+        }
+      }
+      p.stats.mood = clamp(p.stats.mood - (close || npc.role === 'pet' ? Math.round(8 + npc.meters.relationship / 5) : 1));
       inheritFrom(npc);
       continue;
     }
@@ -145,15 +184,17 @@ export function tickRelationships() {
     const atHome = (p.flags.livesWithParents && !away && family)
       || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
-      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad ? 2 : 0));
+      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
-      log(`You and ${npc.firstName} drifted apart.`);
+      drifted.push(npc.firstName);
       // They leave the player's life but not the world: years later they may turn up again (engine/digital/stories.js).
       p.npcIds = p.npcIds.filter((id) => id !== npc.id);
       npc.flags.drifted = { year: store.state.year, age: p.age, role: npc.role };
     }
   }
+  // Everyone the player lost touch with this year, in one line.
+  if (drifted.length) log(`You lost touch with ${drifted.length === 1 ? drifted[0] : `${drifted.slice(0, -1).join(', ')} and ${drifted[drifted.length - 1]}`}.`);
 }
 
 // ---------- Everyday interactions ----------
@@ -232,7 +273,44 @@ export function spendAction(npc, action) {
   return true;
 }
 
+/**
+ * Counts one more time doing something with this person this year, with no limit. Returns how many times it has been
+ * this year, this one included, so callers can make the first time count for the most.
+ */
+export function countAction(npc, action) {
+  const p = player();
+  npc.flags.times ??= {};
+  const t = npc.flags.times[action];
+  npc.flags.times[action] = t && t.age === p.age ? { age: p.age, n: t.n + 1 } : { age: p.age, n: 1 };
+  npc.lastInteractionAge = p.age;
+  return npc.flags.times[action].n;
+}
+
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
+
+/** Everyone the player could spend time with this year and has not yet. Neighbors they have only met need no visits. */
+export const timeStillOwed = () => {
+  const p = player();
+  if (p.age < 3 || p.legal?.incarceration) return [];
+  return livingNpcs().filter((n) => n.role !== 'neighbor' && n.flags.acts?.spendTime !== p.age && basicActions(n).some((a) => a.id === 'spendTime'));
+};
+
+/**
+ * Spends time with everyone at once, the same as doing it with each in turn: each counts as this year's time together.
+ * One line in the log, and the lift in mood of a good year with people, not of twenty separate afternoons.
+ */
+export function spendTimeWithAll() {
+  const p = player();
+  const people = timeStillOwed();
+  if (!people.length) return result(false, 'You have already spent time with everyone this year.', 'neutral');
+  for (const n of people) { spendAction(n, 'spendTime'); bump(n, rng.int(3, 9)); }
+  p.stats.mood = clamp(p.stats.mood + Math.min(8, 2 + people.length));
+  const names = people.map((n) => n.firstName);
+  const list = names.length <= 3 ? names.join(names.length === 2 ? ' and ' : ', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} ${names.length - 3 === 1 ? 'other' : 'others'}`;
+  const text = `You made time for the people in your life this year: ${list}.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
 
 /** A friendship that hits the floor turns into something worse. */
 function sour(npc) {
@@ -365,7 +443,7 @@ export const canGetPet = () => player().age >= 18 && npcsByRole('pet').length < 
 /** The numbers that can be edited on anyone but the player. */
 export const EDITABLE_METERS = [['relationship', 'Relationship'], ['health', 'Health'], ['intellect', 'Intellect'], ['charm', 'Charm'],
   ['money', 'Money'], ['generosity', 'Generosity'], ['crazy', 'Crazy']];
-export const EDITABLE_TALENTS = [['music', 'Music'], ['singing', 'Singing'], ['dance', 'Dance'], ['acting', 'Acting'], ['sports', 'Sports'], ['crime', 'Mischief']];
+export const EDITABLE_TALENTS = TALENTS.map((t) => [t.id, t.name]);
 
 /**
  * Sets someone's stats and talents directly. Open to the player for anyone

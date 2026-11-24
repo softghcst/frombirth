@@ -21,6 +21,7 @@
 //
 // Everything that comes down to luck in a competition is drawn from a run of luck keyed to that competition
 // (sportsPlay.seeded): loading a save never re-rolls a result, and the game's own dice are never touched by it.
+import { gift } from './talentGrowth.js';
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -112,7 +113,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 }
 
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
-const val = (p, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p) ?? 50;
+const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
 /** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
 export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || (p.conditions ?? []).some((c) => /wheelchair|paraly|spinal/.test(c.id));
@@ -161,6 +162,16 @@ function ceilings(p, sport) {
   return out;
 }
 
+/**
+ * The position a coach starts a new player in: the one their natural ability suits best, with some chance in it (a
+ * coach needs a goalkeeper too). The player can ask to move (setPosition).
+ */
+function firstPosition(sport, ceiling, r) {
+  if (!sport.positions?.length) return null;
+  const fit = (w) => Object.entries(w).reduce((t, [k, x]) => t + (ceiling[k] ?? 50) * x, 0);
+  return sport.positions.map(([id, , w]) => [id, fit(w) + r.normal(0, 6)]).sort((a, b) => b[1] - a[1])[0][0];
+}
+
 function newEntry(state, p, a, sport, since = state.year) {
   const r = seeded(`start/${p.id}/${sport.id}`);
   const ceiling = ceilings(p, sport);
@@ -168,7 +179,7 @@ function newEntry(state, p, a, sport, since = state.year) {
   const skills = {};
   for (const [k] of sport.skills) skills[k] = Math.round(clamp(6 + r.int(0, 8) + (val(p, 'talents.sports') - 50) / 10 + Math.max(0, age - 10) / 2, 2, ceiling[k] - 5));
   const e = { id: sport.id, since, sinceAge: age, skills, ceiling, pr: 1000, played: 0, wins: 0, losses: 0, draws: 0, level: 'recreational',
-    orgId: null, teamId: null, position: sport.positions?.[0]?.[0] ?? null, coachId: null, plan: { type: 'balanced', hours: 2 },
+    orgId: null, teamId: null, position: firstPosition(sport, ceiling, r), coachId: null, plan: { type: 'balanced', hours: 2 },
     fatigue: 0, form: 50, status: 'active', best: {}, titles: [], seasons: [], events: [], stats: {}, history: [], seasonsPlayed: 0 };
   a.sports[sport.id] = e;
   a.primary ??= sport.id;
@@ -225,7 +236,7 @@ export function overall(e, p = player(), position = e.position) {
   const skill = Object.entries(w).reduce((s, [k, x]) => s + (e.skills[k] ?? 0) * x, 0);
   const body = Object.entries(sport.attrs).reduce((s, [path, x]) => s + val(p, path) * x, 0);
   const tired = Math.max(0, e.fatigue - 55) / 3;
-  return Math.round(clamp(skill * 0.8 + body * 0.2 - tired + (e.form - 50) / 10));
+  return Math.round(clamp(skill * 0.8 + body * 0.2 - tired + (e.form - 50) / 10 + fitnessBonus(p)));
 }
 /** The skill a measured event (a race, a jump) leans on: the sport's skills, evenly. */
 const meanSkill = (e) => Object.values(e.skills).reduce((s, v) => s + v, 0) / Math.max(1, Object.keys(e.skills).length);
@@ -307,6 +318,25 @@ export function giveUp(sportId, state = store.state) {
   log(text);
   return result(true, text, 'neutral');
 }
+/** Seasons away from one professional sport before another sport's clubs, drafts or tours will take you on. */
+export const SWITCH_BREAK = 2;
+/**
+ * Why the player cannot go professional in this sport now, or '' if they can. Someone who plays one sport
+ * professionally plays the others for fun: to be a professional in another, they retire from the first, and spend a
+ * couple of seasons away before anyone takes them seriously in the new one.
+ */
+export function proLock(sportId, state = store.state) {
+  const a = myAthlete(state);
+  if (!a) return '';
+  for (const e of Object.values(a.sports)) {
+    if (e.id === sportId || !(e.proYear || e.level === 'pro' || e.contractId)) continue;
+    const name = sportOf(e.id).name.toLowerCase();
+    if (e.status === 'active') return `You play ${name} professionally. To go professional in another sport, you would retire from ${name} first.`;
+    const left = e.retiredYear ?? e.stoppedYear ?? 0;
+    if (state.year - left < SWITCH_BREAK) return `You left professional ${name} in ${left}. Nobody takes a switch seriously straight away: ${SWITCH_BREAK} seasons away from it first.`;
+  }
+  return '';
+}
 export function setPrimary(sportId, state = store.state) {
   const a = myAthlete(state);
   if (!a?.sports[sportId] || a.sports[sportId].status !== 'active') return result(false, 'You do not play that.', 'neutral');
@@ -319,6 +349,53 @@ export function setPosition(sportId, pos, state = store.state) {
   if (!e || !sport.positions?.some((x) => x[0] === pos)) return result(false, 'That position does not exist.', 'neutral');
   e.position = pos;
   return result(true, `You will play as ${sport.positions.find((x) => x[0] === pos)[1].toLowerCase()}.`, 'neutral');
+}
+
+// ---------- Fitness ----------
+
+/** The four parts of physical fitness, trained in the gym for every sport at once. */
+export const FITNESS = [['strength', 'Strength'], ['cardio', 'Cardio'], ['flexibility', 'Flexibility'], ['balance', 'Balance']];
+export const TRAIN_PER_YEAR = 3;
+/** The player's fitness, made the first time it is asked for, from their health, sporting talent and age. */
+export function fitnessOf(p = player(), state = store.state) {
+  const a = athleteOf(p.id, state);
+  if (!a) return null;
+  if (!a.fitness) {
+    const base = 18 + val(p, 'stats.health') * 0.3 + val(p, 'talents.sports') * 0.15 - Math.max(0, p.age - 35) * 0.4;
+    a.fitness = { strength: base + (p.age < 14 ? -8 : 0), cardio: base, flexibility: base + (p.age < 14 ? 8 : 0), balance: base };
+    for (const k of Object.keys(a.fitness)) a.fitness[k] = Math.round(clamp(a.fitness[k], 5, 90));
+  }
+  return a.fitness;
+}
+/** Overall fitness, 0 to 100. */
+export const fitnessScore = (f) => (f ? Math.round((f.strength + f.cardio + f.flexibility + f.balance) / 4) : 0);
+/** What fitness adds to how well someone plays: a little, either way, only once they have trained. */
+function fitnessBonus(p) {
+  const f = athleteOf(p.id)?.fitness;
+  return f ? clamp((fitnessScore(f) - 45) / 8, -3, 5) : 0;
+}
+/** A gym session on one part of fitness. A few a year, around everything else. */
+export function trainFitness(focus, state = store.state) {
+  const S = ensure(state);
+  const p = state.player;
+  const f = fitnessOf(p, state);
+  if (!f || !activeSports(p.id, state).length) return result(false, 'Take up a sport first.', 'neutral');
+  if (!(focus in f)) return result(false, 'That is not part of fitness.', 'neutral');
+  if (S.acts.year !== state.year) S.acts = { year: state.year, extra: 0 };
+  S.acts.train ??= 0;
+  if (S.acts.train >= TRAIN_PER_YEAR) return result(false, `You have trained ${TRAIN_PER_YEAR} times this year already. The rest is in the training plan.`, 'neutral');
+  if (myAthlete(state).injuries.some((x) => x.status === 'out')) return result(false, 'Not while you are injured. Follow the rehab plan.', 'neutral');
+  S.acts.train += 1;
+  const room = Math.max(0, 95 - f[focus]) / 95;
+  const d = Math.max(1, Math.round(6 * ageFactor(p.age) * room));
+  f[focus] = Math.min(95, f[focus] + d);
+  p.stats.health = clamp(p.stats.health + 1);
+  for (const e of activeSports(p.id, state)) e.fatigue = clamp(e.fatigue + 4);
+  const name = FITNESS.find((x) => x[0] === focus)[1].toLowerCase();
+  const text = { strength: 'Weights, squats and a sore morning after. You are stronger for it.', cardio: 'Intervals until your lungs burn. Your stamina is better for it.',
+    flexibility: 'Stretching and mobility work. You move more freely.', balance: 'Single-leg drills and core work. You are steadier on your feet.' }[focus];
+  log(`${text} (+${d} ${name})`);
+  return result(true, `${text} Your ${name} went up by ${d}.`, 'good');
 }
 
 // ---------- Training ----------
@@ -711,7 +788,9 @@ export function schoolSeason(name, state = store.state) {
   if (!e) e = newEntry(state, p, a, sport);
   if (e.status !== 'active') { fillEntry(state, p, e); e.status = 'active'; e.plan = { type: 'balanced', hours: Math.max(2, e.plan?.hours ?? 0) }; }
   const school = schoolName(p);
-  const org = findOrg(state, sport, 'school', { key: `school/${id}/${p.countryId}/${school}`, name: `${school} ${sport.name}` });
+  // The team belongs to the school, where the school is: a boarder whose family moves abroad stays on the same team.
+  const where = (atSchool(p) ? currentSchool()?.countryId : null) ?? p.countryId;
+  const org = findOrg(state, sport, 'school', { key: `school/${id}/${where}/${school}`, name: `${school} ${sport.name}` });
   e.schoolSport = name;
   if (e.orgId !== org.id && !e.contractId && !['club', 'academy', 'college', 'pro', 'elite'].includes(e.level)) joinOrg(org, state);
   else if (e.orgId !== org.id) { // a club or academy player still plays for their school; the school team is a second team

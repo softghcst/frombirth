@@ -109,6 +109,14 @@ if (t) {
   const ev = k().evals[kp.idolOf().trainee.evals.at(-1)];
   check(ev && ev.rank >= 1 && ev.of >= 5 && ev.feedback.length === 2 && ev.evaluators.every((id) => store.state.npcs[id]), 'an evaluation: a rank, two pieces of feedback, real evaluators');
   check(ids.every((id) => store.state.npcs[id]?.flags.idol), 'fellow trainees are the same people a year later');
+  // Time with the other trainees does not use up the year's practice sessions.
+  const peer = t.agency.trainees.find((id) => store.state.npcs[id]?.alive);
+  if (peer) {
+    for (let x = 0; x < 4; x++) kp.trainAction('vocal');
+    check(!kp.trainAction('dance').ok, 'four extra practice sessions a year');
+    check(kp.trainAction('friend', peer).ok && kp.trainAction('help', peer).ok, 'and time with a fellow trainee is still open after them');
+    check(!kp.trainAction('friend', peer).ok, 'once per kind per trainee per year');
+  }
   // Leaving is allowed; nothing is charged back.
   const cash = p.finance.cash;
   check(kp.leaveTraining().ok && !kp.trainee() && p.finance.cash === cash, 'leaving with notice, nothing charged');
@@ -247,6 +255,20 @@ if (g) {
   const d = kp.debut();
   check(d.ok && g.debut && g.debut.releaseId && g.debut.performanceId, 'the debut is recorded with its release and first stage');
   check(!kp.debut().ok, 'once');
+  // Appearances: a moment from that kind of show, each handled its own way; not the same five choices every time.
+  {
+    const { MOMENTS } = await import('../js/data/kpopMoments.js');
+    const kinds = ['radio', 'variety', 'interview', 'fanmeeting', 'fansign', 'fancall', 'livestream'];
+    check(kinds.every((kd) => MOMENTS[kd]?.length >= 2 && MOMENTS[kd].every((m) => m.prompt && m.options.length === 3 && m.options.every((o) => o.good && o.bad && ['vocal', 'dance', 'rap', 'stage', 'camera', 'media', 'team'].includes(o.skill)))), 'every kind of show has its own moments, three ways to handle each');
+    const prompts = new Set();
+    for (let n = 0; n < 12; n++) prompts.add(kp.appearanceMoment('radio').prompt);
+    check(prompts.size >= 2, `the radio show is not the same moment every time (${prompts.size})`);
+    const mo = kp.appearanceMoment('variety');
+    kp.idolOf().acts.social = 0;
+    const r = kp.appearance('variety', { m: mo.m, o: 0 });
+    const opt = MOMENTS.variety[mo.m].options[0];
+    check(r.text.startsWith(opt.good) || r.text.startsWith(opt.bad), `the outcome comes from the moment chosen (${r.text.slice(0, 60)})`);
+  }
   const perfs = g.performances.map((id) => k().performances[id]);
   check(perfs.every((x) => x.members.includes(x.fairy) && k().releases[x.releaseId]), 'every ending fairy is a member, on a real performance');
   const center = kp.current(g).find((m) => g.positions[m.who]?.includes('center'))?.who;
@@ -259,6 +281,11 @@ if (g) {
     check(kp.idolOf().pop <= 3, 'one ending fairy does not make a star');
   }
   check(p.milestones.some((m) => /Debuted with/.test(m.text)), 'the debut is in the life story');
+  // Being an idol is a job: the work shown everywhere says so.
+  const idolJob = kp.idolWork(p);
+  check(idolJob?.current && idolJob.title === `K-pop idol, ${g.name}`, `an idol's work is being an idol (${idolJob?.title})`);
+  const cv = (await import('../js/engine/digital/professional.js')).resume();
+  check(cv.jobs.some((j) => j.current && j.title === idolJob.title), 'and it is on the CV');
   // A comeback: a real release, promoted, wins only when earned.
   year();
   const cb = kp.comeback('mini', 'bright');
@@ -506,10 +533,10 @@ section('fan products, variety as a career, and the family route');
   check(set && kp.cardBoost(grp) > modest && grp.cardPolicy === 'generous', 'asking for more rare cards sells more');
   const eng = grp.fandom.engagement;
   // Lowest in the group two years running: the player feels it.
-  kp.idolOf().pop = 0;
-  for (const w of lineup.slice(1)) store.state.npcs[w].flags.idol.appeal = 85;
+  // Held at the bottom each year (a year's work can lift popularity on its own, which is not what this checks).
+  const bottom = () => { kp.idolOf().pop = 0; for (const w of lineup.slice(1)) if (store.state.npcs[w]?.flags.idol) store.state.npcs[w].flags.idol.appeal = 85; };
   // This year's prices were set while the player was everyone's favorite: it takes two more years to show.
-  year(); year(); year();
+  bottom(); year(); bottom(); year(); bottom(); year();
   check(grp.fandom.engagement < eng, 'fans grumble about all the rare cards');
   const mc = kp.myCard(grp);
   check(mc && mc.rank === mc.of && mc.low && kp.idolOf().history.some((h) => /traded lowest/.test(h.text)), 'the lowest card two years running weighs on the player');

@@ -13,7 +13,10 @@ import { clamp } from '../util.js';
 import { sportOf, awardsFor, COLLEGE_NAMES, YEAR_AWARDS, AWARD_LINEUPS, AWARD_SKILLS } from '../data/sports.js';
 import * as sp from './sports.js';
 
-const { seeded, overall, coachFor } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const coachFor = (...a) => sp.internals.coachFor(...a);
 /** Leagues that name awards: the professional game, the national level and university sport. */
 export const AWARD_LEVELS = ['pro', 'elite', 'college'];
 

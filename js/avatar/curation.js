@@ -11,26 +11,24 @@
  */
 const T = (ids, type) => Object.fromEntries(ids.map((id) => [id, type]));
 export const HAIR_TYPE = {
-  ...T(['hair_girl_long_02', 'hair_girl_medium_02', 'hair_girl_medium_06', 'hair_girl_medium_08', 'hair_girl_short_01', 'hair_girl_short_02', 'hair_girl_short_03', 'hair_girl_short_06',
-    'hair_boy_long_05', 'hair_boy_long_06', 'hair_boy_medium_06', 'hair_boy_medium_07', 'hair_boy_medium_08', 'hair_boy_short_02', 'hair_boy_short_04', 'hair_boy_short_06', 'hair_boy_short_07',
+  ...T(['hair_girl_medium_08', 'hair_girl_short_01', 'hair_girl_short_02', 'hair_girl_short_03', 'hair_boy_long_05', 'hair_boy_short_02', 'hair_boy_short_04', 'hair_boy_short_06', 'hair_boy_short_07',
     'hair_boy_updo_02_samurai', 'hair_boy_updo_04_curtain_bun', 'hair_boy_updo_11_high_ponytail', 'hair_updo_03', 'hair_updo_07'], 'straight'),
-  ...T(['hair_girl_long_01', 'hair_girl_long_03', 'hair_girl_long_04', 'hair_girl_long_05', 'hair_girl_long_06', 'hair_girl_long_08', 'hair_girl_medium_01', 'hair_girl_medium_03',
-    'hair_girl_medium_04', 'hair_girl_medium_07', 'hair_girl_short_04', 'hair_girl_short_07', 'hair_girl_short_08', 'hair_girl_short_12',
-    'hair_boy_long_01', 'hair_boy_long_02', 'hair_boy_long_03', 'hair_boy_long_07', 'hair_boy_long_08', 'hair_boy_medium_01', 'hair_boy_medium_02', 'hair_boy_medium_03',
-    'hair_boy_medium_05', 'hair_boy_short_01', 'hair_boy_short_03', 'hair_boy_short_08', 'hair_boy_short_12', 'hair_boy_updo_01_manbun', 'hair_boy_updo_08_royal_lowpony',
+  ...T(['hair_girl_long_01', 'hair_girl_long_03', 'hair_girl_long_04', 'hair_girl_long_06', 'hair_girl_long_08', 'hair_girl_medium_01', 'hair_girl_medium_03',
+    'hair_girl_medium_04', 'hair_girl_short_04', 'hair_girl_short_07', 'hair_girl_short_08', 'hair_girl_short_12',
+    'hair_boy_long_01', 'hair_boy_long_02', 'hair_boy_long_03', 'hair_boy_long_07', 'hair_boy_medium_01', 'hair_boy_medium_02', 'hair_boy_medium_03',
+    'hair_boy_short_01', 'hair_boy_short_03', 'hair_boy_short_08', 'hair_boy_short_12', 'hair_boy_updo_01_manbun', 'hair_boy_updo_08_royal_lowpony',
     'hair_boy_updo_10_surfer_bun', 'hair_boy_updo_14_double_lowbuns', 'hair_updo_01', 'hair_updo_02', 'hair_updo_05'], 'wavy'),
-  ...T(['hair_girl_long_07', 'hair_girl_long_10', 'hair_girl_long_12', 'hair_girl_medium_05', 'hair_girl_medium_14', 'hair_girl_medium_15', 'hair_girl_short_05', 'hair_girl_short_09',
+  ...T(['hair_girl_long_07', 'hair_girl_long_10', 'hair_girl_long_12', 'hair_girl_medium_14', 'hair_girl_medium_15', 'hair_girl_short_05', 'hair_girl_short_09',
     'hair_boy_long_04', 'hair_boy_long_16', 'hair_boy_medium_04', 'hair_boy_medium_15', 'hair_boy_short_05', 'hair_boy_short_13', 'hair_boy_updo_03_curly_puff',
     'hair_updo_06', 'hair_updo_10', 'hair_updo_14'], 'curly'),
   ...T(['hair_girl_medium_11', 'hair_girl_short_11', 'hair_girl_short_13', 'hair_girl_short_14', 'hair_girl_short_15', 'hair_girl_short_16',
     'hair_boy_medium_12', 'hair_boy_short_09', 'hair_boy_short_10', 'hair_boy_short_11', 'hair_boy_short_15', 'hair_boy_short_16',
     'hair_boy_updo_09_spacebuns', 'hair_boy_updo_15_headband_puff', 'hair_updo_09'], 'coily'),
-  ...T(['hair_girl_long_09', 'hair_girl_long_11', 'hair_girl_long_14', 'hair_girl_long_15', 'hair_girl_long_16', 'hair_girl_medium_10', 'hair_girl_medium_12', 'hair_girl_medium_16',
-    'hair_girl_short_10', 'hair_boy_long_10', 'hair_boy_long_11', 'hair_boy_long_12', 'hair_boy_long_14', 'hair_boy_long_15', 'hair_boy_medium_10', 'hair_boy_medium_11',
+  ...T(['hair_girl_long_09', 'hair_girl_long_11', 'hair_girl_long_15', 'hair_girl_long_16', 'hair_girl_medium_10', 'hair_girl_medium_12', 'hair_girl_medium_16',
+    'hair_girl_short_10', 'hair_boy_long_10', 'hair_boy_long_11', 'hair_boy_long_12', 'hair_boy_long_15', 'hair_boy_medium_10', 'hair_boy_medium_11',
     'hair_boy_medium_16', 'hair_boy_short_14', 'hair_boy_updo_06_braid_bun', 'hair_boy_updo_12_twist_pineapple', 'hair_boy_updo_13_braid_mohawk', 'hair_boy_updo_16_halfup_braids',
     'hair_updo_04', 'hair_updo_08', 'hair_updo_12', 'hair_updo_15', 'hair_updo_16'], 'braids'),
-  ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_medium_14',
-    'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
+  ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
 };
 /** Which hair types suit each natural texture. */
 export const SUITS = {
@@ -103,6 +101,25 @@ export const WITHDRAWN = {
   brows: { brows_02: 'brows_10', brows_03: 'brows_12', brows_7: 'brows_04', brows_13: 'brows_04', brows_17_puppy: 'brows_14',
     brows_18_unibrow: 'brows_16_feathered', brows_19_glam_arch: 'brows_10', brows_22_skeptical: 'brows_12', brows_11: 'brows_10' },
   nose: { nose_1: 'nose_6', nose_2: 'nose_6', nose_4: 'nose_6', nose_3: 'nose_7', nose_5: 'nose_9', nose_8: 'nose_10', nose_18: 'nose_19', nose_22: 'nose_17', nose_15: 'nose_11', nose_24: 'nose_7' },
+  // Hairstyles taken out of the game: each becomes the nearest of the styles kept, by texture and length.
+  hair: {
+    hair_boy_long_06: 'hair_boy_updo_10_surfer_bun',
+    hair_boy_long_08: 'hair_boy_updo_10_surfer_bun',
+    hair_girl_long_02: 'hair_boy_updo_10_surfer_bun',
+    hair_girl_long_05: 'hair_boy_updo_10_surfer_bun',
+    hair_boy_medium_07: 'hair_boy_short_08',
+    hair_boy_medium_06: 'hair_boy_short_08',
+    hair_boy_medium_08: 'hair_boy_short_08',
+    hair_boy_medium_05: 'hair_boy_short_01',
+    hair_boy_medium_14: 'hair_boy_updo_07_fountain_pony',
+    hair_girl_long_14: 'hair_boy_long_10',
+    hair_boy_long_14: 'hair_boy_long_10',
+    hair_girl_medium_02: 'hair_girl_short_12',
+    hair_girl_medium_06: 'hair_girl_short_12',
+    hair_girl_short_06: 'hair_girl_short_12',
+    hair_girl_medium_07: 'hair_girl_short_12',
+    hair_girl_medium_05: 'hair_girl_short_09',
+  },
 };
 /**
  * Parts drawn a little larger or smaller than their file: the artwork is fitted to a box, which leaves a
@@ -128,16 +145,47 @@ export const ELDER_HAIR = { female: [], male: [] };
 // list their ids here. Saves keep no outfit until there is one to give: then everyone is dressed again.
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
-export const OUTFITS = { any: [], female: [], male: [], baby: [] };
+/**
+ * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). The children's
+ * outfits drawn for the youngest fit the kid head too; the bib and the bear hood are left to babies.
+ */
+export const KID_OUTFITS = {
+  any: ['outfit_baby_02_overalls', 'outfit_baby_05_sailor_romper', 'outfit_baby_07_rainbow_sweatshirt'],
+  female: ['outfit_baby_03_peterpan_dress'],
+  male: ['outfit_baby_08_mini_tux'],
+};
+
+export const OUTFITS = {
+  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
+    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee'],
+  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
+  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
+  baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
+    'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
+};
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: [], male: [], baby: null, monarch: { male: null, female: null } },
-  crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
-    royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
+  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
+    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
+      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+    // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
+    noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
+    // Some titles have their own dress: a duke or a duchess wears this instead.
+    nobleByTitle: { duke: { male: ['outfit_50_duke_mantle'], female: ['outfit_50_duke_mantle'] } } },
+  // Grown-up dress: worn from 18. A younger royal wears one of the others on their list.
+  grownOnly: ['outfit_45_princess_sweetheart', 'outfit_46_prince_epaulettes', 'outfit_47_sovereign_ermine', 'outfit_48_noble_cameo', 'outfit_49_noble_cravat', 'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar', 'outfit_52_princess_starlight', 'outfit_53_imperial_ruby'],
+  crowns: { sovereign: 'crown_09_sovereign', obsidian: 'crown_13_obsidian_sovereign', empress: 'crown_12_empress', emperor: 'crown_14_imperial_laurel', monarch: { male: 'crown_01_king', female: 'crown_15_queen' }, queen: 'crown_15_queen', heir: { male: 'crown_17_crown_prince', female: 'crown_16_crown_princess' },
+    royal: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' }, child: 'crown_11_prince_band', princess: 'crown_10_princess_tiara', crownPrincess: 'crown_16_crown_princess', crownPrince: 'crown_17_crown_prince', noble: 'crown_06_noble_coronet' },
 };
 
-/** Work clothes the portrait wears, by career id (engine/career.js). outfit: null until there are work clothes. */
+/** Where each crown drawing meets the head: the middle of its lower edge (seat) and its highest point (top), in its 512 frame. */
+export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, crown_10_princess_tiara: { seat: 154, top: 68.5 },
+  crown_11_prince_band: { seat: 173.2, top: 111.4 }, crown_12_empress: { seat: 169, top: 73 }, crown_13_obsidian_sovereign: { seat: 164.2, top: 50.9 },
+  crown_14_imperial_laurel: { seat: 161, top: 84 }, crown_15_queen: { seat: 169.6, top: 42.6 }, crown_16_crown_princess: { seat: 161.8, top: 86.8 },
+  crown_17_crown_prince: { seat: 172.5, top: 78.8 } };
+
+/** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
   police: { outfit: null, senior: { outfit: null, level: 4 } },
   firefighter: { outfit: null }, enlisted: { outfit: null }, officer: { outfit: null },
@@ -165,7 +213,7 @@ export const GRADUATION = { outfit: null };
  * at random; they can still be chosen in the creator or the salon.
  */
 export const HAIR_COVERS_FACE = [
-  'hair_boy_medium_14', 'hair_girl_long_04', 'hair_boy_long_07', 'hair_girl_medium_01',
+  'hair_girl_long_04', 'hair_boy_long_07', 'hair_girl_medium_01',
   'hair_updo_10', 'hair_updo_02', 'hair_girl_long_11', 'hair_girl_long_03',
   'hair_boy_long_03', 'hair_boy_long_11', 'hair_girl_long_12', 'hair_girl_medium_03',
   'hair_girl_medium_12', 'hair_girl_long_01', 'hair_girl_long_08', 'hair_girl_long_10',

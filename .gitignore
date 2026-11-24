@@ -3,3 +3,6 @@ __pycache__/
 scripts/debug_hair_png.html
 scripts/debug_hair_fit.html
 scripts/debug_eyes_png.html
+
+# Parallel agents work in their own checkouts here.
+.claude/worktrees/

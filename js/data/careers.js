@@ -52,7 +52,7 @@ const BASE_CAREERS = [
     levels: L(['Marketing assistant', 36, 46, 2], ['Marketing executive', 48, 64, 3], ['Marketing manager', 70, 98, 4], ['Marketing director', 120, 170, 0]) },
   { id: 'teacher', name: 'Teaching', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university' }, doors: [{ flag: 'teacherRec', bonus: 0.15 }, { flag: 'teachingCert', bonus: 0.3 }],
-    levels: L(['Trainee teacher', 34, 40, 1], ['Teacher', 42, 58, 5], ['Head of department', 60, 75, 5], ['Head teacher', 85, 120, 0]) },
+    levels: L(['Trainee teacher', 34, 40, 1], ['Teacher', 42, 58, 5], ['Head of department', 60, 75, 5], ['Principal', 85, 120, 0]) },
   { id: 'nurse', name: 'Nursing', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university', majors: ['nursing'], altProgramme: 'nursing' },
     levels: L(['Staff nurse', 48, 62, 3], ['Senior nurse', 65, 80, 4], ['Charge nurse', 82, 98, 5], ['Director of nursing', 110, 150, 0]) },
@@ -139,7 +139,8 @@ const BASE_CAREERS = [
   { id: 'mt_performer', name: 'Musical theater', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
     skill: 'tripleThreat', req: { minAge: 18, stats: { tripleThreat: 55 } }, fame: { from: 2, label: 'Musical theater star' },
     doors: [{ flag: 'proDebut', guaranteed: true, level: 1, text: 'The company that cast you at the open call has your contract ready.' },
-      { flag: 'directorRec', bonus: 0.1 }],
+      { flag: 'childStageMajor', guaranteed: true, level: 0, text: 'You grew up on the biggest stage in the country. The company remembers you, and has a place for you in the ensemble.' },
+      { flag: 'childStage', bonus: 0.2 }, { flag: 'directorRec', bonus: 0.1 }],
     levels: L(['Ensemble member', 28, 40, 2], ['Featured ensemble', 45, 65, 3, { tripleThreat: 66 }],
       ['Principal performer', 80, 130, 4, { tripleThreat: 78 }], ['Leading performer', 160, 320, 0, { tripleThreat: 88 }]) },
   // Children and teenagers can work as actors around school. At 18 they age
@@ -217,14 +218,19 @@ export const GIGS = [
 ];
 export const MAX_GIGS_PER_YEAR = 2;
 
-/** What the famous can do. min is the fame needed. cash is base units before fame scaling. */
+/**
+ * What the famous can do. min is the fame needed, minAge the age (a baby born famous, a royal, does none of these: a
+ * child can sit for a photo or a commercial, be a guest on a talk show at ten, write a book at twelve). cash is base
+ * units before fame scaling.
+ */
+export const FAME_MIN_AGE = 5;
 export const FAME_ACTIONS = [
-  { id: 'book', name: 'Write a book', min: 15, skill: 'stats.intellect', cash: 40000, fame: 5,
-    ok: 'Your book comes out to queues round the block.', fail: 'Your book is politely reviewed and quickly remaindered.' },
-  { id: 'photoshoot', name: 'Do a photoshoot', min: 20, skill: 'stats.charm', cash: 15000, fame: 3,
+  { id: 'book', name: 'Write a book', min: 15, minAge: 12, skill: 'stats.intellect', cash: 40000, fame: 5,
+    ok: 'Your book comes out to queues around the block.', fail: 'Your book is politely reviewed and quickly remaindered.' },
+  { id: 'photoshoot', name: 'Do a photoshoot', min: 20, minAge: 5, skill: 'stats.charm', cash: 15000, fame: 3,
     ok: 'The cover sells out in a week.', fail: 'The photos are fine. Nobody mentions them.' },
-  { id: 'commercial', name: 'Film a commercial', min: 30, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,
+  { id: 'commercial', name: 'Film a commercial', min: 30, minAge: 5, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,
     ok: 'Your face is on every bus shelter in the country, holding a yogurt.', fail: 'The advert is pulled after a week of complaints.' },
-  { id: 'talk_show', name: 'Go on a talk show', min: 35, skill: 'stats.charm', cash: 8000, fame: 8, risky: true,
+  { id: 'talk_show', name: 'Go on a talk show', min: 35, minAge: 10, skill: 'stats.charm', cash: 8000, fame: 8, risky: true,
     ok: 'You tell one story and the clip is everywhere by morning.', fail: 'You say the wrong thing on live television. The clip is everywhere by morning.' },
 ];

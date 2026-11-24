@@ -149,3 +149,17 @@ export const meetsAll = (reqs = [], cast) => reqs.every((r) => meets(r, cast));
 
 /** True when a living NPC fits the role spec (also 'mother', 'father', 'tag:<name>'). */
 export const hasNpc = (spec) => livingNpcs().some((n) => npcMatches(n, spec));
+
+/**
+ * A skill check (a base chance plus weighted abilities: { base, factors }) drawn as two bars on a 0–100 scale: where
+ * the player is, the abilities weighed as the check weighs them, and the level at which the check is an even call.
+ * `you` above `need` means the odds favor them; how far above, how much.
+ */
+export function checkBars(check, edge = 0) {
+  const parts = Object.entries(check.factors ?? {});
+  const weight = parts.reduce((sum, [, w]) => sum + Math.abs(w), 0) || 1;
+  const lift = parts.reduce((sum, [path, w]) => sum + w * ((Number(resolve(path)) || 0) - 50), 0) / weight;
+  const need = 50 + (0.5 - check.base - edge) * 100 / weight;
+  const cut = (x) => Math.max(0, Math.min(100, x));
+  return { you: cut(50 + lift), need: cut(need) };
+}

@@ -28,6 +28,10 @@ import musical from './stories/musical.js';
 import mentors from './stories/mentors.js';
 import estateScenes from './stories/estate.js';
 import loveScenes from './stories/love.js';
+import familyStoryScenes from './stories/family.js';
+import sleepoverScenes from './stories/sleepover.js';
+import kinHealthScenes from './stories/kinHealth.js';
+import militaryScenes from './stories/military.js';
 import paper from './stories/paper.js';
 import schoolLife from './schoolLife.js';
 import campusLife from './campusLife.js';
@@ -50,5 +54,5 @@ import togetherScenes from './stories/together.js';
 import bondScenes from './stories/bonds.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...bondScenes, ...estateScenes, ...loveScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood];
+export const EVENTS = [...bondScenes, ...estateScenes, ...loveScenes, ...familyStoryScenes, ...sleepoverScenes, ...kinHealthScenes, ...militaryScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

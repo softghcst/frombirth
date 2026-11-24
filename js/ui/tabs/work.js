@@ -13,18 +13,24 @@ import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
-import { player, country, livingNpcs } from '../../state.js';
+import { athleticsCard, openAthletics } from '../sports.js';
+import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
+import { fitBars } from '../fitBars.js';
 import * as edu from '../../engine/education.js';
 import * as job from '../../engine/partTime.js';
 import { roleLabel } from '../../engine/relationships.js';
-import { tripleThreat } from '../../engine/conditions.js';
 import { PROGRAMS, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIORITY_BY_ID } from '../../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
-import { navRow, icon } from '../kit.js';
+import { navRow, icon, lockedRow, fromAge } from '../kit.js';
+import { workLaw } from '../../engine/worklife.js';
+import * as military from '../../engine/military.js';
+import { openMilitary } from '../military.js';
+import * as career from '../../engine/career.js';
+import { FAME_MIN_AGE } from '../../data/careers.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -60,8 +66,8 @@ async function chooseClub(api) {
     body: `You have time for ${MAX_CLUBS} at once. Each one builds a skill every year you stay.`,
     options: edu.clubOptions().map((c) => ({
       value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
-      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.'
-        : `Try-out: roughly ${Math.round(c.chance * 100)}% chance.`].filter(Boolean).join(' '),
+      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.' : 'By try-out.'].filter(Boolean).join(' '),
+      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your Level', needLabel: 'Club Wants' }) : '',
       disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
     })),
   });
@@ -149,7 +155,8 @@ async function chooseNewMajor(api) {
     options: edu.switchOptions().map((m) => ({
       value: m.id, label: m.name, disabled: !m.allowed,
       sub: !m.allowed ? `Needs a GPA of ${m.minGpa.toFixed(1)}.`
-        : m.audition ? `By audition: about ${Math.round(m.chance * 100)}% chance.` : 'Open to you.',
+        : m.audition ? 'By audition.' : 'Open to you.',
+      html: m.allowed && m.bars ? fitBars({ ...m.bars, youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
   if (id) await report(api, edu.switchMajor(id));
@@ -168,10 +175,11 @@ function pickMajor(progId) {
     options: MAJORS.filter((m) => !(community && m.audition) && majorOpen(m.id)).map((m) => ({
       value: m.id, label: m.name, disabled: !community && gpa < m.minGpa,
       sub: m.audition
-        ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): about ${Math.round(edu.admissionChance('university', m.id) * 100)}% at a typical school.`
+        ? `${m.blurb} Entry by audition.`
         : `${m.difficulty >= 0.45 ? 'Demanding' : m.difficulty >= 0.25 ? 'Moderate' : 'Gentle'} workload`
           + (community ? '' : ` · needs ${sch.mark(m.minGpa)} at school`)
           + (m.tracks.length ? ` · opens ${m.tracks.join(' and ')} school` : ''),
+      html: m.audition && !community && gpa >= m.minGpa ? fitBars({ ...edu.auditionBars(m.id), youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
 }
@@ -364,7 +372,7 @@ function commitments(p, c) {
   const rows = [];
   if (edu.canSetPriority()) rows.push(['Putting first', PRIORITY_BY_ID[e.priority]?.name ?? 'Nothing in particular']);
   for (const id of e.clubs) rows.push([CLUB_BY_ID[id].name, 'Member']);
-  if (e.enrolled && e.stage === 'high') rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
+  if (e.enrolled && ['middle', 'high'].includes(e.stage)) rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
   if (p.career.partTime) rows.push([p.career.partTime.title, `${fmtMoney(p.career.partTime.salary, c)} a year`]);
   for (const s of p.career.sides ?? []) rows.push([s.title, `${s.hours} h/week, ${fmtMoney(s.salary, c)} a year`]);
   if (p.flags.tutorAge === p.age) rows.push(['Private tutor', 'Two evenings a week']);
@@ -392,6 +400,40 @@ function contacts() {
 const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
   clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
   myfame: 'star', myidol: 'star', fame: 'sparkle' };
+/** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
+const FIND = new Set(['hub', 'findwork', 'gigs']);
+/** The careers with worlds of their own: fame, idols, sport, politics. */
+const SPECIAL = new Set(['myfame', 'myidol', 'fame']);
+const has = (list, id) => list.find(([x]) => x === id);
+const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
+
+function findWork(p, list) {
+  const rows = [];
+  rows.push(has(list, 'hub') ? row(has(list, 'hub')) : lockedRow('Jobs', fromAge(p.age, Math.min(15, workLaw().workAge)) || 'Not open to you now'));
+  rows.push(has(list, 'findwork') ? row(has(list, 'findwork')) : lockedRow('Find work', fromAge(p.age, 5) || 'Not open to you now'));
+  // The armed forces: open from 18 (or serving now), greyed with why otherwise.
+  const mil = military.joinOptions();
+  rows.push(military.serving() || mil.some((o) => !o.why) ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: military.serving() ? `${p.career.title}, ${military.serving().branch}` : '' })
+    : lockedRow('Military', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 18) || mil[0].why));
+  if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
+  return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
+}
+
+/** Special careers: one row on the Work tab, opening a list of its own (like a job center's special desk). */
+function specialCareers(p, list) {
+  const rows = [];
+  rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
+  rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
+  if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
+  // Famous before they can use it (a royal baby): shown, locked until old enough.
+  else if (career.fame() >= 10) rows.push(lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)));
+  const athletics = p.legal.incarceration ? '' : athleticsCard();
+  const politics = politicsCard();
+  return `<div class="card"><h3>Special careers</h3><div class="nav-group">${rows.join('')}</div>
+    ${athletics || `<div class="nav-group">${lockedRow('My Athletics', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 4))}</div>`}
+    ${politics || `<div class="nav-group">${lockedRow('Politics', fromAge(p.age, 14) || 'Not open to you now')}</div>`}</div>`;
+}
+
 /** Opposite choices, shown side by side: Study harder | Slack off. */
 const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
 /** Leaving: restrained, set apart, and confirmed where the game already asks. */
@@ -408,14 +450,15 @@ export default {
 
     const school = [];
     if (sch.atSchool(p) || (e.history ?? []).length) school.push(['school', sch.atSchool(p) ? 'Your school' : 'Your school years']);
-    if (e.enrolled && p.age >= 6) {
+    // At school, everything about it is on the school screen: studying, clubs and teams, cliques, leaving.
+    const atSchoolNow = sch.atSchool(p) && !edu.isHigher(e.stage);
+    if (e.enrolled && p.age >= 6 && !atSchoolNow) {
       school.push(['study', 'Study harder'], ['slack', 'Slack off']);
       if (p.age >= 10) school.push(['skip', edu.isHigher(e.stage) ? 'Skip lectures' : 'Skip school']);
     }
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
-    if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
-    if (e.enrolled && e.stage === 'high') school.push(['clique', 'Choose your crowd']);
+    if (edu.canJoinClubs() && !atSchoolNow) school.push(['club', 'Clubs and classes']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
@@ -424,14 +467,17 @@ export default {
     if (adult.examOptions().length) school.push(['exam', `Sit the ${adult.examOptions()[0].name}`]);
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
-    if (edu.canDropOut()) school.push(['drop', 'Drop out']);
+    if (edu.canDropOut() && !atSchoolNow) school.push(['drop', 'Drop out']);
     { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling']); }
 
     const work = careerButtons();
+    // Your job's own actions stay with the job; finding work and the special careers have lists of their own below.
+    const jobOnly = work.filter(([id]) => !FIND.has(id) && !SPECIAL.has(id));
 
     // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
-    const btns = (list) => {
-      if (!list.length) return '';
+    // `more`: rows that belong in the same list, after the links (Work keeps athletics, politics and the rest there).
+    const btns = (list, more = '') => {
+      if (!list.length && !more) return '';
       const nav = list.filter(([id]) => NAV_ICONS[id]);
       const pairs = list.filter(([id]) => PAIRED.has(id));
       const danger = list.filter(([id]) => DANGER.has(id));
@@ -443,7 +489,7 @@ export default {
     const [main, sub] = label.split(/: (.+)/);
     const lead = ['apply', 'findwork'].includes(id) && !k.careerId;
     return navRow({ attrs: `data-act="${id}"`, label: main, sub: sub ?? '', ico: NAV_ICONS[id], tone: lead ? 'peach' : '' });
-  }).join('')}</div>` : ''}
+  }).join('')}</div>` : ''}${more}
         ${danger.length ? `<div class="btn-pair">${danger.map((b) => btn(b, ' danger')).join('')}</div>` : ''}
         <div style="height:4px"></div>`;
     };
@@ -453,21 +499,22 @@ export default {
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `
+      <div class="section-label">You</div>
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${contacts()}
-      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work)}</div>`)}
-      ${politicsCard()}
-      ${k.history.length ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('archive')}</span><h3>Past jobs</h3></div>${past}</div>` : ''}`;
+      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${findWork(p, work)}
+      ${specialCareers(p, work)}`;
 
     el.onclick = (ev) => {
+      if (ev.target.closest('[data-go="athletics"]')) return openAthletics(api);
       const pol = ev.target.closest('[data-pol]')?.dataset.pol;
       if (pol) return politicsAction(pol, api);
       const id = ev.target.closest('[data-act]')?.dataset.act;
       if (!id) return;
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
-        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
+        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();

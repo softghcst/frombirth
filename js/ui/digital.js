@@ -6,6 +6,7 @@
 // section, filters, the open post or conversation, how far down they had
 // scrolled — is remembered, so a trip to someone's profile and back loses
 // nothing, and neither does closing Digital Life and opening it again.
+import { fitBar } from './fitBars.js';
 import { getEra, erasBetween, eventsIn } from '../engine/history.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney, localMoney } from '../util.js';
@@ -413,7 +414,7 @@ function datingCard() {
   return `<div class="card" style="margin-top:14px"><h3>Online dating on ${esc(PLATFORM_BY_ID.kindling.name)}</h3>
     <p class="muted" style="margin-bottom:10px">Adults only.</p>
     ${!has ? '<button class="btn" data-do="datingProfile">Make a dating profile</button>' : blocks.length ? `<p class="muted">${esc(blocks[0])}</p>` : `<div class="dl-btns"><button class="btn small primary" data-do="findMatches">See new matches</button><button class="btn small" data-do="datingPrefs">What you are looking for</button></div>`}
-    ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')} · ${Math.round(m.compat * 100)}% on paper</small></div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
+    ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')}</small>${fitBar('How You Match', m.compat * 100)}</div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
   </div>`;
 }
 
@@ -735,6 +736,15 @@ async function privacy(api, rerender, id) {
   if (v) await say(api, acc.updateAccount(id, v), rerender);
 }
 
+/** One-tap posts: what kind it is, the format it takes, and what it is about. */
+const QUICK_POSTS = [
+  ['Selfie', 'photo', 'life'], ['Outfit of the day', 'photo', 'fashion'], ['Food photo', 'photo', 'cooking'], ['Family photo', 'photo', 'family'],
+  ['Photo with friends', 'photo', 'friends'], ['Travel photo', 'photo', 'travel'], ['Throwback photo', 'photo', 'life'], ['Meme', 'photo', 'acting'],
+  ['Dance video', 'short_video', 'dance'], ['Singing video', 'short_video', 'singing'], ['Challenge video', 'short_video', 'life'], ['Workout video', 'short_video', 'sports'],
+  ['Gaming clip', 'short_video', 'gaming'], ['Cooking video', 'short_video', 'cooking'], ['Something on your mind', 'text', 'life'], ['Work news', 'text', 'work'],
+  ['A book you loved', 'text', 'books'], ['Explain something you know', 'text', 'education'],
+];
+
 async function compose(api, rerender, o = {}) {
   const p = player();
   const mine = acc.activeAccountsOf(p.id).filter((a) => pl(a.platformId).formats.some((f) => f !== 'livestream') && pl(a.platformId).audience !== 'matches');
@@ -743,6 +753,20 @@ async function compose(api, rerender, o = {}) {
   if (!accountId) return;
   const a = acc.account(accountId);
   const formats = content.formatOptions(accountId);
+  // Most posts are one tap: pick what kind it is. The full form is there for anything more.
+  if (!o.contractId && !o.detailed) {
+    const why = (fmt) => { const f = formats.find((x) => x.id === fmt); return !f ? `Not on ${pl(a.platformId).name}` : f.why; };
+    const pick = await pickModal({ title: `Post on ${pl(a.platformId).name}`, body: 'Pick your post.', cancel: 'Back',
+      options: [...QUICK_POSTS.map(([label, fmt], i) => ({ value: `q${i}`, label, disabled: !!why(fmt), sub: why(fmt) || '' })), { value: 'detailed', label: 'Write a detailed post…', sub: 'Topic, words, who can see it, trends' }] });
+    if (!pick) return;
+    if (pick !== 'detailed') {
+      const [label, format, topic] = QUICK_POSTS[Number(pick.slice(1))];
+      const r = content.publish({ accountId, format, topic, text: '', audience: a.visibility, aboutIds: [] });
+      if (r.ok) state().trail.push({ type: 'post', id: r.post.id });
+      void label;
+      return say(api, r, rerender);
+    }
+  }
   const sources = content.sourceOptions();
   const trends = creator.currentTrends(a.platformId);
   const fam = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && msg.FAMILY.includes(n.role));

@@ -36,7 +36,21 @@ import { seasonLine, baseballYear, hallYear, BASEBALL_ANSWERS } from './baseball
 import { contractHook, qualifying, market, freeAgentYear, CONTRACT_ANSWERS } from './baseballContracts.js';
 import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
 
-const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const nextId = (...a) => sp.internals.nextId(...a);
+const findOrg = (...a) => sp.internals.findOrg(...a);
+const coachFor = (...a) => sp.internals.coachFor(...a);
+const meetCoach = (...a) => sp.internals.meetCoach(...a);
+const teamFor = (...a) => sp.internals.teamFor(...a);
+const joinOrg = (...a) => sp.internals.joinOrg(...a);
+const leaveOrg = (...a) => sp.internals.leaveOrg(...a);
+const playSeason = (...a) => sp.internals.playSeason(...a);
+const playEvent = (...a) => sp.internals.playEvent(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const rec = (...a) => sp.internals.rec(...a);
+const EVENTS_A_YEAR = new Proxy({}, { get: (_, k) => sp.internals.EVENTS_A_YEAR[k], ownKeys: () => Reflect.ownKeys(sp.internals.EVENTS_A_YEAR), getOwnPropertyDescriptor: (_, k) => Object.getOwnPropertyDescriptor(sp.internals.EVENTS_A_YEAR, k) });
+const fullName = (...a) => sp.internals.fullName(...a);
+const seeded = (...a) => sp.internals.seeded(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const money = (state, base) => localMoney(base, COUNTRIES[state.player.countryId]);
 const fmt = (state, v) => fmtMoney(v, COUNTRIES[state.player.countryId]);
@@ -82,7 +96,7 @@ export function answer(id, choice, state = store.state) {
   const d = S.decisions.find((x) => x.id === id);
   if (!d || d.status !== 'open') return result(false, 'That has already been settled.', 'neutral');
   if (!d.options.some((o) => o.id === choice)) return result(false, 'That is not one of the choices.', 'neutral');
-  const fn = ANSWERS[d.kind];
+  const fn = ANSWERS[d.kind] ?? MORE_ANSWERS().map((x) => x[d.kind]).find(Boolean);
   const r = fn(state, d, choice);
   if (r.ok !== false || r.close) { d.status = 'done'; d.choice = choice; d.answered = state.year; }
   return r;
@@ -197,6 +211,8 @@ const ANSWERS = {
   },
   turnPro(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
+    const lock = sp.proLock(d.sportId, state);
+    if (lock) return { ...result(false, lock, 'neutral'), close: true };
     const e = sp.entryOf(d.sportId, state.player.id, state);
     e.level = 'pro';
     e.proYear ??= state.year;
@@ -311,6 +327,8 @@ function signPro(state, d, o = {}) {
   if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
     return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
   }
+  const lock = sp.proLock(d.sportId, state);
+  if (lock) return { ...result(false, lock, 'neutral'), close: true };
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.
   // A contract whose job has already gone (another job taken) is over now, not at the turn of the year.
   for (const x of Object.values(S.contracts)) if (x.kind === 'pro' && x.status === 'active' && x.personId === p.id && p.career.sportContract !== x.id) endContract(state, x, 'left the club');
@@ -367,6 +385,8 @@ export function goPro(sportId, state = store.state) {
   const sport = sportOf(sportId);
   if (!needsSport(state)) return result(false, 'You are not a professional athlete looking for a sport.', 'neutral');
   if (!sport || !proSports(state).includes(sport)) return result(false, `There is no professional ${sport?.name.toLowerCase() ?? 'game'} here yet.`, 'neutral');
+  const lock = sp.proLock(sportId, state);
+  if (lock) return result(false, lock, 'neutral');
   let e = sp.entryOf(sportId, p.id, state);
   if (!e || e.status !== 'active') { const r = sp.takeUp(sportId, state); if (!r.ok) return r; e = sp.entryOf(sportId, p.id, state); }
   // They were hired as a professional: their game is a professional's, from their talent and how senior the job is.
@@ -498,7 +518,7 @@ function collegeTeam(state, a, e) {
   }
   return org;
 }
-/** Leaving the team at university costs the athletic part of a scholarship, from the next year's fees. */
+/** Leaving the team in college costs the athletic part of a scholarship, from the next year's fees. */
 export function quitCollegeTeam(sportId, state = store.state) {
   const p = state.player;
   const e = sp.entryOf(sportId, p.id, state);
@@ -877,7 +897,8 @@ function yearIn(state, a, e) {
   const S = sp.ensure(state);
   const p = state.player;
   const sport = sportOf(e.id);
-  if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); return; }
+  // Banned: no games, but an academy scholarship runs on (its wage, and its end at eighteen) like any contract would.
+  if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); youthYear(state, a, e); return; }
   // Away on military service (Korea): no games; the skills wait (engine/asiaBaseball.js).
   if (onService(state, e)) { log(`Military service: no ${sport.name.toLowerCase()} this year.`, 'system', 'neutral'); e.plan.hours = Math.min(e.plan.hours, 2); sp.internals.trainYear(state, p, a, e); asiaYear(state, a, e); return; }
   // University: the program, if the player plays for one.
@@ -1028,16 +1049,20 @@ function yearIn(state, a, e) {
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
   recruitYear(state, a, e); // high school: stars, camps, offers, visits, commitment, signing day (engine/recruiting.js)
-  youthYear(state, a, e); // soccer academies: a scholarship or youth contract at 16, or released (engine/youthContracts.js)
-  asiaYear(state, a, e); // Japan and Korea: posting, free agency abroad, military service (engine/asiaBaseball.js)
-  intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
-  proRoutes(state, a, e);
+  // A professional in another sport plays this one for fun: no academy, draft, club or tour comes for them here.
+  const locked = !!sp.proLock(e.id, state);
+  if (!locked) {
+    youthYear(state, a, e); // soccer academies: a scholarship or youth contract at 16, or released (engine/youthContracts.js)
+    asiaYear(state, a, e); // Japan and Korea: posting, free agency abroad, military service (engine/asiaBaseball.js)
+    intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
+    proRoutes(state, a, e);
+  }
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
   fameYear(state, a, e, sum);
   afterSeason(state, a, e, sum); // college: the season used, NIL money, the transfer portal
   minorsYear(state, a, e, sum); // the minor leagues: up a level, called up, or down (engine/draft.js)
-  draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
+  if (!locked) draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
   baseballYear(state, a, e, sum); // baseball: winter ball, the Classic, summer leagues, life abroad (engine/baseball.js)
   integrityYear(state, a, e);
   // The body says when: a professional in their thirties is asked whether this is the last year.
@@ -1153,7 +1178,9 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
-Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS, BASEBALL_ANSWERS, CONTRACT_ANSWERS);
+// The other modules' answers are looked up when a decision is answered, not merged here at load time: those modules
+// import this one, and may still be loading when it runs (an import cycle).
+const MORE_ANSWERS = () => [RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS, BASEBALL_ANSWERS, CONTRACT_ANSWERS];
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };

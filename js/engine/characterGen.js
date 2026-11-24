@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
 import { ensureEra } from './eras.js';
@@ -9,6 +10,7 @@ import { EARLIEST_START } from '../data/eras.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
+import { MONARCHIES } from '../data/royalty.js';
 import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from './dynasty.js';
 import { uid, theCountry } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
@@ -35,11 +37,14 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {string} [opts.countryId]
  * @param {string} [opts.city]
  * @param {object} [opts.appearance]  a complete appearance from the editor; left out, the face is inherited
- * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
+ * @param {string} [opts.talent]  a guaranteed natural gift: a talent id from data/talents.js
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
- * @param {'commoner'|'noble'|'royal'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare
+ * @param {'commoner'|'noble'|'royal'|'heir'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare.
+ *   'heir' is the first child of the reigning monarch: first in line where the law allows it.
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
+ * @param {'male'|'female'} [opts.sex]  the sex registered at birth; with it, `gender` (if given) is who they are, and
+ *   otherwise follows from `trans`
  * @returns {import('../types.js').GameState}
  */
 /** Every life starts with at least one gift (a talent of 75 or more): if none was inherited, one is picked at random. */
@@ -49,13 +54,42 @@ function withAGift(talents) {
 }
 
 export function createLife(opts = {}) {
-  rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+  // Heir to the throne: first in line, which depends on the house that is drawn around the family; drawn again if not.
+  if (opts.birthRank !== 'heir') return createOnce(opts);
+  let state;
+  for (let i = 0; i < 20; i++) { state = createOnce(opts); if (!state.player.royal || state.player.royal.line === 1) return state; }
+  return state;
+}
+
+function createOnce(opts = {}) {
+  if (!rng.pinned) rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0); // a fresh life, unless the dice are pinned (js/rng.js)
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
   // `identityGender` is who they are. A transgender character is registered as something else at birth.
-  const identityGender = opts.gender ?? rng.pick(['male', 'female']);
-  const trans = opts.trans ?? rng.chance(TRANS_RATE);
-  const gender = !trans ? identityGender : identityGender === 'male' ? 'female' : identityGender === 'female' ? 'male' : rng.pick(['male', 'female']);
+  // Or from the other end (the life designer): `sex` is who they are registered as at birth, and who they are follows
+  // from whether they are transgender (the other) or non-binary.
+  const other = (g) => (g === 'male' ? 'female' : 'male');
+  // Heir to a throne only men inherit: born a boy if nothing else was chosen, and royal (not first in line) if a girl was.
+  if (opts.birthRank === 'heir' && MONARCHIES[c.id]?.law?.order === 'maleOnly') {
+    if (!opts.sex) opts = { ...opts, sex: 'male', trans: opts.trans ?? false };
+    else if (opts.sex !== 'male') opts = { ...opts, birthRank: 'royal' };
+  }
+  // A random life with nothing chosen: the same odds as the life designer's "Randomize everything" (ui/screens/creator.js),
+  // so a random life can be trans or non-binary, and any sexuality (rollOrientation, below).
+  if (!opts.sex && !opts.gender && opts.trans == null) {
+    const kind = rng.weighted([['no', 95], ['yes', 3], ['nonbinary', 2]], (x) => x[1])[0];
+    opts = { ...opts, sex: rng.pick(['male', 'female']), trans: kind !== 'no', ...(kind === 'nonbinary' ? { gender: 'nonbinary' } : {}) };
+  }
+  let identityGender, trans, gender;
+  if (opts.sex === 'male' || opts.sex === 'female') {
+    trans = opts.trans ?? (opts.gender === 'nonbinary' ? true : rng.chance(TRANS_RATE));
+    gender = opts.sex;
+    identityGender = opts.gender ?? (trans ? other(opts.sex) : opts.sex);
+  } else {
+    identityGender = opts.gender ?? rng.pick(['male', 'female']);
+    trans = opts.trans ?? rng.chance(TRANS_RATE);
+    gender = !trans ? identityGender : identityGender === 'male' ? 'female' : identityGender === 'female' ? 'male' : rng.pick(['male', 'female']);
+  }
   const orientation = opts.orientation ?? rollOrientation();
   const lastName = surnameFor(c.id, opts.lastName?.trim() || rng.pick(c.names.last), gender);
   const firstName = opts.firstName?.trim()
@@ -76,7 +110,9 @@ export function createLife(opts = {}) {
   const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, avoidNames: [firstName] });
   // A royal child: the house is built around the family before the child is drawn from it.
   const birth = birthKind(c.id, opts.birthRank);
-  const seat = birth === 'royal' ? seatFamily(c, year, fam, gender) : null;
+  // The heir: the monarch's first child, so no older brothers or sisters stand ahead in the line.
+  if (birth === 'heir') { fam.siblings = []; fam.twin = null; }
+  const seat = birth === 'royal' || birth === 'heir' ? seatFamily(c, year, fam, gender, birth === 'heir' ? 'crown' : null) : null;
   const { mother, father } = fam;
   const genes = father ?? unknownParent(mother);
   // One family in ten has a parent who came from another country. Their own parents, if living, are still there.
@@ -137,13 +173,18 @@ export function createLife(opts = {}) {
   };
   player.flags.bornAs = gender;
   player.flags.interestedIn = attractedTo(orientation, identityGender);
-  // A transgender child works out who they are some time in childhood.
-  if (trans) { player.flags.trueGender = identityGender; player.flags.realizeAge = rng.int(4, 14); }
+  // A transgender character who never goes looking feels it some time from the teenage years on: at 14, or 19, or 31.
+  if (trans) { const r = rng.int(0, 99); player.flags.trueGender = identityGender; player.flags.realizeAge = r < 40 ? 13 + (r % 5) : r < 75 ? 18 + (r % 7) : 25 + (r % 11); }
+  // What is inherited is the gift; how good someone is starts low and is built (engine/talentGrowth.js).
+  player.potential = { ...player.talents };
+  player.talents = startTalents(player.potential, player.age);
   // Natural gifts make the matching skills come faster all life long.
-  player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
+  player.flags.gifts = giftsOf(player);
   // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
   player.flags.moneySense = startingSense([mother, father]);
 
+  // A trait or a condition at birth changes the gift, not how good a baby already is.
+  const before = { ...player.talents };
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {
     applyMods(player, b);
@@ -214,10 +255,13 @@ export function createLife(opts = {}) {
     }
     journal.splice(1, 0, j(born, 'good'));
   }
+  for (const k of Object.keys(player.talents)) {
+    const d = player.talents[k] - (before[k] ?? 0);
+    if (d) { player.potential[k] = Math.max(0, Math.min(100, (player.potential[k] ?? 0) + d)); player.talents[k] = before[k] ?? 0; }
+  }
+  player.flags.gifts = giftsOf(player);
   player.flags.longevity = rollLongevity();
   if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
-  const gift = Object.entries(player.talents).find(([, v]) => v >= 75);
-  if (gift) journal.push(j(`Something about you hints at a gift for ${gift[0]}.`, 'good'));
 
   const state = {
     schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'),

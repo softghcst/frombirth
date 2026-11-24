@@ -1,7 +1,7 @@
 // Yearly body upkeep: natural stat drift, new conditions, recoveries.
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
-import { player, log } from '../state.js';
+import { player, log, store, country } from '../state.js';
 import { ILLNESSES, ILLNESS_BY_ID } from '../data/illnesses.js';
 import { LEGACY_IDS, CONDITION_BY_ID } from '../data/health/conditions.js';
 import { begin } from './health/course.js';
@@ -62,7 +62,8 @@ export function tickHealth() {
     if (cond.sinceAge < age) {
       if (rng.chance(def.recover)) {
         cureCondition(cond.id);
-        log(`You recovered from ${def.name}.`, 'system', 'good');
+        // Getting over a cold or the flu goes without saying; getting over something serious does not.
+        if (def.chronic || def.recover < 0.8) log(`You recovered from ${def.name}.`, 'system', 'good');
         continue;
       }
       if (!def.chronic) log(`You are still suffering from ${def.name}.`, 'system', 'bad');
@@ -80,6 +81,27 @@ export function tickHealth() {
     if (rng.chance(def.chance * frailty) && addCondition(def.id)) {
       log(`You came down with ${def.name}.`, 'system', 'bad');
       for (const [k, v] of Object.entries(def.yearly)) bump(s, k, v);
+      // A new illness is a moment of its own (one a year): see a doctor, rest it off, or carry on regardless.
+      if (!def.chronic && age >= 3 && !store.state.pendingEvents.some((e) => e.id === 'ailment')) store.state.pendingEvents.push({ id: 'ailment', cast: { words: { illness: def.name, illnessId: def.id } } });
     }
   }
+}
+
+/** What the player does about a new illness (the scene 'ailment'). */
+export function ailmentChoice(value, cast = {}) {
+  const p = player();
+  const id = cast.words?.illnessId;
+  if (!id || !p.conditions.some((c) => c.id === id)) return '';
+  if (value === 'doctor') {
+    const fee = Math.round(80 * (country().currency?.scale ?? 1));
+    if (p.age >= 18) p.finance.cash -= fee;
+    if (rng.chance(0.85)) { cureCondition(id); p.stats.health = clamp(p.stats.health + 3); return 'The doctor sorts you out. You feel like yourself within a week.'; }
+    return 'The doctor gives you something for it. It is slow to clear, but it is clearing.';
+  }
+  if (value === 'rest') {
+    if (rng.chance(0.6)) { cureCondition(id); p.stats.mood = clamp(p.stats.mood + 1); return 'A few days in bed, soup, and too much television. It passes.'; }
+    return 'You rest, and it hangs on anyway.';
+  }
+  p.stats.health = clamp(p.stats.health - 3);
+  return 'You carry on as if nothing is wrong. Your body disagrees.';
 }

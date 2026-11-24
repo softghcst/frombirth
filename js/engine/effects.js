@@ -1,7 +1,12 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { funeral } from './passing.js';
+import { militaryChoice } from './military.js';
+import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
+import { feelingChoice } from './identity.js';
+import { ailmentChoice } from './health.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
@@ -151,7 +156,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'moveCity': {
         const others = c.cities.filter((x) => x !== p.city);
-        p.city = others[Math.floor(Math.random() * others.length)] ?? p.city;
+        p.city = others.length ? rng.pick(others) : p.city; // the game's own dice, so a reload replays it
         break;
       }
       case 'property': hitProperty(e.target, e.value); break;
@@ -198,6 +203,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
+      case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
+      case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
@@ -236,6 +243,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
       case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'funeral': funeral(ctx.cast?.words?.goneId, e.value === 'skip' ? false : e.value === 'speak' ? 'speak' : true); break;
+      case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }

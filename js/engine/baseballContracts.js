@@ -11,11 +11,16 @@ import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { BASEBALL as B, DRAFTS, draftCountry, sportOf } from '../data/sports.js';
 import { clubOf, toMinors } from './draft.js';
-import { record, isBaseball, levelOf, isTop } from './baseball.js';
+import { record, isBaseball, levelOf } from './baseball.js';
 import * as sp from './sports.js';
 import { internals as life } from './sportsLife.js';
 
-const { seeded, overall, findOrg, teamFor, leagueFor } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const findOrg = (...a) => sp.internals.findOrg(...a);
+const teamFor = (...a) => sp.internals.teamFor(...a);
+const leagueFor = (...a) => sp.internals.leagueFor(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const usd = (state, v) => life.money(state, v);
 
@@ -360,4 +365,3 @@ export const CONTRACT_ANSWERS = {
     return result(true, `You signed with ${club.name}: a new country, and a new league.`);
   },
 };
-void isTop;

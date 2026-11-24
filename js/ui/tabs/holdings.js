@@ -1,5 +1,6 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import { PACES, DURATIONS } from '../../data/rides.js';
 import { careLine } from '../../engine/guardianship.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
@@ -25,8 +26,8 @@ import { openMyMoney } from '../money.js';
 import * as review from '../../engine/estateReview.js';
 import { heirs as playableHeirs } from '../../engine/legacy.js';
 import { bankWorth } from '../../engine/banking.js';
-import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
+import { DRIVING_TEST } from '../../data/vehicles.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -114,6 +115,33 @@ function willCard(c) {
   return `<div class="card" style="margin-top:14px"><h3>Your will</h3>
     ${kv(rows)}
     <button class="btn" data-go="will" style="margin-top:10px">Change your will</button></div>`;
+}
+
+/** The driving test: pay, answer five questions one by one, and see how it went. */
+export async function drivingTest(api) {
+  const c = country();
+  const st = cars.drivingTestStatus();
+  if (!st.left) return messageModal({ body: 'You have used all three tries this year. You can take the test again next year.' });
+  const go = await confirmModal({ title: st.retake ? 'Retake the test?' : "Your Driver's Test",
+    body: `${fmtMoney(st.fee, c)}. One question; get it right to pass. ${st.left} ${st.left === 1 ? 'try' : 'tries'} left this year.`, yes: 'Take the test' });
+  if (!go) return undefined;
+  const t = cars.startDrivingTest();
+  if (!t.ok) return report(api, t);
+  const picks = [];
+  for (const [i, x] of t.questions.entries()) {
+    const pick = await pickModal({ title: t.questions.length > 1 ? `Question ${i + 1} of ${t.questions.length}` : 'Your driving test', body: x.q, cancel: 'Give up',
+      options: x.options.map((o) => ({ value: o, label: o })) });
+    if (!pick) break; // walking out of the test fails it: the try is used
+    picks.push(pick);
+  }
+  const r = cars.finishDrivingTest(picks);
+  api.changed();
+  return new Promise((resolve) => {
+    const m = openModal(`<h2>${r.ok ? 'You passed' : 'Not this time'}</h2><p class="body">${esc(r.text)}</p>
+      ${r.missed?.length ? `<div class="section-label">${r.ok ? 'The one you missed' : 'The right answer'}</div>${r.missed.map((x) => `<p class="muted" style="margin:4px 0">${esc(x.q)}</p><p style="margin:0 0 10px"><strong>${esc(x.right)}</strong></p>`).join('')}` : ''}
+      <button class="btn primary" data-ok>Continue</button>`, { tone: r.tone });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
 }
 
 async function report(api, r) {
@@ -257,6 +285,30 @@ async function browseVehicles(api) {
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
 }
 
+/** A ride: the pace, how long, whatever happens on the way, and how it went. */
+async function goForRide(a, api) {
+  const drive = a.vehicleClass === 'car';
+  const pace = await pickModal({ title: drive ? 'Go for a drive' : 'Go for a ride', body: 'Pick your pace.', cancel: 'Back', options: PACES.map((x) => ({ value: x.id, label: x.name })) });
+  if (!pace) return undefined;
+  const mins = await pickModal({ title: 'How long?', cancel: 'Back', options: DURATIONS.map((x) => ({ value: String(x), label: x < 60 ? `${x} minutes` : x === 60 ? '1 hour' : `${x / 60} hours` })) });
+  if (!mins) return undefined;
+  const r = cars.ride(a.id, pace, Number(mins));
+  if (!r.ok && !r.distance) return report(api, r);
+  if (r.encounter) {
+    const v = await pickModal({ title: drive ? 'On the road' : 'On your ride', body: r.encounter.text, options: r.encounter.options.map((o) => ({ value: `o${o.value}`, label: o.label })) });
+    const pick = v ? Number(String(v).slice(1)) : r.encounter.options.at(-1).value;
+    const e = cars.rideEncounter(r.encounter.id, pick, a.id);
+    api.changed();
+    await messageModal({ body: e.text, tone: e.tone });
+  }
+  api.changed();
+  return new Promise((resolve) => {
+    const m = openModal(`<h2>${r.ok ? (r.joy >= 60 ? 'A great ride' : r.joy >= 35 ? 'Time well spent' : 'Not your best ride') : 'Ouch'}</h2><p class="body">${esc(r.text)}</p>
+      ${kv([['Distance', r.distance]])}<div style="margin:10px 0">${meterHtml('Enjoyment', r.joy, true)}</div><button class="btn primary" data-ok>Continue</button>`, { tone: r.tone });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
+
 function openVehicle(a, api) {
   const c = country();
   const m = openModal(`
@@ -264,7 +316,7 @@ function openVehicle(a, api) {
     ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`], ...(cars.loanOn(a) ? [['Still owed on it', `${fmtMoney(cars.loanOn(a).principal, c)}: the lender can take it back if the loan goes unpaid`]] : [])])}
     <div style="margin:12px 0 16px">${meterHtml('Condition', a.condition, true)}</div>
     <div class="btn-stack">
-      <button class="btn" data-act="out">Take it out</button>
+      ${cars.canRide(a) ? `<button class="btn primary" data-act="ride" ${cars.ridesLeft(a.id) <= 0 ? 'disabled' : ''}>${a.vehicleClass === 'car' ? 'Go for a drive' : 'Go for a ride'}${cars.ridesLeft(a.id) <= 0 ? ' · enough for this year' : ''}</button>` : '<button class="btn" data-act="out">Take it out</button>'}
       ${a.condition < 95 ? `<button class="btn" data-act="service">Service it (${fmtMoney(cars.serviceCost(a), c)})</button>` : ''}
       <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}${cars.loanOn(a) ? ` (${cars.saleNet(a) >= 0 ? `${fmtMoney(cars.saleNet(a), c)} after the loan` : `${fmtMoney(-cars.saleNet(a), c)} short of the loan`})` : ''}</button>
       <button class="btn" data-close>Close</button>
@@ -274,6 +326,7 @@ function openVehicle(a, api) {
     const id = e.target.closest('[data-act]')?.dataset.act;
     if (!id) return undefined;
     m.close();
+    if (id === 'ride') return goForRide(a, api);
     return report(api, { out: () => cars.takeOut(a.id), service: () => cars.service(a.id), sell: () => cars.sellVehicle(a.id) }[id]());
   });
 }
@@ -354,8 +407,14 @@ export default {
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);
     if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
-    if (cars.canTakeDrivingTest()) actions.push(['driving', 'Take driving lessons and the test']);
+    if (cars.canTakeDrivingTest()) actions.push(['driving', cars.drivingTestStatus().retake ? "Retake the Driver's Test" : "Driver's License"]);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
+    // What is not open yet stays in the list, greyed, with why: the player can see what is coming.
+    const locked = [];
+    if (p.age < 18) locked.push(['Browse property', 'From age 18'], ['Invest', 'From age 18'], ['Borrow money', 'From age 18'], ['Currencies', 'From age 18']);
+    if (p.age < 3) locked.push(['Browse vehicles', 'From age 3']);
+    if (!cars.canTakeDrivingTest() && !cars.hasLicense()) locked.push(["Driver's License", fromAge(p.age, cars.drivingTestAge()) || 'Not open to you now']);
+    if (!(cars.canLearnToFly() && p.age >= 21) && !cars.hasPilotLicense()) locked.push(['Learn to fly', fromAge(p.age, 21) || 'Not open to you now']);
 
     const row = (a, glyph, sub, value) => `
       <button class="row" data-asset="${a.id}">
@@ -390,12 +449,11 @@ export default {
         ${kv([['Where you live', living], ['Earned in your life', fmtMoney(f.lifetimeEarned, c)]])}
         <details class="more"><summary>Taxes and costs</summary>
         ${kv([['Tax paid in your life', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', inheritanceLine(c)],
+    ['Income tax', taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on extra income`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', inheritanceShort(c).replace(/^./, (x) => x.toUpperCase())],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}</details>
       </div>
-      ${navGroup(actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), 'Buy and invest')}
-      ${householdAnimalsHtml()}
+      ${navGroup([...actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), ...locked.map(([label, why]) => lockedRow(label, why))], 'Buy and invest')}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
@@ -405,12 +463,9 @@ export default {
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
-      const animal = e.target.closest('[data-animal]')?.dataset.animal;
-      if (animal) return openAnimalProfile(api, animal);
-      if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
         return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
-          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
+          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => drivingTest(api), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
       if (repay) return report(api, bank.repayLoan(repay));
