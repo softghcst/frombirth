@@ -93,7 +93,7 @@ async function run(api) {
     title: party ? 'Seek a post' : 'Run for office',
     body: party ? 'The committee decides. Loyalty, patience and usefulness are what it looks for.' : 'You can fight one campaign a year. Skipping rungs is possible, and hard.',
     options: pol.ladder().map((o) => ({ value: o.id, label: o.title, disabled: !!o.blocked,
-      html: o.blocked ? '' : fitBars({ ...o.bars, youLabel: party ? 'Your standing' : 'Your support', needLabel: 'What it takes' }),
+      html: o.blocked ? '' : fitBars({ ...o.bars, youLabel: party ? 'Your Standing' : 'Your Support', needLabel: 'To Win' }),
       sub: o.blocked || `${o.opponent ? `Against ${o.opponent}. ` : ''}Polling in ${o.electionYear}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year${o.fullTime ? '' : ', alongside your job'}.` })),
   });
   if (!officeId) return undefined;

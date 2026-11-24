@@ -1237,7 +1237,7 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 
 /* How you measure up: two bars, no numbers (ui/fitBars.js). */
 .fit-bars { display: grid; gap: 5px; margin: 6px 0 2px; width: 100%; }
-.fit-row { display: grid; grid-template-columns: minmax(10.5em, 46%) 1fr; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.fit-row { display: grid; grid-template-columns: minmax(7.5em, 34%) 1fr; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
 .fit-track { position: relative; height: 9px; border-radius: 99px; background: var(--track); overflow: hidden; }
 .fit-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; }
 .fit-you { background: var(--accent); }

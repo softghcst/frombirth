@@ -68,7 +68,7 @@ function targetForm() {
       m.el.querySelector('[data-who-note]').textContent = s ? s.note ?? '' : 'They trust you, which makes it easier to get close.';
       const mt = methods.find((x) => x.id === how.value);
       m.el.querySelector('[data-how-note]').textContent = mt?.blurb ?? '';
-      m.el.querySelector('[data-how-bars]').innerHTML = mt?.bars ? fitBars({ ...mt.bars, youLabel: 'What you bring', needLabel: 'What it takes' }) : '';
+      m.el.querySelector('[data-how-bars]').innerHTML = mt?.bars ? fitBars({ ...mt.bars, youLabel: 'Your Skill', needLabel: 'Job Needs' }) : '';
     };
     who.addEventListener('change', notes); how.addEventListener('change', notes); notes();
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
@@ -80,7 +80,7 @@ async function commitCrime(api) {
   const id = await pickModal({
     title: 'Crime',
     body: 'Talent, brains and luck decide whether it works. Every crime wears your luck thinner and brings the police closer.',
-    options: law.crimeOptions().map((c) => ({ value: c.id, label: c.name, sub: c.stakes, html: fitBars({ ...c.bars, youLabel: 'What you bring', needLabel: 'What it takes' }) })),
+    options: law.crimeOptions().map((c) => ({ value: c.id, label: c.name, sub: c.stakes, html: fitBars({ ...c.bars, youLabel: 'Your Skill', needLabel: 'Job Needs' }) })),
   });
   if (!id) return;
   let targetId;

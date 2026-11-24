@@ -67,7 +67,7 @@ async function chooseClub(api) {
     options: edu.clubOptions().map((c) => ({
       value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
       sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.' : 'By try-out.'].filter(Boolean).join(' '),
-      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your ability', needLabel: 'What they look for' }) : '',
+      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your Level', needLabel: 'Club Wants' }) : '',
       disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
     })),
   });
@@ -156,7 +156,7 @@ async function chooseNewMajor(api) {
       value: m.id, label: m.name, disabled: !m.allowed,
       sub: !m.allowed ? `Needs a GPA of ${m.minGpa.toFixed(1)}.`
         : m.audition ? 'By audition.' : 'Open to you.',
-      html: m.allowed && m.bars ? fitBars({ ...m.bars, youLabel: 'What you would show', needLabel: 'What the panel wants' }) : '',
+      html: m.allowed && m.bars ? fitBars({ ...m.bars, youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
   if (id) await report(api, edu.switchMajor(id));
@@ -179,7 +179,7 @@ function pickMajor(progId) {
         : `${m.difficulty >= 0.45 ? 'Demanding' : m.difficulty >= 0.25 ? 'Moderate' : 'Gentle'} workload`
           + (community ? '' : ` · needs ${sch.mark(m.minGpa)} at school`)
           + (m.tracks.length ? ` · opens ${m.tracks.join(' and ')} school` : ''),
-      html: m.audition && !community && gpa >= m.minGpa ? fitBars({ ...edu.auditionBars(m.id), youLabel: 'What you would show', needLabel: 'What a typical panel wants' }) : '',
+      html: m.audition && !community && gpa >= m.minGpa ? fitBars({ ...edu.auditionBars(m.id), youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
 }

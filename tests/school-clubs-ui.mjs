@@ -54,7 +54,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     await tryRow.click(); await page.waitForTimeout(150);
     const ask = page.locator('#modal-root .modal').last();
     const askText = await ask.innerText();
-    check(await ask.locator('.fit-bars .fit-row').count() === 2 && /Your Ability/i.test(askText) && /What the Coach Looks For/i.test(askText) && !/\d+%|likely/i.test(askText), `${label}: trying out shows two bars, you and what the coach looks for (${askText.replace(/\n/g, ' / ').slice(0, 160)})`);
+    check(await ask.locator('.fit-bars .fit-row').count() === 2 && /Your Level/.test(askText) && /Coach Wants/.test(askText) && !/\d+%|likely/i.test(askText), `${label}: trying out shows two bars, you and what the coach looks for (${askText.replace(/\n/g, ' / ').slice(0, 160)})`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/tryout-${label}.png` });
     await ask.locator('[data-no]').click(); await page.waitForTimeout(150);
     check(!(await page.evaluate(async () => (await import('/js/state.js')).store.state.player.education.clubs.includes('sports_team'))), `${label}: "Not Now" leaves you off the team`);
