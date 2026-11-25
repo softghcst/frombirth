@@ -476,6 +476,12 @@ section('trips: paid once, may go badly, may be declined');
   const { roleLabel } = await import('../js/engine/relationships.js');
   const sib = person('sibling', 20); sib.flags.half = true;
   check(/^Half-/.test(roleLabel(sib)), 'a half-sibling is called one');
+  // A best friend who became a partner, then a wife, is called that; titles still name a stepparent.
+  const bff = person('friend', 30); bff.gender = 'female'; bff.flags.title = 'Best friend';
+  check(roleLabel(bff) === 'Best friend', 'a best friend is called one');
+  bff.role = 'partner'; check(roleLabel(bff) === 'Girlfriend', `a best friend who became a girlfriend is called one (${roleLabel(bff)})`);
+  bff.role = 'spouse'; check(roleLabel(bff) === 'Wife', `and, married, a wife (${roleLabel(bff)})`);
+  const step = person('parent', 50); step.flags.title = 'Stepmother'; check(roleLabel(step) === 'Stepmother', 'a stepmother is still called one');
 }
 section('children across households: where they live, support owed once and yearly, half-siblings, who has been told');
 
