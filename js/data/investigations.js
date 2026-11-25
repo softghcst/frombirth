@@ -68,7 +68,7 @@ export const AGENCY_KINDS = {
     name_: (city) => `${city} Police Department`, academyMonths: 6, fieldMonths: 6, probationMonths: 12, minAge: 21, maxAge: null,
     education: 'high', source: 'bls_police' },
   county: { name: 'Sheriff\'s office', career: 'police', powers: 'police', countries: ['us'],
-    name_: (city) => `${city} County Sheriff's Office`, academyMonths: 6, fieldMonths: 4, probationMonths: 12, minAge: 21, maxAge: null,
+    name_: (city) => `County Sheriff's Office, ${city} area`, academyMonths: 6, fieldMonths: 4, probationMonths: 12, minAge: 21, maxAge: null,
     education: 'high', source: 'bls_police', titles: ['Deputy sheriff trainee', 'Probationary deputy', 'Deputy sheriff', 'Senior deputy'] },
   state: { name: 'State police', career: 'police', powers: 'police', countries: ['us'],
     name_: (city, state) => `${state ?? 'State'} State Police`, academyMonths: 7, fieldMonths: 3, probationMonths: 12, minAge: 21, maxAge: 39,
