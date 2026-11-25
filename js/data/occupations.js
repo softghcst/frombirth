@@ -214,7 +214,7 @@ export const TRACKS = [
     L(['Special agent', 70, 88, 5], ['Senior special agent', 92, 120, 4], ['Supervisory special agent', 124, 155, 4], ['Special agent in charge', 160, 195, 0])),
   T('atf_agent', 'ATF special agent', 'law', { req: { ...uni(), ...ADULT, cleanRecord: true }, schedule: 'irregular', stress: 3, values: ['service', 'excitement'], outside: false, countries: ['us'] },
     L(['Special agent', 70, 88, 5], ['Senior special agent', 92, 120, 4], ['Supervisory special agent', 124, 155, 4], ['Special agent in charge', 160, 195, 0])),
-  T('forensics', 'Forensic science', 'law', { req: uni('chemistry', 'biology', 'criminal_justice'), schedule: 'on_call', stress: 2, values: ['craft', 'service'], aliases: ['Forensic investigator'] },
+  T('forensics', 'Forensic science', 'law', { req: uni('chemistry', 'biology', 'criminal_justice', 'forensic_science'), schedule: 'on_call', stress: 2, values: ['craft', 'service'], aliases: ['Forensic investigator'] },
     L(['Crime scene technician', 42, 54, 2], ['Forensic investigator', 58, 76, 4], ['Senior forensic scientist', 80, 104, 5], ['Head of forensics', 108, 140, 0])),
   T('pi', 'Private investigation', 'novelty', { req: { ...ADULT, cleanRecord: true }, schedule: 'irregular', values: ['autonomy', 'excitement'], aliases: ['Private investigator'] },
     L(['Investigator\'s assistant', 26, 34, 2], ['Private investigator', 40, 65, 4], ['Investigations agency head', 70, 120, 0])),

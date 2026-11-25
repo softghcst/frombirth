@@ -46,6 +46,21 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | The next generation | **Playable**: an ancestor's public career is in My Investigations → Family Legacy; their cases stay in the records under their name and may come back to a descendant who investigates |
 | Forensic psychology outside the courts, police unions, national police reform | **Not built** |
 
+## Studying for the work
+
+Work → Special careers → Law Enforcement & Investigations. The overview's **Ways in** card sets out each route.
+
+- Police work is open from high school (21 or older) through the academy; a degree is not required to start. A degree adds to the
+  entrance assessment and academy readiness; relevant majors (criminal justice, criminology, psychology, political science, forensic science,
+  communications) add more.
+- Detective selection favors relevant degrees, and units favor their own (accounting or finance for fraud, cybersecurity or computer science
+  for cybercrime, forensic science for homicide, psychology for special victims).
+- Captain, deputy chief, chief, detective lieutenant and federal leadership ask for a bachelor's degree; a degree finished part-time while
+  serving counts from then on.
+- Federal agencies require a degree and value varied backgrounds (accounting, technology, law, languages, science, criminal justice).
+- A relevant degree gives a one-time head start in the skills it teaches, and shortens a private investigator's license by a year.
+- New majors: Criminology, Forensic Science (from 1975), Cybersecurity (from 2000), Accounting.
+
 ## Rules the engine keeps
 
 - One case, one identity: the investigation, its evidence, the charge, the trial and any appeal are records in `state.justice`.
