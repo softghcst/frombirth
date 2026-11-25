@@ -83,5 +83,33 @@ check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engine
   check(titleCase('STEM magnet school') === 'STEM Magnet School' && titleCase('School for gifted children') === 'School for Gifted Children' && titleCase('Law and public service academy') === 'Law and Public Service Academy', 'school names read in Title Case');
 }
 
+// Skipping a grade, and starting college early.
+{
+  const edu = await import('../js/engine/education.js');
+  const q = life();
+  q.age = 9; q.birthYear = store.state.year - 9;
+  q.education.enrolled = true; q.education.stage = 'elementary'; q.education.gpa = 3.9; q.stats.intellect = 70;
+  check(/far ahead/.test(edu.skipBlock(q)), 'an ordinary child cannot skip a grade');
+  q.stats.intellect = 95;
+  let r = { ok: false };
+  for (let i = 0; i < 20 && !r.ok; i++) { q.flags.skipAskedAge = null; r = edu.skipGrade(); }
+  check(r.ok && q.education.ahead === 1, `a gifted child can skip a grade (${r.text})`);
+  check(q.career.stress > 30, 'being the youngest in class is its own pressure');
+  for (let i = 0; i < 20; i++) { q.flags.skipAskedAge = null; edu.skipGrade(); }
+  check(q.education.ahead === edu.MAX_AHEAD, `two grades ahead at most (${q.education.ahead})`);
+  // Ahead in the stages: a child two years ahead starts middle school two years early.
+  q.age = 9; q.education.stage = 'elementary';
+  edu.tickEducation();
+  check(q.education.stage === 'middle', `two grades ahead, middle school comes at ${q.age} (${q.education.stage})`);
+
+  const t = life();
+  t.age = 15; t.birthYear = store.state.year - 15;
+  t.education.enrolled = true; t.education.stage = 'high'; t.education.gpa = 3.9; t.stats.intellect = 70;
+  check(/top marks/.test(edu.earlyCollegeBlock(t)), 'an ordinary student cannot leave for college early');
+  t.stats.intellect = 92;
+  const c = edu.startCollegeEarly();
+  check(c.ok && t.education.degrees.some((d) => d.type === 'high') && !t.education.enrolled, `a gifted 15-year-old finishes school early (${c.text})`);
+}
+
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Bright, techy and argumentative kids have schools and clubs of their own, and they count.');

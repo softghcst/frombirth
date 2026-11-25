@@ -166,6 +166,9 @@ export function openSchool(onChange) {
     if (teen) add('dance', 'School dance', 'Once a year', 'star');
     if (e.enrolled && e.stage === 'high') add('party', 'House party', 'Throw one while your parents are away', 'star');
     if (e.enrolled && p.age <= 18) add('nurse', 'Nurse', 'Visit the school nurse', 'health');
+    // A child far ahead of their class: moving up a year, or finishing early for college.
+    if (!edu.skipBlock(p)) add('skipgrade', 'Skip a Grade', 'You are far ahead of your class: ask to move up a year', 'star', 'peach');
+    if (!edu.earlyCollegeBlock(p)) add('early', 'Start College Early', 'Finish school now, years ahead of your friends', 'school', 'peach');
     add('history', 'Your school years', 'Every school, and what you left with', 'archive');
     return `${v.school ? `<div class="card"><h3>${esc(v.school.kind === 'home' ? 'Taught at home' : v.school.name)}</h3>
         <p class="muted" style="margin:0 0 6px">${esc(v.kind.name)} · ${esc(v.stageName)}, year ${v.year}</p>
@@ -215,6 +218,8 @@ export function openSchool(onChange) {
       return undefined;
     }
     if (go === 'nurse') return say(cliques.nurse());
+    if (go === 'skipgrade') return say(edu.skipGrade());
+    if (go === 'early') return say(edu.startCollegeEarly());
     if (go) { stack.push(go); return draw(); }
     const act = t.closest('[data-do]')?.dataset.do;
     if (act === 'study') return say(edu.studyHard());
