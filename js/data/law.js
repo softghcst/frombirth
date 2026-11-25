@@ -96,18 +96,19 @@ export const NO_CONTINGENCY_KINDS = ['criminal', 'family', 'child'];
 // ---------- Skills ----------
 
 /** The lawyer's craft, kept apart from fame and from how many cases were won. */
+// Five skills to keep track of, not twenty: the many things lawyers do are grouped into these. Courses, cases and
+// scenes may name a finer skill (cross-examination, drafting...); it counts toward its group (SKILL_GROUP).
 export const LEGAL_SKILLS = [
-  { id: 'research', name: 'Legal research' }, { id: 'writing', name: 'Legal writing' },
-  { id: 'interpretation', name: 'Reading statutes' }, { id: 'analysis', name: 'Case analysis' },
-  { id: 'evidence', name: 'Weighing evidence' }, { id: 'counseling', name: 'Client counseling' },
-  { id: 'negotiation', name: 'Negotiation' }, { id: 'oral', name: 'Oral advocacy' },
-  { id: 'procedure', name: 'Courtroom procedure' }, { id: 'examination', name: 'Witness examination' },
-  { id: 'cross', name: 'Cross-examination' }, { id: 'strategy', name: 'Trial strategy' },
-  { id: 'appellate', name: 'Appellate writing' }, { id: 'ethics', name: 'Professional ethics' },
-  { id: 'management', name: 'Case management' }, { id: 'leadership', name: 'Leadership' },
-  { id: 'drafting', name: 'Contract drafting' }, { id: 'family', name: 'Family procedure' },
-  { id: 'immigration', name: 'Immigration procedure' }, { id: 'business', name: 'Business law' },
+  { id: 'research', name: 'Research & Writing' }, { id: 'courtroom', name: 'Courtroom' },
+  { id: 'negotiation', name: 'Negotiation' }, { id: 'clients', name: 'Client Care' }, { id: 'ethics', name: 'Ethics & Judgment' },
 ];
+/** Finer skills named in the data, and the skill each counts toward. */
+export const SKILL_GROUP = {
+  writing: 'research', interpretation: 'research', analysis: 'research', appellate: 'research', drafting: 'research',
+  oral: 'courtroom', procedure: 'courtroom', examination: 'courtroom', cross: 'courtroom', strategy: 'courtroom', evidence: 'courtroom', advocacy: 'courtroom',
+  counseling: 'clients', management: 'clients', family: 'clients', immigration: 'clients', business: 'clients', leadership: 'ethics',
+};
+export const skillId = (id) => SKILL_GROUP[id] ?? id;
 export const SKILL_NAME = Object.fromEntries(LEGAL_SKILLS.map((s) => [s.id, s.name]));
 
 /** What a reputation is made of: several things, not a win count. */

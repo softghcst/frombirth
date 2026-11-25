@@ -126,9 +126,9 @@ export function act(id, p = player()) {
       return result(true, `${donor.firstName} ${donor.lastName}'s firm gave ${fmtMoney(n, country())}.${c.judicial ? ' If the firm comes before you as a judge, you may have to step aside.' : ''}`, 'neutral');
     }
     case 'town_hall': {
-      const g = 2 + (p.stats.charm - 50) / 15 + (L.skills?.advocacy ?? 40) / 40 + rng.next();
+      const g = 2 + (p.stats.charm - 50) / 15 + (L.skills?.courtroom ?? 40) / 40 + rng.next();
       c.appeal += g;
-      gain(p, { advocacy: 1 });
+      gain(p, { courtroom: 1 });
       return result(true, g > 3.5 ? 'The rooms were full, and people stayed to talk.' : 'Small rooms, but the people who came will vote.', 'good');
     }
     case 'endorse_bar': case 'endorse_paper': case 'endorse_police': case 'endorse_reform': {
@@ -169,7 +169,7 @@ export function debate(how, p = player()) {
   const L = lawOf(p);
   c.debated = true;
   const rules = c.judicial ? campaignRules(p.countryId) : null;
-  const skill = ((L.skills?.advocacy ?? 40) + p.stats.charm) / 2;
+  const skill = ((L.skills?.courtroom ?? 40) + p.stats.charm) / 2;
   const score = (skill - 50) / 8 + rng.next() * 4 - 1 + { record: 1, plan: 1.5, attack: 0.5, promise: 2 }[how];
   c.appeal += score;
   if (how === 'promise' && rules && !rules.promises) c.flags.promised = true;

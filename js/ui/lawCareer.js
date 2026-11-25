@@ -5,11 +5,12 @@
 import { esc, fmtMoney } from '../util.js';
 import { store, player, country } from '../state.js';
 import { openModal, pickModal, messageModal, confirmModal, selectModal } from './modals.js';
-import { fitBar, fitBars } from './fitBars.js';
+import { fitBar } from './fitBars.js';
 import * as ls from '../engine/lawSchool.js';
 import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
 import * as camp from '../engine/lawCampaign.js';
+import { openCampaign } from './lawCampaignScreen.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
 import { caseLaws, eraNotes } from '../engine/realLaw.js';
@@ -161,21 +162,12 @@ function progress() {
     ${card('Reputation', o.rep.map((r) => fitBar(r.name, r.v)).join('') + '<p class="muted">Built from how you work, not how many cases you win.</p>')}`;
 }
 
-/** A race for elected legal office in progress: the polls as two bars, the fund, and what can be done this stretch. */
+/** A race in progress: a short card here; the trail itself is its own screen (ui/lawCampaignScreen.js). */
 function campaignCard() {
   const c = camp.campaignOf();
   if (!c) return '';
-  const pl = camp.poll();
-  const last = c.polls[c.polls.length - 1] ?? pl;
-  const rules = camp.rulesNow();
-  const stage = c.round > camp.ROUNDS ? 'Election day' : `Stretch ${c.round} of ${camp.ROUNDS}${c.round === 2 ? ', with the debate' : ''}`;
-  const acts = c.round > camp.ROUNDS ? '' : camp.actions().map((a) => row(`data-camp="${a.id}" ${a.why ? 'disabled' : ''}`, a.name, a.why || a.sub)).join('');
-  const buttons = c.round > camp.ROUNDS ? btn('Election Day', 'data-campvote', 'primary')
-    : `${c.round === 2 && !c.debated ? btn('The Debate', 'data-campdebate', 'primary') : btn(c.round === camp.ROUNDS ? 'Finish the Campaign' : 'Next Stretch', 'data-campnext', 'primary')}${btn('Withdraw', 'data-campquit')}`;
-  return card(`Running for ${c.title}`, `${kv('Now', stage)}${kv('Campaign fund', fmtMoney(c.fund, country()))}
-    <div class="section-label">${c.polls.length ? 'The latest poll' : 'Where the race starts'}</div>${fitBars({ you: last.you, need: last.rival, youLabel: 'You', needLabel: c.rival ?? 'Your Opponent' })}
-    ${rules ? `<p class="muted">Judicial candidates run under ${esc(rules.laws.slice(0, 2).map((l) => l.name).join(' and ') || 'no listed rules')}.</p>` : ''}
-    ${acts}<div class="btn-row">${buttons}</div>`);
+  const stage = c.round > camp.ROUNDS ? 'Election Day is here' : `Stretch ${c.round} of ${camp.ROUNDS}`;
+  return card(`Running for ${c.title}`, `${kv('Now', stage)}<div class="btn-row">${btn('Open the Campaign', 'data-campopen', 'primary')}</div>`);
 }
 
 function office() {
@@ -394,20 +386,14 @@ export function openLawCareer(api, start = {}) {
       const op = lp.opportunities().find((x) => x.id === t.dataset.seek);
       if (op?.campaign) {
         if (!(await confirmModal({ title: op.name, body: `Chosen by: ${op.how}. There is a filing fee, three stretches of campaigning with a debate, and then the count.`, yes: 'File to Run', no: 'Not Now' }))) return undefined;
-        await say(camp.declare(op.id)); return changed();
+        const r2 = camp.declare(op.id); changed();
+        if (!r2.ok) return say(r2);
+        await say(r2); openCampaign({ changed }); return undefined;
       }
       if (!(await confirmModal({ title: op.name, body: `${op.how ? `Chosen by: ${op.how}. ` : ''}It may not go your way, and you cannot try again for a while.`, yes: 'Go Ahead', no: 'Not Now' }))) return undefined;
       await say(lp.seek(t.dataset.seek)); return changed();
     }
-    if (t.dataset.camp) { await say(camp.act(t.dataset.camp)); return changed(); }
-    if (t.hasAttribute('data-campdebate')) {
-      const a = await pickModal({ title: 'The Debate', body: 'The moderator turns to you. How do you answer?', options: camp.DEBATE.map(([l, v]) => ({ value: v, label: l })) });
-      if (a) await say(camp.debate(a));
-      return changed();
-    }
-    if (t.hasAttribute('data-campnext')) { await say(camp.nextRound()); return changed(); }
-    if (t.hasAttribute('data-campvote')) { await say(camp.pollingDay()); return changed(); }
-    if (t.hasAttribute('data-campquit')) { if (await confirmModal({ title: 'Withdraw?', body: 'The filing fee is not refunded.', yes: 'Withdraw', no: 'Keep Running' })) await say(camp.withdraw()); return changed(); }
+    if (t.hasAttribute('data-campopen')) { openCampaign({ changed }); return undefined; }
     if (t.dataset.cact) { const c = lc.caseById(caseId); if (c) await caseAction(c, t.dataset.cact); return changed(); }
     if (t.dataset.duty) {
       const d = lp.leaderDuties().find((x) => x.id === t.dataset.duty);

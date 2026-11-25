@@ -352,7 +352,7 @@ export function opportunities(p = player()) {
       const fed = ['prosecutor', 'gov_counsel', 'attorney_general', 'us_attorney'].includes(t) && c.level >= (t === 'prosecutor' || t === 'gov_counsel' ? 2 : 0);
       const blocked = L.rep.integrity < 60 ? 'A better name for integrity first' : '';
       if (t !== 'us_attorney') out.push({ id: 'us_attorney', name: 'Seek nomination as United States Attorney', why: yrs < 10 ? 'After ten years of legal work' : !fed ? 'Senior prosecution or government legal work first' : blocked || cool('us_attorney', 48), how: 'nominated by the President, confirmed by the Senate' });
-      if (t !== 'solicitor_general') out.push({ id: 'solicitor_general', name: 'Seek nomination as Solicitor General', why: yrs < 15 ? 'After fifteen years of legal work' : (L.skills.appellate ?? 0) < 45 ? 'A name as an appellate advocate first' : blocked || cool('solicitor_general', 48), how: 'nominated by the President, confirmed by the Senate' });
+      if (t !== 'solicitor_general') out.push({ id: 'solicitor_general', name: 'Seek nomination as Solicitor General', why: yrs < 15 ? 'After fifteen years of legal work' : (L.skills.research ?? 0) < 45 ? 'A name as an appellate advocate first' : blocked || cool('solicitor_general', 48), how: 'nominated by the President, confirmed by the Senate' });
       if (!(t === 'attorney_general' && L.agKind === 'federal')) out.push({ id: 'ag_federal', name: 'Seek nomination as United States Attorney General', why: yrs < 15 ? 'After fifteen years of legal work' : !(senior || t === 'us_attorney' || t === 'solicitor_general' || t === 'attorney_general') ? 'A senior legal or public role first' : L.rep.recognition < 45 ? 'A national name first' : blocked || cool('ag_federal', 48), how: prof.ag.federal });
     }
   }
@@ -893,7 +893,7 @@ export function doDuty(id, choice, p = player()) {
   if (id === 'supervise') { if (choice === 'mentor') { gain(p, { leadership: 2 }); adjustPerformance(2); text = 'Your attorneys get better, and they know who helped.'; } else { adjustPerformance(1); text = 'The numbers improve. The trials do not.'; } }
   if (id === 'opinion') { if (choice === 'law') { L.rep.integrity = clamp(L.rep.integrity + 4); text = 'You advise that the policy is unlawful as written. The government is not pleased.'; } else { L.rep.integrity = clamp(L.rep.integrity - 6); text = 'Your opinion finds a way. The courts may not.'; if (rng.chance(0.5)) L.controversy = { text: 'A court has struck down the policy your opinion called lawful.', m: nowM() }; } }
   if (id === 'argue') {
-    const won = rng.chance(clamp(0.35 + (L.skills.appellate ?? 20) / 150 + (choice === 'strong' ? 0.12 : 0), 0.1, 0.85));
+    const won = rng.chance(clamp(0.35 + (L.skills.research ?? 20) / 150 + (choice === 'strong' ? 0.12 : 0), 0.1, 0.85));
     canon(`law:sg:${p.id}:${nowM()}`, won ? 'Won a Supreme Court argument' : 'Lost a Supreme Court argument', won ? 'The Court ruled for the government.' : 'The Court ruled against the government.', { privacy: 'public', sig: 2, milestone: false });
     L.rep.advocacy = clamp(L.rep.advocacy + (won ? 3 : 1)); text = won ? 'The Court rules for the government.' : 'The Court rules against you, five to four.';
   }

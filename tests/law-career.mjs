@@ -27,10 +27,10 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
     check(c.supervisorId && store.state.npcs[c.supervisorId] && lp.supervisor().id === c.supervisorId, 'second chair: a supervising partner leads, the same person each time');
   }
   // 2–3. Experience and skills grow with real work.
-  const before = L().skills.oral;
+  const before = L().skills.courtroom;
   const c2 = lc.createCase('theft', { role: 'defense' });
   playCase(c2);
-  check(L().skills.oral > before && (p().career.experience.lawyer ?? 0) >= 1, `skills and years of experience grow with the work (${before.toFixed(1)} → ${L().skills.oral.toFixed(1)})`);
+  check(L().skills.courtroom > before && (p().career.experience.lawyer ?? 0) >= 1, `skills and years of experience grow with the work (${before.toFixed(1)} → ${L().skills.courtroom.toFixed(1)})`);
 }
 
 // 4–5. Reputation follows conduct; the record is counted from real cases, wins, losses and everything in between.
@@ -151,7 +151,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
 // Federal offices (US only): a nomination, then a Senate vote; each can fail; none is a promotion.
 {
   lawyer('prosecutor', { level: 2 });
-  p().age = 52; p().career.experience = { prosecutor: 18 }; L().rep.integrity = 75; L().rep.recognition = 60; L().skills.appellate = 60;
+  p().age = 52; p().career.experience = { prosecutor: 18 }; L().rep.integrity = 75; L().rep.recognition = 60; L().skills.research = 60;
   const ids = lp.opportunities().map((x) => x.id);
   check(['us_attorney', 'solicitor_general', 'ag_federal'].every((x) => ids.includes(x)), `a senior US prosecutor may seek the federal offices (${ids.join(', ')})`);
   check(/Senate/.test(lp.opportunities().find((x) => x.id === 'ag_federal').how), 'the US Attorney General is appointed by the President and confirmed by the Senate');

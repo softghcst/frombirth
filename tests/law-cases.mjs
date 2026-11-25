@@ -188,7 +188,7 @@ const npc = (id) => store.state.npcs[id];
   const r = lc.argue(pc, { objection2: 'hearsay' });
   check(pp.valid === 'none' && /question was proper/.test((r.lines ?? []).join(' ') + r.text), 'objecting to a proper question is overruled, and the jury notices');
   let mis = null; let partial = null; let cut = false;
-  for (let i = 0; i < 80 && (!mis || !partial || !cut); i++) {
+  for (let i = 0; i < 240 && (!mis || !partial || !cut); i++) {
     lawyer('lawyer');
     const t = lc.createCase(i % 2 ? 'contract_dispute' : 'burglary_hale', { role: i % 2 ? undefined : 'defense' });
     t.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };

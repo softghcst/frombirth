@@ -13,7 +13,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES, skillId } from '../data/law.js';
 import { gain as fameGain } from './fame.js';
 import * as realLaw from './realLaw.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
@@ -291,7 +291,7 @@ const canNegotiate = (c) => !c.done && !c.negotiation.accepted && (template(c).s
 
 // ---------- Working a case ----------
 
-const skillIn = (ids) => { const L = lawOf(player()); return ids.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / ids.length; };
+const skillIn = (ids) => { const L = lawOf(player()); const g = [...new Set(ids.map(skillId))]; return g.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / g.length; };
 
 /** Interviewing the client: their account (not necessarily the whole truth), and what they want. */
 export function interview(c) {
