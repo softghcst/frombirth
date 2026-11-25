@@ -26,6 +26,8 @@ import { levelOf } from './skills.js';
 import { ent, workOf, orgsOf, article, commitments } from './entertainment.js';
 import { gain, regard, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
+
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -273,6 +275,7 @@ export function auditionForBand(openingId) {
   if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
   const S2 = searchOf(p);
   if (S2.auditions >= BAND_SEARCH.auditions) return result(false, 'You have auditioned as often as you can this year.', 'neutral');
+  { const sc = claimSpecial('music'); if (sc) return result(false, sc, 'neutral'); }
   S2.auditions += 1;
   const skill = positionSkill(o.position, p);
   const odds = clamp(0.4 + (skill - o.bar) / 25 + (p.stats.charm - 50) / 300, 0.03, 0.92);
@@ -388,6 +391,7 @@ export function formAct(kind, o = {}) {
   if (!exists('concert')) return result(false, 'There is no way to make a living from music here yet.', 'neutral');
   if (p.age < 12) return result(false, 'You are too young to form an act.', 'neutral');
   if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
+  { const sc = claimSpecial('music'); if (sc) return result(false, sc, 'neutral'); }
   const E = M();
   const genre = genreOf(o.genre ?? rng.pick(genresIn(year())).id).id;
   const mine = kind === 'solo' ? 'solo' : POSITIONS[o.position] ? o.position : bestPositions(p, 1)[0].pos;
@@ -444,6 +448,7 @@ export function leaveAct() {
   const left = members(a).filter((m) => m.who !== 'player');
   if (a.kind === 'solo' || left.length < 2) { a.status = 'split'; a.history.push({ year: year(), text: a.kind === 'solo' ? 'Stopped performing.' : `${a.name} split up.` }); }
   else { a.history.push({ year: year(), text: 'You left the band.' }); a.npc = true; }
+  releaseSpecial('music');
   return result(true, a.status === 'split' ? `${a.name} is over. The records are still the records.` : `You leave ${a.name}. They carry on without you.`, 'neutral');
 }
 

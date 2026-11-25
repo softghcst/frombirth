@@ -18,6 +18,7 @@ import { ent, workOf, guardianConsents, pool } from './entertainment.js';
 import { gain, regard } from './fame.js';
 import { canFit } from './worklife.js';
 import { celebrities } from './celebs.js';
+import { claim as claimSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -125,6 +126,7 @@ export function audition(id, style = null) {
   const o = offers(p).find((x) => x.id === id);
   if (!o || o.status !== 'open') return result(false, 'That job has gone.', 'neutral');
   if (d.offers.went >= DANCE_YEAR.auditions) return result(false, 'You have been to all the auditions you can this year.', 'neutral');
+  { const sc = claimSpecial('dance'); if (sc) return result(false, sc, 'neutral'); }
   const why = whyNot(o.kind, p);
   if (why) return result(false, why, 'neutral');
   d.offers.went += 1;

@@ -35,6 +35,7 @@ import { tradeYear, TRADE_ANSWERS } from './trades.js';
 import { seasonLine, baseballYear, hallYear, BASEBALL_ANSWERS } from './baseball.js';
 import { contractHook, qualifying, market, freeAgentYear, CONTRACT_ANSWERS } from './baseballContracts.js';
 import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
 
 // Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
 const nextId = (...a) => sp.internals.nextId(...a);
@@ -211,6 +212,7 @@ const ANSWERS = {
   },
   turnPro(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
+    { const sc = claimSpecial('sports', state.player, state); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
     const lock = sp.proLock(d.sportId, state);
     if (lock) return { ...result(false, lock, 'neutral'), close: true };
     const e = sp.entryOf(d.sportId, state.player.id, state);
@@ -327,6 +329,7 @@ function signPro(state, d, o = {}) {
   if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
     return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
   }
+  { const sc = claimSpecial('sports', p, state); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
   const lock = sp.proLock(d.sportId, state);
   if (lock) return { ...result(false, lock, 'neutral'), close: true };
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.
@@ -785,6 +788,7 @@ export function retire(sportId, state = store.state) {
   if (!e || e.status !== 'active') return result(false, 'You do not play that.', 'neutral');
   const k = S.contracts[e.contractId];
   if (k) endContract(state, k, 'retired from play');
+  if (!Object.values(a.sports).some((x) => x !== e && x.status === 'active' && ['pro', 'elite', 'college'].includes(x.level))) releaseSpecial('sports', p, state);
   leaveOrg(e, state, 'retired');
   e.status = 'retired'; e.retiredYear = state.year; e.plan.hours = 0;
   const seasons = e.seasonsPlayed + (e.legacySeasons ?? 0);

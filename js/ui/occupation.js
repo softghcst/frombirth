@@ -634,7 +634,7 @@ const ACTIONS = {
     if (couple.spouse()) await x.say(couple.proposePlan({ childcare: v }));
     else { couple.plan().childcare = v; await x.say({ ok: true, text: v === 'paid' ? `You arrange childcare: about ${money(couple.careCost(), c)} a year.` : 'You will look after them yourself.', tone: 'neutral' }); }
   },
-  castingboard: (_, x) => { x.close(); openFame(x.api, 'casting'); },
+  castingboard: (_, x) => { x.close(); openFame(x.api, 'casting', { career: 'acting' }); },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
   gotofind: (_, x) => { x.st.section = 'find'; x.render(); },

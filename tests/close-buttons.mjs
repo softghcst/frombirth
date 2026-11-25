@@ -42,10 +42,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForSelector('[data-year]');
   await page.evaluate(() => { document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); });
   // My Fame: a long page. Scrolled to the bottom, the ✕ is still there, and closes it.
-  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; p.age = 20; p.birthYear = store.state.year - 20; (await import('/js/ui/fame.js')).openFame({ changed() {}, rerender() {} }); });
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; p.age = 20; p.birthYear = store.state.year - 20; (await import('/js/ui/fame.js')).openFame({ changed() {}, rerender() {} }, null, { career: 'acting' }); });
   await page.waitForTimeout(250);
-  check(await page.locator('#modal-root .modal-back').count() === 1, `${label}: My Fame has a Back button`);
-  check(await inView(page), `${label}: it is on screen when My Fame opens`);
+  check(await page.locator('#modal-root .modal-back').count() === 1, `${label}: a career page has a Back button`);
+  check(await inView(page), `${label}: it is on screen when a career page opens`);
   await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); m.scrollTop = m.scrollHeight; });
   await page.waitForTimeout(150);
   check(await inView(page), `${label}: and still on screen at the bottom of the page`);

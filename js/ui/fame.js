@@ -27,6 +27,7 @@ import { DANCE_GIGS, DANCE_STYLES, DANCE_SHOW } from '../data/dance.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
+import * as special from '../engine/specialCareer.js';
 import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
 import { SPORTS, LEVEL_NAMES } from '../data/sports.js';
 import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
@@ -68,22 +69,41 @@ function tabsFor(p) {
 
 const connections = (p = player()) => p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && (n.flags.star || n.flags.workedWith && ent.creditsOf(n.id).length));
 
-/** Opens My Fame. api: the tab api ({ changed }). */
-export function openFame(api, start = 'overview') {
-  const st = { stack: [{ view: start, arg: null }] };
-  const modal = openModal('<div data-fame></div>', { dismissable: true });
+/**
+ * Each special career's page and its sections (engine/specialCareer.js): only what belongs to that career. The
+ * public side (fame, the press, awards, the archive) is a section of every one of them.
+ */
+const CAREER_TABS = {
+  acting: [['casting', 'Auditions'], ['work', 'Current Work'], ['representation', 'Agent'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['connections', 'People'], ['archive', 'Credits']],
+  music: [['music', 'My Music'], ['releases', 'Releases & Tours'], ['representation', 'Manager'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Discography']],
+  dance: [['dance', 'Dance'], ['work', 'Current Work'], ['representation', 'Agent'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Credits']],
+  modeling: [['modeling', 'Modeling'], ['overview', 'Fame'], ['image', 'Public Image']],
+  writing: [['writing', 'Writing'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Bibliography']],
+};
+
+/** Opens a special career's page (o.career), or, for older links, the whole fame record. api: the tab api ({ changed }). */
+export function openFame(api, start = null, o = {}) {
+  const careerId = o.career ?? null;
+  const careerName = careerId ? special.SPECIAL_BY_ID[careerId].name : 'Fame';
+  const tabsHere = (p) => (careerId ? CAREER_TABS[careerId].filter(([id]) => ['casting', 'music', 'releases', 'dance', 'modeling', 'writing', 'overview', 'image'].includes(id) || tabsFor(p).some(([t]) => t === id)) : tabsFor(p));
+  const st = { stack: [{ view: start ?? tabsHere(player())[0][0], arg: null }] };
+  const modal = openModal('<div data-fame></div>', { dismissable: true, full: true, title: careerName });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-fame]');
   const top = () => st.stack[st.stack.length - 1];
   const render = () => {
     const p = player();
     const t = top();
-    const tabs = tabsFor(p);
+    const tabs = tabsHere(p);
     const deep = st.stack.length > 1;
+    const now = special.current(p);
+    const mine = careerId && now === careerId;
+    const banner = careerId && now && !mine ? `<div class="card"><p class="muted" style="margin:0">You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to take up ${esc(careerName.toLowerCase())}, leave ${esc(special.SPECIAL_BY_ID[now].name.toLowerCase())} first.</p></div>` : '';
     root.innerHTML = `
-      <h2 style="margin:0">My Fame</h2><p class="muted" style="margin:0 0 6px">Your work. Your audience. Your legacy.</p>
-      ${deep ? '<button type="button" class="btn small" data-back>← Back</button>' : `<div class="world-groups" role="tablist">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === t.view ? 'on' : ''}" aria-selected="${id === t.view}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>`}
+      ${deep ? '<button type="button" class="btn small" data-back>← Back</button>' : `<div class="world-groups fame-tabs" role="tablist">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === t.view ? 'on' : ''}" aria-selected="${id === t.view}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>`}
+      ${banner}
       <div style="margin-top:10px">${(VIEWS[t.view] ?? VIEWS.overview)(p, t.arg)}</div>
+      ${mine && !deep ? `<div class="btn-stack" style="margin-top:12px">${btn('leavespecial', `Leave ${careerName.toLowerCase()}`, { cls: 'danger', sub: 'What you built is kept. Another special career opens to you.' })}</div>` : ''}
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
   const refresh = () => { api.changed(); render(); };
@@ -344,10 +364,22 @@ const VIEWS = {
       <div class="btn-stack">${btn('hiatus', a.status === 'hiatus' ? 'End the hiatus' : 'Take a break')}${btn('leaveact', a.kind === 'solo' ? 'Stop performing' : 'Leave the band', { cls: 'danger' })}</div>
       ${pending.length ? `<p class="muted">Coming out at the turn of the year: ${pending.map((r) => esc(r.title)).join(', ')}.</p>` : ''}
       ${a.kind === 'band' ? `<div class="section-label">The band</div>${music.members(a).filter((m) => m.who !== 'player').map((m) => { const n = store.state.npcs[m.who]; return n ? row('person', n.id, `${n.firstName} ${n.lastName}`, `${POSITIONS[m.role]?.name ?? m.role} · since ${m.from}`, `${Math.round(n.meters.relationship)}%`, n) : ''; }).join('') || '<p class="empty">Just you, for now.</p>'}` : ''}
-      ${tours.length ? `<div class="section-label">Tours</div>${tours.map((t) => row('tourview', t.id, t.title, `${t.year} · ${t.dates.length} dates`, t.net == null ? 'Booked' : money(t.net, COUNTRIES[a.countryId]))).join('')}` : ''}
-      ${rels.filter((r) => r.released != null).length ? `<div class="section-label">Releases</div>${rels.filter((r) => r.released != null).reverse().map((r) => row('release', r.id, r.title, `${RELEASE_TYPES[r.type].name}, ${r.released}${r.chart ? ` · chart #${r.chart}` : ''}`, `${r.critics}/100`)).join('')}` : ''}
       ${row('act', a.id, 'The story so far', `${a.history.length} moments`)}
       ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.formed}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
+  },
+
+  /** Releases and tours: what has come out, how it did, and the road. */
+  releases(p) {
+    const a = music.myAct(p);
+    const disc = music.discography(p);
+    if (!a && !disc.length) return '<p class="empty">Nothing released yet. Form an act and record something on My Music.</p>';
+    const rels = a ? a.releases.map(music.release).filter(Boolean) : [];
+    const pending = rels.filter((r) => r.released == null);
+    const out = (a ? rels.filter((r) => r.released != null) : disc).slice().reverse();
+    const tours = a ? a.tours.map(music.tour).filter(Boolean).reverse() : [];
+    return `${pending.length ? `<div class="card"><h3>Coming out</h3><p class="muted" style="margin:0">At the turn of the year: ${pending.map((r) => esc(r.title)).join(', ')}.</p></div>` : ''}
+      <div class="section-label">Releases</div>${out.length ? out.map((r) => row('release', r.id, r.title, `${RELEASE_TYPES[r.type].name}, ${r.released}${r.chart ? ` · chart #${r.chart}` : ''}`, `${r.critics}/100`)).join('') : '<p class="empty">Nothing out yet.</p>'}
+      <div class="section-label">Tours</div>${tours.length ? tours.map((t) => row('tourview', t.id, t.title, `${t.year} · ${t.dates.length} dates`, t.net == null ? 'Booked' : money(t.net, COUNTRIES[a.countryId]))).join('') : '<p class="empty">No tours yet. They open as the fans come.</p>'}`;
   },
 
   sport(p) {
@@ -670,6 +702,11 @@ const ACTIONS = {
   signdeal: async (_, x) => { if (await confirmModal({ title: 'Sign the deal?', body: 'The label will own the recordings you make for it.', yes: 'Sign' })) await x.say(music.signDeal()); },
   nodeal2: (_, x) => x.say(music.declineDeal()),
   hiatus: (_, x) => x.say(music.hiatus(music.myAct()?.status !== 'hiatus')),
+  leavespecial: async (_, x) => {
+    const now = special.current();
+    if (!now || !(await confirmModal({ title: `Leave ${special.SPECIAL_BY_ID[now].name.toLowerCase()}?`, body: 'Your credits, records and fans are kept. The career itself stops, and another special career is open to you.', yes: 'Leave', danger: true }))) return;
+    await x.say(special.leave());
+  },
   leaveact: async (_, x) => { if (await confirmModal({ title: 'Walk away?', body: 'The records stay on the record. The act may carry on without you.', yes: 'Leave', danger: true })) await x.say(music.leaveAct()); },
   reunite: (id, x) => x.say(music.reunite(id)),
   season: (id, x) => x.go('season', id),

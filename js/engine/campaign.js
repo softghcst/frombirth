@@ -29,6 +29,7 @@ import { addSecret } from './scandal.js';
 import { afterGeneral } from './leadership.js';
 import { formCabinet } from './government.js';
 import { backers } from './edlegacy.js';
+import { claim as claimSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -61,6 +62,7 @@ export function declare(officeId, defending = false) {
   if (!o) return result(false, 'There is no such office here.', 'neutral');
   const why = defending ? (p.legal.incarceration ? 'You cannot campaign from a cell.' : '') : barrier(o);
   if (why) return result(false, why, 'neutral');
+  if (!defending) { const sc = claimSpecial('politics'); if (sc) return result(false, sc, 'neutral'); }
   const rival = world.opponentFor(officeId, c.id);
   // In a parliament the top office is not a race between two people: the leader takes their party into a general election.
   const national = officeId === 'head' && system(c).kind === 'parliamentary';

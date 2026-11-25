@@ -16,6 +16,7 @@ import { gain, regard } from './fame.js';
 import { registerEmployer } from './employers.js';
 import { makeNpc } from './npcFactory.js';
 import { rollTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
+import { claim as claimSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -167,6 +168,7 @@ export function attendCasting(id, approach = null) {
   const c = castings(p).find((x) => x.id === id);
   if (!c || c.status !== 'open') return result(false, 'That casting has gone.', 'neutral');
   if (m.castings.went >= 3) return result(false, 'You have been to all the castings you can this year.', 'neutral');
+  { const sc = claimSpecial('modeling'); if (sc) return result(false, sc, 'neutral'); }
   m.castings.went += 1;
   const ag = ent().orgs[m.agencyId];
   const odds = castingOdds(c, approach, p);

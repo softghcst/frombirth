@@ -53,7 +53,7 @@ check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Specia
 check(rs.some((r) => r.label === 'Military' && r.locked && /From age 18/i.test(r.line)), 'work: Military is greyed until 18');
 await page.evaluate(() => document.querySelector('[data-sec="Special careers"]').click()); await page.waitForTimeout(250);
 const special = await page.evaluate(() => [...document.querySelectorAll('.sec-body.shown .nav-row, .sec-body.shown .sec-row')].filter((r) => r.offsetParent).map((r) => `${r.querySelector('.nr-label')?.textContent.trim()}${r.disabled ? ' (locked)' : ''}`));
-check(['My Fame', 'K-pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
+check(['Acting', 'Music', 'Dance', 'Modeling', 'Writing', 'Sports', 'K-pop Idol', 'Politics'].every((n) => special.some((x) => x.startsWith(n))) && !special.some((x) => x.startsWith('My Fame')), `Special careers lists each career on its own, and no My Fame (${special.join(', ')})`);
 check(special.some((x) => /K-pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
 await tab('holdings');
 rs = await rows();

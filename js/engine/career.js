@@ -54,6 +54,7 @@ import { checkAchievements } from './careerRecord.js';
 import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
+import { release as releaseSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -464,6 +465,7 @@ export function askForRaise() {
 
 export function endJob(exit) {
   const c = player().career;
+  if (c.careerId === 'modeling') releaseSpecial('modeling');
   c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);
