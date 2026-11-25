@@ -68,7 +68,10 @@ const after = await page.evaluate(async () => { const { store } = await import('
 check(after.cash < before.cash && after.hair !== before.hair && after.tr?.until > 0, 'paying applies the new look and the treatment');
 check(/Look at you/.test(await page.locator('.sv-bubble').innerText()), 'and the stylist admires it');
 await page.click('.sv-reply:has-text("Leave")');
-check(!(await page.locator('.salon-screen').count()), 'leaving closes the salon');
+// After paying, a farewell: the new look, a goodbye under the shop's sign, then back to the game (a tap skips it).
+check(await page.locator('.sv-outro .sv-outro-face svg').count() === 1 && /Looking/.test(await page.locator('.sv-outro-line').innerText()), 'leaving after paying shows the farewell, with the new look');
+await page.waitForTimeout(3200);
+check(!(await page.locator('.salon-screen').count()), 'and then fades back to the game');
 // Leaving part-way pays nothing.
 const before2 = await setUp();
 await page.evaluate(async () => { const { openSalonVisit } = await import('/js/ui/salonVisit.js'); openSalonVisit({ changed() {} }, { intro: false }); });

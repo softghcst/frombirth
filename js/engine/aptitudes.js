@@ -10,6 +10,7 @@ const TECH = [['skills.coding', 0.6], ['skills.robotics', 0.3], ['talents.tech',
 const NUMBERS = [['skills.math', 0.5], ['skills.chess', 0.2], ['talents.science', 0.5]];
 const LAB = [['skills.science', 0.5], ['skills.math', 0.2], ['talents.science', 0.5]];
 const WORDS = [['skills.writing', 0.6], ['talents.writing', 0.5]];
+const LAW = [['skills.public_speaking', 0.5], ['skills.writing', 0.35], ['skills.chess', 0.1]];
 const ART = [['skills.painting', 0.35], ['skills.drawing', 0.35], ['skills.photography', 0.2], ['talents.art', 0.5]];
 
 /** School subjects (data/education.js). */
@@ -22,9 +23,11 @@ export const MAJOR_EDGE = {
   chemistry: LAB, biology: LAB, nursing: [['talents.science', 0.3]],
   english: WORDS, journalism: WORDS, communications: [['skills.writing', 0.4], ['talents.writing', 0.3]],
   art: ART,
+  political_science: LAW, criminal_justice: LAW, history: [...LAW.slice(0, 2)],
 };
 /** Kinds of work: a job's family (data/occupations.js), or the job itself (data/careers.js). */
-export const WORK_EDGE = { tech: TECH, software: TECH, science: LAB, media: WORDS, arts: ART };
+export const WORK_EDGE = { tech: TECH, software: TECH, science: LAB, media: WORDS, arts: ART, law: LAW, lawyer: LAW,
+  engineer: [['skills.robotics', 0.4], ['skills.math', 0.4], ['talents.science', 0.3], ['talents.tech', 0.3]] };
 
 const read = (p, path) => path.split('.').reduce((o, k) => o?.[k], p) ?? 0;
 

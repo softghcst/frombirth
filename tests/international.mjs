@@ -27,7 +27,7 @@ function boy(country, age, boost = 0, talent = 92) {
   for (;;) {
     let s; do { s = createLife({ countryId: country, gender: 'male' }); } while (s.player.royal);
     store.state = s;
-    s.player.talents.sports = talent; s.player.stats.intellect = 60;
+    s.player.talents.sports = talent; s.player.potential = { ...(s.player.potential ?? {}), sports: talent }; s.player.stats.intellect = 60; // the gift too: an ordinary boy is ordinary through and through
     for (let i = 0; i < 7; i++) { s.player.stats.health = 95; advanceYear(); s.pendingEvents = []; }
     sp.takeUp('baseball');
     const e = sp.entryOf('baseball');

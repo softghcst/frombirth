@@ -1267,6 +1267,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .gl-bill .gl-more[open] > .kv { padding-left: 10px; font-size: 0.85rem; }
 .gl-pair { display: grid; gap: 4px; }
 
+/* My Legal Career (ui/lawCareer.js) */
+.law-tabs { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.law-tabs .av-chip { flex: none; }
+.law-row { width: 100%; }
+.law-ev { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.law-ev:last-child { border-bottom: 0; }
+.law-ev small { color: var(--muted); }
+.law-acts { margin: 10px 0 14px; }
+.law-back { margin-bottom: 8px; }
+.law-offer p { margin: 4px 0 8px; }
 /* ---------- The beauty salon visit (js/ui/salonVisit.js) ---------- */
 .salon-screen { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: flex; justify-content: center;
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
@@ -1337,7 +1347,28 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
   box-shadow: 0 0 0 4px #D8B25A inset, 0 10px 24px rgba(0, 0, 0, .35); }
 .sv-barber .sv-glass { border-radius: 4px; background: linear-gradient(160deg, #EEF3F2 0%, #D2E1DF 55%, #BFD3D0 100%); }
 .sv-barber .sv-leave { background: #F3EEE4; }
-@media (prefers-reduced-motion: reduce) { .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
+/* The way out, after paying (outro in js/ui/salonVisit.js): the new look, a goodbye, a fade back to the game. */
+.sv-outro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px 16px; text-align: center; cursor: pointer; color: #4A1F35;
+  background: radial-gradient(circle at 50% 42%, #FFF1F6 0%, #F9D0DF 55%, #EDB4CC 100%);
+  animation: sv-fade-in .35s ease both, sv-fade-out .45s ease 2.25s forwards; }
+.sv-outro.sv-still { animation: none; }
+.sv-outro-sign { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; animation: sv-drop .5s var(--ease) both; }
+.sv-outro-sign svg { width: 40px; height: 40px; }
+.sv-outro-sign .sv-blade-a, .sv-outro-sign .sv-blade-b { animation: none; }
+.sv-outro-frame { position: relative; width: min(52vw, 210px); aspect-ratio: 1; margin: 6px 0; animation: sv-pop .6s var(--ease) .15s both; }
+.sv-outro-face { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 5px solid #23140f; background: #FFF6F0;
+  box-shadow: 0 0 0 8px #FFE07A, 0 14px 30px rgba(120, 40, 80, .28); }
+.sv-outro-face svg { width: 100%; height: 100%; display: block; }
+.sv-outro-line { margin: 4px 0 0; font-family: var(--serif); font-weight: 700; font-size: 1.6rem; line-height: 1.15; animation: sv-rise .5s var(--ease) .45s both; }
+.sv-outro-sub { margin: 0; font-size: .95rem; opacity: .8; animation: sv-rise .5s var(--ease) .65s both; }
+.sv-barber .sv-outro { color: #F3EEE4; background: radial-gradient(circle at 50% 42%, #3B6B5E 0%, #24433B 60%, #162A25 100%); }
+.sv-barber .sv-outro-face { background: #EEF3F2; box-shadow: 0 0 0 8px #D8B25A, 0 14px 30px rgba(0, 0, 0, .35); }
+.sv-barber .sv-outro-sign span { color: #D8B25A; }
+@keyframes sv-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sv-drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sv-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sv-outro, .sv-outro *, .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
 
 /* The salon's or barbershop's row on the Self tab: its badge for a picture (shopRow in js/ui/salonVisit.js). */
 /* Drawn a little larger than its 30px tile, so the row's words line up with the rows below. */
@@ -1346,6 +1377,57 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .nr-art .shop-badge-barber .sv-blade-a, .nr-art .shop-badge-barber .sv-blade-b { display: none; }  /* just the pole, at this size */
 .nr-art .sv-blade-a, .nr-art .sv-blade-b { animation: none; }
 
+/* Planning the wedding, and the wedding (js/ui/weddingPlanner.js). It shares the salon's scene layout (.sv-*). */
+.wp-intro { background: radial-gradient(circle at 50% 45%, #FFF8EE 0%, #F8E1C8 55%, #EFCBA8 100%); }
+.wp-intro .sv-logo-name { color: #5A3A1E; }
+.wp-intro .sv-logo-sub { color: #9A6A34; }
+.wp-rings { animation: wp-ring .8s var(--ease) .2s both; transform-origin: 60px 66px; }
+@keyframes wp-ring { from { transform: scale(.6) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.wp-sign { background: #FFFDF8; color: #5A3A1E; border-color: #23140f; }
+.wp-altar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(84%, 340px); height: 74%; }
+.wp-garland { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: auto; }
+/* The couple, up close: two round frames side by side, overlapping a little, in front of the venue. */
+.wp-couple { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: flex-end; }
+.wp-person { width: 46%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; border: 4px solid #23140f; background: #FFF9F2;
+  box-shadow: 0 0 0 5px var(--wp-theme), 0 10px 22px rgba(40, 20, 30, .25); transition: transform .5s var(--ease); }
+.wp-person + .wp-person { margin-left: -6%; }
+.wp-person svg { width: 100%; height: 100%; display: block; }
+.wp-kiss .wp-person:first-child { transform: translateX(7%) rotate(5deg); }
+.wp-kiss .wp-person:last-child { transform: translateX(-7%) rotate(-5deg); }
+.wp-kiss-heart { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); font-size: 2.4rem; color: #E2557A;
+  text-shadow: 0 2px 0 #23140f; animation: sv-pop .5s var(--ease) both, wp-beat 1s ease-in-out .5s infinite; }
+.wp-steps { display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
+.wp-steps i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.wp-steps i.done { background: var(--accent); }
+.wp-steps i.now { background: var(--accent); transform: scale(1.4); }
+.wp-swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+/* The options, as the game's rows: the chosen one tinted, with a check by its price. */
+.wp-rows { margin: 0; }
+.wp-row .nr-main small { white-space: normal; }
+.wp-row.on { background: var(--accent-soft); }
+.wp-row.on .nr-label { color: var(--accent-text); }
+.wp-price { flex: none; display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: .9rem; color: var(--ink); }
+.wp-check { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent, #fff); font-size: .8rem; }
+.wp-dream { margin-left: 6px; font-style: normal; font-size: .72rem; font-weight: 700; color: #C2456A; white-space: nowrap; }
+.wp-swatch { display: grid; justify-items: center; gap: 6px; padding: 4px; border: 0; background: none; color: var(--ink); font: inherit; font-size: .8rem; cursor: pointer; }
+.wp-swatch .av-swatch { display: block; }
+.wp-finale { position: absolute; inset: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px 16px;
+  text-align: center; color: #5A3A1E; background: radial-gradient(circle at 50% 40%, #FFFDF8 0%, #FBEBD8 60%, color-mix(in srgb, var(--wp-theme) 55%, #F4D7B8) 100%); }
+.wp-just { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 2.2rem; animation: sv-pop .6s var(--ease) both; }
+.wp-pair { display: flex; align-items: center; gap: 10px; animation: sv-rise .6s var(--ease) .25s both; }
+.wp-frame { width: min(34vw, 140px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; border: 4px solid #23140f; background: #FFFFFF; box-shadow: 0 0 0 6px var(--wp-theme); }
+.wp-frame svg { width: 100%; height: 100%; display: block; }
+.wp-heart { font-size: 2rem; color: #E2557A; animation: wp-beat 1s ease-in-out infinite; }
+@keyframes wp-beat { 50% { transform: scale(1.25); } }
+.wp-names { margin: 0; font-family: var(--serif); font-size: 1.5rem; font-weight: 700; animation: sv-rise .5s var(--ease) .5s both; }
+.wp-after { margin: 0 0 8px; opacity: .8; animation: sv-rise .5s var(--ease) .7s both; }
+.wp-confetti { position: absolute; inset: 0; pointer-events: none; }
+.wp-confetti i { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; border: 1.5px solid rgba(35, 20, 15, .5); animation: wp-fall 2.6s linear infinite; }
+.wp-confetti i:nth-child(3n) { width: 12px; height: 8px; animation-duration: 3.1s; }
+.wp-confetti i:nth-child(4n) { border-radius: 50%; animation-duration: 2.2s; }
+@keyframes wp-fall { to { transform: translateY(110vh) rotate(540deg); } }
+.wp-finale.sv-still *, .wp-finale.sv-still { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .wp-kiss-heart, .wp-person, .wp-rings, .wp-just, .wp-pair, .wp-names, .wp-after, .wp-heart, .wp-confetti i { animation: none !important; transition: none !important; } }
 /* Explore the World as a page of its own: its sections as big buttons, two to a row, nothing cut off at the edge. */
 .modal-full .gl-nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 4px 0 10px; background: none; }
 .modal-full .gl-nav .chip { display: flex; align-items: center; min-height: 48px; justify-content: center; text-align: center; font-size: 0.98rem; border-radius: 14px; white-space: normal; }
@@ -1361,3 +1443,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .modal-full .fame-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 6px; }
 .modal-full .fame-tabs .world-group { min-height: 44px; justify-content: center; text-align: center; white-space: normal; border-radius: 14px; padding: 6px 8px; }
 @media (min-width: 640px) { .modal-full .fame-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* The wedding on one page, with the scenes turned off in Settings (openQuickWedding in js/ui/weddingPlanner.js). */
+.wq-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.wq-fields { display: grid; gap: 8px; }
+.wq-field { display: grid; gap: 3px; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.wq-field select { width: 100%; font-weight: 400; color: var(--ink); }
+.wq-total { margin-top: 10px; font-size: 1.05rem; }
+.wq-prenup { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+.wq-prenup input { width: 18px; height: 18px; min-height: 0; accent-color: var(--accent); -webkit-appearance: auto; appearance: auto; }
+.wq-married { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.wq-married .wp-frame { width: min(30vw, 110px); }
+.wq-married .wp-just { font-size: 1.9rem; color: var(--ink); }
+.wq-married .wp-names { color: var(--ink); }

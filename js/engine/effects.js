@@ -2,6 +2,7 @@
 // and interactions all describe what happens as Effect[] and send it here.
 import { funeral } from './passing.js';
 import { militaryChoice } from './military.js';
+import { lawChoice } from './lawPractice.js';
 import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
@@ -22,6 +23,7 @@ import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
 import { togetherChoice } from './together.js';
+import { invChoice } from './investigations/drama.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -239,6 +241,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
       case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
+      case 'inv': { const note = invChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
@@ -249,6 +252,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'funeral': funeral(ctx.cast?.words?.goneId, e.value === 'skip' ? false : e.value === 'speak' ? 'speak' : true); break;
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
+      case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }

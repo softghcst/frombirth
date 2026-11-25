@@ -43,7 +43,8 @@ const holdings = await page.evaluate(() => document.body.innerText);
 check(!/Household animals/.test(holdings) && !(await page.locator('[data-go="chronicle"]').count()), 'Holdings has no second animals card');
 await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(300);
 check(await page.locator('[data-top="animals"]').count() === 1, 'People has Pets & Animals');
-await page.evaluate(() => document.querySelector('[data-top="animals"]').click()); await page.waitForTimeout(500);
+await page.evaluate(() => document.querySelector('[data-top="animals"]').click());
+await page.waitForSelector('#modal-root [data-chronicle]', { timeout: 15000 }).catch(() => {}); // the hub, however busy the machine
 const hub = await page.evaluate(() => document.querySelector('#modal-root .modal')?.innerText ?? '');
 check(/Pets & Animals/.test(hub) && /My animals/.test(hub), 'it opens the animal hub');
 check(/House chronicle/.test(hub), 'which holds the house chronicle');

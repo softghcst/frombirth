@@ -1,5 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
+import { tickLaw } from './lawPractice.js';
 import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickHair } from './salon.js';
@@ -75,9 +76,11 @@ import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
+import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
+import { directYear } from './storyDirector.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -110,6 +113,7 @@ export const YEARLY = [
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
   ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)
+  ['investigations', () => booked('salary', 'Investigations: training, ranks and cases', tickInvestigations)], // police, detectives, federal agents, private investigators (engine/investigations)
   ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
@@ -150,6 +154,7 @@ export const YEARLY = [
   ['local', () => { for (const n of tickLocal()) log(n.text, 'system', n.tone); }],
   ['activism', tickActivism],
   ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
+  ['law', () => booked('legal', 'Legal practice', () => tickLaw())], // law school terms, cases and a lawyer's opportunities (engine/lawPractice.js)
   ['care', () => booked('auto', 'Who looks after you', checkCare)],
   ['neighborhood', () => { hood.openYear(); hoodLife.syncBusinesses(); hoodLife.neighborsAsCustomers(); }], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
   ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care
@@ -167,6 +172,7 @@ export const YEARLY = [
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
+  ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];

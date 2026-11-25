@@ -1301,7 +1301,8 @@ export const CASES = [
     diagnosis: 'angina',
     needs: ['ecg'],
     plans: [
-      { id: 'medical', label: 'Start medicines for symptoms and cholesterol, discuss lifestyle, and consider an angiogram if symptoms persist', quality: 'best' },
+      { id: 'medical_old', label: 'Start medicines for the chest pain and blood pressure, talk through diet, smoking and exercise, and consider an angiogram if symptoms persist', quality: 'best', maxYear: 1986 },
+      { id: 'medical', label: 'Start medicines for symptoms and cholesterol, discuss lifestyle, and consider an angiogram if symptoms persist', quality: 'best', minYear: 1987 },
       { id: 'cath_now', label: 'Take straight to the catheterization lab for stents', quality: 'ok', procedure: 'card_cath' },
       { id: 'nothing', label: 'Reassure and discharge', quality: 'poor' },
     ],
@@ -2918,7 +2919,7 @@ export const CASES = [
     needs: ['ct'],
     plans: [
       { id: 'surveillance', label: 'Explain the size and risk calmly, control blood pressure, advise on heavy lifting, and plan regular scans', quality: 'best' },
-      { id: 'operate', label: 'Operate now to be safe', quality: 'poor', procedure: 'ct_valve' },
+      { id: 'operate', label: 'Operate now to be safe', quality: 'poor', procedure: 'ct_aorta' },
       { id: 'discharge', label: 'Discharge without follow-up', quality: 'poor' },
     ],
     outcomes: {
@@ -3722,7 +3723,8 @@ export const CASES = [
     diagnosis: 'severe_pe',
     needs: ['blood_basic'],
     plans: [
-      { id: 'stabilize_plan', label: 'Admit, control blood pressure, give a medicine to help the baby\'s lungs mature, involve neonatology, and plan delivery timing with her', quality: 'best' },
+      { id: 'stabilize_old', label: 'Admit, control blood pressure, involve the newborn team early, and plan delivery timing with her', quality: 'best', maxYear: 1993 },
+      { id: 'stabilize_plan', label: 'Admit, control blood pressure, give a medicine to help the baby\'s lungs mature, involve neonatology, and plan delivery timing with her', quality: 'best', minYear: 1994 },
       { id: 'wait_term', label: 'Aim to wait until full term at home', quality: 'unsafe' },
       { id: 'no_talk', label: 'Make all decisions without explaining them to her', quality: 'poor' },
     ],
@@ -3893,7 +3895,8 @@ export const CASES = [
     diagnosis: 'stone',
     needs: ['ct'],
     plans: [
-      { id: 'pass', label: 'Pain relief, a medicine that helps the stone pass, fluids, and clear advice to return if fever develops', quality: 'best' },
+      { id: 'pass_old', label: 'Pain relief, fluids, a strainer to catch the stone, and clear advice to return if fever develops', quality: 'best', maxYear: 2004 },
+      { id: 'pass', label: 'Pain relief, a medicine that helps the stone pass, fluids, and clear advice to return if fever develops', quality: 'best', minYear: 2005 },
       { id: 'operate', label: 'Remove the stone surgically now', quality: 'poor', procedure: 'uro_surgery' },
       { id: 'no_follow', label: 'Pain relief and no follow-up', quality: 'ok' },
     ],
@@ -4667,7 +4670,7 @@ export const CASES = [
   // MORE CASES: OPHTHALMOLOGY, ENT, UROLOGY
   // ======================================================================================
   C({
-    id: 'oph_angle_closure', specialty: ['ophthalmology'], ages: [55, 85], minYear: 1975, tier: 'intermediate',
+    id: 'oph_angle_closure', specialty: ['ophthalmology'], ages: [55, 85], minYear: 1980, tier: 'intermediate',
     label: 'A painful red eye',
     intro: "{patient}, {age}, has a sudden painful red eye, blurred vision, halos around lights and has been sick.",
     history: "Started in a dark movie theater last night. Farsighted. Has never had eye trouble before.",
@@ -4685,7 +4688,7 @@ export const CASES = [
     diagnosis: 'angle_closure',
     needs: ['exam_focused'],
     plans: [
-      { id: 'lower_laser', label: 'Lower the pressure urgently with medicines, then a laser treatment in clinic, and treat the other eye to prevent the same', quality: 'best', procedure: 'office_minor' },
+      { id: 'lower_laser', label: 'Lower the pressure urgently with medicines, then a laser treatment in clinic, and treat the other eye to prevent the same', quality: 'best', procedure: 'oph_laser' },
       { id: 'drops_home', label: 'Give soothing drops and send home', quality: 'unsafe' },
       { id: 'tomorrow', label: 'Book a routine clinic next week', quality: 'poor' },
     ],
@@ -4714,7 +4717,7 @@ export const CASES = [
     diagnosis: 'proliferative',
     needs: ['exam_focused'],
     plans: [
-      { id: 'treat_coordinate', label: 'Explain that good vision now does not mean safety, start laser treatment in clinic, and work with the family doctor on sugar control', quality: 'best', procedure: 'office_minor' },
+      { id: 'treat_coordinate', label: 'Explain that good vision now does not mean safety, start laser treatment in clinic, and work with the family doctor on sugar control', quality: 'best', procedure: 'oph_laser' },
       { id: 'one_year', label: 'Recheck in a year since vision is fine', quality: 'unsafe' },
       { id: 'scold', label: 'Lecture {patient} about missed checks and send them away', quality: 'poor' },
     ],
@@ -5515,13 +5518,14 @@ export const CASES = [
   // MORE CASES: ENDOCRINOLOGY
   // ======================================================================================
   C({
-    id: 'endo_osteoporosis', specialty: ['endocrinology'], ages: [60, 85], minYear: 1990, sex: 'female',
+    id: 'endo_osteoporosis', specialty: ['endocrinology'], ages: [60, 85], minYear: 1995, sex: 'female',
     label: 'A fracture from a small fall',
     intro: "{patient}, {age}, broke her wrist tripping on a curb and was sent for a bone health review.",
     history: "Went through menopause early. Smoked for years. Her mother had a hip fracture. Walks daily.",
     exam: "Slightly stooped. Height has dropped since her last record.",
     tests: [
-      { test: 'xray', value: 'useful', result: 'A bone density scan shows thin bones; a spine film shows an old silent fracture.' },
+      { test: 'dexa', value: 'useful', result: 'The bone density scan shows thin bones.' },
+      { test: 'xray', value: 'useful', result: 'A spine film shows an old, silent fracture.' },
       { test: 'blood_basic', value: 'useful', result: 'Calcium, vitamin D and kidney function are checked before treatment; vitamin D is low.' },
       { test: 'mri', value: 'low', result: 'Not needed.' },
     ],

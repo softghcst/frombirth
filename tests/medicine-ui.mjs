@@ -60,52 +60,73 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForSelector(modal);
   const overflow = () => page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); return m.scrollWidth > m.clientWidth + 1 || document.documentElement.scrollWidth > innerWidth; });
   const text = () => page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
-  check(/Resident, PGY-1 of 3/i.test(await text()), `${label}: the overview shows the residency year`);
+  check(/Resident, PGY-1 of 3/i.test(await text()) && /Every patient has a story/i.test(await text()), `${label}: the overview shows the residency year, under its subtitle`);
   check(!(await overflow()), `${label}: the overview does not scroll sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-overview.png` });
-  for (const sec of ['training', 'hospital', 'people']) {
+  const tabs = await page.locator(`${modal} [data-sec]`).evaluateAll((els) => els.map((x) => x.dataset.sec));
+  check(['overview', 'training', 'specialization', 'active', 'hospital', 'development'].every((t) => tabs.includes(t)) && !tabs.includes('clinic'), `${label}: a resident sees the tabs that apply, and no clinic (${tabs.join(', ')})`);
+  for (const sec of tabs) {
     await page.click(`${modal} [data-sec="${sec}"]`);
     check(!(await overflow()), `${label}: ${sec} does not scroll sideways`);
   }
-  await page.click(`${modal} [data-sec="patients"]`);
-  check(/This year's patients \(3\)/i.test(await text()), `${label}: a resident has three patients this year`);
+  // Hospital Life: every hub tab.
+  await page.click(`${modal} [data-sec="hospital"]`);
+  const hubs = await page.locator(`${modal} [data-hub]`).evaluateAll((els) => els.map((x) => x.dataset.hub));
+  check(['department', 'colleagues', 'residents', 'patients', 'training', 'stories', 'relationships', 'history'].every((t) => hubs.includes(t)), `${label}: Hospital Life has its tabs (${hubs.join(', ')})`);
+  for (const h of hubs) { await page.click(`${modal} [data-hub="${h}"]`); check(!(await overflow()), `${label}: hospital ${h} does not scroll sideways`); }
+  await page.click(`${modal} [data-sec="active"]`);
+  check(/Active cases \(3 of 3/i.test(await text()), `${label}: a resident has three active cases this year`);
   // Work the first case: a test, a diagnosis, a plan.
   await page.locator(`${modal} [data-act="case"]`).first().click();
   await page.waitForTimeout(100);
   const caseModal = '#modal-root .scrim:last-child .modal';
-  check(/Confidential · supervised/i.test(await text()), `${label}: a resident's case is confidential and supervised`);
+  check(/Confidential · supervised/i.test(await text()) && /Assessment/i.test(await text()), `${label}: a resident's case is confidential, supervised, and shows its stage`);
+  check(await page.locator(`${caseModal} .avatar`).count() > 0, `${label}: the patient has a face`);
   const triage = page.locator(`${caseModal} [data-act="triage"]`);
   if (await triage.count()) await triage.first().click();
   await page.locator(`${caseModal} [data-act="test"]:not([disabled])`).first().click();
+  check(/Diagnostic evaluation/i.test(await text()), `${label}: the stage moves with the work`);
   await page.locator(`${caseModal} [data-act="dx"]`).first().click();
   await page.locator(`${caseModal} [data-act="plan"]:not([disabled])`).first().click();
+  for (let i = 0; i < 6 && await page.locator(`${caseModal} [data-act="or"]`).count(); i++) await page.locator(`${caseModal} [data-act="or"]`).first().click();
   const decide = page.locator(`${caseModal} [data-act="decide"]`);
   if (await decide.count()) await decide.first().click();
   check(/Outcome/i.test(await text()), `${label}: the case reaches an outcome`);
+  const follow = page.locator(`${caseModal} [data-act="follow"]`);
+  if (await follow.count()) { await follow.click(); check(/Follow-up booked/i.test(await text()), `${label}: a follow-up can be arranged`); }
   check(!(await overflow()), `${label}: the case does not scroll sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-case.png`, fullPage: false });
-  // Close the case, open a colleague's profile from Hospital Life.
   await page.locator(`${caseModal} [data-close]`).click();
-  await page.click(`${modal} [data-sec="people"]`);
+  // A colleague's profile from Hospital Life, and Back to the same tab.
+  await page.click(`${modal} [data-sec="hospital"]`);
+  await page.click(`${modal} [data-hub="colleagues"]`);
   const people = page.locator(`${modal} [data-act="person"]`);
   check(await people.count() > 0, `${label}: hospital life lists the people you train with`);
   if (await people.count()) {
-    const before = await page.locator('#modal-root .scrim').count();
     await people.first().click();
     await page.waitForTimeout(150);
-    check(await page.locator('#modal-root .scrim').count() > before, `${label}: a colleague opens to their profile`);
     const all = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().textContent);
     check(/trained together|Supervised your/i.test(all), `${label}: the profile shows what you share`);
+    await page.locator('#modal-root .scrim:last-child .modal [data-close]').click();
+    await page.waitForTimeout(150);
+    check(await page.locator(`${modal} [data-hub="colleagues"].on`).count() === 1, `${label}: Back returns to My Colleagues`);
   }
-  // As a qualified physician: the hospital jobs across the country, and an employer's profile.
+  await page.click(`${modal} [data-hub="relationships"]`);
+  await page.locator(`${modal} [data-act="colAct"]`).first().click();
+  await page.waitForTimeout(100);
+  check(/Spend time together/.test(await text()), `${label}: colleagues have actions`);
+  await page.locator('#modal-root .scrim:last-child [data-cancel]').click();
+  // As a qualified physician: jobs across the country, an employer's profile, an interview; and a clinic.
   await page.evaluate(async () => {
     document.querySelectorAll('#modal-root .scrim').forEach((x) => x.remove());
     const { store } = await import('/js/state.js');
     const m = store.state.player.medicine;
     m.training = null; m.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
     m.license = { status: 'full', countryId: 'us' }; m.stage = 'practice';
+    for (const k of Object.keys(m.skills)) m.skills[k] = 90;
+    store.state.player.career.employerId = null;
     const { openMedicine } = await import('/js/ui/medicine.js');
-    openMedicine(window.__api, 'hospital');
+    openMedicine(window.__api, { section: 'hospital', hub: 'jobs' });
   });
   await page.waitForTimeout(150);
   await page.click(`${modal} [data-act="scope"]`);
@@ -115,6 +136,21 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.locator(`${modal} [data-act="review"]`).first().click();
   await page.waitForTimeout(100);
   check(/Departments:/.test(await text()), `${label}: an employer can be reviewed`);
+  await page.locator('#modal-root .scrim:last-child .modal button').last().click();
+  let interviewed = false;
+  for (const b of await page.locator(`${modal} [data-act="post"]:not([disabled])`).all()) {
+    await b.click(); await page.waitForTimeout(80);
+    await page.locator('#modal-root .scrim:last-child .modal button').last().click(); await page.waitForTimeout(80);
+    if (await page.locator(`${modal} [data-act="answer"]`).count()) { interviewed = true; break; }
+  }
+  check(interviewed, `${label}: an application can lead to an interview`);
+  if (interviewed) {
+    for (let i = 0; i < 3; i++) { await page.locator(`${modal} [data-act="answer"]`).first().click(); await page.waitForTimeout(80); await page.locator('#modal-root .scrim:last-child .modal button').last().click(); await page.waitForTimeout(80); }
+    check(!(await page.locator(`${modal} [data-act="answer"]`).count()), `${label}: the interview is answered to the end`);
+  }
+  await page.click(`${modal} [data-sec="clinic"]`);
+  check(await page.locator(`${modal} [data-act="open"]:not([disabled])`).count() > 0, `${label}: a qualified internist can open a practice`);
+  check(!(await overflow()), `${label}: My Clinic does not scroll sideways`);
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();
 }

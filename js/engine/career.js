@@ -6,6 +6,7 @@ import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
 import { medicineRuns, medicalBlock } from './medicine/index.js';
+import { investigationRuns, investigationBlock } from './investigations/index.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
 import { LAW_WORDS } from '../data/history.js';
 import { rule as lawRule } from './rules.js';
@@ -103,6 +104,8 @@ export function unmet(career, o = {}) {
   // A regulated profession needs its qualification recognized here (engine/credentials.js). A job offer does not do it.
   { const lic = licenseBlock(career.id, p); if (lic) out.push(lic); }
   { const md = medicalBlock(career.id, p); if (md) out.push(md); }
+  // Police, detective and federal investigative work is got through the agencies' own processes (engine/investigations).
+  if (!o.ignoreInvestigations) { const inv = investigationBlock(career.id, p); if (inv) out.push(inv); }
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);
@@ -135,7 +138,9 @@ export function unmet(career, o = {}) {
   if (r.program && !hasDegree(r.program)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
       cosmetology: 'Needs a hair and makeup license.' }[r.program] ?? `Needs you to have finished ${PROGRAMS[r.program].label.toLowerCase()}.`);
-  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched) {
+  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched
+    // A law graduate in practical training (articling, qualifying work, the Referendariat) may join a firm as a trainee.
+    && !(career.id === 'lawyer' && p.law?.bar?.training && !p.law.bar.training.done)) {
     // The degree is not the right to practice.
     out.push(`Needs you to pass the ${examName(licenseFor(r.program))}.`);
   }
@@ -526,10 +531,22 @@ export const scaleSalary = (m) => {
 };
 
 /** Thresholds the next level demands that the player does not yet meet. */
+/**
+ * Extra conditions some careers put on a promotion, beyond years and reviews: a law firm's partnership vote, an
+ * election to District Attorney (engine/lawPractice.js registers its own). Each gate: (careerId, nextLevel) → [why].
+ */
+// A function, not a const: modules that register a gate may load before this one has run (a circular import), and a
+// function declaration exists from the moment the module is linked.
+function promotionGates() { promotionGates.list ??= []; return promotionGates.list; }
+export function addPromotionGate(fn) { promotionGates().push(fn); }
 function missingFor(level) {
-  return Object.entries(level?.needs ?? {})
+  const c = player().career;
+  const career = currentCareer();
+  const at = career?.levels.indexOf(level) ?? -1;
+  return [...Object.entries(level?.needs ?? {})
     .filter(([path, min]) => (Number(resolve(path)) || 0) < min)
-    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`);
+    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`),
+  ...(at > 0 && c.careerId ? promotionGates().flatMap((g) => g(c.careerId, at) ?? []) : [])];
 }
 
 /** What stands between the player and the next level, for display. */
@@ -734,6 +751,8 @@ export function tickCareer() {
   if (career.id === 'athlete') return null;
   // A physician's year (evaluations, posts, privileges) is reviewed by the medical engine (engine/medicine), which runs next.
   if (medicineRuns(career.id, p)) return null;
+  // An investigator's year (performance, ranks, cases) is reviewed by the investigations engine, which runs next.
+  if (investigationRuns(career.id, p)) return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;

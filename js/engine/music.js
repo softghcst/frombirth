@@ -1055,7 +1055,7 @@ export function findBand(position) {
   if (!fits.length) return result(false, `You looked for a band in need of a ${posLow(position)}, but could not find one${skill < 45 ? ' that would have you yet' : ' this year'}.`, 'neutral');
   const o = fits[0];
   const a = o.actId ? act(o.actId) : null;
-  return { ...result(true, '', 'neutral'), opening: o, band: { name: o.name, genre: genreOf(o.genre).name, fans: o.fans, members: a ? members(a).length : (o.crew?.length ?? 2) + 1,
+  return { ...result(true, '', 'neutral'), opening: o, band: { name: o.name, genre: genreOf(o.genre).name, fans: o.fans, members: a ? Math.max(members(a).length, genreOf(a.genre).lineup.length - 1) : (o.crew?.length ?? 2) + 1, // an established band is filled out when you join
     label: o.labelId ? ent().orgs[o.labelId]?.name : null, lastYear: Math.round(localWage(o.fans * 3, country())) } };
 }
 

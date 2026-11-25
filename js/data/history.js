@@ -111,6 +111,14 @@ export const LAW_HISTORY = {
     ['mx', 1953], ['co', 1954], ['pe', 1955], ['eg', 1956], ['gh', 1954], ['ke', 1963], ['ng', 1976], ['ch', 1971], ['pt', 1976],
     ['kw', 2005], ['sa', 2015], ['*', 1950],
   ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
+  // [fact] The year women could first be admitted to practice law (simplified to one year per country): US 1869
+  // (Arabella Mansfield, Iowa; other states later), Canada 1897 (Clara Brett Martin, Ontario), France 1900 (law of
+  // 1 December 1900), Australia 1905 (Flos Greig, Victoria), UK 1919 (Sex Disqualification (Removal) Act), Germany
+  // 1922, India 1923 (Legal Practitioners (Women) Act), Japan 1933 (Lawyers Act; first admitted 1940).
+  // [default] 1920 where not recorded.
+  womenInLaw: Object.fromEntries([
+    ['us', 1869], ['ca', 1897], ['fr', 1900], ['au', 1905], ['uk', 1919], ['de', 1922], ['in', 1923], ['jp', 1933], ['*', 1920],
+  ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
   // [fact] Voting age lowered to 18: UK 1969 (in force 1970), US 1971 (26th Amendment), West Germany 1970,
   // France 1974, Canada 1970, Australia 1973, Italy 1975, Spain 1978; Japan 20 until 2016; Switzerland 20
   // until 1991. [default] 21 before 1970.
@@ -253,7 +261,7 @@ export const PARENT_OCCUPATIONS = [
 export const MODERN_OCCUPATIONS = { 'software engineer': 1960, 'investment banker': 1920, 'hair stylist': 1950, 'company director': 1900, 'warehouse picker': 1960, 'electrician': 1890, 'bus driver': 1910, 'line cook': 1950, 'dentist': 1850, 'surgeon': 1850, 'civil engineer': 1850, 'police officer': 1829, 'florist': 1850 };
 
 /** [estimate] University subjects that did not exist as degrees before these years. */
-export const MAJOR_FROM = { computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theater: 1940, musical_theater_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
+export const MAJOR_FROM = { criminology: 1950, forensic_science: 1975, cybersecurity: 2000, accounting: 1900, computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theater: 1940, musical_theater_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
 
 // ---------- Schooling ----------
 

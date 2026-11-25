@@ -71,8 +71,9 @@ section('the years bring a talent on toward half the gift; practice takes it fur
   const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
   check(hints >= lives * 0.8 && known >= lives * 0.5, `by 18 most gifted children have noticed (${hints} of ${lives}), and many know for certain (${known})`);
   check(mean(tried) < mean(idle), `trying the thing shows it sooner (${mean(tried).toFixed(1)} against ${mean(idle).toFixed(1)})`);
-  const p = life({ talent: 'sports' });
-  while (p.age < 18 && !(p.flags.found?.sports)) year();
+  // Not every gifted child notices by 18 (checked above, most do): take the first who does.
+  let p;
+  for (let k = 0; k < 8; k++) { p = life({ talent: 'sports' }); while (p.age < 18 && !(p.flags.found?.sports)) year(); if (p.flags.found?.sports) break; }
   check(S().journal.some((e) => /You feel slightly more athletically inclined\./.test(e.text)), 'first a feeling: "You feel slightly more athletically inclined."');
   check(tg.noticed(p).some((x) => x.id === 'sports'), 'and it is on the Talents screen');
 }
