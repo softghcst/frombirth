@@ -123,9 +123,13 @@ export function createCase(templateId, o = {}) {
       c.otherCounselId = templateId === 'will' ? null : party(countryId, { title: 'Opposing counsel', kind: 'lawyer' }).id;
     } else {
       c.vars.otherOrg = orgName();
-      c.vars.clientOrg = c.vars.otherOrg;
-      c.otherCounselId = party(countryId, { title: 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
+      c.vars.clientOrg = T.title.includes('{clientOrg}') ? orgName() : c.vars.otherOrg;
+      c.otherCounselId = party(countryId, { title: T.gov || T.forum === 'tax' ? 'Government counsel' : 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
+      // A dispute between two people (a boundary between neighbors) has a person on the other side.
+      if (`${T.title}${T.summary}`.includes('{other}')) { const o2 = party(countryId, { title: 'Neighbor' }); c.parties.otherId = o2.id; c.vars.other = nameOf(o2.id); }
     }
+    c.vars.city = p.city ?? COUNTRIES[countryId]?.cities?.[0] ?? '';
+    c.vars.address = `${rng.int(12, 980)} ${rng.pick(['Oak', 'Maple', 'Hill', 'River', 'Station', 'Park', 'Church', 'Mill'])} ${rng.pick(['Street', 'Road', 'Lane', 'Avenue'])}`;
   }
   c.title = fill(T.title, c);
   c.summary = fill(T.summary, c);
@@ -148,13 +152,13 @@ export const stageOf = (c) => c.stages[c.stageIdx]?.s ?? 'closed';
 export const STAGE_NAME = { intake: 'Intake', discovery: 'Discovery', pretrial: 'Pretrial motions', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
   disclosure: 'Financial disclosure', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody evaluation', review: 'Case review', services: 'Family services',
   interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Pleadings', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
-  distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed' };
+  distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed', record: 'The trial record', briefing: 'Briefing', argument: 'Oral argument' };
 /** The side's evidence: for the defense, what favors the client; for a prosecutor, what the state relies on. */
 const ours = (c, e) => (c.role === 'prosecution' ? e.favors === 'other' : e.favors === 'client');
-const DECIDING = ['trial', 'hearing', 'interview', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
+const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
 /** Where a case is held, in words. */
 export function forumName(c) {
-  return { trial: 'Trial court', family: 'Family court', juvenile: 'Juvenile court', agency: 'Agency review', immigration: 'Immigration court', tribunal: 'Employment tribunal', probate: 'Probate court', none: 'No court: a transaction' }[c.forum] ?? 'Court';
+  return { trial: 'Trial court', family: 'Family court', juvenile: 'Juvenile court', agency: 'Agency review', immigration: 'Immigration court', tribunal: 'Employment tribunal', probate: 'Probate court', tax: 'Tax tribunal', appeal: 'Court of Appeal', none: 'No court: a transaction' }[c.forum] ?? 'Court';
 }
 /** Strength of each side's case from the evidence still in it: weight × reliability, for what is admitted. */
 export function strength(c) {
@@ -354,6 +358,13 @@ export function courtroom(c) {
     closing: [['Go through the evidence, and what the law asks', 'evidence'], ['Appeal to sympathy', 'sympathy'], ['Attack the other side personally', 'improper']],
   };
   const phases = [];
+  if (c.forum === 'appeal') {
+    // An appeal is argued on the record before a panel of judges: no witnesses, no jury, and questions from the bench.
+    phases.push({ id: 'opening', title: 'Oral argument', options: [['Lead with the error in the record, and why it changed the result', 'evidence'], ['Argue the jury got the facts wrong', 'merits'], ['Keep it short and rely on the brief', 'brief']].map(([t, v]) => ({ text: t, v })) });
+    phases.push({ id: 'bench', title: 'A question from the bench', text: 'A judge interrupts: "Counsel, the jury heard other evidence. Why would the email have changed anything?"', options: [['Answer directly: point to what only the email showed', 'strong'], ['Steer back to your outline', 'dodge'], ['Say the judge has misread the record', 'rude']].map(([t, v]) => ({ text: t, v })) });
+    phases.push({ id: 'closing', title: 'Rebuttal', options: [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']].map(([t, v]) => ({ text: t, v })) });
+    return { title: c.title, what: 'hearing', jury: false, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
+  }
   if (c.jury) phases.push({ id: 'jury', title: 'Jury selection', text: 'Twelve people from the community, questioned by both sides and the judge.', options: [['Ask about experience with the police and with eyewitnesses', 'fair'], ['Try to keep off anyone who looks like a homeowner', 'improper'], ['Accept the first twelve', 'quick']].map(([t, v]) => ({ text: t, v })) });
   if (c.kind !== 'transaction') phases.push({ id: 'opening', title: c.kind === 'immigration' || c.kind === 'family' || c.kind === 'child' ? 'Your statement to the court' : 'Opening statement', options: (pros ? generic.opening : T.opening ?? generic.opening).map(([t, v]) => ({ text: fill(t, c), v })) });
   if (T.objection && !pros) phases.push({ id: 'objection', title: 'An objection?', text: fill(T.objection.text, c), options: T.objection.options.map(([t, v]) => ({ text: t, v })), valid: T.objection.valid });
@@ -370,6 +381,7 @@ const PHASE_POINTS = {
   jury: { fair: 0.02, quick: 0, improper: -0.04 },
   opening: { burden: 0.04, theory: 0.05, evidence: 0.05, brief: 0.02, overpromise: -0.05, merits: -0.02, improper: -0.06 },
   direct: { open: 0.04, leading: -0.02, skip: 0 },
+  bench: { strong: 0.06, dodge: -0.02, rude: -0.06 },
   closing: { evidence: 0.06, burden: 0.05, sympathy: 0, improper: -0.07, rushed: -0.08, walk: 0 },
 };
 /**
@@ -443,14 +455,17 @@ function decide(c, adv, lines, o = {}) {
   } else {
     const share = s.share + edge + noise;
     const won = share >= 0.5;
-    const kindMap = { family: won ? 'orders' : 'orders', child: won ? 'orders' : 'orders', immigration: won ? 'approved' : 'denied', civil: won ? 'judgment' : 'judgment_against', transaction: won ? 'closed' : 'closed_risk' };
+    const kindMap = { family: won ? 'orders' : 'orders', child: won ? 'orders' : 'orders', immigration: won ? 'approved' : 'denied', civil: c.forum === 'appeal' ? (won ? 'reversed' : 'affirmed') : won ? 'judgment' : 'judgment_against', transaction: won ? 'closed' : 'closed_risk' };
     const text = {
       family: c.templateId === 'divorce' ? (won ? 'The court divided the property fairly, counting the account that was hidden.' : 'The court divided the property; the hidden account was not proved.')
         : won ? `The court adopted a parenting plan built around ${c.vars.child}'s school and routines.` : `The court adopted the other parent's plan, with time for ${first(c.clientId)}.`,
       child: c.templateId === 'juvenile' ? (won ? `${c.vars.child} was diverted: the damage repaired, and no formal finding.` : `A formal finding, with supervision for ${c.vars.child}.`)
         : won ? `${c.vars.child} stays at home, with family services and regular reviews, as they wished.` : `${c.vars.child} is placed with a relative for now, with reviews to bring them home.`,
       immigration: won ? (c.templateId === 'removal' ? 'Relief granted: the client may stay.' : 'Approved.') : (c.templateId === 'removal' ? 'Relief denied. An appeal is possible.' : 'Denied. It can be appealed or filed again.'),
-      civil: won ? 'Judgment for your client.' : 'Judgment for the other side.',
+      civil: c.forum === 'appeal' ? (won ? 'Reversed: the case goes back for a new trial, with the email in evidence.' : 'Affirmed: the appeal court found the error, if any, made no difference.')
+        : c.forum === 'tax' ? (won ? 'The tribunal agreed: the payments were gifts, not income.' : 'The tribunal upheld the tax assessment.')
+        : c.forum === 'agency' && c.templateId === 'permit_case' ? (won ? 'The permit was sent back for stricter limits and monitoring.' : 'The permit was issued as drafted.')
+        : won ? 'Judgment for your client.' : 'Judgment for the other side.',
       transaction: won ? 'Signed and closed, with the risks covered.' : 'Signed, though some risk was left in the agreement.',
     }[c.kind];
     lines.push(text);

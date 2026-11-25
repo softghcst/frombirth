@@ -156,6 +156,22 @@ const npc = (id) => store.state.npcs[id];
   check(JSON.stringify({ cases: lc.LC(), law: store.state.player.law }) === before, 'cases, clients and the record survive a save and reload unchanged');
 }
 
+// ---------- The remaining specialties play to an end ----------
+{
+  lawyer('lawyer');
+  const ids = ['police_conduct', 'closing_defect', 'boundary', 'trademark', 'license_deal', 'tax_appeal', 'restructure', 'permit_case', 'appeal_brief'];
+  const outs = ids.map((id) => { const c = lc.createCase(id); return [id, c, playCase(c)]; });
+  check(outs.every(([, , o]) => o && o.kind), `civil rights, real estate, IP, tax, environmental and appellate cases each reach an outcome (${outs.map(([id, , o]) => `${id}:${o?.kind}`).join(', ')})`);
+  const appeal = outs.find(([id]) => id === 'appeal_brief')[1];
+  check(['reversed', 'affirmed'].includes(appeal.outcome.kind) && !appeal.jury && appeal.witnesses.length === 0, 'an appeal is decided by a panel on the record: reversed or affirmed, no jury, no witnesses');
+  const a2 = lc.createCase('appeal_brief'); a2.awaiting = { what: 'hearing', since: ls.nowM(), turn: ls.nowM() };
+  const ph = lc.courtroom(a2).phases.map((x) => x.id);
+  check(ph.join() === 'opening,bench,closing', `oral argument, a question from the bench, rebuttal (${ph})`);
+  const nb = lc.createCase('boundary');
+  check(npc(nb.parties.otherId)?.alive && nb.title.includes(npc(nb.parties.otherId).lastName), 'a boundary dispute is with a real neighbor');
+  check(lc.forumName(lc.createCase('tax_appeal')) === 'Tax tribunal', 'a tax appeal goes to the tax tribunal');
+}
+
 // ---------- Specialties are honest ----------
 {
   const playable = SPECIALTIES.filter((s) => s.playable);

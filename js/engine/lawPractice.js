@@ -15,7 +15,7 @@ import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
-import { currentCareer, hire, promote, adjustPerformance, PROMOTION_GATES } from './career.js';
+import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } from './career.js';
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
@@ -269,7 +269,7 @@ function gate(careerId, at) {
   if (g && L.selected?.[g] !== p.career.employerId + ':' + at) out.push(GATE_TEXT[g]);
   return out;
 }
-PROMOTION_GATES.push(gate);
+addPromotionGate(gate);
 const select = (p, g) => { (lawOf(p).selected ??= {})[g] = `${p.career.employerId}:${p.career.level + 1}`; };
 
 /** The selections the player could seek now, with why not where they cannot. */

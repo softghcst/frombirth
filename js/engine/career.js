@@ -524,7 +524,10 @@ export const scaleSalary = (m) => {
  * Extra conditions some careers put on a promotion, beyond years and reviews: a law firm's partnership vote, an
  * election to District Attorney (engine/lawPractice.js registers its own). Each gate: (careerId, nextLevel) → [why].
  */
-export const PROMOTION_GATES = [];
+// A function, not a const: modules that register a gate may load before this one has run (a circular import), and a
+// function declaration exists from the moment the module is linked.
+function promotionGates() { promotionGates.list ??= []; return promotionGates.list; }
+export function addPromotionGate(fn) { promotionGates().push(fn); }
 function missingFor(level) {
   const c = player().career;
   const career = currentCareer();
@@ -532,7 +535,7 @@ function missingFor(level) {
   return [...Object.entries(level?.needs ?? {})
     .filter(([path, min]) => (Number(resolve(path)) || 0) < min)
     .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`),
-  ...(at > 0 && c.careerId ? PROMOTION_GATES.flatMap((g) => g(c.careerId, at) ?? []) : [])];
+  ...(at > 0 && c.careerId ? promotionGates().flatMap((g) => g(c.careerId, at) ?? []) : [])];
 }
 
 /** What stands between the player and the next level, for display. */
