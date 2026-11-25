@@ -225,7 +225,7 @@ export function coupleChoice(what, cast = {}) {
   switch (what) {
     case 'retrain': {
       // Back to college for two years: no income meanwhile, then a new field, chosen from what suits them.
-      const options = CAREERS.filter((c) => c.req?.degree === 'university' && !c.req?.program && !c.branchOnly && c.type === 'fulltime' && c.family !== CAREER_BY_ID[L?.job?.careerId ?? L?.lastJob?.careerId]?.family);
+      const options = CAREERS.filter((c) => c.req?.degree === 'university' && !c.req?.program && !c.branchOnly && !c.agencyHire && c.type === 'fulltime' && c.family !== CAREER_BY_ID[L?.job?.careerId ?? L?.lastJob?.careerId]?.family);
       const to = rng.pick(options) ?? CAREERS[0];
       if (L?.job) { L.lastJob = { careerId: L.job.careerId, level: L.job.level }; L.job = null; }
       n.flags.retraining = { until: p.age + 2, careerId: to.id };
