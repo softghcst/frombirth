@@ -142,4 +142,25 @@ function cleanRun() {
   check(back.player.law.campaign?.id === 'da' && back.player.law.campaign.fund === L().campaign.fund, 'the race in progress is saved');
 }
 
+// The other candidate campaigns too.
+{
+  const moves = [];
+  for (let i = 0; i < 12; i++) {
+    candidate('prosecutor');
+    L().rep.integrity = 60;
+    camp.declare('da');
+    camp.nextRound(); camp.debate('plan'); camp.nextRound(); camp.nextRound();
+    moves.push(...(L().campaign?.rivalMoves ?? []));
+    camp.withdraw();
+  }
+  const kinds = new Set(moves.map((m) => m.kind));
+  check(moves.length === 36 && kinds.has('ads') && kinds.has('endorse') && kinds.has('attack'), `each stretch, the opponent campaigns: ads, endorsements, attacks (${[...kinds].join(', ')})`);
+  // An endorsement the opponent won is not open to the player; an attack can be answered.
+  let c = null;
+  for (let i = 0; i < 20 && !c; i++) { candidate('prosecutor'); L().rep.integrity = 60; camp.declare('da'); camp.act('committee'); camp.act('town_hall'); camp.nextRound(); if (L().campaign.rivalEndorsed.length || L().campaign.attacked) c = L().campaign; else camp.withdraw(); }
+  if (c?.rivalEndorsed.length) check(!camp.act(c.rivalEndorsed[0]).ok, 'an endorsement the opponent has is not there to win');
+  if (c?.attacked) { const before = c.appeal; const r = camp.act('respond'); check(r.ok && c.appeal > before, 'an attack can be answered'); }
+  check(c, 'the opponent took something from the player\'s side in the first stretch, at least once');
+}
+
 finish('Legal offices are won on the trail, under the rules of the day.');

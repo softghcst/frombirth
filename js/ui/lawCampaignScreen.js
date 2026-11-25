@@ -16,7 +16,7 @@ const GROUPS = [
   ['Money', ['committee', 'ask', 'big_donor']],
   ['Voters', ['town_hall', 'endorse_bar', 'endorse_paper', 'endorse_police', 'endorse_reform']],
   ['Your Message', ['ad_record', 'ad_views', 'ad_promise']],
-  ['Your Opponent', ['attack_fair', 'attack_false']],
+  ['Your Opponent', ['respond', 'attack_fair', 'attack_false']],
 ];
 
 function body() {
@@ -28,10 +28,11 @@ function body() {
   const rival = c.rival ?? 'Your Opponent';
   const polls = card(c.polls.length ? 'The Latest Poll' : 'Where the Race Starts', `${fitBars({ you: now.you, need: now.rival, youLabel: 'You', needLabel: rival })}
     ${kv('Campaign fund', fmtMoney(c.fund, country()))}${c.endorsed.length ? kv('Endorsed by', String(c.endorsed.length)) : ''}`);
+  const moves = (c.rivalMoves ?? []).length ? card(`What ${rival} Did`, c.rivalMoves.slice().reverse().map((m) => `<p class="muted">${esc(m.text)}</p>`).join('')) : '';
   const rules = camp.rulesNow();
   const rulesCard = rules ? card('The Rules for Judges', `<p class="muted">A judge must be fair to everyone who comes to court, so judicial candidates campaign under limits.</p>
     ${rules.laws.slice(0, 3).map((l) => `<p class="muted"><strong>${esc(l.name)}</strong>: ${esc(l.summary)}</p>`).join('')}`) : '';
-  if (c.round > camp.ROUNDS) return `${strip}${polls}<div class="btn-row">${btn('Election Day', 'data-campvote', 'primary')}</div>`;
+  if (c.round > camp.ROUNDS) return `${strip}${polls}${moves}<div class="btn-row">${btn('Election Day', 'data-campvote', 'primary')}</div>`;
   const acts = camp.actions();
   const byId = Object.fromEntries(acts.map((a) => [a.id, a]));
   const left = camp.ACTS_PER_ROUND - c.used.filter((u) => u.startsWith(`${c.round}:`)).length;
@@ -40,7 +41,7 @@ function body() {
     return rows ? `<div class="section-label">${esc(name)}</div>${rows}` : '';
   }).join('');
   const next = c.round === 2 && !c.debated ? btn('The Debate', 'data-campdebate', 'primary') : btn(c.round === camp.ROUNDS ? 'Finish the Campaign' : 'Next Stretch', 'data-campnext', 'primary');
-  return `${strip}${polls}${card('This Stretch', `<p class="muted">${left > 0 ? `${left === 1 ? 'One more thing' : 'Two things'} you can do before moving on.` : 'You have done what you can. Move on when ready.'}</p>${groups}`)}${rulesCard}
+  return `${strip}${polls}${card('This Stretch', `<p class="muted">${left > 0 ? `${left === 1 ? 'One more thing' : 'Two things'} you can do before moving on.` : 'You have done what you can. Move on when ready.'}</p>${groups}`)}${moves}${rulesCard}
     <div class="btn-row">${next}${btn('Withdraw', 'data-campquit')}</div>`;
 }
 

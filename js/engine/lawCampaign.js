@@ -49,7 +49,7 @@ export function declare(id, p = player()) {
   const rivalNpc = Object.values(store.state.npcs).find((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice);
   const rival = !judicial && rivalNpc ? `${rivalNpc.firstName} ${rivalNpc.lastName}` : null;
   L.campaign = { id, title, level: race.level, judicial, round: 1, used: [], fund: 0, appeal: 0, polls: [], debated: false, endorsed: [],
-    flags: {}, donors: [], rival, rivalEdge: rng.int(...race.rival), bias: rng.int(-3, 3), startM: nowM() };
+    flags: {}, donors: [], rivalMoves: [], rivalEndorsed: [], rival, rivalEdge: rng.int(...race.rival), bias: rng.int(-3, 3), startM: nowM() };
   log(`You filed to run for ${title}.`, 'system', 'neutral');
   return result(true, `You are a candidate for ${title}. Three stretches of campaigning, a debate, then the voters decide.${judicial ? ' Judicial candidates campaign under rules of their own: they are shown with each choice.' : ''}`, 'good');
 }
@@ -89,6 +89,7 @@ export function actions(p = player()) {
     ] : [
       { id: 'ad_promise', name: 'Promise to be tough on crime', sub: `A promise voters remember. About ${fmtMoney(adCost, country())}.`, cost: adCost },
     ]),
+    ...(c.attacked && !c.responded ? [{ id: 'respond', name: 'Answer your opponent\'s attack', sub: 'Set the record straight, calmly, with the facts.' }] : []),
     { id: 'attack_fair', name: 'Question your opponent\'s record, with the facts', sub: 'Fair, and it can still sting.' },
     { id: 'attack_false', name: 'Say things about your opponent that are not true', sub: breaks('falsehood') || 'Untrue, and the press may check.', rule: breaks('falsehood') || 'Untrue' },
   ];
@@ -131,7 +132,14 @@ export function act(id, p = player()) {
       gain(p, { courtroom: 1 });
       return result(true, g > 3.5 ? 'The rooms were full, and people stayed to talk.' : 'Small rooms, but the people who came will vote.', 'good');
     }
+    case 'respond': {
+      c.responded = true;
+      const g = 2 + (L.rep.integrity - 50) / 20 + rng.next();
+      c.appeal += g;
+      return result(true, g > 3 ? 'Your answer was clear and calm, and it is the one people remember.' : 'You answered it. Some people heard.', 'good');
+    }
     case 'endorse_bar': case 'endorse_paper': case 'endorse_police': case 'endorse_reform': {
+      if ((c.rivalEndorsed ?? []).includes(id)) return result(false, `They have already endorsed ${c.rival ?? 'your opponent'}.`, 'bad');
       const s = standing(p);
       const yes = rng.next() < clamp(0.35 + s + (id === 'endorse_bar' ? (L.rep.integrity - 60) / 80 : 0), 0.08, 0.9);
       if (id === 'endorse_police' && c.endorsed.includes('endorse_reform')) return result(false, 'The police union backs the other candidate: you already have the reform groups.', 'bad');
@@ -191,10 +199,40 @@ export function nextRound(p = player()) {
   const c = campaignOf(p);
   if (!c) return result(false, 'There is no campaign.', 'neutral');
   if (c.round === 2 && !c.debated) return result(false, 'The debate comes first.', 'neutral');
+  const move = rivalMove(c, p);
   c.polls.push(poll(p));
   c.round += 1;
-  if (c.round > ROUNDS) return result(true, 'The campaign is over. Election day.', 'neutral');
-  return result(true, c.round === 2 ? 'On to the second stretch, and the debate.' : 'The last stretch.', 'neutral');
+  if (c.round > ROUNDS) return result(true, `${move} The campaign is over. Election day.`, 'neutral');
+  return result(true, `${move} ${c.round === 2 ? 'On to the second stretch, and the debate.' : 'The last stretch.'}`, 'neutral');
+}
+
+/**
+ * The other candidate's stretch: they campaign too. Ads and money, an endorsement the player may have wanted, or an
+ * attack on the player's record, which sticks less to someone known for integrity and can be answered.
+ */
+function rivalMove(c, p) {
+  const L = lawOf(p);
+  const who = c.rival ?? 'Your opponent';
+  c.rivalMoves ??= []; c.rivalEndorsed ??= [];
+  const open = ['endorse_paper', ...(c.judicial ? ['endorse_bar'] : ['endorse_police', 'endorse_reform'])].filter((id) => !c.endorsed.includes(id) && !c.rivalEndorsed.includes(id)
+    && !(id === 'endorse_police' && c.endorsed.includes('endorse_reform')) && !(id === 'endorse_reform' && c.endorsed.includes('endorse_police')));
+  const kinds = ['ads', 'ads', 'money', ...(open.length ? ['endorse', 'endorse'] : []), ...(c.round <= 2 && !c.attacked ? ['attack'] : [])];
+  const kind = rng.pick(kinds);
+  let text;
+  if (kind === 'ads') { c.rivalEdge += 1.5 + rng.next() * 1.5; text = `${who} ran ads all over the district.`; }
+  else if (kind === 'money') { c.rivalEdge += 1; text = `${who} held a big fundraiser.`; }
+  else if (kind === 'endorse') {
+    const id = rng.pick(open);
+    c.rivalEndorsed.push(id); c.rivalEdge += 2.5;
+    text = `${who} won the endorsement of ${{ endorse_paper: 'the newspaper', endorse_bar: 'the bar association', endorse_police: 'the police union', endorse_reform: 'the reform groups' }[id]}.`;
+  } else {
+    c.attacked = true;
+    const sticks = L.rep.integrity >= 70 ? 0.5 : 2.5;
+    c.appeal -= sticks;
+    text = `${who} attacked your record${sticks < 1 ? ', but it did not stick: your name for integrity is well known.' : '. You can answer it next stretch.'}`;
+  }
+  c.rivalMoves.push({ round: c.round, kind, text });
+  return text;
 }
 
 /** Election day: the count, the office if it is won, and what breaking the rules on the way costs. */
