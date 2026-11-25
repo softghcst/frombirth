@@ -271,6 +271,11 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_23_girl_daisy_top", "file": "avatars/clothes/outfit_kid_23_girl_daisy_top.svg", "label": "Kid daisy top"},
     {"id": "outfit_kid_24_girl_overall_dress", "file": "avatars/clothes/outfit_kid_24_girl_overall_dress.svg", "label": "Kid overall dress"},
     {"id": "outfit_kid_25_girl_party_dress", "file": "avatars/clothes/outfit_kid_25_girl_party_dress.svg", "label": "Kid party dress"},
+    {"id": "outfit_kid_26_girl_hearts_sweater", "file": "avatars/clothes/outfit_kid_26_girl_hearts_sweater.svg", "label": "Kid hearts sweater"},
+    {"id": "outfit_kid_27_girl_butterfly_tee", "file": "avatars/clothes/outfit_kid_27_girl_butterfly_tee.svg", "label": "Kid butterfly tee"},
+    {"id": "outfit_kid_28_girl_ballet_wrap", "file": "avatars/clothes/outfit_kid_28_girl_ballet_wrap.svg", "label": "Kid ballet wrap"},
+    {"id": "outfit_kid_29_girl_bunny_hoodie", "file": "avatars/clothes/outfit_kid_29_girl_bunny_hoodie.svg", "label": "Kid bunny hoodie"},
+    {"id": "outfit_kid_30_girl_peasant_top", "file": "avatars/clothes/outfit_kid_30_girl_peasant_top.svg", "label": "Kid peasant top"},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
