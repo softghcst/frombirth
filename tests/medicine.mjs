@@ -24,6 +24,8 @@ import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
+import { COUNTRIES } from '../js/data/countries.js';
+import * as market from '../js/engine/employers.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { die } from '../js/engine/death.js';
 import { continueAs } from '../js/engine/legacy.js';
@@ -144,10 +146,11 @@ const pgyBefore = m.training.pgy;
 strong(m);
 year();
 check(m.training?.pgy === pgyBefore + 1 || m.completed.length, 'a residency moves one PGY year per world year');
-check(m.license.status === 'full', 'licensed after the first year of residency (US)');
+const startedTraining = m.training?.startYear ?? store.state.year - 1;
 check(res.every((c) => core.W().cases[c.id].status === 'closed'), 'unworked cases close at the end of the year, without the player');
 while (m.training && guard++ < 12) { strong(m); year(); }
 check(m.completed.some((c) => c.specialtyId === spec), `completed residency in ${spec}`);
+check(m.license.status === 'full' && m.license.since - startedTraining <= 3, `licensed after the first year of residency, or a retake later (${m.license.since - startedTraining})`);
 check(m.completed[0].to - m.completed[0].from === SPECIALTY_BY_ID[spec].years, 'a residency takes its full length');
 section(`residency complete: ${spec}, ${m.experience.cases} patients, license ${m.license.status}, boards ${m.boards.map((b) => b.passed).join()}`);
 
@@ -286,6 +289,28 @@ section(`turn lengths: PGY ${a12.pgy}, ${a12.cases} cases over two years at ever
   check(gs.player.medicine.reapply === false && !gs.player.medicine.training, 'a graduate in other work is not pulled into residency');
 }
 section('saves: idempotent migration, no duplicate cases, no invented past');
+
+// 8b. Applying nationwide can mean moving; applying at home does not.
+{
+  const graduate = (local) => {
+    rng.seed(local ? 8 : 9);
+    const q = life('us', 26);
+    q.city = COUNTRIES.us.cities[COUNTRIES.us.cities.length - 1];
+    const mm = core.M(q);
+    for (const k of Object.keys(mm.skills)) mm.skills[k] = 95;
+    q.stats.intellect = 99;
+    mm.stage = 'graduate'; mm.school = { name: 'medical school', year: 4, rotations: [], exams: { step1: { pass: true, score: 95 }, step2: { pass: true, score: 95 } }, interest: { internal: 10 }, apply: ['internal'], graduated: true };
+    mm.local = local; mm.premed.letters = 5;
+    const from = q.city;
+    train.runMatch('residency', ['internal']);
+    return { from, to: q.city, at: market.employer(q.career.employerId)?.city, matched: !!mm.training };
+  };
+  const home = graduate(true);
+  check(home.matched && home.to === home.from && home.at === home.from, 'applying only at home keeps the player in their city');
+  const away = graduate(false);
+  check(away.matched && away.at === away.to && away.to !== away.from, `a nationwide place is taken where it is, moving if need be (${away.from} → ${away.to})`);
+}
+section('the Match: at home, or nationwide with a move');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

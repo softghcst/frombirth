@@ -83,7 +83,7 @@ const VIEWS = {
       ]) + (s.year >= 3 || p.education.yearInStage >= 3 ? applyBlock(m) : muted('Residency applications open in your final year.')));
     }
     if (m.stage === 'graduate' && !m.training) {
-      out += card('Applying for a training place', `${applyBlock(m)}${btn('reapply', m.reapply === false ? 'Apply again this year' : 'Stop applying', { arg: m.reapply === false ? 'on' : 'off' })}`);
+      out += card('Applying for a training place', `${applyBlock(m)}${btn('research', 'Spend the year in research', { sub: 'A stronger application next time' })}${btn('reapply', m.reapply === false ? 'Apply again this year' : 'Stop applying', { arg: m.reapply === false ? 'on' : 'off' })}`);
     }
     if (m.training) {
       const t = m.training;
@@ -140,7 +140,9 @@ function applyBlock(m) {
   const opts = train.applicationOptions(player(), m);
   const chosen = m.school?.apply ?? [];
   return `<div class="section-label">Residency applications</div>${chosen.length ? `<p>Applying to: ${esc(chosen.map((id) => specialtyName(id)).join(', then '))}</p>` : muted('Not chosen yet: your strongest rotations will be used.')}
-    ${btn('apply', 'Choose specialties to apply to')}<p class="muted">${esc(opts.filter((o) => !o.block).length)} specialties open. A place is never guaranteed: competitive ones need a strong application.</p>`;
+    ${btn('apply', 'Choose specialties to apply to')}
+    ${btn('local', m?.local ? 'Apply nationwide (may mean moving)' : `Apply only in ${player().city}`, { arg: m?.local ? 'off' : 'on' })}
+    ${btn('second', m?.secondRound === false ? 'Enter the second round if unmatched' : 'Skip the second round', { arg: m?.secondRound === false ? 'on' : 'off' })}<p class="muted">${esc(opts.filter((o) => !o.block).length)} specialties open. A place is never guaranteed: competitive ones need a strong application.</p>`;
 }
 
 /** A case, worked step by step. */
@@ -183,6 +185,9 @@ const ACTIONS = {
   doToo: (_, x) => x.say(train.setDoToo(!med()?.doToo)),
   drama: (level, x) => x.say(setDrama(level)),
   reapply: (on, x) => x.say(train.setReapply(on === 'on')),
+  local: (on, x) => x.say(train.setLocal(on === 'on')),
+  second: (on, x) => x.say(train.setSecondRound(on === 'on')),
+  research: (_, x) => x.say(train.researchYear()),
   fellowship: (id, x) => x.say(train.applyForFellowship(id)),
   focus: (f, x) => x.say(ladder.setFocus(f)),
   offer: (yes, x) => x.say(ladder.answerOffer(yes === 'yes')),

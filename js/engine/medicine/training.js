@@ -16,6 +16,7 @@ import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
+import { citiesOf, relocate, moveCost } from '../cities.js';
 import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily } from './core.js';
 import { recordEvent, archiveIdOf } from '../chronicle.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
@@ -198,29 +199,81 @@ export function placeChance(specialtyId, m = med()) {
  * Applies for training places in order of preference; the first that offers one is taken.
  * Before the national match existed, places were offered directly; the result is the same kind of decision.
  */
-function runMatch(kind, wanted) {
+export function runMatch(kind, wanted) {
   const p = player();
   const m = M();
   const j = jurisdiction(p.countryId);
   const by = j.selection && !(p.countryId === 'us' && year() < ERA.residencyMatch) ? j.selection : 'direct offers from hospitals';
+  const what = kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`;
   m.match = { kind, year: year(), applied: [...wanted], tries: (m.match?.kind === kind ? m.match.tries ?? 0 : 0) + 1, status: 'unmatched' };
   for (const id of wanted) {
-    const chance = placeChance(id, m);
-    if (!roll(chance)) continue;
-    const sites = trainingSites(id, p.countryId, p.city);
-    if (!sites.length) continue;
-    const strength = applicationStrength(id, m);
-    const site = strength >= 70 ? sites[0] : sites[sites.length - 1];
-    m.match.status = 'matched';
-    m.match.specialtyId = id;
-    m.match.hospitalId = site.e.id;
-    log(`${kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`}: you matched into ${specialtyName(id)} at ${site.e.name}.`, 'system', 'good');
-    return startTraining(kind, id, site.e.id);
+    if (!roll(placeChance(id, m))) continue;
+    const site = pickSite(id, m, p);
+    if (!site) continue;
+    return matched(kind, id, site, what);
   }
-  log(`${kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
+  // A second round for places left unfilled: less competitive programs, for those who opt in (the default).
+  if (kind === 'residency' && m.secondRound !== false && m.route !== 'dpm') {
+    const left = applicationOptions(p, m).filter((o) => !o.block && !wanted.includes(o.id) && o.compete <= 0.45)
+      .sort((a, b) => b.interest - a.interest || a.compete - b.compete).slice(0, 2);
+    for (const o of left) {
+      if (!roll(placeChance(o.id, m) * 0.7)) continue;
+      const site = pickSite(o.id, m, p);
+      if (site) return matched(kind, o.id, site, 'In the second round, for places left unfilled');
+    }
+  }
+  log(`${what}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
   p.stats.mood = clamp(p.stats.mood - 12);
   note(`Did not match into ${specialtyName(wanted[0])} (${year()}).`, 'career', { log: false });
   return null;
+}
+
+/**
+ * Where a place is offered. Applying nationwide (the default) can mean another city: a strong
+ * application gets the best-resourced program in the country, others wherever there is room.
+ * Applying only at home keeps to the player's own city.
+ */
+function pickSite(id, m, p) {
+  const here = trainingSites(id, p.countryId, p.city).map((x) => ({ ...x, city: p.city }));
+  const strength = applicationStrength(id, m);
+  if (m.local || p.age < 18) return here.length ? (strength >= 70 ? here[0] : here[here.length - 1]) : null;
+  const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => trainingSites(id, p.countryId, c.name).map((x) => ({ ...x, city: c.name })));
+  const all = [...here, ...away];
+  if (!all.length) return null;
+  if (strength >= 70) return [...all].sort((a, b) => b.h.resources - a.h.resources || (a.city === p.city ? -1 : 1))[0];
+  return roll(0.45) && here.length ? here[here.length - 1] : rng.pick(all);
+}
+
+/** Takes the place: moving city first if the program is elsewhere (the program pays the move). */
+function matched(kind, id, site, what) {
+  const p = player();
+  const m = M();
+  m.match.status = 'matched';
+  m.match.specialtyId = id;
+  m.match.hospitalId = site.e.id;
+  log(`${what}: you matched into ${specialtyName(id)} at ${site.e.name}${site.city !== p.city ? `, in ${site.city}` : ''}.`, 'system', 'good');
+  if (site.city !== p.city) {
+    p.finance.cash += moveCost(); // a relocation allowance from the program
+    const r = relocate(site.city);
+    if (r.ok) m.match.moved = site.city;
+    else { p.finance.cash -= moveCost(); log(`You could not move to ${site.city} (${r.text}) and gave up the place.`, 'system', 'bad'); m.match.status = 'declined'; return null; }
+  }
+  return startTraining(kind, id, site.e.id);
+}
+
+/** Applying nationwide (may mean moving) or only in the player's own city. */
+export function setLocal(on) { M().local = !!on; return result(true, on ? `You will apply only to programs in ${player().city}.` : 'You will apply nationwide, and move if the place is elsewhere.', 'neutral'); }
+/** Whether to enter the second round for unfilled places if the first does not work out. */
+export function setSecondRound(on) { M().secondRound = !!on; return result(true, on ? 'If you do not match, you will try for places left unfilled.' : 'You will not enter the second round.', 'neutral'); }
+
+/** A research year while waiting to apply again: a stronger application next time. Once a year. */
+export function researchYear() {
+  const m = M();
+  if (m.stage !== 'graduate' || m.training) return result(false, 'That is for graduates waiting to apply again.', 'neutral');
+  if (!once('research_year', m)) return result(false, 'You are already doing research this year.', 'neutral');
+  grow('research', 6, m); grow('reasoning', 1, m);
+  m.premed.letters += 1;
+  return result(true, 'You join a research group for the year: a paper in progress, and a professor who will write you a letter.');
 }
 
 // ---------- Training ----------
