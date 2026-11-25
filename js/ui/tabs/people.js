@@ -1,6 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
 import { openBirthTag, openAdoptionCard } from '../birthTag.js';
+import { canTagOlder, olderBirthInfo } from '../../engine/birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -372,7 +373,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love' }] : []),
-    ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    ...(npc.birthInfo || canTagOlder(npc) ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
     ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
@@ -417,7 +418,7 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
-      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      birthTag: () => olderBirthInfo(npc) && openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
       adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),

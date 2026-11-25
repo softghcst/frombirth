@@ -156,6 +156,42 @@ export const VOWS = {
   traditional: { label: 'The traditional vows', bump: 2, line: (n) => `"To have and to hold." ${n} says the words back to you, steady and sure.` },
   funny: { label: 'Vows that make everyone laugh', bump: 3, line: (n) => `The whole room is laughing, and ${n} is laughing hardest, and then, suddenly, not laughing at all.` },
 };
+/**
+ * Where the honeymoon went, the same for the same couple: an island for the resort, a coast road for the road trip,
+ * six countries for the trip around the world. Null for staying home.
+ */
+const RESORTS = ['Bora Bora', 'the Maldives', 'Bali', 'Santorini', 'Mauritius', 'the Seychelles', 'Fiji', 'Tulum'];
+const ROADS = ['the Coast Road', 'the Mountains', 'the Lakes', 'the Desert Highway', 'Wine Country'];
+export function honeymoonPlace(honeymoon, npc) {
+  const h = hashOf(`honeymoon:${npc.id}`);
+  if (honeymoon === 'resort') return RESORTS[h % RESORTS.length];
+  if (honeymoon === 'roadtrip') return ROADS[h % ROADS.length];
+  if (honeymoon === 'world') return 'Around the World';
+  return null;
+}
+
+/**
+ * A postcard home from the honeymoon: to the player's parents, if they are living, or to everyone at home. They keep
+ * it (a memory, and a little warmth). Returns who it is to and what it says, or null when the couple stayed home.
+ */
+export function sendPostcard(npcId, honeymoon) {
+  const p = player();
+  const npc = npcOf(npcId);
+  const place = honeymoonPlace(honeymoon, npc);
+  if (!place) return null;
+  const parents = npcsByRole('parent').filter((n) => n.alive);
+  const mom = parents.find((n) => n.gender === 'female'); const dad = parents.find((n) => n.gender === 'male');
+  const to = mom && dad ? 'Mom and Dad' : mom ? 'Mom' : dad ? 'Dad' : parents.length ? parents[0].firstName : 'everyone at home';
+  const body = {
+    resort: `The water here is the color of the swimming pools in magazines. ${npc.firstName} has not stopped smiling and neither have I. We are eating breakfast in the sea. Yes, in it.`,
+    roadtrip: `${npc.firstName} picked the music, I picked the turns, and we got lost twice on purpose. Every town has a diner and we have tried them all.`,
+    world: 'Six countries, one suitcase each (mostly). We have eaten things we cannot pronounce and watched the sun come up on three continents.',
+  }[honeymoon];
+  for (const n of parents) { bump(n, 2); remember(n, 'postcard', `A postcard from your honeymoon in ${place}.`); }
+  log(`From ${place}, you and ${npc.firstName} sent a postcard home.`, 'system', 'good');
+  return { place, to, body, from: `${p.firstName} & ${npc.firstName}` };
+}
+
 export function sayVows(npcId, kind) {
   const npc = npcOf(npcId);
   const v = VOWS[kind] ?? VOWS.traditional;

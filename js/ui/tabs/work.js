@@ -13,7 +13,9 @@ import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
-import { athleticsCard, openAthletics } from '../sports.js';
+import { openAthletics } from '../sports.js';
+import * as special from '../../engine/specialCareer.js';
+import * as fameEng from '../../engine/fame.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { fitBars } from '../fitBars.js';
@@ -388,11 +390,17 @@ const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family:
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */
-const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations']);
+const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations']); // (these have lists of their own, below)
 const has = (list, id) => list.find(([x]) => x === id);
 const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
 
 function findWork(p, list) {
+  // A special career is the work: other jobs wait until it is left (engine/specialCareer.js).
+  const sc = special.jobBlock('other', p);
+  if (sc && p.age >= 18) {
+    const why = `You are ${special.SPECIAL_BY_ID[special.current(p)].noun}`;
+    return `<div class="section-label">Find work</div><div class="nav-group">${lockedRow('Jobs', why)}${lockedRow('Find work', why)}${military.serving() ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: `${p.career.title}, ${military.serving().branch}` }) : lockedRow('Military', why)}</div>`;
+  }
   const rows = [];
   rows.push(has(list, 'hub') ? row(has(list, 'hub')) : lockedRow('Jobs', fromAge(p.age, Math.min(15, workLaw().workAge)) || 'Not open to you now'));
   rows.push(has(list, 'findwork') ? row(has(list, 'findwork')) : lockedRow('Find work', fromAge(p.age, 5) || 'Not open to you now'));
@@ -402,25 +410,47 @@ function findWork(p, list) {
     : lockedRow('Military', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 18) || mil[0].why));
   // Law: school, the bar and practice in one place (ui/lawCareer.js), for anyone with a first degree or more.
   if (showLawRow(p)) rows.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
+  // Law enforcement and investigations: police, detectives, federal agents, private investigators (ui/investigations.js).
+  rows.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
   if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
   return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
 }
 
-/** Special careers: one row on the Work tab, opening a list of its own (like a job center's special desk). */
+/**
+ * Special careers: acting, music, dance, modeling, writing, sports, K-pop and politics, each a career of its own with a
+ * page of its own. A life follows one at a time (engine/specialCareer.js): the one taken up is marked, and the others
+ * wait, greyed with why, until it is left. Sport for fun stays open to anyone.
+ */
 function specialCareers(p, list) {
-  const rows = [];
-  rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
-  rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
-  // Law enforcement and investigations: police, detectives, federal agents, private investigators (ui/investigations.js).
-  rows.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
-  if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
-  // Famous before they can use it (a royal baby): shown, locked until old enough.
-  else if (career.fame() >= 10) rows.push(lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)));
-  const athletics = p.legal.incarceration ? '' : athleticsCard();
-  const politics = politicsCard();
-  return `<div class="card"><h3>Special careers</h3><div class="nav-group">${rows.join('')}</div>
-    ${athletics || `<div class="nav-group">${lockedRow('My Athletics', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 4))}</div>`}
-    ${politics || `<div class="nav-group">${lockedRow('Politics', fromAge(p.age, 14) || 'Not open to you now')}</div>`}</div>`;
+  const now = special.current(p);
+  const jailed = p.legal.incarceration ? 'Not from where you are' : '';
+  const y = store.state.year;
+  const notYet = {
+    acting: fromAge(p.age, 5),
+    music: fromAge(p.age, 12) || (fameEng.exists('concert') ? '' : 'No one makes a living from music here yet'),
+    dance: fromAge(p.age, 6),
+    modeling: fromAge(p.age, 14),
+    writing: fromAge(p.age, 14) || (fameEng.exists('publishing') ? '' : 'There is no publishing here yet'),
+    sports: fromAge(p.age, 4),
+    kpop: fromAge(p.age, 12) || (y < 1996 ? 'K-pop begins in the 1990s' : ''),
+    politics: fromAge(p.age, 14),
+  };
+  const rows = special.SPECIAL_CAREERS.map((c) => {
+    const why = jailed || notYet[c.id];
+    if (why) return lockedRow(c.name, why, c.ico);
+    if (now && now !== c.id) {
+      // Sport for fun is open to anyone; the rest wait until the career is left.
+      if (c.id === 'sports') return navRow({ attrs: 'data-act="sc:sports"', label: c.name, sub: 'For fun only, while you have another career', ico: c.ico });
+      return lockedRow(c.name, `You are ${special.SPECIAL_BY_ID[now].noun} now`, c.ico);
+    }
+    return navRow({ attrs: `data-act="sc:${c.id}"`, label: c.name, sub: now === c.id ? 'Your career' : c.blurb, ico: c.ico, tone: now === c.id ? 'peach' : '' });
+  });
+  const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';
+  const politics = !now || now === 'politics' ? politicsCard() : '';
+  return `<div class="card"><h3>Special careers</h3>
+    <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career. You can follow one at a time.'}</p>
+    <div class="nav-group">${rows.join('')}${useFame}</div></div>
+    ${politics ? `<div id="politics-card">${politics}</div>` : ''}`;
 }
 
 /** Opposite choices, shown side by side: Study harder | Slack off. */

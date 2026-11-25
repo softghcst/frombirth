@@ -187,11 +187,13 @@ export function barrier(setting, p = player()) {
  * need, or a hard stretch for concentration. Accommodations take it away.
  */
 export function studyBarrier(p = player()) {
-  if (!p.health) return 0;
+  if (!p.health) return Math.max(0, (p.career?.stress ?? 0) - 62) / 120;
   const d = domainImpact(p);
   const focus = (d.focus ?? 0) / 100;
   const study = (d.study ?? 0) / 100; // already lower where support is in place (supportEffect)
-  return Math.round(clamp(barrier('school', p) * 0.5 + focus * 0.3 + study * 0.3, 0, 0.9) * 100) / 100;
+  // Stress past a point gets in the way as well: tired, behind, and hard to concentrate (engine/worklife.js).
+  const stress = Math.max(0, (p.career?.stress ?? 0) - 62) / 120;
+  return Math.round(clamp(barrier('school', p) * 0.5 + focus * 0.3 + study * 0.3 + stress, 0, 0.9) * 100) / 100;
 }
 /** Work performance points lost to barriers. */
 export function workBarrier(p = player()) {

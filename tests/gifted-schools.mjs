@@ -83,5 +83,74 @@ check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engine
   check(titleCase('STEM magnet school') === 'STEM Magnet School' && titleCase('School for gifted children') === 'School for Gifted Children' && titleCase('Law and public service academy') === 'Law and Public Service Academy', 'school names read in Title Case');
 }
 
+// Skipping a grade, and starting college early.
+{
+  const edu = await import('../js/engine/education.js');
+  const q = life();
+  q.age = 9; q.birthYear = store.state.year - 9;
+  q.education.enrolled = true; q.education.stage = 'elementary'; q.education.gpa = 3.9; q.stats.intellect = 70;
+  check(/far ahead/.test(edu.skipBlock(q)), 'an ordinary child cannot skip a grade');
+  q.stats.intellect = 95;
+  let r = { ok: false };
+  for (let i = 0; i < 20 && !r.ok; i++) { q.flags.skipAskedAge = null; r = edu.skipGrade(); }
+  check(r.ok && q.education.ahead === 1, `a gifted child can skip a grade (${r.text})`);
+  check(q.career.stress > 30, 'being the youngest in class is its own pressure');
+  for (let i = 0; i < 20; i++) { q.flags.skipAskedAge = null; edu.skipGrade(); }
+  check(q.education.ahead === edu.MAX_AHEAD, `two grades ahead at most (${q.education.ahead})`);
+  // Ahead in the stages: a child two years ahead starts middle school two years early.
+  q.age = 9; q.education.stage = 'elementary';
+  edu.tickEducation();
+  check(q.education.stage === 'middle', `two grades ahead, middle school comes at ${q.age} (${q.education.stage})`);
+
+  const t = life();
+  t.age = 15; t.birthYear = store.state.year - 15;
+  t.education.enrolled = true; t.education.stage = 'high'; t.education.gpa = 3.9; t.stats.intellect = 70;
+  check(/top marks/.test(edu.earlyCollegeBlock(t)), 'an ordinary student cannot leave for college early');
+  t.stats.intellect = 92;
+  const c = edu.startCollegeEarly();
+  check(c.ok && t.education.degrees.some((d) => d.type === 'high') && !t.education.enrolled, `a gifted 15-year-old finishes school early (${c.text})`);
+}
+
+// Summer programs: camps teach; competitions are placed in, and wins count on applications. A coach's letter counts too.
+{
+  const summer = await import('../js/engine/summer.js');
+  const uni = await import('../js/engine/university.js');
+  const k = life();
+  k.age = 14; k.birthYear = store.state.year - 14; k.education.enrolled = true; k.education.stage = 'high'; k.education.clubs = [];
+  k.skills = {};
+  const opts = summer.summerOptions(k);
+  check(opts.some((o) => o.id === 'coding_camp') && opts.find((o) => o.id === 'robotics_comp')?.why, 'camps are open; the robotics competition needs the team');
+  summer.goToSummer('coding_camp', k);
+  check(k.skills.coding >= 6, 'coding camp teaches coding');
+  check(/summer/.test(summer.goToSummer('math_olympiad', k).text), 'one summer a year');
+  // A gifted mathematician places, and climbs the levels.
+  k.stats.intellect = 99; k.skills.math = 99;
+  const before = uni.profile('mathematics').activities;
+  for (let i = 0; i < 4; i++) { k.age += 1; summer.goToSummer('math_olympiad', k); }
+  const a = summer.awardsOf(k);
+  check(a.count >= 2 && a.firsts >= 1, `wins and places are kept (${a.list.map((x) => x.name).join('; ')})`);
+  check(a.list.some((x) => /State|National/.test(x.name)), 'and the level climbs from city to state to national');
+  check(uni.profile('mathematics').activities > before, 'awards count on a college application');
+  // A recommendation: from someone who knows you well.
+  const coach = { firstName: 'Ana', lastName: 'Ruiz', alive: true, meters: { relationship: 40 }, flags: { tag: 'coach', title: 'Robotics coach' } };
+  check(!summer.askForRecommendation([coach], k).ok && !coach.flags.wouldRecommend, 'a coach who barely knows you will not write one');
+  k.age += 1; coach.meters.relationship = 80;
+  check(summer.askForRecommendation([coach], k).ok && coach.flags.wouldRecommend, 'one who does will');
+}
+
+// Out of school: a child who is not at one joins a youth mock trial program (Pursuits) and can enter a debate tournament.
+{
+  const clubLife = await import('../js/engine/clubs.js');
+  const { summerOptions } = await import('../js/engine/summer.js');
+  const k = life();
+  k.age = 13; k.birthYear = store.state.year - 13; k.skills = { ...(k.skills ?? {}), public_speaking: 5 };
+  k.education.stage = 'none'; k.education.enrolled = false; k.education.clubs = [];
+  const dt = () => summerOptions(k).find((o) => o.id === 'debate_tournament');
+  check(/join the club/.test(dt()?.why ?? ''), 'a debate tournament needs a team');
+  const r = clubLife.join('youth_mock_trial');
+  check(r.ok, `a 13-year-old joins youth mock trial (${r.text})`);
+  check(!dt()?.why, `and can then enter the debate tournament (${dt()?.why})`);
+}
+
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Bright, techy and argumentative kids have schools and clubs of their own, and they count.');

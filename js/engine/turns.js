@@ -14,7 +14,7 @@ import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
 import { seasonAt, turnSeasons, seasonName } from './calendar.js';
-import { birthdayOf, dateNow } from './birthday.js';
+import { birthdayOf, dateNow, giveBirthday } from './birthday.js';
 import { disastersBetween, markHome } from './disasters.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
 import { between as hoodBetween } from './neighborhood.js';
@@ -102,6 +102,7 @@ export function advanceTurn(state = store.state) {
   const next = monthOf(state) + step;
   if (next >= 12 || step === 12) {
     state.month = 0;
+    if (!p.birthday) giveBirthday(p); // an older life, saved mid-year before birthdays were kept (save.js migrate)
     const coming = state.settings?.nextStep ?? step; // a change of turn length takes effect from here
     state.held = []; // season scenes held from last year that never found their season
     advanceYear();

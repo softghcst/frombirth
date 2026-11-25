@@ -65,7 +65,7 @@ check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Specia
 check(rs.some((r) => r.label === 'Military' && r.locked && /From age 18/i.test(r.line)), 'work: Military is greyed until 18');
 await page.evaluate(() => document.querySelector('[data-sec="Special careers"]').click()); await page.waitForTimeout(250);
 const special = await page.evaluate(() => [...document.querySelectorAll('.sec-body.shown .nav-row, .sec-body.shown .sec-row')].filter((r) => r.offsetParent).map((r) => `${r.querySelector('.nr-label')?.textContent.trim()}${r.disabled ? ' (locked)' : ''}`));
-check(['My Fame', 'K-pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
+check(['Acting', 'Music', 'Dance', 'Modeling', 'Writing', 'Sports', 'K-pop Idol', 'Politics'].every((n) => special.some((x) => x.startsWith(n))) && !special.some((x) => x.startsWith('My Fame')), `Special careers lists each career on its own, and no My Fame (${special.join(', ')})`);
 check(special.some((x) => /K-pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
 await tab('holdings');
 rs = await rows();
@@ -91,7 +91,12 @@ check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military
 // Joining: the way in, then the branch from a dropdown, then basic training.
 await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
 await tab('work');
-await page.waitForSelector('[data-act="military"]', { state: 'attached' });  // the tab is drawn before it is used: on a busy machine it takes a moment
+await page.waitForSelector('[data-act="military"]', { state: 'attached', timeout: 15000 }).catch(async (err) => {
+  console.log('DIAG', await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; const M = await import('/js/engine/military.js');
+    return JSON.stringify({ alive: p.alive, age: p.age, jail: !!p.legal.incarceration, join: M.joinOptions(), title: document.querySelector('[data-panel-title]')?.textContent, tab: document.querySelector('.tab-btn.active, .tab-btn[aria-selected=true]')?.dataset.tab,
+      rows: [...document.querySelectorAll('[data-panel-body] .nr-label')].map((x) => x.textContent), modals: [...document.querySelectorAll('#modal-root .scrim')].map((m) => m.innerText.slice(0, 120)), app: document.getElementById('app')?.innerText.slice(0, 200) }); }));
+  throw err;
+});  // the tab is drawn before it is used: on a busy machine it takes a moment
 await page.evaluate(() => document.querySelector('[data-act="military"]').click()); await page.waitForTimeout(250);
 await page.locator('#modal-root .choice-btn', { hasText: 'Enlist' }).click(); await page.waitForTimeout(250);
 const branches = await page.locator('#modal-root select#m-pick option').allInnerTexts();

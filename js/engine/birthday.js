@@ -8,8 +8,8 @@
 // the birthday's month plus them. state.year is the year of the last birthday.
 //
 // A birthday is picked from the life's own id, not with the game's dice, so it draws nothing a seed relies on, and an
-// older save given a birthday on loading gets the same one every time. Lives saved before birthdays were kept on
-// January 1 carry on there until a new life begins.
+// older save given a birthday on loading gets the same one every time. Lives saved before birthdays were kept (on
+// January 1) are given one when they load, or, if saved partway through a year, at the next turn of the year.
 import { store } from '../state.js';
 
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -30,7 +30,7 @@ export function birthdayFor(id) {
   return { m, d: n + 1 };
 }
 
-/** The player's birthday: their own, or January 1 for a life saved before birthdays were kept. */
+/** The player's birthday: their own, or January 1 until an older life has been given one. */
 export const birthdayOf = (p = store.state?.player) => p?.birthday ?? { m: 0, d: 1 };
 
 /** Gives a new life its birthday. */

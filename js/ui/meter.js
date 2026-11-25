@@ -3,12 +3,14 @@ import { esc } from '../util.js';
 
 export const band = (v) => (v < 34 ? 'low' : v < 67 ? 'mid' : 'high');
 
-export function meterHtml(name, value, wide = false) {
+export function meterHtml(name, value, wide = false, invert = false) {
   const v = Math.round(value);
+  // A meter where more is worse (stress) is colored the other way round.
+  const shade = band(invert ? 100 - v : v);
   return `
     <div class="meter ${wide ? 'wide' : ''}" role="meter" aria-label="${esc(name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}">
       <span class="name">${esc(name)}</span>
-      <span class="track"><span class="fill ${band(v)}" style="width:${v}%; display:block"></span></span>
+      <span class="track"><span class="fill ${shade}" style="width:${v}%; display:block"></span></span>
       <span class="val">${v}%</span>
     </div>`;
 }

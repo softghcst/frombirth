@@ -327,6 +327,59 @@ export function finishLawSchool() {
   if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.termsFor(p)) graduate();
 }
 
+// ---------- Gifted children: a grade skipped, college early ----------
+
+/** How far ahead a child may be put: two grades at most. */
+export const MAX_AHEAD = 2;
+/** Whether a child could skip a grade now: '' if so, else why not. Far ahead of their class, and young enough for it to help. */
+export function skipBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage === 'high') return 'Only before high school.';
+  if (p.age < 6) return 'Not this young.';
+  if ((e.ahead ?? 0) >= MAX_AHEAD) return `You are already ${MAX_AHEAD} grades ahead.`;
+  if (p.flags.skipAskedAge === p.age) return 'You asked this year already.';
+  if (p.stats.intellect < 78 || (e.gpa && e.gpa < 3.4)) return 'Only for a child far ahead of their class.';
+  return '';
+}
+/**
+ * Skips a grade: the school agrees when the child is far ahead, and the child moves up a year. Being the youngest in
+ * the class is its own pressure: more stress, and the friends they had are a year behind now.
+ */
+export function skipGrade() {
+  const p = player();
+  const e = p.education;
+  const why = skipBlock(p);
+  if (why) return result(false, why, 'neutral');
+  p.flags.skipAskedAge = p.age;
+  const yes = rng.chance(Math.min(0.9, 0.35 + (p.stats.intellect - 78) / 30 + ((e.gpa || 3.4) - 3.4) / 2));
+  if (!yes) return result(false, 'The school tests you, and says you are ahead, but not by enough to move up. Try again next year.', 'neutral');
+  e.ahead = (e.ahead ?? 0) + 1;
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 8));
+  milestone('Skipped a grade.', 'education');
+  const text = `You skipped a grade. You are the youngest in your new class, and the work is finally interesting.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+/** Whether a teenager could finish school now and start college early: '' if so, else why not. */
+export function earlyCollegeBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage !== 'high') return 'Only from high school.';
+  if (p.age < 14) return 'Not this young.';
+  if (p.age + (e.ahead ?? 0) >= SCHOOL_LEAVING_AGE - 1) return 'You finish school soon anyway.';
+  if (p.stats.intellect < 84 || (e.gpa || 0) < 3.6) return 'Only for a student well ahead of their year, with top marks.';
+  return '';
+}
+/** Finishes high school early: a diploma now, and university applications open (Plan what comes next). */
+export function startCollegeEarly() {
+  const p = player();
+  const why = earlyCollegeBlock(p);
+  if (why) return result(false, why, 'neutral');
+  milestone(`Finished school early, at ${p.age}, to start college.`, 'education');
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 6));
+  graduate();
+  return result(true, `You finish high school at ${p.age}, years ahead of your friends. Now: which college? (Plan what comes next.)`);
+}
+
 function graduate() {
   const p = player();
   const e = p.education;
@@ -448,7 +501,9 @@ export function tickEducation() {
   for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
 
   // School starts, and moves from stage to stage, at the ages this country sets. Only ever forward.
-  const due = sch.stageDue(p.age);
+  // A child who has skipped a grade is a year (or two) ahead: they move up, and finish, as if they were that much older.
+  const ahead = e.ahead ?? 0;
+  const due = sch.stageDue(p.age + ahead);
   const at = SCHOOL.indexOf(e.stage);
   const finished = e.degrees.some((d) => d.type === 'high');
   if (due && !isHigher(e.stage) && !finished && !e.expelled && !e.droppedOut && SCHOOL.indexOf(due.id) > at && (e.enrolled || e.stage === 'none')) { enterStage(due); return; }
@@ -488,7 +543,7 @@ export function tickEducation() {
   e.effort = Math.round(clamp(e.effort * 0.5 + (30 + p.hidden.discipline * 0.4) * 0.5));
 
   // Finishing, failing or carrying on
-  if (e.stage === 'high' && p.age >= SCHOOL_LEAVING_AGE) return graduate();
+  if (e.stage === 'high' && p.age + ahead >= SCHOOL_LEAVING_AGE) return graduate();
   if (!isHigher(e.stage)) return;
   // A doctorate is finished when the thesis is, however long that takes.
   if (e.stage === 'doctorate' && e.thesis) {
