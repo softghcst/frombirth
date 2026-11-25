@@ -6,7 +6,7 @@
 //   m.offers = [{ hospitalId, city, rank, salary, relocation, year, negotiated }]   offers stand until the year ends
 import { clamp, fmtMoney } from '../../util.js';
 import { player, country } from '../../state.js';
-import { RANKS, DEPARTMENTS } from '../../data/medicine.js';
+import { RANKS, DEPARTMENTS, eraCare } from '../../data/medicine.js';
 import { employer, reputation as employerReputation, payAt } from '../employers.js';
 import { staffOf } from '../workplace.js';
 import { cityOf, citiesOf, relocate, moveCost } from '../cities.js';
@@ -28,7 +28,7 @@ export function hospitalProfile(id) {
   const city = cityOf(e.countryId, e.city);
   return {
     id, name: e.name, city: e.city, kind: kindName(h), ownership: OWNERSHIP[h.kind] ?? (r.next() < 0.6 ? 'Nonprofit' : 'Private'),
-    resources: h.resources, reputation: Math.round(clamp(employerReputation(e) * 0.5 + h.resources * 0.5)), teaching: h.teaching,
+    resources: Math.round(h.resources * eraCare(year())), reputation: Math.round(clamp(employerReputation(e) * 0.5 + h.resources * 0.5)), teaching: h.teaching,
     departments: h.depts.map((d) => DEPARTMENTS[d] ?? d),
     physicians: Math.max(doctors, scale * 12), nurses: scale * 40, administrators: scale * 6,
     patients: city?.kind === 'capital' || city?.kind === 'largest' ? 'a large city and the region around it' : 'the town and the country around it',

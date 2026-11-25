@@ -256,6 +256,14 @@ export const ERA = {
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
 };
 
+/**
+ * What a hospital of a given year can do, against today's (1). A broad era modifier, not a history:
+ * before antibiotics and blood banking (about 1945) and modern intensive care (about 1960), the same
+ * hospital had far less to work with; resources and the margin for error scale with it.
+ */
+export const ERA_CARE = [[1920, 0.55], [1945, 0.68], [1960, 0.8], [1980, 0.9], [9999, 1]];
+export const eraCare = (y) => ERA_CARE.find(([until]) => y < until)[1];
+
 // ---------- Jurisdictions ----------
 //
 //   entry        'graduate' (a bachelor's first) | 'direct' (medical school from secondary school)

@@ -10,7 +10,7 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { advanceTurn } from '../js/engine/turns.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY } from '../js/data/medicine.js';
+import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare } from '../js/data/medicine.js';
 import { CASES, CASE_BY_ID } from '../js/data/medicineCases.js';
 import { EVENT_BY_ID } from '../js/data/events/index.js';
 import * as edu from '../js/engine/education.js';
@@ -118,6 +118,8 @@ for (const c of CASES) {
   delete core.W().cases.chk;
   check(!stuck.length, `every listed specialty can reach a case's best plan (${stuck.slice(0, 6).join(', ')})`);
 }
+check(eraCare(1910) < eraCare(1950) && eraCare(1950) < eraCare(2000) && eraCare(2020) === 1, 'hospitals of earlier eras have less to work with');
+check(cases.fixturesFor('internal', 1910).every((c) => c.minYear <= 1910), 'a 1910 physician sees only cases of 1910');
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
 for (const id of ['med_rotation', 'med_mentor', 'med_rival', 'med_romance', 'med_disclosure', 'med_grateful', 'med_leadership_offer']) check(!!EVENT_BY_ID[id], `scene ${id} registered`);

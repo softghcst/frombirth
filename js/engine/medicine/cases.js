@@ -19,7 +19,7 @@ import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { CASES, CASE_BY_ID } from '../../data/medicineCases.js';
-import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs } from '../../data/medicine.js';
+import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs, eraCare } from '../../data/medicine.js';
 import { makeNpc } from '../npcFactory.js';
 import { M, med, W, year, grow, nextId, result, roll, currentSpecialty, qualified } from './core.js';
 import { hospital } from './hospitals.js';
@@ -280,7 +280,7 @@ const OR_POINTS = { best: 4, ok: 0, poor: -8, unsafe: -20 };
 function startOr(c, proc) {
   const m = M();
   const h = c.hospitalId ? hospital(c.hospitalId) : null;
-  const resources = h?.resources ?? 60;
+  const resources = Math.round((h?.resources ?? 60) * eraCare(year()));
   const risk = proc.risk * (1.3 - m.skills.technical / 100) * (supervised(c.role) ? 0.85 : 1) * (0.6 + (100 - resources) / 100);
   c.status = 'or';
   c.or = { procedure: proc.id, step: 'consent', resources, risk: Math.round(risk * 100) / 100, complication: roll(risk), choices: {}, points: 0 };
@@ -391,7 +391,7 @@ function resolve(c, plan, decision, how = 'played') {
     else if (complication) notes.push('A complication: the team paused, called for help, and managed it together.');
   } else if (proc) {
     const h = c.hospitalId ? hospital(c.hospitalId) : null;
-    const res0 = h?.resources ?? 60;
+    const res0 = Math.round((h?.resources ?? 60) * eraCare(year()));
     const risk = proc.risk * (1.3 - m.skills.technical / 100) * (supervised(c.role) ? 0.85 : 1) * (0.6 + (100 - res0) / 100);
     if (roll(risk)) { complication = true; res = STEP_DOWN[res]; notes.push('There was a complication during the procedure; the team managed it together.'); }
   }
