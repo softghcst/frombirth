@@ -62,6 +62,8 @@ export function admit(reason, o = {}, p = player()) {
     planned: `You go into ${f.name} for ${how.label}, as planned.`,
     voluntary: `You accept a short stay at ${f.name}: a ward where people can look after you while things settle.`,
   }[a.kind], 'system', a.kind === 'emergency' ? 'bad' : 'neutral');
+  // A physician admitted to their own hospital is looked after by colleagues (engine/medicine/healthLink.js: the same place).
+  if (f.employerId && p.career?.employerId === f.employerId) log(`It is strange to be a patient where you work. ${doc ? `${doc.firstName} ${doc.lastName}, a colleague,` : 'Your colleagues'} look after you, and the nurses pretend not to notice your notes.`, 'system', 'neutral');
   // Appointments and sessions wait for you; nothing counts as missed while you are in.
   const h = healthOf(p);
   for (const ap of h.appointments) if (ap.status === 'booked' && ap.wk < a.endWk) ap.wk = a.endWk;

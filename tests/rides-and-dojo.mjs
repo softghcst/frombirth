@@ -67,7 +67,7 @@ const bike = (p) => { const a = { id: `asset_test_${p.assets.length}`, kind: 've
   // A ride's snatch: the move shows as a way to handle it, for someone who knows one.
   const a = bike(q);
   let seen = false;
-  for (let i = 0; i < 60 && !seen; i++) { const b = bike(q); for (let j = 0; j < 3 && !seen; j++) { const r = cars.ride(b.id, 'cruising', 30); if (r.encounter?.id === 'snatch') seen = r.encounter.options.some((o) => /Use your/.test(o.label)); } }
+  for (let i = 0; i < 200 && !seen; i++) { const b = bike(q); for (let j = 0; j < 3 && !seen; j++) { const r = cars.ride(b.id, 'cruising', 30); if (r.encounter?.id === 'snatch') seen = r.encounter.options.some((o) => /Use your/.test(o.label)); } }
   check(seen, 'someone with a move gets to use it when a thief grabs their bike');
   void a;
 }

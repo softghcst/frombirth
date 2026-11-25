@@ -338,6 +338,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   // The supervising physician is the person the player reports to; the people beside them are co-residents.
   const boss = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.flags.tag === 'boss');
   if (boss) {
+    boss.flags.medSpecialty ??= careerSpec;
     boss.flags.title = kind === 'fellowship' ? 'Fellowship director' : 'Supervising attending';
     boss.flags.medRole = 'supervisor';
     m.people.supervisorIds = [...new Set([...m.people.supervisorIds, boss.id])];
@@ -345,6 +346,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   const peers = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'coworker' && n.flags.workedWith === e.name);
   for (const n of peers) {
     n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6);
+    n.flags.medSpecialty ??= careerSpec;
     remember(n, `medTrained:${e.id}`, `You trained together at ${e.name}${s ? `, in ${s.name}` : ''}, from ${year()}.`);
   }
   if (boss) remember(boss, `medSupervised:${e.id}`, `Supervised your ${kind === 'fellowship' ? 'fellowship' : 'training'} at ${e.name}, from ${year()}.`);
