@@ -1,6 +1,7 @@
 // School, as a book: where the player is at school and how they are doing in
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
+import { summerOptions, goToSummer, askForRecommendation } from '../engine/summer.js';
 import { titleCase } from './titles.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
@@ -13,7 +14,7 @@ import { roleLabel } from '../engine/relationships.js';
 import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { openModal, pickModal, messageModal, confirmModal } from './modals.js';
-import { store } from '../state.js';
+import { store, livingNpcs } from '../state.js';
 import * as edu from '../engine/education.js';
 import * as cliques from '../engine/cliques.js';
 import { navRow, icon } from './kit.js';
@@ -128,6 +129,9 @@ function outsideSchool() {
       ${navRow({ attrs: 'data-outclub="find"', label: 'Find a Club or Class', sub: 'The scouts, a running club, pottery and more, near home', ico: 'compass' })}</div>`;
 }
 
+/** The people who could write a college recommendation: a club's coach, director or adviser, and teachers. */
+const recommenders = () => livingNpcs().filter((n) => ['coach', 'director', 'adviser', 'teacher'].includes(n.flags.tag));
+
 /** Your class: the teacher(s) and classmates, how you get on, and a tap to spend time with any of them. */
 function pageClass(v) {
   const bar = (n, title) => `<button type="button" class="row world-row" data-person="${esc(n.id)}"><div class="avatar">${face(n)}</div>
@@ -169,6 +173,8 @@ export function openSchool(onChange) {
     // A child far ahead of their class: moving up a year, or finishing early for college.
     if (!edu.skipBlock(p)) add('skipgrade', 'Skip a Grade', 'You are far ahead of your class: ask to move up a year', 'star', 'peach');
     if (!edu.earlyCollegeBlock(p)) add('early', 'Start College Early', 'Finish school now, years ahead of your friends', 'school', 'peach');
+    if (summerOptions(p).length) add('summer', 'Summer Programs', p.flags.summer?.age === p.age ? 'Done for this year' : 'Camps and competitions', 'star');
+    if (e.enrolled && p.age >= 15 && recommenders().length) add('rec', 'Ask for a Recommendation', 'A letter from a coach or teacher, for college', 'letter');
     add('history', 'Your school years', 'Every school, and what you left with', 'archive');
     return `${v.school ? `<div class="card"><h3>${esc(v.school.kind === 'home' ? 'Taught at home' : v.school.name)}</h3>
         <p class="muted" style="margin:0 0 6px">${esc(v.kind.name)} · ${esc(v.stageName)}, year ${v.year}</p>
@@ -219,6 +225,13 @@ export function openSchool(onChange) {
     }
     if (go === 'nurse') return say(cliques.nurse());
     if (go === 'skipgrade') return say(edu.skipGrade());
+    if (go === 'rec') return say(askForRecommendation(recommenders()));
+    if (go === 'summer') {
+      const pick = await pickModal({ title: 'Summer Programs', body: 'One a summer. Camps teach; competitions are placed in, and wins count on college applications.',
+        options: summerOptions(player()).map((o) => ({ value: o.id, label: `${o.emoji} ${o.name}${o.level ? ` (${o.level} level)` : ''}`, sub: o.why || `${o.blurb}${o.cost && player().age >= 18 ? ` ${fmtMoney(o.cost, country())}.` : ''}`, disabled: !!o.why })) });
+      if (pick) return say(goToSummer(pick));
+      return;
+    }
     if (go === 'early') return say(edu.startCollegeEarly());
     if (go) { stack.push(go); return draw(); }
     const act = t.closest('[data-do]')?.dataset.do;

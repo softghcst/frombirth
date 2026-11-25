@@ -111,5 +111,32 @@ check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engine
   check(c.ok && t.education.degrees.some((d) => d.type === 'high') && !t.education.enrolled, `a gifted 15-year-old finishes school early (${c.text})`);
 }
 
+// Summer programs: camps teach; competitions are placed in, and wins count on applications. A coach's letter counts too.
+{
+  const summer = await import('../js/engine/summer.js');
+  const uni = await import('../js/engine/university.js');
+  const k = life();
+  k.age = 14; k.birthYear = store.state.year - 14; k.education.enrolled = true; k.education.stage = 'high'; k.education.clubs = [];
+  k.skills = {};
+  const opts = summer.summerOptions(k);
+  check(opts.some((o) => o.id === 'coding_camp') && opts.find((o) => o.id === 'robotics_comp')?.why, 'camps are open; the robotics competition needs the team');
+  summer.goToSummer('coding_camp', k);
+  check(k.skills.coding >= 6, 'coding camp teaches coding');
+  check(/summer/.test(summer.goToSummer('math_olympiad', k).text), 'one summer a year');
+  // A gifted mathematician places, and climbs the levels.
+  k.stats.intellect = 99; k.skills.math = 99;
+  const before = uni.profile('mathematics').activities;
+  for (let i = 0; i < 4; i++) { k.age += 1; summer.goToSummer('math_olympiad', k); }
+  const a = summer.awardsOf(k);
+  check(a.count >= 2 && a.firsts >= 1, `wins and places are kept (${a.list.map((x) => x.name).join('; ')})`);
+  check(a.list.some((x) => /State|National/.test(x.name)), 'and the level climbs from city to state to national');
+  check(uni.profile('mathematics').activities > before, 'awards count on a college application');
+  // A recommendation: from someone who knows you well.
+  const coach = { firstName: 'Ana', lastName: 'Ruiz', alive: true, meters: { relationship: 40 }, flags: { tag: 'coach', title: 'Robotics coach' } };
+  check(!summer.askForRecommendation([coach], k).ok && !coach.flags.wouldRecommend, 'a coach who barely knows you will not write one');
+  k.age += 1; coach.meters.relationship = 80;
+  check(summer.askForRecommendation([coach], k).ok && coach.flags.wouldRecommend, 'one who does will');
+}
+
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Bright, techy and argumentative kids have schools and clubs of their own, and they count.');
