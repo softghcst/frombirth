@@ -127,6 +127,27 @@ async function run(viewport) {
   await page.waitForSelector('.tab-btn[data-tab="work"]');
   const after = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const f = store.state.justice.investigations[id]?.file; return { partner: store.state.player.investigator.people.partnerId, asked: f ? Object.values(f.witnesses).map((x) => x.asked.length).join() : null, log: f?.log.length }; }, invId);
   check(after.partner === before.partner && after.asked === before.asked && after.log === before.log, `${w}px: after reloading, the partner and the case file are as they were`);
+  // A forensic pathologist's referrals, and the Public Safety page, on the same screen.
+  await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const medCore = await import('/js/engine/medicine/core.js');
+    const FM = await import('/js/engine/investigations/forensicMed.js');
+    const p = store.state.player;
+    const m = medCore.M(p);
+    m.completed = [{ specialtyId: 'pathology' }, { specialtyId: 'forensic_path' }]; m.license = { status: 'full', countryId: 'us' }; m.training = null; m.stage = 'practice';
+    FM.forensicYear(p);
+    p.investigator.stats.years = 9;
+  });
+  await openHub(page);
+  await dismissMessages(page);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Death Investigations' }).first().click();
+  check(/Cause of death and manner of death are different findings/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a forensic pathologist sees their referrals, cause and manner kept apart`);
+  await page.locator('[data-inv] [data-act="death"]').first().click();
+  await dismissMessages(page);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
+  check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
+  check(await fits(page), `${w}px: the new pages fit the screen`);
+  await closeHub(page);
   await page.close();
 }
 
