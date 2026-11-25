@@ -48,6 +48,41 @@ export default [
     ['Say you might: you want to understand what they did', 'You start paying attention in biology.', 'calling:drawn', 'good', st('intellect', 1)],
     ['Say you will find your own way', 'Nobody minds. Whatever you choose, it will be yours.', 'calling:own'],
   ]), ageRange: [12, 18] },
+  // The story of becoming a doctor, told once each, when it is true (engine/medicine).
+  scene('med_school_interview', 'The medical school interview. Two doctors and a medical student behind a long table. "So," says the older one, "why medicine?"', [
+    ['Tell them about the people you met volunteering', 'You talk about one patient in particular. The student on the panel stops taking notes and listens.', 'skill:interview:1', 'good'],
+    ['Give the answer you rehearsed', 'It is a good answer. It sounds like everyone else\'s.', 'skill:interview:0.3'],
+    ['Admit you are still finding out', '"Good," says the older doctor. "So are we, most days."', 'skill:interview:0.6', 'good'],
+  ]),
+  scene('med_anatomy_exam', 'Your first anatomy exam at {school}. Forty stations, ninety seconds each, a bell between them, and a room colder than seems fair.', [
+    ['Trust the hours you put in', 'You finish with time to spare at every station but one.', 'skill:reasoning:2', 'good'],
+    ['Panic quietly, then steady yourself', 'Station twelve is a blur. By station twenty you have found your feet.', 'skill:reasoning:1'],
+  ]),
+  scene('med_patient_remember', 'On your first clinical rotation, a patient asks you to stay a minute after the team moves on. Nobody has told them what is happening, and they are frightened.', [
+    ['Sit down, listen, then find the resident so they get real answers', 'You are late for the next patient. The resident says it was the right call.', 'skill:communication:2', 'good'],
+    ['Tell them someone will come, and hurry after the team', 'You catch up with the team. You think about the patient all afternoon.', null],
+  ]),
+  scene('med_choosing_specialty', 'Everyone in your year is choosing. A friend has a spreadsheet: hours, pay, lifestyle, years of training. You have a feeling about one rotation you cannot quite put into a column.', [
+    ['Choose what you loved, and rank it first', 'You list the rotation that felt like yours. The spreadsheet can say what it likes.', 'skill:professionalism:1', 'good'],
+    ['Choose what makes sense on paper', 'Sensible. You will find out if it was right.', null],
+    ['Ask a doctor you admire how they chose', 'They laugh. "I picked the people I wanted to be like at three in the morning."', 'skill:reasoning:1', 'good'],
+  ]),
+  scene('med_residency_interview', 'Residency interviews: a dozen hospitals, a dozen dinners with residents who are trying to tell you the truth without saying so.', [
+    ['Ask the residents what they would change', 'Some deflect. One tells you exactly, and you trust that program more for it.', 'skill:reasoning:1', 'good'],
+    ['Focus on impressing the faculty', 'They seem impressed. You learn less about where you would be happy.', null],
+  ]),
+  scene('med_match_day', 'Match Day. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
+    ['Call home', 'Someone on the other end cries before you finish the sentence.', null, 'good', st('mood', 10)],
+    ['Find your friends and compare', 'The room is shouting. Some of them got their first choice, some did not, and you hold on to each other either way.', null, 'good', st('mood', 6)],
+  ]),
+  scene('med_match_day_unmatched', 'Match Day. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
+    ['Step outside and breathe', 'It is not the end. It is a year you did not plan. Tomorrow you will make a plan.', null, 'neutral', st('mood', 2)],
+    ['Go straight to the dean\'s office', 'They have seen this before. They walk you through the options, calmly, and you leave with a list.', 'skill:professionalism:1'],
+  ]),
+  scene('med_first_night', 'Your first night on call at {hospital}. A pager, a list of forty patients you met this morning, and a senior resident who said "call me if you are worried" and meant it.', [
+    ['Call the senior resident when you are unsure', 'You call twice. Both times they say you were right to.', 'skill:teamwork:2', 'good'],
+    ['Try to handle everything yourself', 'You manage, just. In the morning the senior resident says: next time, call.', 'skill:reasoning:1'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

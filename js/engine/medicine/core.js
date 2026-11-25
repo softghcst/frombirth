@@ -213,3 +213,14 @@ export function medicalFamily(p = player(), state = store.state) {
 export function ancestorAt(hospitalId, state = store.state) {
   return Object.values(state.archive?.people ?? {}).find((a) => a.medicine?.hospitalIds?.includes(hospitalId)) ?? null;
 }
+
+/**
+ * A story beat of the medical career, told once in a life (the medical school interview, Match Day,
+ * the first night on call). Queued by the engine at the moment it is true; never repeated.
+ */
+export function storyOnce(id, cast = {}, m = M()) {
+  if (m.scenes[`story:${id}`] || (id === 'med_school_interview' && player().flags.medInterviewed)) return false;
+  m.scenes[`story:${id}`] = year();
+  store.state.pendingEvents.push({ id, cast });
+  return true;
+}

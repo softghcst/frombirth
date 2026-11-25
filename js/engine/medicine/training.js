@@ -17,7 +17,7 @@ import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITL
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
-import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily } from './core.js';
+import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily, storyOnce } from './core.js';
 import { recordEvent, archiveIdOf } from '../chronicle.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
 
@@ -123,6 +123,10 @@ function rotate(p, m, rot) {
 function schoolYear(p, m, y) {
   const j = jurisdiction(m.school.countryId);
   const dpm = m.route === 'dpm';
+  if (y === 1) storyOnce('med_anatomy_exam', { words: { school: m.school.name } }, m);
+  if (y === 3) storyOnce('med_patient_remember', {}, m);
+  if (y === 3 && m.route !== 'dpm') storyOnce('med_choosing_specialty', {}, m);
+  if (y === 4 || (y === 3 && jurisdiction(m.school.countryId).schoolYears === 4)) storyOnce('med_residency_interview', {}, m);
   if (y <= 2) {
     grow('reasoning', 3, m); grow('professionalism', 1, m); grow('research', 0.5, m);
     log(y === 1 ? 'Your first year of medical school: anatomy, physiology, and more reading than you thought possible.' : 'Second year: how bodies go wrong, and how doctors find out.', 'system', 'neutral');
@@ -222,6 +226,7 @@ export function runMatch(kind, wanted) {
       if (site) return matched(kind, o.id, site, 'In the second round, for places left unfilled');
     }
   }
+  if (kind === 'residency') storyOnce('med_match_day_unmatched', { words: { specialty: specialtyName(wanted[0]) } }, m);
   log(`${what}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
   p.stats.mood = clamp(p.stats.mood - 12);
   note(`Did not match into ${specialtyName(wanted[0])} (${year()}).`, 'career', { log: false });
@@ -248,6 +253,7 @@ function pickSite(id, m, p) {
 function matched(kind, id, site, what) {
   const p = player();
   const m = M();
+  if (kind === 'residency') storyOnce('med_match_day', { words: { specialty: specialtyName(id), hospital: site.e.name, city: site.city } }, m);
   m.match.status = 'matched';
   m.match.specialtyId = id;
   m.match.hospitalId = site.e.id;
@@ -291,6 +297,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   const how = kind === 'fellowship' ? `Your fellowship in ${s.name} begins.` : kind === 'internship' ? 'Your internship begins: a year on the wards, supervised.' : `Residency in ${s.name} begins.`;
   hire(career, levelFor(kind === 'fellowship' ? 'fellow' : 'resident', career), 55, how, { employerId: hospitalId });
   m.training = { kind, specialtyId: kind === 'internship' ? null : specialtyId, hospitalId, pgy: 1, years, startYear: year(), chief: false, probation: 0, evals: [] };
+  if (kind !== 'fellowship') storyOnce('med_first_night', { words: { hospital: e.name } }, m);
   m.stage = kind;
   m.job = null;
   hospital(e);

@@ -139,6 +139,13 @@ export function medicineChoice(value, cast = {}) {
       return '';
     }
     case 'offer': return answerOffer(how === 'yes').text;
+    case 'skill': {
+      // A story beat's lesson: 'skill:<name>:<amount>' (and the premed interview, 'skill:interview:<amount>').
+      const [, by] = String(value).split(':').slice(1);
+      if (how === 'interview') { m.premed.letters = Math.round((m.premed.letters + Number(by)) * 10) / 10; return ''; }
+      if (how in m.skills) grow(how, Number(by), m);
+      return '';
+    }
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

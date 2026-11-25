@@ -106,6 +106,7 @@ train.doPremed('research'); train.doPremed('volunteer'); train.doPremed('mentor'
 const chance = edu.admissionChance('medical');
 check(chance > 0.5, `premedical work and grades make medical school likely (${chance.toFixed(2)})`);
 check(career.unmet(CAREER_BY_ID.doctor).length > 0, 'without medical school, a doctor\'s job is closed');
+check(edu.applyTo('medical').text.length > 0 && store.state.pendingEvents.some((e) => e.id === 'med_school_interview'), 'applying to medical school brings an interview');
 edu.enroll('medical', null, 'loan');
 check(p.education.stage === 'medical' && p.education.enrolled, 'enrolled at medical school');
 year();
@@ -134,6 +135,8 @@ check(!!m.training && m.training.kind === 'residency' && m.training.pgy === 1, `
 check(['doctor', 'surgery', 'psychiatry'].includes(p.career.careerId) && p.career.level === 0, 'a resident is paid at the first level of the career');
 check(/PGY-1/.test(p.career.title), `a first-year resident's title says PGY-1 (${p.career.title})`);
 check(m.people.supervisorIds.length > 0, 'a resident has a supervising physician');
+check(['med_school_interview', 'med_anatomy_exam', 'med_patient_remember', 'med_choosing_specialty', 'med_match_day', 'med_first_night'].every((id) => m.scenes[`story:${id}`]), `the story of becoming a doctor is told (${Object.keys(m.scenes).join(', ')})`);
+check(!core.storyOnce('med_first_night', {}, m), 'and each part of it only once');
 check(career.unmet(CAREER_BY_ID.doctor, { ignoreCurrent: true }).some((x) => /residency programs/.test(x)), 'physician jobs are not hired from the job board');
 section(`school and Match: matched into ${core.specialtyName(m.training?.specialtyId)} at ${p.career.employerId}`);
 

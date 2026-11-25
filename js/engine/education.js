@@ -868,6 +868,12 @@ export function applyTo(progId, subjectId) {
   const major = progId === 'university' || progId === 'community' ? MAJOR_BY_ID[subjectId] : null;
   const trade = progId === 'apprenticeship' ? TRADE_BY_ID[subjectId] : null;
   if (!prog.repeat) acts().applied[progId] = true;
+  // Medical and podiatric schools interview their applicants: told once in a life (data/events/stories/medicine.js).
+  if (['medical', 'podiatric'].includes(progId) && !p.medicine?.scenes?.['story:med_school_interview']) {
+    if (p.medicine?.scenes) p.medicine.scenes['story:med_school_interview'] = store.state.year;
+    else p.flags.medInterviewed = store.state.year;
+    store.state.pendingEvents.push({ id: 'med_school_interview', cast: {} });
+  }
   const subject = major ? ` to study ${major.name}` : '';
   const rec = major?.audition && p.flags.directorRec;
 
