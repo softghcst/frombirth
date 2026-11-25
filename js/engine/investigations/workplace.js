@@ -94,6 +94,10 @@ export const SQUADS = {
   fbi: [['fraud', 'White-collar crime'], ['cyber', 'Cyber'], ['corruption', 'Public corruption'], ['violent', 'Violent crime']],
   dea: [['drugs', 'Enforcement group'], ['diversion', 'Diversion (prescription drugs)']],
   atf: [['firearms', 'Firearms trafficking'], ['arson', 'Arson and explosives']],
+  usms: [['fugitive', 'Fugitive task force'], ['witness', 'Witness security'], ['court', 'Judicial security']],
+  usss: [['financial', 'Financial crimes'], ['cyber', 'Cyber fraud'], ['protection', 'Protective detail']],
+  hsi: [['smuggling', 'Smuggling'], ['financial', 'Financial crimes'], ['cyber', 'Cyber crimes']],
+  irs: [['tax', 'Tax fraud'], ['laundering', 'Money laundering']],
 };
 /** Asks for a transfer to another field office, or a place on a squad. Decided after six months, on the record. */
 export function requestMove(kind, target) {

@@ -57,6 +57,7 @@ export function templatesFor(specialty, p = player()) {
   const r = rec(p);
   return Object.entries(TEMPLATES).filter(([, t]) => {
     if (t.tech && !techAvailable(t.tech, year(), p.countryId)) return false;
+    if (t.federalOnly) return false; // a federal agency's own cases, never a police unit's
     if (t.minRank === 'senior_detective' && !['senior_detective', 'detective_sergeant', 'detective_lieutenant', 'agent', 'senior_agent', 'supervisory'].includes(r?.job?.rank) && (r?.stats.completed ?? 0) < 3) return false;
     if (specialty === 'general' || specialty === 'major') return !t.inquiry || specialty === 'general';
     return t.specialty === specialty || (specialty === 'property' && t.offenseId === 'burglary') || (specialty === 'special_victims' && t.specialty === 'family') || (specialty === 'major' && ['robbery', 'homicide', 'arson'].includes(t.specialty));
@@ -914,7 +915,7 @@ export function assignCase(p = player()) {
   const unit = r.job.specialty ?? 'general';
   const fed = r.family === 'federal';
   // Each federal agency works its own jurisdiction: the FBI fraud, cybercrime, corruption, violent crime; the DEA drugs; the ATF firearms and arson.
-  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'] };
+  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'], usms: ['fugitive'], usss: ['counterfeit', 'fraud', 'cyber'], hsi: ['drugs', 'firearms', 'fraud'], irs: ['tax', 'fraud'] };
   const pool = fed ? (FED_POOL[r.job.agencyKind] ?? FED_POOL.fbi).filter((t) => !TEMPLATES[t].tech || techAvailable(TEMPLATES[t].tech, year(), p.countryId)) : templatesFor(unit);
   if (!pool.length) return null;
   const roll = seeded(`${me(p)}/assign/${year()}/${r.caseIds.length}`);

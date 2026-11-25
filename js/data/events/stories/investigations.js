@@ -177,6 +177,31 @@ export default [
   Q('inv_reporter', 'A reporter, {reporter}, calls about {case}, which is in court. They have questions.', [
     C('Refer them to the press office', 'You said only what is public: the case is before the court.', 'press:refer'),
     C('Tell them what the file shows', 'It is in the paper the next morning, attributed to "a source." It should not have been.', 'press:leak')]),
+  // ---------- A homicide, from the first night to the verdict (engine/investigations/drama.js homicideScenes) ----------
+  Q('inv_hom_notify', 'Someone has to tell {victim}\'s family. {kin} opens the door before you knock, and already knows from your face.', [
+    C('Say it plainly and gently, then stay', 'You said the words, and then you sat with them while they were said back to you. You left a card with your number.', 'hom:notify-gentle'),
+    C('Say it, take the details you need, and go', 'You had what you needed in ten minutes. {kin} watched you leave from the doorway.', 'hom:notify-brief')]),
+  Q('inv_hom_night', 'The first night of {case}. The scene is taped off, it is starting to rain, and a sergeant wants to move things inside so they do not get wet.', [
+    C('Keep the scene as it is until it is documented', 'You stood in the rain while the photographs were taken. Nothing was touched before it was recorded.', 'hom:night-secure'),
+    C('Let them move a few things in out of the rain', 'It seemed sensible at the time. Nobody wrote down where everything had been.', 'hom:night-rush')]),
+  Q('inv_hom_48', 'Forty-eight hours into {case}. {supervisor} wants a name by the morning briefing. "The chief is asking. Give me something."', [
+    C('Give the briefing what the evidence shows, and no more', '"We have persons of interest and a timeline. We do not have a suspect." {supervisor} did not like it. It was true.', 'hom:48-evidence'),
+    C('Give them the most likely name', 'A name went up on the board. It is harder to take a name down than to put one up.', 'hom:48-name')]),
+  Q('inv_hom_press', 'The department will hold a press conference on {case}. You are asked to stand beside the chief and answer one question.', [
+    C('Ask for witnesses, and say nothing about suspects', '"Anyone who was near the street that night, please call us." The phones rang for two days.', 'hom:press-appeal'),
+    C('Say an arrest is close', 'The headline the next morning used your words. The case was no closer.', 'hom:press-promise')]),
+  Q('inv_hom_vigil', 'The neighbors hold a vigil for {victim} on the street where it happened. Candles, photographs, a song nobody can finish.', [
+    C('Go, and stand at the back', 'Nobody made a speech about you. A woman pressed your hand on the way out and told you something she had not told anyone.', 'hom:vigil-go'),
+    C('Stay away: it is their evening', 'You drove past later. The candles were still burning.', 'hom:vigil-stay')]),
+  Q('inv_hom_funeral', 'At {victim}\'s funeral, {kin} takes you aside. "Will you find who did this? Promise me."', [
+    C('Promise only that you will not stop working it', '"I can\'t promise you an arrest. I can promise you I won\'t stop." {kin} nodded, and held on to that.', 'hom:funeral-honest'),
+    C('Promise them you will', '{kin} cried with relief. A promise like that is heavy to carry.', 'hom:funeral-promise')]),
+  Q('inv_hom_anniversary', 'A year since {victim} died. {case} is still open. {kin} calls, as you knew they would.', [
+    C('Take the call, and tell them what has been done', 'You went through the year with them: what was tried, what is still being done.', 'hom:anniv-call'),
+    C('Let it go to voicemail', 'The message was short. You listened to it twice.', 'hom:anniv-avoid')]),
+  Q('inv_hom_verdict', 'The court has decided {case}: {verdict}. {kin} is in the corridor afterwards.', [
+    C('Go and speak with them', 'There was not much to say. You said it anyway, and they thanked you for the year you gave it.', 'hom:verdict-speak'),
+    C('Leave by the side door', 'You had another case waiting. {kin} looked for you, then went home.', 'hom:verdict-leave')]),
   Q('inv_family_answers', 'The family in {case} want to know what is happening. They have waited a long time.', [
     C('Meet them, and tell them what can be shared', 'You told them what you could, and why some of it you could not.', 'family:meet'),
     C('Send a short letter', 'They read it many times.', 'family:letter')]),
