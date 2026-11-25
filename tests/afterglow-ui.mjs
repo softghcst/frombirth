@@ -149,7 +149,7 @@ for (const scheme of ['light', 'dark']) {
   await page.click('.tab-btn[data-tab="work"]');
   const title = () => page.locator('[data-panel-title]').innerText();
   await page.click('.sec-row[data-sec="Special careers"]');
-  check(await title() === 'Special Careers' && await page.locator('.sec-body.shown [data-go="athletics"]').isVisible(), `${scheme}: My Athletics is inside Special careers, on the Work tab`);
+  check(await title() === 'Special Careers' && await page.locator('.sec-body.shown [data-act="sc:sports"]').isVisible(), `${scheme}: Sports is inside Special careers, on the Work tab`);
   await page.click('[data-panel-close]');
   check(await title() === 'Work & School', `${scheme}: back from Special careers goes to the Work & School list`);
   await page.click('[data-panel-close]');

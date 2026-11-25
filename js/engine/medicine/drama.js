@@ -32,12 +32,14 @@ import { workplacesFor, hospital, hospitalsIn } from './hospitals.js';
 import { staffOf } from '../workplace.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
+import { storyBeat, dramaSetting } from '../storyDirector.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
+/** The drama setting is the life's own (Settings, Story drama): the same for hospital life as for every other story. */
 export function setDrama(level) {
   if (!(level in DRAMA)) return result(false, 'There is no such setting.', 'neutral');
-  M().drama = level;
-  return result(true, `Hospital drama: ${level}. Patients fare the same either way.`, 'neutral');
+  (store.state.settings ??= {}).drama = level;
+  return result(true, `Story drama: ${level}. It paces every storyline in this life; patients fare the same either way.`, 'neutral');
 }
 
 const npc = (id) => (id ? store.state.npcs[id] : null);
@@ -165,10 +167,10 @@ export function hospitalYear() {
   } else if (r < 0.16) {
     h.resources = clamp(h.resources - 4);
     chronicle(e, `${e.name} went through a year of staff shortages.`);
-    store.state.pendingEvents.push({ id: 'med_staffing_shortage', cast: { words: { hospital: e.name } } });
+    storyBeat('med_staffing_shortage', { words: { hospital: e.name } }, { source: 'medicine' });
   } else if (r < 0.22) {
     chronicle(e, `${e.name} cut its budget across departments.`);
-    store.state.pendingEvents.push({ id: 'med_budget_dispute', cast: { words: { hospital: e.name } } });
+    storyBeat('med_budget_dispute', { words: { hospital: e.name } }, { source: 'medicine' });
   } else if (r < 0.27) {
     const missing = Object.keys(DEPARTMENTS).filter((d) => !h.depts.includes(d) && !['nicu', 'peds_surgery'].includes(d));
     if (missing.length && h.kind !== 'clinic') {
@@ -228,7 +230,7 @@ export function dramaYear() {
   const p = player();
   const m = med();
   if (!m || (!m.training && !m.job && !m.clinicIds.length)) return;
-  const rate = DRAMA[m.drama] ?? DRAMA.balanced;
+  const rate = DRAMA[dramaSetting()] ?? DRAMA.balanced;
   const list = eligible(p, m).filter((x) => (m.scenes[x.id] ?? -99) < year() - 2);
   if (!list.length) return;
   const n = rate >= 1 ? 2 : roll(rate) ? 1 : 0;
@@ -237,7 +239,7 @@ export function dramaYear() {
   const rest = list.filter((x) => !must.includes(x)).sort(() => rng.next() - 0.5).slice(0, n);
   for (const x of [...must.slice(0, 2), ...rest]) {
     m.scenes[x.id] = year();
-    store.state.pendingEvents.push({ id: x.id, cast: x.cast });
+    storyBeat(x.id, x.cast, { source: 'medicine', must: must.includes(x) });
   }
 }
 
@@ -318,7 +320,7 @@ export function medicineChoice(value, cast = {}) {
         const mentor = npc(m.people.mentorId);
         if (mentor?.alive) mentor.meters.relationship = clamp(mentor.meters.relationship + 4);
         grow('professionalism', 1, m);
-        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'The program\'s wellbeing service finds you an hour a week, and a colleague swaps two of your nights.';
+        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'Someone senior in the program makes time for you, and a colleague swaps two of your nights.';
       }
       if (how === 'hours') return changeHours(-10).text;
       if (how === 'leave') return takeLeave('vacation').text;

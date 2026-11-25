@@ -23,6 +23,7 @@ import { gain, regard, fameOf, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
 import { rollTerms, look, offered, clearOffer, triesLeft, search, askLowerCut } from './agents.js';
 import { makeNpc } from './npcFactory.js';
+import { claim as claimSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -194,6 +195,7 @@ export function submit(bookId) {
   const b = book(bookId);
   if (!b || b.author !== 'player' || b.status !== 'manuscript') return result(false, 'There is nothing to send.', 'neutral');
   if (w.acts.queries >= 2) return result(false, 'You have sent it out twice this year; the answers take time.', 'neutral');
+  { const sc = claimSpecial('writing'); if (sc) return result(false, sc, 'neutral'); }
   w.acts.queries += 1;
   const agent = w.agent;
   const f = fameOf(p);
@@ -227,6 +229,7 @@ export function selfPublish(bookId) {
   const p = player();
   const b = book(bookId);
   if (!b || b.author !== 'player' || !['manuscript', 'offered'].includes(b.status)) return result(false, 'There is nothing to publish.', 'neutral');
+  { const sc = claimSpecial('writing'); if (sc) return result(false, sc, 'neutral'); }
   const cost = Math.round(localWage(800, country()));
   if (p.finance.cash < cost) return result(false, `Editing and a cover cost ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;

@@ -17,7 +17,8 @@ import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations } from './core.js';
+import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations, legacies } from './core.js';
+import { J } from '../cases.js';
 import { agencyOf, kindsIn } from './agencies.js';
 import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit } from './careers.js';
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
@@ -26,6 +27,7 @@ import { dramaYear, peopleYear, formTaskForce } from './drama.js';
 import { benchYear, pressYear } from './crossover.js';
 import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
+import { settleWorkplace, workplaceYear } from './workplace.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -55,7 +57,7 @@ export function settle(p = player()) {
   const ac = settleAcademy(p);
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
-  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints());
+  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
   return out;
 }
 
@@ -70,7 +72,7 @@ export function tickInvestigations() {
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
-  if (r.job && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
+  if (r.job && !(r.job.corporate && p.career.careerId === 'pi' && p.career.employerId === r.job.employerId) && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
   settle(p);
   if (r.job && r.job.legacy && !r.job.agencyId && r.family === 'police') {
     // A legacy officer's department gets its agency record now (the employer stays what it was).
@@ -97,6 +99,7 @@ export function tickInvestigations() {
   }
   // A licensed assistant investigator takes the full title (the 'pi' track's second rung).
   if (p.career.careerId === 'pi' && p.career.level === 0 && licensed(p)) { promote(); p.career.title = 'Private investigator'; }
+  for (const line of workplaceYear(p)) log(line, 'system', 'good');
   peopleYear(p);
   dramaYear(p);
 }
@@ -150,3 +153,19 @@ export function legacySummary(p) {
   };
 }
 export { workLeft, caseStatus };
+
+/**
+ * Every investigative career in the family, for the Family Archive: the public career of each ancestor and of the
+ * player, and the cases they led that went to court (a court record is public; case files and statements are not).
+ */
+export function familyInvestigativeLegacy(p = player()) {
+  const OUT = { sentenced: 'convicted', acquitted: 'acquitted', dismissed: 'dismissed', quashed: 'conviction set aside' };
+  const courtCases = (id) => Object.values(J().investigations ?? {}).filter((inv) => inv.file?.leadId === id && inv.file.courtCaseId && J().cases[inv.file.courtCaseId])
+    .map((inv) => { const c = J().cases[inv.file.courtCaseId]; return { title: inv.file.title, year: c.year, outcome: OUT[c.stage] ?? 'in court' }; })
+    .sort((a, b) => a.year - b.year);
+  const list = legacies().map((x) => ({ id: x.id, name: x.name, died: x.died ?? null, years: x.years ?? null, units: x.units ?? [], license: x.license ?? null, retired: x.retired ?? null,
+    history: x.history ?? [], cases: courtCases(x.id) }));
+  const mine = legacySummary(p);
+  if (mine) list.push({ id: p.id, name: mine.name, you: true, years: mine.years, units: mine.units ?? [], license: mine.license, retired: mine.retired, history: mine.history, cases: courtCases(p.id) });
+  return list;
+}

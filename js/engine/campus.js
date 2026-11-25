@@ -26,6 +26,7 @@ import { uniOf, firstInFamily } from './university.js';
 import { workEdge } from './aptitudes.js';
 import { unbank, defend as defendThesis } from './adulted.js';
 import { legislativePosting, servedIntern } from './edlegacy.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const onCampus = (p = player()) => p.education.enrolled && ['university', 'community'].includes(p.education.stage);
@@ -215,7 +216,7 @@ function orgsYear() {
     }
     if (life.role === 'member' && life.standing >= 55 && c.electionAt !== p.age && !finished() && rng.chance(0.5)) {
       c.electionAt = p.age;
-      store.state.pendingEvents.push({ id: 'campus_election', cast: { org: id, words: { org: o.name.toLowerCase(), post: o.leader.toLowerCase() } } });
+      storyBeat('campus_election', { org: id, words: { org: o.name.toLowerCase(), post: o.leader.toLowerCase() } }, { source: 'school' });
     }
   }
 }
@@ -364,7 +365,7 @@ export function tickCampus(yearMark) {
     fleshRoommate(mate);
     mate.meters.relationship = Math.round(clamp(mate.meters.relationship + mate.flags.suits + rng.int(-2, 3)));
     mate.lastInteractionAge = p.age;
-    if (mate.meters.relationship < 55 && c.clashAt !== p.age - 1 && !finished() && rng.chance(0.3)) { c.clashAt = p.age; store.state.pendingEvents.push({ id: 'roommate_clash', cast: { mate: mate.id, words: { mate: mate.firstName, habit: habitOf(mate).clash } } }); }
+    if (mate.meters.relationship < 55 && c.clashAt !== p.age - 1 && !finished() && rng.chance(0.3)) { c.clashAt = p.age; storyBeat('roommate_clash', { mate: mate.id, words: { mate: mate.firstName, habit: habitOf(mate).clash } }, { source: 'school' }); }
     else if (mate.meters.relationship >= 75 && !mate.flags.close) { mate.flags.close = true; log(`Somewhere in the last year ${mate.firstName} stopped being your roommate and became one of your closest friends.`, 'system', 'good'); }
   } else if (e.housing === 'dorm' && !mate) { const n = assignRoommate(); log(`You have a new roommate: ${n.firstName} ${n.lastName}, who ${habitOf(n).line}.`); }
   // Standing: a bad year is a warning before it is anything worse.

@@ -327,12 +327,16 @@ scenario('P. adaptive athletics: a wheelchair user on a supported pathway', () =
 
 // ---------- Q. Historical sports ----------
 scenario('Q. history: a character born in 1900 sees the sports of their time', () => {
-  for (;;) { store.state = createLife({ countryId: 'uk', city: 'London' }); if (!P().royal) break; }
-  const p = P();
-  const shift = 1900 - p.birthYear;
-  p.birthYear = 1900; S().year += shift;
-  years(8);
-  if (!p.alive) { problems.push('Q: the character did not live to eight'); return; }
+  // Childhood in 1900 was dangerous: a child who does not live to eight is history, not a fault. Try another life.
+  let p = null;
+  for (let tries = 0; tries < 6 && !p?.alive; tries++) {
+    for (;;) { store.state = createLife({ countryId: 'uk', city: 'London' }); if (!P().royal) break; }
+    p = P();
+    const shift = 1900 - p.birthYear;
+    p.birthYear = 1900; S().year += shift;
+    years(8);
+  }
+  if (!p.alive) { problems.push('Q: no character born in 1900 lived to eight in six tries'); return; }
   const menu = sp.sportsMenu().map((x) => x.sport.id);
   check(menu.includes('soccer') && menu.includes('tennis') && !menu.includes('pickleball') && !menu.includes('wheelchair_basketball') && !menu.includes('table_tennis') === (S().year < 1901), `in ${S().year}: soccer and tennis, no pickleball or adaptive sports`);
   sp.takeUp('soccer');

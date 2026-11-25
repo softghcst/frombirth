@@ -15,6 +15,7 @@ import { book } from './ledger.js';
 import { held } from './citizenship.js';
 import * as sp from './sports.js';
 import * as kp from './kpop.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'neutral') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -107,6 +108,7 @@ export const branches = () => branchesHere();
 
 /** Joins: the branch chosen, a contract, and basic training to get through first. */
 export function join(path, branch) {
+  { const sc = jobBlockSpecial('military'); if (sc) return { ok: false, text: sc, tone: 'neutral' }; }
   const p = player();
   const opt = joinOptions().find((o) => o.id === path);
   if (!opt) return result(false, 'That is not a way in.');

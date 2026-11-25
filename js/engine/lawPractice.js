@@ -25,6 +25,9 @@ import * as world from './polity.js';
 import { VOTERS } from '../data/parties.js';
 import * as realLawMod from './realLaw.js';
 import { discipline } from './lawCases.js';
+import { pendingBriefs, takeBrief, templateFor, takeClaim } from './investigations/legal.js';
+import { openClaims, settleClaims } from './investigations/local.js';
+import { OFFENSE_BY_ID } from '../data/justice.js';
 
 /**
  * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
@@ -54,6 +57,7 @@ function legalElection(p, title, level, s, boost = 0) {
   return rec;
 }
 import { events, visible, archiveIdOf, archived } from './chronicle.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const WINDOW = 6;
@@ -152,7 +156,16 @@ function openWindow(p, w) {
     // The office assigns a set share every half-year, whatever is on the desk: that is what a heavy caseload is.
     // A ceiling keeps it from growing without end; too much work shows in deadlines, health and reliability.
     const n = t === 'defender' ? 3 : t === 'prosecutor' ? 2 : 1;
-    for (let i = 0; i < n && cases.workload(p).open < 14; i++) {
+    let i = 0;
+    // Cases that investigators referred to court come first: the same case, with its real evidence and witnesses.
+    if (t !== 'gov_counsel') {
+      const role = t === 'prosecutor' ? 'prosecution' : 'defense';
+      for (const inv of pendingBriefs(role, p.countryId).slice(0, n)) {
+        if (cases.workload(p).open >= 14) break;
+        if (openCase(p, null, { invId: inv.id, role, assigned: true })) i++;
+      }
+    }
+    for (; i < n && cases.workload(p).open < 14; i++) {
       const second = rng.chance(0.25) && cap < 5;
       const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
       if (!tid) break;
@@ -171,6 +184,25 @@ function openWindow(p, w) {
     const T = CASE_TEMPLATES[tid];
     L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: inTraining(p) || T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
       summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? 'some')).replace(/(^|[.!?]\s+)([a-z])/g, (x, a, b) => a + b.toUpperCase()) });
+  }
+  // A person charged in a case from a police investigation may want a defense lawyer who practises criminal law.
+  if (SPECIALTY_BY_ID[L.specialty]?.cases?.some((id) => CASE_TEMPLATES[id]?.kind === 'criminal') && rng.chance(0.5)) {
+    const inv = pendingBriefs('defense', p.countryId).find((x) => !(L.offers ?? []).some((o) => o.invId === x.id));
+    const jc = inv && k.J().cases[inv.file.courtCaseId];
+    if (jc) {
+      const tid = templateFor(jc.charges[0]?.offenseId);
+      const d = store.state.npcs[jc.defendantId];
+      L.offers.push({ id: `of${w}_inv`, window: w, templateId: tid, invId: inv.id, level: CASE_TEMPLATES[tid].level, second: inTraining(p) || CASE_TEMPLATES[tid].level > cap, fee: feeFor(CASE_TEMPLATES[tid].level), kind: 'criminal', specialty: L.specialty,
+        summary: `${d ? `${d.firstName} ${d.lastName}` : 'Someone'} is charged with ${(OFFENSE_BY_ID[jc.charges[0]?.offenseId]?.name ?? 'a crime').toLowerCase()}, after a police investigation, and needs a defense lawyer.` });
+    }
+  }
+  // A family's claim after a fatal collision a police investigation looked into, for a civil litigator.
+  if (SPECIALTY_BY_ID[L.specialty]?.cases?.some((id) => CASE_TEMPLATES[id]?.kind === 'civil') && rng.chance(0.5)) {
+    settleClaims();
+    const cl = openClaims(p.countryId).find((x) => !(L.offers ?? []).some((o) => o.claimId === x.id));
+    const fam = cl && store.state.npcs[cl.familyId];
+    if (fam) L.offers.push({ id: `of${w}_claim`, window: w, templateId: 'collision_claim', claimId: cl.id, level: 3, second: inTraining(p) || cap < 3, fee: feeFor(3), kind: 'civil', specialty: L.specialty,
+      summary: `${fam.firstName} ${fam.lastName}'s sibling was killed by a car. The police investigation is over; the family wants to claim for the loss.` });
   }
   // A former client may come back with something new: the same person, their history with the player intact.
   const former = Object.values(store.state.npcs).filter((n) => n.alive && n.flags.formerClientOf === p.id && n.meters.relationship >= 55);
@@ -201,7 +233,9 @@ function openCase(p, templateId, o = {}) {
   const sup = o.second ? supervisor(p) : null;
   // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
   if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
-  const c = cases.createCase(templateId, { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t });
+  const opts = { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
+  const c = o.invId ? takeBrief(o.invId, o.role ?? 'defense', opts) : o.claimId ? takeClaim(o.claimId, opts) : cases.createCase(templateId, opts);
+  if (!c) return null;
   c.second = !!o.second;
   if (o.prominent) { c.prominent = o.prominent; c.level = Math.max(c.level, o.level ?? c.level); }
   if (!L.firstClient && !c.clinic) { L.firstClient = c.id; queue('law_first_client', { client: c.vars.client }); }
@@ -233,7 +267,8 @@ export function accept(offerId, p = player()) {
   const load = cases.workload(p);
   if (load.points + o.level > load.capacity * 1.6) return result(false, 'You have no room on your desk for it. Finish or refer a case first.', 'neutral');
   L.offers = L.offers.filter((x) => x !== o);
-  const c = openCase(p, o.templateId, { fee: SPECIALTY_BY_ID[o.specialty]?.fees?.[0], clientId: o.clientId, second: o.second, prominent: o.prominent, level: o.level });
+  const c = openCase(p, o.templateId, { fee: SPECIALTY_BY_ID[o.specialty]?.fees?.[0], clientId: o.clientId, second: o.second, prominent: o.prominent, level: o.level, invId: o.invId, claimId: o.claimId, role: o.invId ? 'defense' : undefined });
+  if (!c) return result(false, 'That case has already been decided, or has a lawyer.', 'neutral');
   if (o.prominent) canon(`law:prominent:${c.id}`, 'A prominent client', `Took on ${o.prominent} as a client.`, { privacy: 'public', sig: 2, milestone: false });
   return result(true, `You took the case: ${c.title}.${c.supervisorId ? ` ${store.state.npcs[c.supervisorId].firstName} ${store.state.npcs[c.supervisorId].lastName} leads; you are second chair.` : ''}`, 'good', { caseId: c.id });
 }
@@ -371,6 +406,7 @@ export function seek(id, p = player()) {
   const o = opportunities(p).find((x) => x.id === id);
   if (!o) return result(false, 'That is not open to you.', 'neutral');
   if (o.why) return result(false, o.why, 'neutral');
+  { const sc = jobBlockSpecial('lawyer', p); if (sc) return result(false, sc, 'neutral'); }
   const L = lawOf(p);
   (L.tried ??= {})[id] = nowM();
   const prof = profileFor(p.countryId);

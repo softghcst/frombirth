@@ -20,6 +20,7 @@ import { ROYAL_RANKS } from '../data/royalty.js';
 import { incomeTax } from './finance.js';
 import { quitCareer } from './career.js';
 import * as world from './polity.js';
+import { release as releaseSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -139,6 +140,7 @@ export function takeOffice(o, approval = 55, quiet = false) {
 
 /** Ends the current office and writes it into the record. */
 export function leave(why, quiet = false) {
+  releaseSpecial('politics');
   const p = player();
   const k = p.politics;
   if (!k) return;

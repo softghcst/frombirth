@@ -4,7 +4,7 @@
 // skill: the skill (data/skills.js) a year of lessons trains, so it shows under Skills and counts where that skill
 // counts (coding for computer science, for example: engine/aptitudes.js).
 export const LESSONS = [
-  { id: 'voice', name: 'Voice lessons', emoji: '🎤', ages: [6, 120], cost: 900, skill: 'singing', grows: { 'talents.singing': 5, 'talents.music': 1 } },
+  { id: 'voice', name: 'Voice lessons', emoji: '🎤', ages: [8, 120], cost: 900, skill: 'singing', grows: { 'talents.singing': 5, 'talents.music': 1 } },
   { id: 'piano', name: 'Piano lessons', emoji: '🎹', ages: [5, 120], cost: 900, skill: 'piano', grows: { 'talents.music': 5, 'stats.intellect': 1 } },
   { id: 'guitar', name: 'Guitar lessons', emoji: '🎸', ages: [7, 120], cost: 700, skill: 'guitar', grows: { 'talents.music': 5 } },
   { id: 'violin', name: 'Violin lessons', emoji: '🎻', ages: [5, 120], cost: 900, skill: 'violin', grows: { 'talents.music': 5, 'hidden.discipline': 1 } },

@@ -130,6 +130,7 @@ export function completeInquiry(id) {
   if (client) client.meters.relationship = clamp(client.meters.relationship + (q.outcome === 'answered' ? 12 : 2));
   regard('reliability', q.outcome === 'answered' ? 2 : 0);
   I().stats.completed += 1;
+  if (q.kind === 'corporate') return result(true, q.outcome === 'answered' ? `Your report goes to ${nm(q.clientId)}: what you found, and what you could not confirm. If it is a crime, it is for the company to report it to the police.` : `You found nothing to support the concern. ${nm(q.clientId)} closes the matter.`, q.outcome === 'answered' ? 'good' : 'neutral');
   return result(true, q.outcome === 'answered' ? `${nm(q.clientId)} has their answer, and paid ${fmtMoney(q.fee, country())}.` : `You could not find what ${nm(q.clientId)} hoped. They paid the agreed ${fmtMoney(q.fee, country())} for the work, and were disappointed.`, q.outcome === 'answered' ? 'good' : 'neutral');
 }
 export const inquiries = (p = player()) => (rec(p)?.inquiryIds ?? []).map((id) => W().inquiries[id]).filter(Boolean);

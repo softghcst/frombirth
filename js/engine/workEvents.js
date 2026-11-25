@@ -15,6 +15,7 @@ import { career as careerState, workLaw } from './worklife.js';
 import { fire } from './career.js';
 import { openBusinesses } from './business.js';
 import { remember } from './conditions.js';
+import { storyBeat } from './storyDirector.js';
 
 /** The business a scene is about: the player's largest. */
 const mainBusiness = () => [...openBusinesses()].sort((a, b) => (b.last?.revenue ?? 0) - (a.last?.revenue ?? 0))[0];
@@ -153,7 +154,7 @@ export function queueWorkScenes() {
   const c = careerState();
   const state = store.state;
   const recent = (id, yrs) => state.eventHistory.some((h) => h.id === id && p.age - h.lastAge < yrs);
-  const push = (id, cast) => { state.pendingEvents.push({ id, cast }); return true; };
+  const push = (id, cast) => { storyBeat(id, cast, { source: id === 'kid_asks_work' ? 'family' : 'work' }, state); return true; };
   if (p.legal.incarceration) return false;
   // Together with someone at the same employer, and nobody has been told.
   const love = partnerAtWork();

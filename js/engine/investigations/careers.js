@@ -21,6 +21,7 @@ import { techAvailable } from '../digital/tech.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, once, reputationOf, skillAvg, working, dateWords } from './core.js';
 import { agency, agencyOf, agenciesHere, office, officeOf, federalCities, vacancies, staffer, employerOf } from './agencies.js';
 import { trainingBonus } from './policing.js';
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const name = (id) => { const n = npc(id); return n ? `${n.firstName} ${n.lastName}` : 'someone'; };
@@ -125,6 +126,7 @@ export function applyPolice(agencyId) {
   const r = I();
   const a = agency(agencyId);
   if (!a) return result(false, 'There is no such agency.', 'neutral');
+  { const sc = jobBlockSpecial('police', p); if (sc) return result(false, sc, 'neutral'); }
   const no = policeUnmet(a, p);
   if (no.length) return result(false, no[0], 'neutral');
   if (!once(`apply:${agencyId}`)) return result(false, 'They take one application a year from the same person.', 'neutral');
@@ -480,6 +482,7 @@ export function applyFederal(key) {
   const p = player();
   const r = I();
   const d = FEDERAL[key];
+  { const sc = jobBlockSpecial(d?.career ?? 'federal', p); if (sc) return result(false, sc, 'neutral'); }
   const no = federalUnmet(key, p);
   if (no.length) return result(false, no[0], 'neutral');
   if (!once(`apply:${key}`)) return result(false, 'One application a year.', 'neutral');
@@ -599,6 +602,7 @@ export function applyLicense() {
   const p = player();
   const r = I();
   const rule = piLicenseRule(p.countryId);
+  { const sc = jobBlockSpecial('private_investigator', p); if (sc) return result(false, sc, 'neutral'); }
   const no = licenseUnmet(p);
   if (no.length) return result(false, no[0], 'neutral');
   const fee = Math.round(rule.fee * (COUNTRIES[p.countryId].currency?.scale ?? 1));

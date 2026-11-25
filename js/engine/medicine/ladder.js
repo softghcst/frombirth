@@ -19,6 +19,7 @@ import { hospital, deptOf, deptHead, workplacesFor, careerFor, levelFor } from '
 import { retitle, startPost } from './training.js';
 import { hire } from '../career.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
+import { storyBeat } from '../storyDirector.js';
 
 const an = (w) => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`;
 const ORDER = ['attending', 'experienced', 'senior', 'director', 'vice_chair', 'chief', 'chair', 'cmo', 'ceo'];
@@ -270,7 +271,7 @@ export function postYear() {
       return;
     }
     m.offer = { rank: step.id, year: year(), hospitalId: h.id };
-    store.state.pendingEvents.push({ id: 'med_leadership_offer', cast: { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } } });
+    storyBeat('med_leadership_offer', { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } }, { source: 'medicine', must: true });
     log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from My Medical Career.`, 'system', 'good');
     return;
   }

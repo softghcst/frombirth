@@ -193,6 +193,7 @@ export const PI_SERVICES = {
   litigation: { name: 'Civil litigation support', fee: 3500, months: 4 },
   insurance: { name: 'Insurance investigations', fee: 2000, months: 2 },
   business: { name: 'Business inquiries', fee: 3000, months: 3 },
+  internal: { name: 'Internal inquiry', fee: 0, months: 3, corporate: true },
 };
 
 // ---------- Laboratories ----------
@@ -275,6 +276,25 @@ export const PACKS = {
     poi: { text: '{insider}, the owner\'s business partner, says they were out of town that night and that the business was doing well.', accurate: ['set', 'accident'] },
     witness: { saw: { set: 'saw someone in a dark jacket in the alley just before the smoke', accident: 'saw the shop dark and quiet until the smoke', insurance: 'saw a car like {insider}\'s outside the shop late that evening' },
       supports: { set: ['set'], accident: ['accident'], insurance: ['insurance'] }, pointsTo: { insurance: 'insider' } } },
+  // A fatal collision: one incident that several careers meet (the hospital where the person died, the insurer, the
+  // family's civil claim after the investigation: engine/investigations/local.js).
+  collision: { hyp: { careless: 'The driver was driving carelessly or too fast.', impaired: 'The driver was impaired by drink or drugs.', accident: 'It was an accident nobody could have avoided.' },
+    name: 'Fatal collision', offenseId: 'manslaughter', specialty: 'major', complexity: 2, place: 'street', months: 9, title: (p) => `The collision on ${p}`,
+    scene: 'A car struck a pedestrian at night. The pedestrian died at the hospital. The driver stopped and called for help.', truth: { careless: 0.4, impaired: 0.2, accident: 0.4 }, insider: 'Driver', perp: { careless: 'insider', impaired: 'insider' },
+    hypotheses: ['careless', 'impaired', 'accident'], shared: 'collision',
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner}, the pedestrian\'s sister, says they were walking home from work, as every night.', source: 'owner', confidence: 0.9 },
+      { via: 'scene', kind: 'fact', by: { careless: 'Tire marks begin late: the car braked only at the last moment.', impaired: 'The car crossed the center line before the point of impact.', accident: 'The street light at the crossing was out, and the pedestrian crossed between parked vans.' },
+        supports: { careless: ['careless'], impaired: ['impaired', 'careless'], accident: ['accident'] }, against: { accident: ['careless', 'impaired'] } },
+      { via: 'specialist', kind: 'fact', by: { careless: 'The collision reconstruction puts the car well above the speed limit.', impaired: 'The collision reconstruction finds no braking at all before impact.', accident: 'The collision reconstruction puts the car at the speed limit; the pedestrian could not be seen in time.' },
+        supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, against: { careless: ['accident'], impaired: ['accident'], accident: ['careless', 'impaired'] }, decisive: { accident: true } },
+      { via: 'records', kind: 'fact', needsAuth: { careless: true, impaired: true }, by: { careless: 'The car\'s data recorder shows {insider} at nearly twice the limit.', impaired: 'The hospital blood test taken from {insider} that night is over the legal limit.', accident: 'The car\'s data recorder shows {insider} at the speed limit, braking hard.' },
+        supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, against: { careless: ['accident'], impaired: ['accident'], accident: ['careless', 'impaired'] }, pointsTo: { careless: 'insider', impaired: 'insider' }, evKind: { careless: 'digital', impaired: 'forensic' } },
+    ],
+    items: [{ label: 'Paint transfer from the pedestrian\'s coat', kind: 'physical', disciplines: ['trace'], pointsTo: 'insider' }],
+    poi: { text: '{insider}, the driver, says they never saw anyone until the last second, and that they were not drinking.', accurate: ['accident'] },
+    witness: { saw: { careless: 'heard an engine racing, then brakes, too late', impaired: 'saw the car drifting across the road before it hit', accident: 'saw someone step out between the vans, and the car brake hard' },
+      supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, pointsTo: { careless: 'insider', impaired: 'insider' } } },
   corruption: { places: ['the City Council', 'the Port Authority', 'the Water Board', 'the Transit Agency'], name: 'Public corruption', offenseId: 'bribery', specialty: 'corruption', complexity: 3, place: 'office', months: 12, title: (p) => `Contracts at ${p}`,
     scene: 'A council contract went to a company whose bid was not the lowest. A clerk reported concerns.', truth: { bribe: 0.45, lawful: 0.55 }, insider: 'Council official', perp: { bribe: 'insider' },
     hypotheses: ['bribe', 'lawful'],

@@ -80,6 +80,7 @@ import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
+import { directYear, yearSteps } from './storyDirector.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -171,6 +172,7 @@ export const YEARLY = [
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
+  ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];
@@ -183,12 +185,15 @@ const DEADLY = new Set(['career', 'vehicles']);
  */
 export function runYearSteps(state = store.state) {
   const marks = (state.yearMarks ??= {});
-  for (const [id, step] of YEARLY) {
-    if (marks[id] === state.year) continue;
-    marks[id] = state.year;
-    const death = step();
-    if (DEADLY.has(id) && death) return death;
-  }
+  yearSteps.on = true;
+  try {
+    for (const [id, step] of YEARLY) {
+      if (marks[id] === state.year) continue;
+      marks[id] = state.year;
+      const death = step();
+      if (DEADLY.has(id) && death) return death;
+    }
+  } finally { yearSteps.on = false; }
   return null;
 }
 

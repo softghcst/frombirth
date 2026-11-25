@@ -16,7 +16,7 @@ export default [
     ['Ask what they wish they had known as a student', 'They think for a long time. "That the patients remember how you spoke to them long after they forget the diagnosis."', null, 'good', st('intellect', 1)],
   ]),
   scene('med_mentor', '{mentor} catches you after rounds. "You ask the right questions. If you want, I will look over your cases with you every month. No promises, just time."', [
-    ['Accept, gratefully', '{mentor} sends the first calendar invitation that evening.', 'mentor:yes', 'good'],
+    ['Accept, gratefully', '{mentor} writes the first meeting into their diary that evening.', 'mentor:yes', 'good'],
     ['Thank them, but say you are managing', '"The offer stands," {mentor} says.', 'mentor:no'],
   ]),
   scene('med_rival', '{rival} has started arriving an hour before you, and presenting your patients at morning report before you get the chance.', [
@@ -25,7 +25,7 @@ export default [
     ['Let it go', 'You decide your patients matter more than who presents them.', null],
   ]),
   scene('med_friend', 'It is two in the morning in the call room and {peer} has brought two cups of terrible coffee. "Tell me something that is not about medicine."', [
-    ['Talk until your pagers go', 'You talk about everything else. It is the best hour of the week.', 'friend:yes', 'good', st('mood', 4)],
+    ['Talk until one of you is called away', 'You talk about everything else. It is the best hour of the week.', 'friend:yes', 'good', st('mood', 4)],
     ['Say you need to sleep', '{peer} shrugs and drinks both coffees.', null],
   ]),
   scene('med_romance', 'After the department party, {peer} walks with you to the station. Neither of you supervises the other; you are both on the same rung, and you both know it has been more than friendship for a while.', [
@@ -62,8 +62,8 @@ export default [
     ['Sit down, listen, then find the resident so they get real answers', 'You are late for the next patient. The resident says it was the right call.', 'skill:communication:2', 'good'],
     ['Tell them someone will come, and hurry after the team', 'You catch up with the team. You think about the patient all afternoon.', null],
   ]),
-  scene('med_choosing_specialty', 'Everyone in your year is choosing. A friend has a spreadsheet: hours, pay, lifestyle, years of training. You have a feeling about one rotation you cannot quite put into a column.', [
-    ['Choose what you loved, and rank it first', 'You list the rotation that felt like yours. The spreadsheet can say what it likes.', 'skill:professionalism:1', 'good'],
+  scene('med_choosing_specialty', 'Everyone in your year is choosing. A friend has made a list in neat columns: hours, pay, lifestyle, years of training. You have a feeling about one rotation you cannot quite put into a column.', [
+    ['Choose what you loved, and rank it first', 'You list the rotation that felt like yours. The columns can say what they like.', 'skill:professionalism:1', 'good'],
     ['Choose what makes sense on paper', 'Sensible. You will find out if it was right.', null],
     ['Ask a doctor you admire how they chose', 'They laugh. "I picked the people I wanted to be like at three in the morning."', 'skill:reasoning:1', 'good'],
   ]),
@@ -79,7 +79,7 @@ export default [
     ['Step outside and breathe', 'It is not the end. It is a year you did not plan. Tomorrow you will make a plan.', null, 'neutral', st('mood', 2)],
     ['Go straight to the dean\'s office', 'They have seen this before. They walk you through the options, calmly, and you leave with a list.', 'skill:professionalism:1'],
   ]),
-  scene('med_first_night', 'Your first night on call at {hospital}. A pager, a list of forty patients you met this morning, and a senior resident who said "call me if you are worried" and meant it.', [
+  scene('med_first_night', 'Your first night on call at {hospital}. A list of forty patients you met this morning, and a senior resident who said "call me if you are worried" and meant it.', [
     ['Call the senior resident when you are unsure', 'You call twice. Both times they say you were right to.', 'skill:teamwork:2', 'good'],
     ['Try to handle everything yourself', 'You manage, just. In the morning the senior resident says: next time, call.', 'skill:reasoning:1'],
   ]),
@@ -200,8 +200,8 @@ export default [
     ['Present it straight, including what you got wrong', 'The room respects it. Three people tell you so afterward.', 'skill:integrity:1.5', 'good'],
     ['Present the version that makes the team look good', 'It goes smoothly. Nobody learns much.', null],
   ]),
-  scene('med_beat_or', 'The operating room. {patient} is on the list today: {label}. The team is waiting for you to begin the checklist.', [
-    ['Lead the checklist properly, every name and every step', 'It feels slow. It is how operating rooms stay safe. The case is in My Medical Career.', 'skill:teamwork:1.5', 'good'],
+  scene('med_beat_or', 'The operating room. {patient} is on the list today: {label}. The team is waiting for you to begin.', [
+    ['Stop and go through it with the whole team: who everyone is, the patient, the plan', 'It feels slow. It is how operating rooms stay safe. The case is in My Medical Career.', 'skill:teamwork:1.5', 'good'],
     ['Skip ahead: everyone knows the routine', 'Nothing goes wrong today.', 'skill:professionalism:-1', 'bad'],
   ]),
   scene('med_beat_athlete', '{patient} wants to know one thing: when they can play again. It is {label}, and the season starts in a month.', [
@@ -228,7 +228,7 @@ export default [
     ['Explain the options plainly, and let them choose', 'It is their decision, made with good information. The case is in My Medical Career.', 'skill:communication:2', 'good'],
     ['Tell them what you would do', 'They agree, without quite understanding.', null],
   ]),
-  scene('med_beat_scan', 'A finding on the scan for {patient}: {label}. The team that asked for it is waiting for your report.', [
+  scene('med_beat_scan', 'A finding on the images for {patient}: {label}. The team that asked for it is waiting for your report.', [
     ['Call the team, and say what it means and what it does not', 'The report changes the plan. That is what a report is for.', 'skill:teamwork:1.5', 'good'],
     ['Write it up and move to the next one', 'The report is accurate. Someone reads it tomorrow.', null],
   ]),
@@ -287,7 +287,7 @@ export default [
     ['Wait for things to calm down', 'They do not, on their own.', 'schedules:wait'],
   ]),
   scene('med_colleague_struggling', '{peer} has not been themselves: short with patients, quiet in the mess, a mistake caught just in time.', [
-    ['Take them aside, ask, and help', 'They tell you. You cover two nights and walk them to the wellbeing service. They do not forget it.', 'help:yes', 'good'],
+    ['Take them aside, ask, and help', 'They tell you. You cover two nights and make sure they get proper help. They do not forget it.', 'help:yes', 'good'],
     ['It is not your business', 'Someone else notices, eventually.', 'help:no'],
   ]),
   scene('med_friend_returns', '{peer}, who left years ago for another post, is back: a new job, at the same hospital as you.', [
