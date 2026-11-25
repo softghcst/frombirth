@@ -33,6 +33,7 @@ import { levelOf } from './skills.js';
 import { exists } from './fame.js';
 import { claim as claimSpecial, whyNot as whySpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
+import { polity } from './polity.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -71,7 +72,9 @@ function kindExists(kind, y = year()) {
 function makeOutlet(kind, countryId, city, r) {
   const k = OUTLET_KINDS[kind];
   const word = r.pick(k.words);
-  const name = kind === 'regional' ? `The ${COUNTRIES[countryId].name} ${word}` : `The ${city} ${word}`;
+  // Broadcasters are known by their channel or station, papers by "The ...".
+  const name = kind === 'regional' ? `The ${COUNTRIES[countryId].name} ${word}` : kind === 'tv' ? (r.chance(0.4) ? `Channel ${r.int(2, 13)} ${city}` : `${city} ${word}`)
+    : k.medium === 'radio' ? `${city} ${word}` : `The ${city} ${word}`;
   const e = registerEmployer({ name, family: 'media', tracks: ['journalist', 'publishing', 'broadcast'], countryId, city, owned: false });
   const id = nextId('outlet');
   const staff = (role, age) => {
@@ -111,6 +114,8 @@ export function J(p = player()) {
     p.journalism = { outletId: null, beat: 'local', since: null, skills: { reporting: 15 + Math.round(w / 4), interviewing: 15 + Math.round(p.stats.charm / 5), verification: 15, writing: 15 + Math.round(w / 3) },
       rep: { accuracy: 50, trust: 50, recognition: 0 }, acts: { year: null, used: 0 }, school: { articles: 0, year: null }, intern: null, history: [], awards: [], applied: {} };
   }
+  p.journalism.skills.broadcast ??= 15; // presenting: kept apart from reporting
+  p.journalism.scenes ??= {};
   return p.journalism;
 }
 export const isReporter = (p = player()) => p.career?.careerId === 'journalist' && !!J(p).outletId;
@@ -174,7 +179,7 @@ export function applyWhy(o, role, p = player()) {
     if (J(p).intern?.year === year()) return 'You are interning this year already.';
   } else {
     if (p.age < 18) return 'Newsrooms hire reporters from 18.';
-    if (isReporter(p)) return 'You already work in a newsroom. To move, leave journalism first.';
+    if (isReporter(p)) return 'You already work in a newsroom: apply to move instead.';
     const sc = whySpecial('journalism', p, store.state, { replacesJob: true });
     if (sc) return sc;
     const j = J(p);
@@ -611,13 +616,14 @@ export function submit(storyId) {
 }
 
 /** Publishes an approved story, once. The record is kept as it ran; what it got wrong comes back later. */
-export function publish(storyId) {
+export function publish(storyId, o2 = {}) {
   const p = player();
   const s = story(storyId);
   if (!s || s.reporterId !== p.id) return result(false, 'That story is not yours.', 'neutral');
   if (s.pubId) return result(false, 'It has already run.', 'neutral');
   if (s.status !== 'approved') return result(false, 'The editor has not approved it.', 'neutral');
   const o = outlet(s.outletId);
+  if (isBroadcast(o) && !o2.live) return result(false, `On ${o.medium === 'television' ? 'television' : 'the radio'} a story goes out live: present it.`, 'neutral');
   const j = J(p);
   const inc = s.draft.include.map((id) => s.claims.find((c) => c.id === id));
   const asFact = inc.filter((c) => (c.kind === 'fact' && asFactOk(statusOf(s, c))) || (c.kind === 'allegation' && statusOf(s, c) === 'verified'));
@@ -725,6 +731,9 @@ export function tickJournalism(p = player()) {
       lines.push(`You won the ${a.name} for "${best.headline}".`);
     }
   }
+  newsroomScene(p);
+  // An anchor presents the news through the year without a decision every night.
+  if (j.anchor) { j.rep.recognition = clamp(j.rep.recognition + 2); grow('broadcast', 1.5, p); }
   const made = assignYear(p);
   if (made.length) lines.push(`${made.length} new ${made.length === 1 ? 'assignment is' : 'assignments are'} waiting at ${outlet(j.outletId)?.name}.`);
   return lines;
@@ -738,3 +747,258 @@ export function leaveNewsroom(p = player()) {
   j.outletId = null;
 }
 
+
+// ---------- Broadcast: radio and television ----------
+//
+// At a radio or television newsroom a story goes out as a segment the reporter presents. A live segment is a short
+// run of choices: say what is verified, say what is not yet known, ask a colleague for context, or reach for
+// something dramatic that is not established. Inventing on air is never rewarded. Presenting well is a skill of its
+// own (broadcast), separate from reporting: a fine researcher can be awkward on camera, and the reverse.
+
+export const isBroadcast = (o) => o && (o.medium === 'radio' || o.medium === 'television');
+/** The live choices for presenting an approved story, and what each says about the presenter. */
+export const LIVE_CHOICES = {
+  verified: { label: 'Lead with what is verified', good: 2 },
+  unknown: { label: 'Say clearly what is not yet known', good: 2 },
+  context: { label: 'Ask a colleague for context', good: 1 },
+  dramatic: { label: 'Reach for the dramatic version', good: -3 },
+};
+
+/** Practices on-air delivery: part of the year's work. */
+export function practiceDelivery() {
+  const p = player();
+  if (!isReporter(p) || !isBroadcast(outlet(J(p).outletId))) return result(false, 'That is for radio and television reporters.', 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  J(p).skills.broadcast ??= 15;
+  grow('broadcast', 4, p);
+  return result(true, 'An hour in the booth, reading copy back until it sounds like talking. Better.', 'neutral');
+}
+
+/**
+ * Presents an approved story live, in up to three choices, then it is published as a segment. What was said is kept
+ * with it. A dramatic flourish never helps; an invented one is an error on the record.
+ */
+export function present(storyId, choices = ['verified', 'unknown']) {
+  const p = player();
+  const s = story(storyId);
+  const o = s && outlet(s.outletId);
+  if (!isBroadcast(o)) return result(false, 'That story is for print.', 'neutral');
+  if (s.status !== 'approved' || s.pubId) return result(false, s.pubId ? 'It has already gone out.' : 'The editor has not approved it.', 'neutral');
+  const j = J(p);
+  j.skills.broadcast ??= 15;
+  const picks = choices.filter((c) => LIVE_CHOICES[c]).slice(0, 3);
+  const score = picks.reduce((n, c) => n + LIVE_CHOICES[c].good, 0);
+  const r = seeded(`${s.id}/live`);
+  const delivery = Math.round(clamp(j.skills.broadcast * 0.6 + score * 8 + r.int(-8, 8) + 15));
+  const out = publish(storyId, { live: true });
+  if (!out.ok) return out;
+  const pub = S().pubs[s.pubId];
+  pub.segment = { choices: picks, delivery, live: true };
+  if (picks.includes('dramatic')) { j.rep.trust = clamp(j.rep.trust - 4); pub.segment.note = 'You went further than the facts on air.'; }
+  grow('broadcast', 3, p);
+  j.rep.recognition = clamp(j.rep.recognition + (o.medium === 'television' ? 2 : 1));
+  if (!j.history.some((h) => /first live/i.test(h.text))) { j.history.push({ year: year(), text: `First live ${o.medium === 'television' ? 'report on television' : 'report on the radio'}.` }); milestone(`Your first live report, on ${o.name}.`, 'career'); }
+  return result(true, `${out.text} You presented it live: ${delivery >= 70 ? 'clear, steady, and right' : delivery >= 50 ? 'fine, if a little stiff' : 'nervous, but the facts were there'}.${picks.includes('dramatic') ? ' The dramatic line did not help, and your producer noticed.' : ''}`, picks.includes('dramatic') ? 'neutral' : 'good');
+}
+
+/**
+ * An anchor's chair: offered by audition, only at a broadcast newsroom, to a reporter whose on-air work earned it.
+ * It is a role on top of the reporting career, never automatic with age or rank.
+ */
+export function anchorAuditionWhy(p = player()) {
+  const j = J(p);
+  const o = outlet(j.outletId);
+  if (!isReporter(p) || !isBroadcast(o)) return 'Anchors are chosen from reporters at radio and television newsrooms.';
+  if (j.anchor) return 'You are already an anchor.';
+  const segs = myPubs(p).filter((x) => x.segment && !x.errors.length).length;
+  if (segs < 3) return `Three clean segments on air first (${segs} so far).`;
+  if ((j.skills.broadcast ?? 0) < 45) return 'Your delivery is not there yet: practice.';
+  if (j.auditioned === year()) return 'You auditioned this year.';
+  return '';
+}
+export function anchorAudition() {
+  const p = player();
+  const why = anchorAuditionWhy(p);
+  if (why) return result(false, why, 'neutral');
+  const j = J(p);
+  j.auditioned = year();
+  const o = outlet(j.outletId);
+  const r = seeded(`${p.id}/anchor/${year()}`);
+  const odds = clamp(0.2 + (j.skills.broadcast - 45) / 60 + (j.rep.accuracy - 50) / 150 + (p.stats.charm - 50) / 200, 0.05, 0.85);
+  if (!r.chance(odds)) return result(false, `${o.name} gives the chair to someone else this time. Your reel was good; keep at it.`, 'neutral');
+  j.anchor = { since: year(), show: o.medium === 'television' ? `${o.name} Tonight` : `${o.name} at Six` };
+  p.career.title = o.medium === 'television' ? 'News anchor' : 'News presenter';
+  j.history.push({ year: year(), text: `Became anchor of ${j.anchor.show}.` });
+  milestone(`Became the anchor of ${j.anchor.show}.`, 'career');
+  return result(true, `You get the chair: ${j.anchor.show} is yours.`);
+}
+
+/** People an anchor can ask on: real people of this world with a public role. They decide whether to come. */
+export function guestChoices(p = player()) {
+  const out = [];
+  const w = polity(p.countryId);
+  if (w) for (const pa of w.parties.slice(0, 3)) { const f = w.figures[pa.leaderId]; if (f && !f.died) out.push({ id: `fig:${f.id}`, name: f.name, role: `Leader of ${pa.name}`, willing: 0.5 }); }
+  for (const a of Object.values(store.state.entertainment?.acts ?? {}).filter((x) => x.countryId === p.countryId && x.status === 'active').slice(0, 4)) {
+    const m = a.members.map((x) => x.who).find((id) => id !== 'player' && npc(id)?.alive);
+    if (m) out.push({ id: `npc:${m}`, name: nameOf(npc(m)), role: `Of ${a.name}`, willing: 0.55 });
+  }
+  for (const n of p.npcIds.map(npc).filter((x) => x?.alive && x.flags.star)) out.push({ id: `npc:${n.id}`, name: nameOf(n), role: n.occupation ?? 'A public figure', willing: 0.7 });
+  return out;
+}
+/** An anchor's interview with a guest. Kept as a segment; the guest may decline, as is their right. */
+export function interviewGuest(guestId, approach = 'fair') {
+  const p = player();
+  const j = J(p);
+  if (!j.anchor) return result(false, 'That is an anchor\'s work.', 'neutral');
+  const g = guestChoices(p).find((x) => x.id === guestId);
+  if (!g) return result(false, 'They are not available.', 'neutral');
+  if ((j.guests ?? []).some((x) => x.id === guestId && x.year === year())) return result(false, 'They were on this year.', 'neutral');
+  if (!spend(2, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const r = seeded(`${p.id}/${guestId}/${year()}`);
+  if (!r.chance(g.willing + (j.rep.trust - 50) / 200)) { (j.guests ??= []).push({ id: guestId, name: g.name, year: year(), declined: true }); return result(false, `${g.name} declines to come on. Their office is polite about it.`, 'neutral'); }
+  const good = approach === 'fair';
+  const delivery = Math.round(clamp((j.skills.broadcast ?? 20) * 0.6 + (good ? 20 : 5) + r.int(-10, 10)));
+  (j.guests ??= []).push({ id: guestId, name: g.name, role: g.role, year: year(), approach, delivery });
+  grow('broadcast', 2, p); grow('interviewing', 2, p);
+  if (!good) j.rep.trust = clamp(j.rep.trust - 3);
+  j.rep.recognition = clamp(j.rep.recognition + 1.5);
+  if (g.id.startsWith('npc:')) { const n = npc(g.id.slice(4)); if (n) (n.memories ??= []).push({ age: p.age, text: `Was a guest on ${j.anchor.show}.` }); }
+  return result(true, good ? `${g.name} comes on ${j.anchor.show}. You ask the hard questions plainly, and let them answer. A good conversation.` : `${g.name} comes on, and you go for the headline instead of the answer. It makes noise; it does not make you more trusted.`, good ? 'good' : 'neutral');
+}
+
+// ---------- Moving newsrooms ----------
+
+/** A reporter applying to another newsroom, at their level: the work and the record count, never fame. */
+export function moveWhy(o, p = player()) {
+  const j = J(p);
+  if (!isReporter(p)) return 'You need a newsroom job first.';
+  if (o.id === j.outletId) return 'You work here.';
+  if (j.applied[`${o.id}:move`] === year()) return 'You applied there this year.';
+  if (myPubs(p).length < 2) return 'Two published stories first: they will want to see your clips.';
+  return '';
+}
+export function applyMove(outletId) {
+  const p = player();
+  const o = outlet(outletId);
+  if (!o) return result(false, 'There is no such newsroom.', 'neutral');
+  const why = moveWhy(o, p);
+  if (why) return result(false, why, 'neutral');
+  const j = J(p);
+  j.applied[`${o.id}:move`] = year();
+  const r = seeded(`${p.id}/move/${o.id}/${year()}`);
+  const odds = clamp(0.25 + (j.rep.accuracy - 50) / 120 + myPubs(p).filter((x) => !x.errors.length).length * 0.03 - (o.reputation - 55) / 180, 0.05, 0.8);
+  if (!r.chance(odds)) return result(false, `${o.name} keeps your clips on file. Not this time.`, 'neutral');
+  return moveTo(o, p);
+}
+function moveTo(o, p = player()) {
+  const j = J(p);
+  const from = outlet(j.outletId);
+  for (const s of myStories(p)) if (open(s, p)) s.status = 'spiked';
+  const level = p.career.level ?? 0;
+  hire(CAREER_BY_ID.journalist, level, 60, `You move to ${o.name}.`, { employerId: o.employerId });
+  j.outletId = o.id;
+  j.anchor = null;
+  meet(npc(o.editorId), `Your editor at ${o.name}`, p);
+  meet(npc(o.seniorId), `A senior reporter at ${o.name}`, p);
+  j.history.push({ year: year(), text: `Moved from ${from?.name ?? 'your old newsroom'} to ${o.name}.` });
+  j.assigned = null;
+  assignYear(p);
+  return result(true, `You move to ${o.name}${isBroadcast(o) ? `, ${o.medium === 'television' ? 'in front of a camera' : 'behind a microphone'} now` : ''}. New editor, new desk, new assignments.`);
+}
+
+// ---------- The newsroom's people and moments (data/events/stories/newsroom.js) ----------
+//
+// At most one scene a year, picked from those whose conditions are true of this life, never one seen before: each
+// is about real people (the editor, the senior reporter, a friend, a source quoted years ago) and real work.
+
+function sceneOptions(p) {
+  const j = J(p);
+  const o = outlet(j.outletId);
+  const ed = npc(o.editorId);
+  const senior = npc(o.seniorId);
+  const seen = (j.scenes ??= {});
+  const pubs = myPubs(p);
+  const out = [];
+  const add = (id, cast, when = true) => { if (when && !seen[id]) out.push({ id, cast }); };
+  add('jn_editor_notes', { words: { editor: ed?.firstName ?? 'Your editor' } }, myStories(p).some((s) => s.review?.decision === 'revise'));
+  add('jn_rival_exclusive', { words: { rival: senior ? nameOf(senior) : 'A colleague', first: senior?.firstName ?? 'They' } }, !!senior?.alive && pubs.length >= 1);
+  const better = outletsHere(p).filter((x) => x.id !== o.id && OUTLET_KINDS[x.kind].reach > OUTLET_KINDS[o.kind].reach);
+  add('jn_offer_elsewhere', { words: { outlet: better[0]?.name ?? '' } }, better.length && j.rep.recognition >= 25 && pubs.filter((x) => !x.errors.length).length >= 3);
+  add('jn_paper_trouble', { words: { outlet: o.name } }, o.audience < 15000 && year() - (j.since ?? year()) >= 2);
+  add('jn_advertiser', { words: { outlet: o.name } }, pubs.length >= 2);
+  const friend = p.npcIds.map(npc).find((n) => n?.alive && ['friend', 'bestFriend'].includes(n.role) && n.age >= 18);
+  add('jn_friend_subject', { words: { friend: friend?.firstName ?? '' } }, !!friend && pubs.length >= 1);
+  add('jn_reader_letter', { words: { headline: pubs[0]?.headline ?? '' } }, pubs.some((x) => !x.errors.length && x.quality >= 60));
+  const quoted = pubs.flatMap((x) => x.sources.filter((s) => s.npcId && npc(s.npcId)?.alive).map((s) => ({ s, x }))).find(({ x }) => year() - x.year >= 2);
+  add('jn_source_returns', { words: { source: quoted ? quoted.s.name : '', headline: quoted?.x.headline ?? '' }, npcId: quoted?.s.npcId }, !!quoted);
+  add('jn_new_editor', { words: { editor: ed ? nameOf(ed) : '' } }, !!ed && ed.age >= 64);
+  add('jn_anchor_audition', { words: { outlet: o.name } }, !anchorAuditionWhy(p));
+  add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
+  return out;
+}
+/** Picks this year's newsroom scene, if any. */
+function newsroomScene(p) {
+  const opts = sceneOptions(p);
+  if (!opts.length) return null;
+  const r = seeded(`${p.id}/scene/${year()}`);
+  if (!r.chance(0.7)) return null;
+  const pick = opts[Math.floor(r.next() * opts.length)];
+  J(p).scenes[pick.id] = year();
+  J(p).sceneCast = pick.cast;
+  store.state.pendingEvents.push({ id: pick.id, cast: { words: pick.cast.words } });
+  return pick.id;
+}
+
+/** The answer to a newsroom scene (effect type 'journalism'). @returns {string} a line for the outcome */
+export function journalismChoice(value) {
+  const p = player();
+  const j = J(p);
+  const o = outlet(j.outletId);
+  const ed = o && npc(o.editorId);
+  const senior = o && npc(o.seniorId);
+  const rel = (n, d) => { if (n) n.meters.relationship = clamp(n.meters.relationship + d); };
+  switch (value) {
+    case 'notes:take': rel(ed, 6); grow('writing', 3); return '';
+    case 'notes:argue': rel(ed, -4); return '';
+    case 'rival:congratulate': rel(senior, 8); return '';
+    case 'rival:team': rel(senior, 10); grow('reporting', 3); j.history.push({ year: year(), text: `Teamed up with ${nameOf(senior)} on a story.` }); return '';
+    case 'rival:compete': rel(senior, -5); grow('reporting', 2); return '';
+    case 'offer:take': { const better = outletsHere(p).filter((x) => x.id !== o.id && OUTLET_KINDS[x.kind].reach > OUTLET_KINDS[o.kind].reach)[0]; return better ? moveTo(better, p).text : ''; }
+    case 'offer:stay': rel(ed, 6); return '';
+    case 'trouble:stay': rel(ed, 8); j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'trouble:leave': return '';
+    case 'ad:decline': j.rep.trust = clamp(j.rep.trust + 4); return '';
+    case 'ad:editor': j.rep.trust = clamp(j.rep.trust + 3); rel(ed, 4); return '';
+    case 'ad:go': j.rep.trust = clamp(j.rep.trust - 10); j.rep.accuracy = clamp(j.rep.accuracy - 4); j.history.push({ year: year(), text: 'Wrote a story an advertiser asked for.' }); return '';
+    case 'friend:disclose': j.rep.trust = clamp(j.rep.trust + 3); rel(ed, 3); return '';
+    case 'friend:write': j.rep.trust = clamp(j.rep.trust - 6); return '';
+    case 'letter:answer': p.stats.mood = clamp(p.stats.mood + 4); j.rep.recognition = clamp(j.rep.recognition + 1); return '';
+    case 'letter:keep': p.stats.mood = clamp(p.stats.mood + 3); return '';
+    case 'source:listen': return followUp(p);
+    case 'source:pass': return '';
+    case 'editor:welcome': { if (o && ed) { ed.flags.retired = year(); ed.occupation = 'Retired editor'; const n = makeNpc({ role: 'colleague', countryId: o.countryId, age: 45 }); n.occupation = 'Editor'; n.flags.title = `Your editor at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Editor' }; store.state.npcs[n.id] = n; o.editorId = n.id; meet(n, `Your editor at ${o.name}`, p); o.history.push({ year: year(), text: `${nameOf(ed)} retired as editor; ${nameOf(n)} took over.` }); } return ''; }
+    case 'anchor:try': return anchorAudition().text;
+    case 'anchor:no': return '';
+    case 'retire:yes': { const r = leaveCareerNow(); return r; }
+    case 'retire:no': return '';
+    default: return '';
+  }
+}
+/** A source from an old story comes back with something new: a story with them in it again. */
+function followUp(p) {
+  const j = J(p);
+  const id = j.sceneCast?.npcId;
+  const n = npc(id);
+  if (!n || !isReporter(p)) return '';
+  const o = outlet(j.outletId);
+  const r = seeded(`${p.id}/followup/${year()}`);
+  const s = newStory(p, o, 'local', `What happened next: ${n.firstName} ${n.lastName}'s story, years on`, { subject: nameOf(n) });
+  const c1 = addClaim(s, { text: `${nameOf(n)} has started something new in ${p.city}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: 'It has grown since the first story', truth: r.chance(0.6) });
+  addSource(s, { npcId: n.id, name: nameOf(n), role: 'A source from an old story', type: 'community', willing: 0.95, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }] });
+  addDoc(s, { title: 'The public business register', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  return `${n.firstName} remembers how you treated their story. A new one is in your assignments.`;
+}
+let leaveCareerNow = () => '';
+/** Lets the special-career layer handle leaving (kept apart to avoid a loop of imports at load). */
+export function onRetire(fn) { leaveCareerNow = fn; }

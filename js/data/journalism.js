@@ -9,7 +9,7 @@ export const OUTLET_KINDS = {
   local: { name: 'Local newspaper', medium: 'print', from: 1700, reach: 1, pay: 0.9, standards: [0.45, 0.8], words: ['Gazette', 'Courier', 'Herald', 'Chronicle', 'Post', 'Record', 'Ledger', 'Bulletin'] },
   regional: { name: 'Regional daily', medium: 'print', from: 1800, reach: 3, pay: 1.05, standards: [0.55, 0.85], words: ['Times', 'Journal', 'Daily News', 'Observer', 'Tribune', 'Evening Star'] },
   radio: { name: 'Radio newsroom', medium: 'radio', from: 1922, reach: 3, pay: 1, standards: [0.5, 0.85], words: ['Radio', 'Radio News', 'Public Radio', 'FM News'] },
-  tv: { name: 'Television news station', medium: 'television', from: 1950, reach: 6, pay: 1.25, standards: [0.5, 0.85], words: ['News Channel', 'Television News', 'TV', 'Evening News'] },
+  tv: { name: 'Television news station', medium: 'television', from: 1950, reach: 6, pay: 1.25, standards: [0.5, 0.85], words: ['News Channel', 'Television News', 'News Network', 'Evening News'] },
   digital: { name: 'Digital newsroom', medium: 'online', from: 2005, reach: 4, pay: 0.95, standards: [0.4, 0.85], words: ['Dispatch', 'Report', 'Signal', 'Daily', 'Brief'] },
   investigative: { name: 'Investigative nonprofit', medium: 'online', from: 2008, reach: 2, pay: 0.9, standards: [0.75, 0.95], words: ['Reporting Project', 'Accountability Desk', 'Investigations Unit'] },
 };

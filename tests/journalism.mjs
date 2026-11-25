@@ -29,7 +29,7 @@ const life = (age = 23, year = 2024, country = 'us') => {
 };
 const hireMe = (p) => {
   for (let y = 0; y < 8 && !jn.isReporter(p); y++) {
-    for (const o of jn.outletsHere(p)) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
+    for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
   return jn.isReporter(p);
@@ -187,6 +187,66 @@ function report(s) {
   const r = sc.leave();
   check(r.ok && p.career.careerId !== 'journalist' && !jn.isReporter(p) && jn.myPubs(p).length === before, 'leaving journalism ends the job; the published work stays');
   section('leaving the career keeps the work');
+}
+
+// 6. Broadcast: segments presented live, delivery a skill of its own, the anchor chair earned, guests who can decline.
+{
+  const p = life(26, 2020);
+  hireMe(p);
+  const tv = jn.outletsHere(p).find((o) => o.medium === 'television');
+  check(tv, 'a television newsroom in 2020');
+  p.stats.charm = 80;
+  jn.J().rep.accuracy = 70;
+  for (let i = 0; i < 3; i++) { const s = jn.myStories(p).find((x) => x.status !== 'published'); if (s) { report(s); jn.publish(s.id); } }
+  store.state.year += 1;
+  const moved = jn.applyMove(tv.id);
+  for (let y = 0; y < 6 && jn.J().outletId !== tv.id; y++) { store.state.year += 1; jn.applyMove(tv.id); }
+  check(jn.J().outletId === tv.id && p.career.careerId === 'journalist', `a reporter with clips moves to the television newsroom (${moved.text})`);
+  const s = jn.myStories(p).find((x) => x.outletId === tv.id);
+  report(s);
+  for (let i = 0; i < 3 && s.status !== 'approved'; i++) { const nb = jn.notebook(s.id); jn.draft(s.id, nb.claims.filter((c) => ['verified', 'supported'].includes(c.status)).map((c) => c.id), 'straight'); jn.submit(s.id); }
+  check(!jn.publish(s.id).ok, 'on television a story goes out live, not by pressing publish');
+  const trust = jn.J().rep.trust;
+  const live = jn.present(s.id, ['verified', 'dramatic']);
+  const pub = jn.myPubs(p).find((x) => x.storyId === s.id);
+  check(live.ok && pub?.segment?.live && pub.segment.choices.includes('dramatic') && jn.J().rep.trust < trust, `presented live; the dramatic line costs trust (${live.text})`);
+  check(!jn.present(s.id, ['verified']).ok, 'a segment goes out once');
+  check(/clean segments|practice|delivery/i.test(jn.anchorAuditionWhy(p)), 'no anchor chair without the work on air');
+  jn.J().skills.broadcast = 80;
+  for (let i = 0; i < 3; i++) jn.S().pubs[`fake${i}`] = { ...pub, id: `fake${i}`, errors: [], segment: { live: true, choices: ['verified'], delivery: 80 } };
+  let got = false;
+  for (let y = 0; y < 8 && !got; y++) { got = jn.anchorAudition().ok; store.state.year += 1; }
+  check(got && jn.J().anchor && /anchor|presenter/i.test(p.career.title), `an anchor chosen by audition (${p.career.title})`);
+  const guests = jn.guestChoices(p);
+  check(guests.length > 0, `real people to ask on (${guests.length})`);
+  if (guests.length) { const r = jn.interviewGuest(guests[0].id, 'fair'); check(/declines|comes on/.test(r.text), `a guest comes on or declines (${r.text})`); }
+  section('broadcast: moving to television, presenting live, an anchor chair earned, guests who can say no');
+}
+
+// 7. The newsroom's moments: only when true of this life, at most one a year, never twice, and the answers count.
+{
+  const p = life(); hireMe(p);
+  for (let i = 0; i < 2; i++) { const s = jn.myStories(p).find((x) => x.status !== 'published'); if (s) { report(s); jn.publish(s.id); } }
+  const seen = new Set();
+  for (let y = 0; y < 12; y++) {
+    store.state.pendingEvents = [];
+    advanceYear();
+    p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90;
+    const ids = store.state.pendingEvents.filter((e) => /^jn_/.test(e.id)).map((e) => e.id);
+    check(ids.length <= 1, `at most one newsroom scene a year (${ids})`);
+    for (const id of ids) { check(!seen.has(id), `never the same scene twice (${id})`); seen.add(id); }
+    if (!jn.isReporter(p)) break;
+  }
+  check(seen.size >= 2, `newsroom scenes happen over the years (${[...seen]})`);
+  const o = jn.outlet(jn.J().outletId);
+  const ed = store.state.npcs[o.editorId];
+  const before = ed.meters.relationship;
+  jn.journalismChoice('notes:take');
+  check(ed.meters.relationship > before, 'taking the editor\'s notes brings you closer');
+  const t = jn.J().rep.trust;
+  jn.journalismChoice('ad:go');
+  check(jn.J().rep.trust < t, 'writing what an advertiser asked for costs trust');
+  section('newsroom scenes: true of this life, one a year at most, never repeated, with consequences');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

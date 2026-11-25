@@ -48,10 +48,16 @@ const VIEWS = {
     return `<div class="card"><h3>${esc(p.career.title)}, ${esc(o.name)}</h3>${kv([['Beat', BEATS[j.beat].name], ['Since', String(j.since)], ['Time left this year', `${jn.actionsLeft(p)} of ${ACTIONS_A_YEAR} actions`], ['Stories published', String(jn.myPubs(p).length)]])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Your editor', `${Math.round(ed.meters.relationship)}%`, ed) : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('beat', 'Change beat', { sub: BEATS[j.beat].blurb })}</div></div>
+      ${jn.isBroadcast(o) ? `<div class="card"><h3>${j.anchor ? esc(j.anchor.show) : o.medium === 'television' ? 'On camera' : 'On air'}</h3>
+        ${kv([['Delivery', String(Math.round(j.skills.broadcast ?? 15))], ['Segments on air', String(jn.myPubs(p).filter((x) => x.segment).length)], ...(j.anchor ? [['Anchor since', String(j.anchor.since)]] : [])])}
+        <div class="btn-stack" style="margin-top:6px">${btn('practice', 'Practice your delivery', { sub: 'Reading copy until it sounds like talking.' })}
+          ${j.anchor ? btn('guest', 'Interview a guest', { sub: 'Real people with a public role. They decide whether to come.' }) : btn('anchor', 'Audition for anchor', { disabled: !!jn.anchorAuditionWhy(p), sub: jn.anchorAuditionWhy(p) || 'Chosen by the newsroom, on your work on air.' })}</div></div>` : ''}
       ${waiting.map((x) => `<div class="card"><h3>A complaint about "${esc(x.headline)}"</h3><p class="muted" style="margin:0">Someone says this was wrong: "${esc(x.claims.find((c) => c.id === x.complaint.claimId)?.text ?? '')}". Recheck your notes, then decide.</p>
         <div class="btn-stack" style="margin-top:6px">${btn('correct', 'Run a correction', { arg: x.id, cls: 'primary' })}${btn('stand', 'Stand by it', { arg: x.id })}${btn('pub', 'Read the story', { arg: x.id })}</div></div>`).join('')}
       <div class="card"><h3>Your standing</h3><p class="muted" style="margin:0 0 6px">Kept apart on purpose: being right, being trusted, and being known are different things.</p>
         ${meterHtml('Accuracy', j.rep.accuracy, true)}${meterHtml('Trust of sources and readers', j.rep.trust, true)}${meterHtml('Recognition', j.rep.recognition, true)}</div>
+      <div class="section-label">Other newsrooms in ${esc(p.city)}</div>
+      ${jn.outletsHere(p).filter((x) => x.id !== o.id).map((x) => { const why = jn.moveWhy(x, p); return `<div class="kv"><span>${esc(x.name)}</span><span>${esc(OUTLET_KINDS[x.kind].name)}</span></div><div class="btn-stack" style="margin:-2px 0 10px">${btn('move', 'Apply to move here', { arg: x.id, disabled: !!why, sub: why || 'At your level. They read your clips.' })}</div>`; }).join('')}
       <div class="card"><h3>Your skills</h3>${kv(Object.entries(j.skills).map(([k, v]) => [k.charAt(0).toUpperCase() + k.slice(1), String(Math.round(v))]))}</div>`;
   },
 
@@ -89,7 +95,7 @@ const VIEWS = {
         ${nb.needsLegal ? btn('legal', nb.legal ? 'The lawyer has read it' : 'Have the lawyer read it', { arg: nb.id, disabled: !!nb.legal, sub: nb.legal?.notes ?? '' }) : ''}
         ${btn('draft', nb.draft ? 'Rewrite the draft' : 'Write the draft', { arg: nb.id, sub: nb.draft ? `"${nb.draft.headlineText}"` : 'Choose what goes in, and the headline.' })}
         ${nb.draft && nb.status !== 'approved' ? btn('submit', 'Send it to your editor', { arg: nb.id, cls: 'primary' }) : ''}
-        ${nb.status === 'approved' ? btn('publish', 'Publish', { arg: nb.id, cls: 'primary', sub: 'It runs once, as it is.' }) : ''}
+        ${nb.status === 'approved' ? (jn.isBroadcast(jn.outlet(jn.storyOf(nb.id).outletId)) ? btn('live', 'Go live', { arg: nb.id, cls: 'primary', sub: 'Present it on air. It goes out once.' }) : btn('publish', 'Publish', { arg: nb.id, cls: 'primary', sub: 'It runs once, as it is.' })) : ''}
         ${btn('spike', 'Drop the story', { arg: nb.id, sub: 'Not every story stands up. That is a decision too.' })}</div>` : ''}
       ${nb.pubId ? `<div class="btn-stack">${btn('pub', 'Read it as it ran', { arg: nb.pubId })}</div>` : ''}`;
   },
@@ -105,7 +111,8 @@ const VIEWS = {
     return `<div class="card jn-article"><h3>${esc(x.headline)}</h3><p class="muted" style="margin:0 0 8px">By ${esc(x.byline)} · ${esc(x.outlet)} · ${esc(when(x.at))}</p><p style="margin:0">${esc(x.body)}</p>
         ${x.corrections.map((c) => `<p class="muted" style="margin:8px 0 0"><strong>${esc(c.text)}</strong> (${esc(when(c.at))})</p>`).join('')}</div>
       ${x.sources.length ? `<div class="section-label">Sources</div>${x.sources.map((s) => (s.npcId && npc(s.npcId) ? row('person', s.npcId, s.name, ATTRIBUTION[s.attribution].name, '', npc(s.npcId)) : `<div class="kv"><span>${esc(s.name)}</span><span>${esc(ATTRIBUTION[s.attribution].name)}</span></div>`)).join('')}` : ''}
-      ${kv([['Readers', x.readers.toLocaleString('en-US')]])}`;
+      ${x.segment ? `<div class="card"><h3>On air</h3>${kv([['Delivery', `${x.segment.delivery}/100`], ['What you did', x.segment.choices.map((c) => jn.LIVE_CHOICES[c].label.toLowerCase()).join(', ')]])}${x.segment.note ? `<p class="muted" style="margin:4px 0 0">${esc(x.segment.note)}</p>` : ''}</div>` : ''}
+      ${kv([[x.medium === 'television' ? 'Viewers' : x.medium === 'radio' ? 'Listeners' : 'Readers', x.readers.toLocaleString('en-US')]])}`;
   },
 
   career(p) {
@@ -168,6 +175,25 @@ const ACTIONS = {
   submit: (id, x) => x.say(jn.submit(id)),
   async publish(id, x) { if (await confirmModal({ title: 'Publish it?', body: 'It runs as it is. What it gets wrong, you will answer for.', yes: 'Publish' })) await x.say(jn.publish(id)); },
   async spike(id, x) { if (await confirmModal({ title: 'Drop the story?', body: 'It will not run.', yes: 'Drop it' })) await x.say(jn.spike(id)); },
+  practice: (_, x) => x.say(jn.practiceDelivery()),
+  anchor: (_, x) => x.say(jn.anchorAudition()),
+  move: async (id, x) => { if (await confirmModal({ title: `Apply to ${jn.outlet(id)?.name}?`, body: 'If they take you, you move there: stories in progress here are left behind.', yes: 'Apply' })) await x.say(jn.applyMove(id)); },
+  async guest(_, x) {
+    const g = await pickModal({ title: 'Who to ask on', cancel: 'Back', options: jn.guestChoices().map((y) => ({ value: y.id, label: y.name, sub: y.role })) });
+    if (!g) return;
+    const how = await pickModal({ title: 'How will you interview them?', cancel: 'Back', options: [{ value: 'fair', label: 'Hard questions, asked fairly', sub: 'Let them answer.' }, { value: 'gotcha', label: 'Go for the headline', sub: 'Noise, not trust.' }] });
+    if (how) await x.say(jn.interviewGuest(g, how));
+  },
+  async live(id, x) {
+    const picks = [];
+    for (let i = 0; i < 3; i++) {
+      const c = await pickModal({ title: i ? 'And then?' : 'You are live', body: i ? '' : 'Three beats, in your own words. The camera does not wait.', cancel: i ? 'Hand back to the studio' : 'Not yet',
+        options: Object.entries(jn.LIVE_CHOICES).filter(([k]) => !picks.includes(k)).map(([k, v]) => ({ value: k, label: v.label })) });
+      if (!c) break;
+      picks.push(c);
+    }
+    if (picks.length) await x.say(jn.present(id, picks));
+  },
   correct: (id, x) => x.say(jn.answerComplaint(id, true)),
   stand: (id, x) => x.say(jn.answerComplaint(id, false)),
 };

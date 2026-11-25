@@ -9,7 +9,7 @@ import { myAct, leaveAct } from './music.js';
 import { retire as retireSport } from './sportsLife.js';
 import { trainee, leaveTraining } from './kpop.js';
 import { quitCareer } from './career.js';
-import { leaveNewsroom } from './journalism.js';
+import { leaveNewsroom, onRetire } from './journalism.js';
 import { workOf } from './entertainment.js';
 import { isModel } from './modeling.js';
 import { danceOf } from './dance.js';
@@ -120,3 +120,6 @@ export function release(id, p = player(), state = store.state) {
   (p.flags.specialPast ??= []).push({ id, from: p.flags.special.since, to: state.year });
   p.flags.special = null;
 }
+
+// A journalist retiring from a newsroom scene leaves the special career the same way as from its page.
+onRetire(() => leave().text);
