@@ -212,9 +212,28 @@ export function runMatch(kind, wanted) {
   const what = kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`;
   m.match = { kind, year: year(), applied: [...wanted], tries: (m.match?.kind === kind ? m.match.tries ?? 0 : 0) + 1, status: 'unmatched' };
   for (const id of wanted) {
-    if (!roll(placeChance(id, m))) continue;
+    // One fellowship place, two strong residents: when a rival from the program applies too, the program chooses
+    // between the two applications, on the record. Otherwise it is the ordinary chance of a place.
+    const rival = kind === 'fellowship' && SPECIALTY_BY_ID[id].compete >= 0.5
+      ? (m.people.rivalIds ?? []).map((x) => store.state.npcs[x]).find((n) => n?.alive && !n.flags.medFellowship) : null;
+    if (!rival && !roll(placeChance(id, m))) continue;
     const site = pickSite(id, m, p);
     if (!site) continue;
+    if (kind === 'fellowship') {
+      if (rival) {
+        const theirs = (rival.meters.intellect ?? 50) * 0.7 + rng.int(0, 30);
+        const mine = applicationStrength(id, m) * 0.7 + rng.int(0, 30);
+        rival.flags.medFellowship = id;
+        m.fellowshipRace = { year: year(), specialtyId: id, rivalId: rival.id, won: mine >= theirs };
+        if (mine < theirs) {
+          remember(rival, `medFellowship:${id}`, `Was chosen over you for the ${specialtyName(id)} fellowship.`);
+          log(`There was one ${specialtyName(id)} fellowship place, and the program chose ${rival.firstName} ${rival.lastName}. On paper it was close.`, 'system', 'bad');
+          continue;
+        }
+        remember(rival, `medFellowship:${id}`, `Lost the ${specialtyName(id)} fellowship place to you.`);
+        rival.flags.medFellowship = 'missed';
+      }
+    }
     return matched(kind, id, site, what);
   }
   // A second round for places left unfilled: less competitive programs, for those who opt in (the default).

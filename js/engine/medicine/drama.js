@@ -25,6 +25,7 @@ import { doResearch } from './research.js';
 import { employer, chronicle } from '../employers.js';
 import { SPECIALTY_BY_ID, DEPARTMENTS } from '../../data/medicine.js';
 import { workplacesFor, hospital, hospitalsIn } from './hospitals.js';
+import { staffOf } from '../workplace.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 
@@ -143,6 +144,28 @@ export function hospitalYear() {
       h.depts.push(d);
       chronicle(e, `${e.name} founded a department of ${DEPARTMENTS[d]}.`);
       log(`${e.name} founded a new department: ${DEPARTMENTS[d]}.`, 'system', 'neutral');
+    }
+  }
+  // A department chief retires now and then, and a successor is chosen from the department's senior physicians
+  // (or offered to the player, if they are eligible: engine/medicine/ladder.js answers the offer).
+  const dept = SPECIALTY_BY_ID[currentSpecialty(m)]?.dept;
+  const headId = dept ? h.heads[dept] : null;
+  const head = headId ? npc(headId) : null;
+  if (head?.alive && head.age >= 60 && roll(0.12)) {
+    head.flags.title = `Retired chief of ${DEPARTMENTS[dept]}`;
+    if (head.life?.job) head.life.job = null;
+    const eligible = m.job && ['senior', 'director'].includes(m.job.rank) && m.skills.leadership >= 55 && m.reputation >= 60;
+    if (eligible) {
+      m.offer = { rank: 'chief', year: year(), hospitalId: id };
+      delete h.heads[dept];
+      chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}; the search for a successor began.`);
+      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from My Medical Career.`, 'system', 'good');
+    } else {
+      const pool = staffOf(e).filter((n) => n.alive && n.id !== head.id && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) && (n.life.job.level ?? 0) >= 1);
+      const next = pool.sort((a, b) => (b.meters.intellect ?? 0) - (a.meters.intellect ?? 0))[0] ?? null;
+      if (next) { h.heads[dept] = next.id; next.flags.title = `Chief of ${DEPARTMENTS[dept]}`; next.life.job.level = 3; } else delete h.heads[dept];
+      chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}${next ? `; ${next.firstName} ${next.lastName} succeeds them` : ''}.`);
+      log(`${head.firstName} ${head.lastName} retired as chief of your department${next ? `. ${next.firstName} ${next.lastName} was chosen to succeed them` : ''}.`, 'system', 'neutral');
     }
   }
   // Colleagues decide for themselves: now and then one takes a post elsewhere in the country.
