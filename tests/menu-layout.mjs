@@ -29,14 +29,16 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
 await page.click('[data-random]'); await page.waitForSelector('[data-year]');
-// Answers or closes whatever is open (a yes/no question, such as whether to see a doctor, is answered no). Notices come one after another (a scene, then a birth, then the year's update), each
+// Answers or closes whatever is open: a scene's first choice, a notice's OK, a yes/no question (answered no), or else
+// any other pop-up's last button. Notices come one after another (a scene, then a birth, then the year's update), each
 // opening a moment after the last has closed: it stops only once nothing has opened for a while.
 const settle = async () => {
   let quiet = 0;
   for (let i = 0; i < 40 && quiet < 3; i++) {
     const c = page.locator('#modal-root .scrim:last-child .choice-btn:not([disabled])');
     const o = page.locator('#modal-root .scrim:last-child :is([data-ok], [data-cancel], [data-no], .modal-back)');
-    if (await c.count()) { quiet = 0; await c.first().click(); } else if (await o.count()) { quiet = 0; await o.last().click(); } else quiet += 1;
+    const any = page.locator('#modal-root .scrim:last-child .modal button:not([disabled])');
+    if (await c.count()) { quiet = 0; await c.first().click(); } else if (await o.count()) { quiet = 0; await o.last().click(); } else if (await any.count()) { quiet = 0; await any.last().click(); } else quiet += 1;
     await page.waitForTimeout(quiet ? 120 : 60);
   }
 };

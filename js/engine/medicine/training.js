@@ -398,9 +398,6 @@ function evaluate(p, m) {
 
 const EVAL_WORDS = [[72, 'exceeds expectations'], [52, 'meets expectations'], [38, 'needs improvement'], [0, 'below expectations']];
 
-/** The best chance of being chosen chief resident: the strongest are often chosen, never surely. */
-const CHIEF_MAX = 0.8;
-
 /** A year of residency or fellowship: evaluation, growth, the license, the chief year, finishing. */
 export function trainingYear() {
   const p = player();
@@ -438,9 +435,9 @@ export function trainingYear() {
     log('You are placed on a remediation plan: closer supervision, and a review at the end of next year.', 'system', 'bad');
   } else t.probation = 0;
   licenseCheck(p, m, t);
-  // Chief resident: chosen in the last year from the strongest residents, likelier the stronger they are, never certain
-  // (other strong residents are in the running).
-  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(Math.min(CHIEF_MAX, 0.25 + (score - 60) / 80 + m.skills.leadership / 400))) {
+  // Chief resident: chosen in the last year from the strongest residents, never certain (at best 85%: the faculty
+  // choose among several strong residents).
+  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(Math.min(0.85, 0.25 + (score - 60) / 80 + m.skills.leadership / 400))) {
     t.chief = true;
     log(`The faculty chose you as chief resident for your final year in ${s.name}.`, 'system', 'good');
     note(`Chosen as chief resident in ${s.name}.`, 'career', { key: `chief:${t.specialtyId}`, milestone: `Chief resident, ${s.name}.`, log: false });
