@@ -204,6 +204,31 @@ const npc = (id) => store.state.npcs[id];
   check(cut, 'a plea in mitigation can take years off a custodial sentence');
 }
 
+// ---------- Child welfare: four different jobs ----------
+{
+  lawyer('lawyer');
+  const roles = Object.fromEntries(['childAttorney', 'gal', 'parentAttorney', 'childProtection'].map((r) => [r, lc.createCase('dependency', { role: r })]));
+  check(roles.childAttorney.clientId === roles.childAttorney.parties.childId, 'the child\'s attorney acts for the child');
+  check(!roles.gal.clientId && roles.gal.parties.wardId === roles.gal.parties.childId && /best interests/.test(lc.researchQuestion(roles.gal).why), 'a guardian ad litem has no client, and advises on best interests');
+  check(roles.parentAttorney.clientId === roles.parentAttorney.parties.otherId && /service plan|services/.test(lc.researchQuestion(roles.parentAttorney).why), 'a parent\'s attorney acts for the parent, toward reunification');
+  const gov = roles.childProtection;
+  check(!gov.clientId && lc.strength(gov).mine > 0 && gov.evidence.filter((e) => e.favors === 'other').length >= 1, 'agency counsel relies on the agency\'s evidence');
+  check(new Set(Object.values(roles).map((c) => lc.roleName(c))).size === 4, 'four roles, four names: not one universal "kid lawyer"');
+}
+
+// ---------- Fame from a public case ----------
+{
+  const { fameOf } = await import('../js/engine/fame.js');
+  lawyer('lawyer');
+  const before = fameOf().audiences.public ?? 0;
+  const big = lc.createCase('homicide', { role: 'defense' });
+  lc.close(big, { kind: 'acquitted', text: 'Not guilty.', favorable: 1, trial: true });
+  const small = lc.createCase('divorce');
+  const mid = fameOf().audiences.public;
+  lc.close(small, { kind: 'settlement', text: 'Settled.', favorable: 0.5 });
+  check(mid > before && fameOf().audiences.public === mid, 'a big public trial makes the lawyer better known; a private settlement does not');
+}
+
 // ---------- Procedural filings and their deadlines ----------
 {
   lawyer('lawyer');

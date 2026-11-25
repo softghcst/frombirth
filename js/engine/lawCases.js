@@ -13,7 +13,8 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES } from '../data/law.js';
+import { gain as fameGain } from './fame.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -55,7 +56,7 @@ export const note = (c, text) => c.history.push({ m: nowM(), year: store.state.y
 
 /** The roles a lawyer can hold in a case, by the side they are on. */
 const ROLE_FOR = { criminal: { defense: 'defense', prosecution: 'prosecution' }, family: 'petitioner', child: 'childAttorney', immigration: 'applicant', civil: 'plaintiff', transaction: 'counsel' };
-export const ROLE_NAME = { defense: 'Defense counsel', prosecution: 'Prosecutor', petitioner: 'Counsel for the petitioner', childAttorney: 'Attorney for the child',
+export const ROLE_NAME = { gal: 'Guardian ad litem', parentAttorney: 'Attorney for the parent', childProtection: 'Counsel for the child protection agency', defense: 'Defense counsel', prosecution: 'Prosecutor', petitioner: 'Counsel for the petitioner', childAttorney: 'Attorney for the child',
   juvenileDefense: 'Juvenile defense counsel', applicant: 'Counsel for the applicant', plaintiff: 'Counsel for the plaintiff', counsel: 'Lead counsel', agency: 'Counsel for the agency', clinic: 'Student attorney (supervised)' };
 
 /** A party: a persistent person, kept in the justice world's people. */
@@ -128,7 +129,13 @@ export function createCase(templateId, o = {}) {
       c.parties.childId = kid.id;
       c.vars.child = first(kid.id);
       c.vars.childAge = String(kid.age);
-      if (T.kind === 'child') { c.clientId = kid.id; c.vars.client = nameOf(kid.id); }
+      if (T.kind === 'child') {
+        // Who the lawyer acts for depends on the role: the child, the parent, the agency, or (a guardian ad litem) nobody
+        // as client, advising the court on the child's interests.
+        if (role === 'parentAttorney') { c.clientId = other.id; c.vars.client = nameOf(other.id); }
+        else if (role === 'childProtection' || role === 'gal') { c.clientId = null; c.vars.client = nameOf(kid.id); c.parties.wardId = kid.id; }
+        else { c.clientId = kid.id; c.vars.client = nameOf(kid.id); }
+      }
       c.vars.years = String(couple && client.flags.weddingYear ? Math.max(1, store.state.year - client.flags.weddingYear) : rng.int(6, 22));
       c.otherCounselId = party(countryId, { title: 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
     } else if (T.kind === 'immigration') {
@@ -228,8 +235,8 @@ export const STAGE_NAME = { intake: 'Intake', discovery: 'Discovery', pretrial: 
   disclosure: 'Financial disclosure', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody evaluation', review: 'Case review', services: 'Family services',
   interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Pleadings', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
   distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed', record: 'The trial record', briefing: 'Briefing', argument: 'Oral argument' };
-/** The side's evidence: for the defense, what favors the client; for a prosecutor, what the state relies on. */
-const ours = (c, e) => (c.role === 'prosecution' ? e.favors === 'other' : e.favors === 'client');
+/** The side's evidence: for the defense, what favors the client; for a prosecutor (or the agency's counsel), what the state relies on. */
+const ours = (c, e) => (c.role === 'prosecution' || CHILD_ROLES[c.role]?.side === 'other' ? e.favors === 'other' : e.favors === 'client');
 const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
 /** Where a case is held, in words. */
 export function forumName(c) {
@@ -299,7 +306,7 @@ export function review(c) {
   return result(true, weak.length ? `Worth a closer look: ${weak.map((e) => e.label.charAt(0).toLowerCase() + e.label.slice(1)).join('; ')}.` : 'Nothing in the file looks weak.', 'neutral');
 }
 /** The research question. A right answer makes the filing and the argument stronger; a wrong one costs a little. */
-export function researchQuestion(c) { const T = template(c); return T.research ? { text: fill(T.research.text, c), options: T.research.options.map((o) => fill(o, c)), right: T.research.right, why: fill(T.research.why, c) } : null; }
+export function researchQuestion(c) { const T = { ...template(c), ...(CHILD_ROLES[c.role]?.research && c.templateId === 'dependency' ? { research: CHILD_ROLES[c.role].research } : {}) }; return T.research ? { text: fill(T.research.text, c), options: T.research.options.map((o) => fill(o, c)), right: T.research.right, why: fill(T.research.why, c) } : null; }
 export function research(c, answer) {
   if (c.research) return result(false, 'You have researched it.', 'neutral');
   const rq = researchQuestion(c);
@@ -764,6 +771,8 @@ export function close(c, out, lines = []) {
   // stay restricted to the lawyer; descendants see that there was a case, not whose.
   const open = out.trial && ['criminal', 'civil'].includes(c.kind);
   if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'First case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
+  // A big public case puts a lawyer's name in the papers (engine/fame.js): fame, which is not the same as a good name.
+  if (open && (c.level >= 4 || c.prominent)) { fameGain({ audience: 'public', amount: c.prominent ? 5 : 3, countryId: c.countryId, lasting: 0.2, why: `${c.title}` }, p); L.rep.recognition = clamp(L.rep.recognition + 2); }
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.

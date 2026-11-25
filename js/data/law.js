@@ -682,6 +682,18 @@ export const PROCEDURE = {
   ],
 };
 
+/**
+ * The roles in a child welfare case are different jobs. An attorney for the child argues for what the child wants; a
+ * guardian ad litem (not always a lawyer) advises on the child's best interests; a parent's attorney works for the
+ * parent; government counsel acts for the child protection agency.
+ */
+export const CHILD_ROLES = {
+  childAttorney: { name: 'Attorney for the child', side: 'client' },
+  gal: { name: 'Guardian ad litem', side: 'client', research: q('As guardian ad litem for {child}, what do you put to the court?', ['Your own assessment of {child}\'s best interests, with their wishes reported too', 'Only what {child} says they want', 'What the parents want', 'What the agency wants'], 0, 'A guardian ad litem advises on best interests. The child\'s wishes are reported, but the guardian\'s view is their own.') },
+  parentAttorney: { name: 'Attorney for the parent', side: 'client', research: q('You represent {other}, the parent. What does the court usually look for before a child goes home?', ['Whether the safety concerns have been addressed, often through a service plan', 'Whether the parent is wealthy', 'Whether the child likes the parent best', 'Nothing: children always go home'], 0, 'Reunification usually turns on whether the reasons for the case have been dealt with, through services.') },
+  childProtection: { name: 'Counsel for the child protection agency', side: 'other', research: q('For the agency, what must you show the court?', ['That there is a real safety concern, and that the plan proposed answers it', 'That the parents are unpleasant', 'That the child should never go home', 'Nothing: the agency is always right'], 0, 'The agency must show the concern and a proportionate plan. Its counsel has duties to the court as well as to the agency.') },
+};
+
 /** Which templates suit a level of experience: complexity 1-5. */
 export const COMPLEXITY = ['', 'Introductory', 'Developing', 'Experienced', 'Senior', 'High stakes'];
 

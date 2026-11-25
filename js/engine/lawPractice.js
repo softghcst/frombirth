@@ -162,6 +162,8 @@ function openCase(p, templateId, o = {}) {
   const L = lawOf(p);
   const t = trackOf(p);
   const sup = o.second ? supervisor(p) : null;
+  // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
+  if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
   const c = cases.createCase(templateId, { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t });
   c.second = !!o.second;
   if (o.prominent) { c.prominent = o.prominent; c.level = Math.max(c.level, o.level ?? c.level); }
@@ -543,7 +545,7 @@ export function storyBeats(p = player()) {
     if (c.templateId === 'divorce' && L.seen.law_marriage_apart == null) { L.seen.law_marriage_apart = nowM(); caseScene('law_marriage_apart', c); }
     if (c.templateId === 'custody' && ['negotiation', 'evaluation'].includes(st)) caseScene('law_parenting', c);
     if (c.kind === 'family' && st === 'negotiation') caseScene('law_settlement_conf', c);
-    if (c.templateId === 'dependency' && c.awaiting) caseScene('law_childs_future', c);
+    if (c.templateId === 'dependency' && c.role === 'childAttorney' && c.awaiting) caseScene('law_childs_future', c);
     if (c.templateId === 'family_petition' && st === 'review') caseScene('law_rfe', c);
     if (c.templateId === 'removal' && c.awaiting) caseScene('law_hearing_approaches', c);
     if (c.clientId && c.negotiation.offers.some((o) => !o.accepted) && rng.chance(0.4)) caseScene('law_wont_listen', c);
