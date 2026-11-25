@@ -24,6 +24,7 @@ import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import * as research from '../js/engine/medicine/research.js';
 import * as jobs from '../js/engine/medicine/jobs.js';
+import * as story from '../js/engine/medicine/story.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
@@ -558,6 +559,27 @@ section('choosing where to work: the country\'s hospitals, a profile, an offer, 
   check(jm2.license.status === 'full' && jm2.training?.kind === 'internship' && jm2.training.years === 2, `in the Japan profile, the license at graduation and two supervised years (${jm2.license.status}, ${jm2.training?.kind} ${jm2.training?.years})`);
 }
 section('another country: its own route, words and license, marked simplified');
+
+// 8g. The Story Director: one beat a year, each once, each about the real life (and a real case, for a specialty).
+{
+  for (const id of story.STORY_BEATS) check(!!EVENT_BY_ID[id], `story beat ${id} has a scene`);
+  rng.seed(2222);
+  const q = life('us', 34);
+  const sm = core.M(q);
+  strong(sm);
+  sm.completed.push({ specialtyId: 'pediatrics', kind: 'residency', from: 2000, to: 2003 });
+  sm.license = { status: 'full', countryId: 'us' };
+  train.startPost('pediatrics', trainingSites('pediatrics', q.countryId, q.city)[0].e.id, 'attending');
+  store.state.pendingEvents = [];
+  const told = story.storyYear(q, sm);
+  check(!!told && !story.storyYear(q, sm), `one beat a year (${told})`);
+  const ev = store.state.pendingEvents.find((x) => x.id === told);
+  if (ev?.cast?.words?.caseId) check(sm.caseIds.includes(ev.cast.words.caseId), 'a case beat is about one of this year\'s real cases');
+  const seen = new Set([told]);
+  for (let i = 0; i < 6; i++) { year(); const t = Object.keys(sm.scenes).filter((k) => k.startsWith('story:med_') && sm.scenes[k] === store.state.year).map((k) => k.slice(6)); for (const x of t) { check(!seen.has(x), `beat ${x} told once`); seen.add(x); } }
+  check(seen.size >= 3, `the beats unfold over the years (${[...seen].join(', ')})`);
+}
+section('the Story Director: one beat a year, each once, about the real life');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

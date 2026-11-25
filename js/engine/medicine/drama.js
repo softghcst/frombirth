@@ -22,6 +22,8 @@ import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputat
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
 import { doResearch } from './research.js';
+import { practices } from './practice.js';
+import * as biz from '../business.js';
 import { employer, chronicle } from '../employers.js';
 import { SPECIALTY_BY_ID, DEPARTMENTS } from '../../data/medicine.js';
 import { workplacesFor, hospital, hospitalsIn } from './hospitals.js';
@@ -347,6 +349,10 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'cover') p.career.stress = clamp((p.career.stress ?? 50) + 6);
       return '';
     }
+    case 'story':
+      if (how === 'teach') return doResearch('teach').text;
+      if (how === 'expand') { const b = practices(m).find((x) => x.sites === 1); return b ? biz.expand(b).text : ''; }
+      return '';
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

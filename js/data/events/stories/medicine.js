@@ -167,6 +167,112 @@ export default [
     ['Propose cuts that do not touch patient care', 'Your proposal is dull and careful, and it is the one they adopt.', 'politics:cut', 'good'],
     ['Defend your own department hard', 'You protect your people this year. Other departments remember.', 'politics:protect'],
   ]),
+  // The Story Director's beats (engine/medicine/story.js): each once, each about the real life and its real patients.
+  scene('med_first_patient', 'Your first patient of your own: {patient}, {label}. The chart is thin, the waiting room is full, and they are looking at you as if you know what to do.', [
+    ['Sit down, introduce yourself, and listen first', 'You learn more in five minutes of listening than in the whole chart. The case is waiting in My Medical Career.', 'skill:communication:1.5', 'good'],
+    ['Go straight to the examination', 'Efficient. You will go back for the history.', 'skill:reasoning:0.5'],
+  ]),
+  scene('med_unexpected_result', 'A result comes back for {patient} that nobody expected, and it does not fit the story you had in your head.', [
+    ['Go back to the beginning: history, examination, the differential', 'The answer was in the history all along. Work the case through in My Medical Career.', 'skill:reasoning:2', 'good'],
+    ['Repeat the test and hope it was wrong', 'Sometimes it is. This time you will have to think.', 'skill:reasoning:0.5'],
+  ]),
+  scene('med_senior_advice', '{mentor} stops you in the corridor. "Can I give you one piece of advice? Nobody gave it to me."', [
+    ['"Please."', '"Write down what you were worried about, every time. In a year, read it back." You start a notebook that night.', 'skill:professionalism:1.5', 'good'],
+    ['Say you are in a hurry', '"Another time, then." There is not another time for a while.', null],
+  ]),
+  scene('med_patient_returned', '{patient} is back, as planned, and remembers exactly what you said last time.', [
+    ['Ask how the plan has been going for them, honestly', 'They tell you what worked and what did not. Follow-up is where care is done.', 'skill:communication:1.5', 'good'],
+    ['Pick up where the notes left off', 'Fine. You could have learned more.', null],
+  ]),
+  scene('med_challenging_dx', '{patient}: {label}. Three people have seen them already, and nobody has an answer.', [
+    ['Start again from nothing, as if nobody had seen them', 'A fresh look finds what familiarity missed. The case is in My Medical Career.', 'skill:reasoning:2', 'good'],
+    ['Ask a colleague to look with you', 'Two heads, and a better differential.', 'skill:teamwork:1.5', 'good'],
+  ]),
+  scene('med_consultation', '{patient} needs another specialist\'s opinion: {label}. You write the referral.', [
+    ['Write the question you actually need answered, and call them too', 'The consultant calls back within the hour. It saves the patient a week.', 'skill:teamwork:1.5', 'good'],
+    ['Send the standard form', 'It gets there. Eventually.', null],
+  ]),
+  scene('med_handoff', 'Handoff at the end of a long shift: a dozen patients, a tired colleague coming on, and one patient you are worried about.', [
+    ['Go through every patient properly, and say out loud who worries you', 'It takes twenty minutes longer. At three in the morning, your colleague is glad.', 'skill:teamwork:2', 'good'],
+    ['Give the quick version: you need to go home', 'You go home. You think about that one patient on the drive.', 'skill:professionalism:-1', 'bad'],
+  ]),
+  scene('med_case_conference', 'Case conference: a difficult case, every department in one room, and the chief asks you to present.', [
+    ['Present it straight, including what you got wrong', 'The room respects it. Three people tell you so afterward.', 'skill:integrity:1.5', 'good'],
+    ['Present the version that makes the team look good', 'It goes smoothly. Nobody learns much.', null],
+  ]),
+  scene('med_beat_or', 'The operating room. {patient} is on the list today: {label}. The team is waiting for you to begin the checklist.', [
+    ['Lead the checklist properly, every name and every step', 'It feels slow. It is how operating rooms stay safe. The case is in My Medical Career.', 'skill:teamwork:1.5', 'good'],
+    ['Skip ahead: everyone knows the routine', 'Nothing goes wrong today.', 'skill:professionalism:-1', 'bad'],
+  ]),
+  scene('med_beat_athlete', '{patient} wants to know one thing: when they can play again. It is {label}, and the season starts in a month.', [
+    ['Explain honestly what recovery takes, and plan it together', 'They do not like the answer. They trust it.', 'skill:communication:1.5', 'good'],
+    ['Tell them what they want to hear', 'They leave happy, for now.', 'skill:integrity:-1.5', 'bad'],
+  ]),
+  scene('med_beat_child', 'A frightened child, {patient}, and a parent more frightened still: {label}.', [
+    ['Kneel down, talk to the child first, then the parent', 'The child stops crying long enough to be examined. The case is in My Medical Career.', 'skill:communication:2', 'good'],
+    ['Talk over the child to the parent', 'You get the history. The child gets nothing.', null],
+  ]),
+  scene('med_beat_emergency', 'An emergency arrives: {patient}, {label}. The doors open and the room fills.', [
+    ['Take charge calmly: one voice, clear roles', 'The team settles. The case is in My Medical Career.', 'skill:leadership:1.5', 'good'],
+    ['Do everything yourself', 'You are fast. Nobody knows what anybody else is doing.', 'skill:teamwork:-1'],
+  ]),
+  scene('med_beat_long_term', '{patient} has been coming to see you for a while now: {label}. Some months are better than others.', [
+    ['Keep showing up, and say so', 'Continuity is a treatment too.', 'skill:communication:1.5', 'good'],
+    ['Suggest they see someone new', 'Sometimes a fresh start helps. Sometimes it is just leaving.', null],
+  ]),
+  scene('med_beat_newborn', 'A newborn check: {patient}, a few days old, and two exhausted parents with a list of questions.', [
+    ['Answer every question, however small', 'They write everything down. They will remember this visit.', 'skill:communication:1.5', 'good'],
+    ['Cover the essentials and move on', 'They have more questions in the car.', null],
+  ]),
+  scene('med_beat_pregnancy', 'A pregnancy that is not going to plan: {patient}, {label}.', [
+    ['Explain the options plainly, and let them choose', 'It is their decision, made with good information. The case is in My Medical Career.', 'skill:communication:2', 'good'],
+    ['Tell them what you would do', 'They agree, without quite understanding.', null],
+  ]),
+  scene('med_beat_scan', 'A finding on the scan for {patient}: {label}. The team that asked for it is waiting for your report.', [
+    ['Call the team, and say what it means and what it does not', 'The report changes the plan. That is what a report is for.', 'skill:teamwork:1.5', 'good'],
+    ['Write it up and move to the next one', 'The report is accurate. Someone reads it tomorrow.', null],
+  ]),
+  scene('med_beat_foot', 'The foot and ankle clinic: {patient}, {label}. They have been walking on it for months.', [
+    ['Look at how they walk, and at their shoes, before anything else', 'The answer is half in the shoes. The case is in My Medical Career.', 'skill:reasoning:1.5', 'good'],
+    ['Go straight to imaging', 'The pictures are clear. They do not show the gait.', null],
+  ]),
+  scene('med_beat_specialist', 'A colleague asks for your opinion as the specialist: {patient}, {label}.', [
+    ['See the patient yourself before you give it', 'An opinion is worth more with a patient behind it.', 'skill:reasoning:1.5', 'good'],
+    ['Advise from the notes', 'Quick. Not quite right.', null],
+  ]),
+  scene('med_chief_resident', 'You are chief resident: the schedule, the complaints, the new interns, and your own patients still.', [
+    ['Make the schedule fair, and say how you did it', 'Nobody loves the schedule. Nobody calls it unfair.', 'skill:leadership:2', 'good'],
+    ['Look after your friends first', 'Your friends are pleased. Everyone else notices.', 'skill:integrity:-2', 'bad'],
+  ]),
+  scene('med_invite_teach', 'The medical school asks whether you would teach a group of students this year.', [
+    ['Say yes', 'Every Thursday, six students and a list of questions you have not thought about in years.', 'story:teach', 'good'],
+    ['Not this year', 'They will ask again.', null],
+  ]),
+  scene('med_clinic_idea', 'A colleague who left to open a practice of their own calls you. "You should do it too. It is hard, and it is yours."', [
+    ['Start looking at what it would take', 'You open My Medical Career and look at the practice options.', null, 'good'],
+    ['Say you are happy where you are', 'You are, mostly.', null],
+  ]),
+  scene('med_first_month_practice', 'The first month at {clinic}: a new sign on the door, a waiting room that is not yet full, and every bill addressed to you.', [
+    ['See every patient as if the practice depends on it', 'It does. Word gets around.', 'skill:communication:1', 'good'],
+    ['Spend the quiet hours on the business side', 'The books are in order by the end of the month.', 'skill:management:1.5'],
+  ]),
+  scene('med_first_hire', '{clinic} needs its first employee. You have never hired anyone before.', [
+    ['Hire for kindness and reliability first', 'Run the hiring from Work, Business. Your first hire sets the tone.', 'skill:management:1', 'good'],
+    ['Hire whoever is cheapest', 'Savings now. You will see.', null],
+  ]),
+  scene('med_practice_growing', '{clinic} is full most days, and patients are waiting weeks. You could open a second site.', [
+    ['Open a second site', 'You sign the lease.', 'story:expand', 'good'],
+    ['Stay one site and do it well', 'Bigger is not always better. You hire one more person instead.', null],
+  ]),
+  scene('med_hard_year', '{clinic} lost money this year. The accountant would like a word.', [
+    ['Look hard at costs, never at patient care', 'You cut what does not touch the patients. It is enough.', 'skill:management:2', 'good'],
+    ['See more patients, faster', 'More money. Shorter visits. Patients notice.', 'skill:communication:-1', 'bad'],
+  ]),
+  scene('med_new_chapter', 'You have practiced medicine for most of your life. Lately you have been wondering what the last chapter should be.', [
+    ['Teach: pass on what you know', 'You start mentoring the youngest doctors in the department.', 'skill:leadership:1', 'good'],
+    ['Slow down: fewer hours, more life', 'You ask for a lighter schedule. Your family notices before you do.', 'strain:hours'],
+    ['Carry on exactly as you are', 'You love this work. There is no rule that says you must stop.', null],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],
