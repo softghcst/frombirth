@@ -252,6 +252,12 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_04_royal_ceremonial", "file": "avatars/clothes/outfit_kid_04_royal_ceremonial.svg", "label": "Kid royal ceremonial", "tags": {"royal": true}},
     {"id": "outfit_kid_05_royal_velvet_cape", "file": "avatars/clothes/outfit_kid_05_royal_velvet_cape.svg", "label": "Kid royal velvet cape", "tags": {"royal": true}},
     {"id": "outfit_kid_06_heir_jacket", "file": "avatars/clothes/outfit_kid_06_heir_jacket.svg", "label": "Kid heir jacket", "tags": {"royal": true}},
+    {"id": "outfit_kid_07_princess_dress", "file": "avatars/clothes/outfit_kid_07_princess_dress.svg", "label": "Kid princess dress", "tags": {"royal": true}},
+    {"id": "outfit_kid_08_princess_sailor", "file": "avatars/clothes/outfit_kid_08_princess_sailor.svg", "label": "Kid princess sailor", "tags": {"royal": true}},
+    {"id": "outfit_kid_09_princess_pinafore", "file": "avatars/clothes/outfit_kid_09_princess_pinafore.svg", "label": "Kid princess pinafore", "tags": {"royal": true}},
+    {"id": "outfit_kid_10_princess_ceremonial", "file": "avatars/clothes/outfit_kid_10_princess_ceremonial.svg", "label": "Kid princess ceremonial", "tags": {"royal": true}},
+    {"id": "outfit_kid_11_princess_capelet", "file": "avatars/clothes/outfit_kid_11_princess_capelet.svg", "label": "Kid princess capelet", "tags": {"royal": true}},
+    {"id": "outfit_kid_12_heir_princess_starry", "file": "avatars/clothes/outfit_kid_12_heir_princess_starry.svg", "label": "Kid heir princess starry", "tags": {"royal": true}},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
