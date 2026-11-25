@@ -27,6 +27,7 @@
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
 import { BABY_HAIR_FIT } from './avatar/babyHairFit.js';
+import { KID_HAIR_FIT } from './avatar/kidHairFit.js';
 import { CHILD_CLOTHES_FIT, CHILD_NECKLINE } from './avatar/childClothesFit.js';
 import { CLOTHES_SNAP } from './avatar/clothesSnap.js';
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
@@ -152,6 +153,9 @@ export function dressFor(look, ctx = {}) {
     out.eyes = babyEyes(out.eyes, gender);  // children keep the round toddler eyes (curation.BABY_EYES) until the grown-up head at 14
     // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
     if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
+    // Hair drawn for the kid head (curation.KID_HAIR), once there is some for this child's gender and hair: worn in place of
+    // any other style, unless they are bald or already wear one of them.
+    if (out.hair && look.kidDrawnHair && !/^hair_kid_/.test(out.hair)) out.hair = look.kidDrawnHair;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     // Children's clothes until 14, when the kid head ends: never a grown-up's outfit (resolveLook's kidClothes).
@@ -220,8 +224,8 @@ const clothesLayer = (id, headId, extra = '') => {
  */
 /** Children's clothes, drawn on a template of the child's own head (assets/clothes_templates/): already in place, drawn as they are. */
 const ASDRAWN = /^outfit_(baby|kid)_/;
-/** A baby's hair, drawn on the baby template: placed as drawn. */
-const BABY_HAIR_DRAWN = /^hair_baby_/;
+/** A baby's or a kid's hair, drawn on the baby or kid template: placed as drawn. */
+const BABY_HAIR_DRAWN = /^hair_(baby|kid)_/;
 /** A child's outfit worn a little wider or taller than drawn, to cover the shoulders (scripts/fit-child-clothes.mjs). */
 const childFit = (id) => {
   const k = CHILD_CLOTHES_FIT[id];
@@ -426,8 +430,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const faceStage = ageStage(ctx.age ?? 25) === 'adult' && (ctx.age ?? 25) < 18 ? 'teen' : ageStage(ctx.age ?? 25);
   const f = fitTransforms(d.head, faceStage, look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
-  // A baby's hair is drawn on the baby template, where it belongs: as it is (BABY_HAIR_DRAWN).
-  const bf = BABY_HAIR_FIT[d.hair];
+  // A baby's or kid's hair is drawn on that child's template, where it belongs: as it is (BABY_HAIR_DRAWN), snapped onto the skull.
+  const bf = BABY_HAIR_FIT[d.hair] ?? KID_HAIR_FIT[d.hair];
   const hairAt = BABY_HAIR_DRAWN.test(d.hair ?? '') ? (bf ? ` transform="translate(${bf.cx} ${bf.ay}) scale(${bf.sx} ${bf.sy}) translate(${-bf.cx} ${-bf.ay})"` : '') : hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
   // again, squeezed toward it, so the two halves still meet along it.

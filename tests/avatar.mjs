@@ -826,6 +826,23 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
   }
 }
 
+const { KID_HAIR_FIT: KID_FIT } = await import('../js/avatar/kidHairFit.js');
+// Kid hair, by gender and texture, drawn on the kid template: worn from 7 to 13 only, placed as drawn, in the kid's own hair color.
+{
+  for (const [sex, byTex] of Object.entries(CUR.KID_HAIR)) for (const [tex, ids] of Object.entries(byTex)) for (const id of ids) {
+    check(PART_BY_ID[id]?.tags?.age === 'kid', `${id} exists, as a kid's hair`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(svg.includes('var(--hair-color'), `${id} takes the kid's hair color`);
+    const look = { ...resolveLook({ v: 3, inherited: { hairTexture: tex } }, 'kh', sex), kidDrawnHair: id };
+    const at = (age) => dressFor(look, { age, gender: sex }).hair;
+    check(at(10) === id && at(5) !== id && at(16) !== id, `${id} is a kid's (${sex}, ${tex}): worn at 10, not at 5 or 16`);
+    const kf = KID_FIT[id];
+    const out = characterAvatarSvg(look, { age: 10, gender: sex });
+    check(kf ? out.includes(`scale(${kf.sx} ${kf.sy})`) && kf.sx >= 0.9 && kf.sx <= 1.15 && kf.sy >= 0.9 && kf.sy <= 1.15
+      : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the kid head (${JSON.stringify(kf)})`);
+  }
+}
+
 // Royal children of 7 to 13 (the kid head) wear the royal kids' outfits drawn for them: princes the prince's tunic.
 {
   for (const g of ['male', 'female']) for (const rank of ['royal', 'heir']) for (const age of [7, 10, 13]) {

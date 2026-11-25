@@ -156,6 +156,15 @@ export const ELDER_HAIR = { female: [], male: [] };
  * and placed as drawn. Being redrawn: until styles are added here, a baby has no hair drawn.
  */
 export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fringe', 'hair_baby_straight_02_side_swoop', 'hair_baby_straight_03_fuzzy_crop'], wavy: ['hair_baby_wavy_01_wave_on_top', 'hair_baby_wavy_02_tousled', 'hair_baby_wavy_03_side_ripple'], curly: ['hair_baby_curly_01_curl_fringe', 'hair_baby_curly_02_soft_curls', 'hair_baby_curly_03_curl_tuft'], coily: ['hair_baby_coily_01_afro', 'hair_baby_coily_02_tiny_coils', 'hair_baby_coily_03_little_puff'] };
+/**
+ * Hair drawn for the kid head (7 to 13), on assets/clothes_templates/kid_hair_template.png: by gender, then by hair
+ * texture. A kid wears one that suits their texture (seeded, so it stays the same through childhood); while a list is
+ * empty they wear the older styles, as before.
+ */
+export const KID_HAIR = {
+  female: { straight: [], wavy: [], curly: [], coily: [] },
+  male: { straight: [], wavy: [], curly: [], coily: [] },
+};
 
 export const KID_OUTFITS = { any: [],
   female: ['outfit_kid_16_girl_rainbow_tee', 'outfit_kid_17_girl_striped_top', 'outfit_kid_18_girl_denim_jacket', 'outfit_kid_19_girl_cat_hoodie', 'outfit_kid_20_girl_strawberry_sweatshirt', 'outfit_kid_21_girl_gingham_dress', 'outfit_kid_22_girl_cardigan_dress', 'outfit_kid_23_girl_daisy_top', 'outfit_kid_24_girl_overall_dress', 'outfit_kid_25_girl_party_dress',
