@@ -22,8 +22,15 @@ import * as cases from '../js/engine/medicine/cases.js';
 import * as ladder from '../js/engine/medicine/ladder.js';
 import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
+import * as research from '../js/engine/medicine/research.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
+import { COUNTRIES } from '../js/data/countries.js';
+import * as biz from '../js/engine/business.js';
+import * as market from '../js/engine/employers.js';
+import { makeNpc } from '../js/engine/npcFactory.js';
+import { die } from '../js/engine/death.js';
+import { continueAs } from '../js/engine/legacy.js';
 
 rng.seed(20261125);
 const problems = [];
@@ -53,7 +60,12 @@ function workCase(c, quality = 'best') {
   const order = quality === 'best' ? [...rank].reverse() : rank;
   const usable = v.plans.filter((x) => !x.block);
   const plan = order.map((q) => usable.find((x) => fx.plans.find((y) => y.id === x.id).quality === q)).find(Boolean);
-  const r = cases.choosePlan(c.id, plan.id);
+  let r = cases.choosePlan(c.id, plan.id);
+  // The operating room: the careful choice is listed first at every step; the careless one last.
+  for (let i = 0; i < 8 && core.W().cases[c.id].status === 'or'; i++) {
+    const opts = cases.caseView(c.id).or.step.options.filter((o) => o.id !== 'transfer');
+    r = cases.orStep(c.id, (quality === 'best' ? opts[0] : opts[opts.length - 1]).id);
+  }
   if (fx.decision && core.W().cases[c.id].status === 'deciding') return cases.decide(c.id, fx.decision.options.find((o) => o.quality === 'best').id);
   return r;
 }
@@ -95,6 +107,7 @@ train.doPremed('research'); train.doPremed('volunteer'); train.doPremed('mentor'
 const chance = edu.admissionChance('medical');
 check(chance > 0.5, `premedical work and grades make medical school likely (${chance.toFixed(2)})`);
 check(career.unmet(CAREER_BY_ID.doctor).length > 0, 'without medical school, a doctor\'s job is closed');
+check(edu.applyTo('medical').text.length > 0 && store.state.pendingEvents.some((e) => e.id === 'med_school_interview'), 'applying to medical school brings an interview');
 edu.enroll('medical', null, 'loan');
 check(p.education.stage === 'medical' && p.education.enrolled, 'enrolled at medical school');
 year();
@@ -123,6 +136,8 @@ check(!!m.training && m.training.kind === 'residency' && m.training.pgy === 1, `
 check(['doctor', 'surgery', 'psychiatry'].includes(p.career.careerId) && p.career.level === 0, 'a resident is paid at the first level of the career');
 check(/PGY-1/.test(p.career.title), `a first-year resident's title says PGY-1 (${p.career.title})`);
 check(m.people.supervisorIds.length > 0, 'a resident has a supervising physician');
+check(['med_school_interview', 'med_anatomy_exam', 'med_patient_remember', 'med_choosing_specialty', 'med_match_day', 'med_first_night'].every((id) => m.scenes[`story:${id}`]), `the story of becoming a doctor is told (${Object.keys(m.scenes).join(', ')})`);
+check(!core.storyOnce('med_first_night', {}, m), 'and each part of it only once');
 check(career.unmet(CAREER_BY_ID.doctor, { ignoreCurrent: true }).some((x) => /residency programs/.test(x)), 'physician jobs are not hired from the job board');
 section(`school and Match: matched into ${core.specialtyName(m.training?.specialtyId)} at ${p.career.employerId}`);
 
@@ -141,10 +156,11 @@ const pgyBefore = m.training.pgy;
 strong(m);
 year();
 check(m.training?.pgy === pgyBefore + 1 || m.completed.length, 'a residency moves one PGY year per world year');
-check(m.license.status === 'full', 'licensed after the first year of residency (US)');
+const startedTraining = m.training?.startYear ?? store.state.year - 1;
 check(res.every((c) => core.W().cases[c.id].status === 'closed'), 'unworked cases close at the end of the year, without the player');
 while (m.training && guard++ < 12) { strong(m); year(); }
 check(m.completed.some((c) => c.specialtyId === spec), `completed residency in ${spec}`);
+check(m.license.status === 'full' && m.license.since - startedTraining <= 3, `licensed after the first year of residency, or a retake later (${m.license.since - startedTraining})`);
 check(m.completed[0].to - m.completed[0].from === SPECIALTY_BY_ID[spec].years, 'a residency takes its full length');
 section(`residency complete: ${spec}, ${m.experience.cases} patients, license ${m.license.status}, boards ${m.boards.map((b) => b.passed).join()}`);
 
@@ -160,6 +176,12 @@ check(pr.find((o) => o.id === 'dermatology_clinic').block || spec === 'dermatolo
 if (mine) {
   const r = practice.openPractice(mine.id);
   check(r.ok && m.clinicIds.length === 1 && p.businesses.at(-1).medical?.practiceType === mine.id, `opened a practice: ${r.text}`);
+  const b = p.businesses.at(-1);
+  b.cash += 10000000;
+  biz.hire(b, 0); biz.hire(b, 0);
+  const titles = b.staff.map((x) => store.state.npcs[x.id].occupation);
+  check(titles[0] === 'staff nurse' && titles[1] === 'practice manager', `a practice is staffed like one (${titles.join(', ')})`);
+  check(biz.partnerOptions(b).every((n) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')), 'a practice takes physicians as partners');
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
 check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
@@ -216,6 +238,53 @@ section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} 
   }
   const mm = careless;
   check(drama.romanceAllowed({ age: 30, flags: { medRole: 'supervisor' }, role: 'coworker' }, mm) === false && drama.romanceAllowed({ age: 30, flags: { patient: true }, role: 'coworker' }, mm) === false, 'no romance with a supervisor or a patient');
+}
+{
+  rng.seed(606);
+  store.state = createLife({ countryId: 'us' });
+  const q = store.state.player; q.age = 40;
+  const pm = core.M(q);
+  pm.completed.push({ specialtyId: 'pediatrics', kind: 'residency', from: 2000, to: 2003 });
+  pm.job = { specialtyId: 'pediatrics', hospitalId: null, rank: 'attending', since: 2003 };
+  const kids = cases.caseload(pm, q).map((c) => cases.caseView(c.id)).filter((v) => v.guardian && v.patient.age < 16);
+  check(kids.length > 0 && kids.every((v) => v.family.length === 1 && v.family[0].as === 'parent or guardian'), 'a child patient comes with a parent or guardian');
+  const kinIds = Object.values(core.W().patients).flatMap((x) => (x.household ?? []).map((h) => h.id));
+  check(kinIds.every((id) => !q.npcIds.includes(id)), 'a patient\'s family is not added to the player\'s people');
+}
+// The operating room: a surgeon's case goes through consent, team, anesthesia, the unexpected and aftercare.
+{
+  const surgery = (choice) => {
+    rng.seed(2468);
+    store.state = createLife({ countryId: 'us' });
+    const q = store.state.player; q.age = 45;
+    const sm = core.M(q);
+    for (const k of Object.keys(sm.skills)) sm.skills[k] = 80;
+    const now = store.state.year;
+    const fx = CASES.find((x) => !x.triage && !x.decision && x.minYear <= now && x.plans.some((y) => y.quality === 'best' && y.procedure && PROCEDURE_BY_ID[y.procedure].major
+      && (SPECIALTY_BY_ID[x.specialty[0]].procedures ?? []).includes(y.procedure) && (y.minYear ?? 0) <= now && (y.maxYear ?? 9999) >= now));
+    sm.completed.push({ specialtyId: fx.specialty[0], kind: 'residency', from: 2000, to: 2005 });
+    sm.job = { specialtyId: fx.specialty[0], hospitalId: null, rank: 'attending', since: 2005 };
+    const pt = { id: 'pt_or', firstName: 'Pat', lastName: 'Case', age: 50, alive: true, flags: {} };
+    store.state.npcs[pt.id] = pt; core.W().patients[pt.id] = { id: pt.id, caseIds: [], bornYear: store.state.year - 50 };
+    const id = 'case_or';
+    core.W().cases[id] = { id, fixtureId: fx.id, patientId: pt.id, specialtyId: fx.specialty[0], role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    sm.caseIds.push(id);
+    cases.setDiagnosis(id, fx.diagnosis);
+    cases.choosePlan(id, fx.plans.find((y) => y.quality === 'best').id);
+    const went = core.W().cases[id].status === 'or';
+    core.W().cases[id].or.complication = true;
+    const steps = [];
+    while (core.W().cases[id].status === 'or') {
+      const v = cases.caseView(id).or;
+      steps.push(v.step.id);
+      cases.orStep(id, v.step.id === 'complication' ? choice : v.step.options[0].id);
+    }
+    return { went, steps, outcome: core.W().cases[id].outcome, integrity: sm.skills.integrity };
+  };
+  const careful = surgery('pause');
+  const rushed = surgery('press');
+  check(careful.went && careful.steps.join() === 'consent,team,anesthesia,complication,after', `an operation goes through the operating room (${careful.steps.join()})`);
+  check(careful.outcome.points > rushed.outcome.points && rushed.integrity < careful.integrity, 'meeting a complication as a team does better than pressing on');
 }
 section('drama and outcomes kept apart; unsafe care is not rewarded');
 
@@ -283,6 +352,150 @@ section(`turn lengths: PGY ${a12.pgy}, ${a12.cases} cases over two years at ever
   check(gs.player.medicine.reapply === false && !gs.player.medicine.training, 'a graduate in other work is not pulled into residency');
 }
 section('saves: idempotent migration, no duplicate cases, no invented past');
+
+// 8b. Applying nationwide can mean moving; applying at home does not.
+{
+  const graduate = (local) => {
+    rng.seed(local ? 8 : 9);
+    const q = life('us', 26);
+    q.city = COUNTRIES.us.cities[COUNTRIES.us.cities.length - 1];
+    const mm = core.M(q);
+    for (const k of Object.keys(mm.skills)) mm.skills[k] = 95;
+    q.stats.intellect = 99;
+    mm.stage = 'graduate'; mm.school = { name: 'medical school', year: 4, rotations: [], exams: { step1: { pass: true, score: 95 }, step2: { pass: true, score: 95 } }, interest: { internal: 10 }, apply: ['internal'], graduated: true };
+    mm.local = local; mm.premed.letters = 5;
+    const from = q.city;
+    train.runMatch('residency', ['internal']);
+    return { from, to: q.city, at: market.employer(q.career.employerId)?.city, matched: !!mm.training };
+  };
+  const home = graduate(true);
+  check(home.matched && home.to === home.from && home.at === home.from, 'applying only at home keeps the player in their city');
+  const away = graduate(false);
+  check(away.matched && away.at === away.to && away.to !== away.from, `a nationwide place is taken where it is, moving if need be (${away.from} → ${away.to})`);
+}
+section('the Match: at home, or nationwide with a move');
+
+// 8c. Teaching residents, and claims after care below the standard.
+{
+  rng.seed(4321);
+  const q = life('us', 40);
+  const mm = core.M(q);
+  strong(mm);
+  mm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+  mm.license = { status: 'full', countryId: 'us' };
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startPost('internal', site.e.id, 'attending');
+  year();
+  const trainees = (mm.people.traineeIds ?? []).map((id) => store.state.npcs[id]);
+  check(trainees.length === 2 && trainees.every((n) => n.flags.medRole === 'trainee'), 'an attending at a teaching hospital supervises residents');
+  check(trainees.every((n) => !drama.romanceAllowed(n, mm)), 'and romance with someone you supervise is ruled out');
+  mm.claims = [{ caseId: 'x', year: store.state.year, status: 'open', below: true }, { caseId: 'y', year: store.state.year, status: 'open', below: false }];
+  const marks = mm.discipline.length;
+  year();
+  check(mm.claims[0].status === 'upheld' && mm.claims[1].status === 'dismissed' && mm.discipline.length === marks + 1, 'a claim is upheld only where care fell below the standard');
+  // A leadership seat can go to someone else; retiring writes the career down.
+  const rival = makeNpc({ role: 'coworker', countryId: q.countryId, age: 41 });
+  rival.life = { edu: { stage: 'done', gpa: 3.5, majorId: 'biology', trade: null, degrees: [], yearsLeft: 0 }, job: { careerId: 'doctor', level: 1, title: 'Physician', salary: 0, years: 5, employerId: q.career.employerId },
+    savings: 0, aspiration: null, partnerId: null, together: 0, married: false, kids: 0, history: [] };
+  rival.meters.intellect = 99; store.state.npcs[rival.id] = rival; q.npcIds.push(rival.id);
+  mm.people.rivalIds = [rival.id];
+  mm.job.rank = 'senior'; mm.job.rankSince = store.state.year - 10;
+  for (const k of Object.keys(mm.skills)) mm.skills[k] = 90;
+  let lost = false;
+  for (let i = 0; i < 12 && !lost && mm.job?.rank === 'senior' && !mm.offer; i++) { year(); lost = /went to .*rival/.test(JSON.stringify(store.state.journal ?? store.state.log ?? '')) || rival.flags.title === 'Medical director'; }
+  check(lost || !!mm.offer || mm.job?.rank !== 'senior', 'a leadership seat is contested, and either goes to someone or is offered');
+  q.age = 66;
+  check(career.retire().ok, 'a physician can retire');
+  year();
+  check(mm.stage === 'retired' && mm.history.some((h) => /Retired from medicine/.test(h.text)), 'retiring from medicine is recorded');
+}
+section('teaching residents; claims decided on the care, not the result');
+
+// 8d. Research, wellbeing, and an offer from another city.
+{
+  rng.seed(1357);
+  const q = life('us', 38);
+  q.city = COUNTRIES.us.cities[0];
+  const rm = core.M(q);
+  strong(rm);
+  rm.skills.research = 90;
+  rm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+  rm.license = { status: 'full', countryId: 'us' };
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startPost('internal', site.e.id, 'attending');
+  check(research.researchOptions(rm, q).find((o) => o.id === 'faculty').block, 'a faculty post needs published work first');
+  check(research.doResearch('project').ok && !research.doResearch('project').ok, 'a research project is joined once a year');
+  check(research.doResearch('teach').ok, 'an attending at a teaching hospital teaches students');
+  let papers = 0;
+  for (let i = 0; i < 8; i++) { year(); if (rm.research.projects.length < 2) research.doResearch('project'); research.doResearch('teach'); papers = rm.research.papers.length; }
+  check(papers >= 1 && papers <= 8, `research takes years and is not guaranteed (${papers} papers in eight years)`);
+  // A hard stretch brings support, not a reward for pushing through.
+  q.career.stress = 92;
+  store.state.pendingEvents = [];
+  rm.scenes = {};
+  drama.dramaYear();
+  check(store.state.pendingEvents.some((e) => e.id === 'med_strain'), 'a hard stretch is noticed');
+  const before = q.career.stress;
+  drama.medicineChoice('strain:support');
+  check(q.career.stress < before, 'and support helps');
+  // An offer elsewhere: taking it moves the player and the post.
+  const other = COUNTRIES.us.cities.find((c) => c !== q.city);
+  const there = hospitalsIn('us', other).find(({ h }) => h.depts.includes('medicine'));
+  rm.awayOffer = { hospitalId: there.e.id, city: other, year: store.state.year };
+  drama.medicineChoice('away:accept');
+  check(q.city === other && rm.job?.hospitalId === there.e.id && !rm.awayOffer, `an offer in ${other} accepted moves the post there`);
+  const integrity0 = rm.skills.integrity;
+  drama.medicineChoice('record:refuse');
+  check(rm.skills.integrity > integrity0, 'refusing to alter a record is integrity');
+  const integrity1 = rm.skills.integrity;
+  drama.medicineChoice('gift:accept');
+  check(rm.skills.integrity < integrity1, 'accepting a gift from industry is a conflict of interest');
+}
+section('research and teaching, wellbeing, and an offer from another city');
+
+// 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
+{
+  rng.seed(31337);
+  const doc = life('us', 60);
+  const mm = core.M(doc);
+  strong(mm);
+  const site = trainingSites('family', doc.countryId, doc.city)[0];
+  train.startTraining('residency', 'family', site.e.id);
+  cases.caseload(mm, doc);
+  for (let i = 0; i < 4; i++) { strong(mm); year(); }
+  check(mm.completed.length === 1, 'the parent finished residency');
+  const hosp = mm.completed[0].hospitalId;
+  const patients = mm.caseIds.map((id) => store.state.npcs[core.W().cases[id]?.patientId]?.firstName).filter(Boolean);
+  const kid = makeNpc({ role: 'child', countryId: doc.countryId, age: 14 }); store.state.npcs[kid.id] = kid; doc.npcIds.push(kid.id);
+  const name = `${doc.firstName} ${doc.lastName}`;
+  die('old age');
+  const next = continueAs(kid.id);
+  check(!!next, 'a doctor\'s child carries the family on');
+  if (next) {
+    const anc = Object.values(next.archive.people).find((a) => `${a.firstName} ${a.lastName}` === name);
+    check(!!anc?.medicine && anc.medicine.trained[0]?.specialtyId === 'family', 'the Family Archive keeps the physician\'s training');
+    const text = JSON.stringify(anc?.medicine ?? {});
+    check(!patients.some((n) => text.includes(`"${n}"`)) && !('caseIds' in (anc?.medicine ?? {})), 'and nothing about any patient');
+    check(Object.keys(next.medicine?.cases ?? {}).length === 0 && Object.keys(next.medicine?.patients ?? {}).length === 0, 'patient files are not inherited');
+    check(!next.player.medicine, 'a child inherits no medical record or license');
+    const fam = core.medicalFamily(next.player, next);
+    check(fam?.archived && fam.name === anc.firstName, `the heir has a doctor in the family archive (${JSON.stringify(fam)})`);
+    store.state.pendingEvents = [];
+    advanceYear();
+    check(store.state.pendingEvents.some((e) => e.id === 'med_family_calling') || next.player.flags.medFamilyScene, 'a doctor\'s child is asked, once, whether medicine is for them');
+    store.state.pendingEvents = [];
+    const heir = store.state.player;
+    heir.age = 22; heir.education.enrolled = false; heir.education.stage = 'none';
+    heir.education.degrees.push({ type: 'university', majorId: 'biology', gpa: 3.8, age: 22 });
+    check(train.premedOptions().some((o) => o.id === 'family_talk'), 'premed: the family\'s papers can be read');
+    check(train.doPremed('family_talk').ok, 'and reading them counts toward an application');
+    const hm = core.M(heir);
+    strong(hm);
+    train.startTraining('residency', 'internal', hosp);
+    check(events((e) => /had worked before/.test(e.text)).length === 1, 'training where a parent trained is remembered in the family record');
+  }
+}
+section('generations: the archive keeps the career; the family is a pull, not a path');
 
 if (problems.length) {
   console.log(`PROBLEMS (${problems.length}):\n${problems.map((x) => ` - ${x}`).join('\n')}`);

@@ -18,8 +18,15 @@ import { clamp } from '../../util.js';
 import { store, player } from '../../state.js';
 import { remember } from '../conditions.js';
 import { askOut, partner } from '../romance.js';
-import { M, med, year, grow, note, result, roll } from './core.js';
+import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputationOf } from './core.js';
 import { answerOffer } from './ladder.js';
+import { startPost } from './training.js';
+import { doResearch } from './research.js';
+import { employer } from '../employers.js';
+import { SPECIALTY_BY_ID } from '../../data/medicine.js';
+import { workplacesFor, hospital } from './hospitals.js';
+import { citiesOf, relocate, moveCost } from '../cities.js';
+import { changeHours, takeLeave } from '../worklife.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
 export function setDrama(level) {
@@ -59,6 +66,43 @@ function eligible(p, m) {
   if (t?.kind === 'residency' && t.pgy >= t.years - 1 && alive(rival)) out.push({ id: 'med_competition', cast: { rival: rival.id } });
   const recent = (m.caseIds ?? []).map((id) => store.state.medicine?.cases?.[id]).filter((c) => c && c.status === 'closed' && c.year >= year() - 1 && c.outcome?.points < 40 && !c.disclosed);
   if (recent.length) out.push({ id: 'med_disclosure', cast: { words: { caseId: recent[0].id } } });
+  // Strain: a hard year is met with support, never pushed through for a reward.
+  if ((m.training || m.job) && (p.career.stress ?? 0) >= 80) out.push({ id: 'med_strain', cast: {} });
+  // An offer from a hospital in another city, for an established attending.
+  if (m.job && year() - m.job.since >= 3 && !m.awayOffer && roll(0.25)) {
+    const spec = currentSpecialty(m);
+    const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => workplacesFor(spec, p.countryId, c.name).map((x) => ({ ...x, city: c.name })));
+    if (away.length) {
+      const o = rng.pick(away);
+      m.awayOffer = { hospitalId: o.e.id, city: o.city, year: year() };
+      out.push({ id: 'med_offer_away', cast: { words: { hospital: o.e.name, city: o.city } } });
+    }
+  }
+  // The old team, years later.
+  const first = m.completed[0];
+  const old = [...m.people.friendIds, ...m.people.colleagueIds].map(npc).find((n) => n?.alive);
+  if (first && year() - first.to >= 10 && old) out.push({ id: 'med_reunion', cast: { peer: old.id, words: { hospital: first.hospital ?? 'the hospital' } } });
+  // The wider catalog of hospital life: people, judgment and ethics.
+  const peer = rng.pick(ps.length ? ps : [null]);
+  const friendNow = m.people.friendIds.map(npc).find(alive);
+  const spec = SPECIALTY_BY_ID[currentSpecialty(m)];
+  if (t && peer) out.push({ id: 'med_talked_about', cast: { peer: peer.id } });
+  if (spec?.surgical && (t || m.job)) out.push({ id: 'med_or_disagreement', cast: {} });
+  if (t && sup && peer) out.push({ id: 'med_attending_choice', cast: { mentor: sup.id, peer: peer.id, words: { chosen: roll(clamp(reputationOf(m) / 100, 0.2, 0.8)) ? 'you' : 'them' } } });
+  if (t && friendNow && t.pgy >= 2) out.push({ id: 'med_friend_pressure', cast: { peer: friendNow.id } });
+  if (m.job && roll(0.15)) out.push({ id: 'med_new_chief', cast: {} });
+  const pt = partner();
+  if (pt && (m.job || t) && pt.flags.workedWith && pt.flags.workedWith === employer(m.job?.hospitalId ?? t?.hospitalId)?.name && !pt.flags.medDisclosed) out.push({ id: 'med_work_relationship', cast: { peer: pt.id } });
+  if (friendNow && (m.job || t)) out.push({ id: 'med_colleague_leaving', cast: { peer: friendNow.id } });
+  if (m.job && friendNow) out.push({ id: 'med_friend_promoted', cast: { peer: friendNow.id } });
+  const mentorNow = npc(m.people.mentorId);
+  if (alive(mentorNow) && mentorNow.age >= 63 && !mentorNow.flags.medRetired) out.push({ id: 'med_mentor_retiring', cast: { mentor: mentorNow.id } });
+  const sad = (m.caseIds ?? []).map((id) => store.state.medicine?.cases?.[id]).find((c) => c?.status === 'closed' && c.year >= year() - 1 && c.outcome?.result === 'poor' && c.outcome.points >= 60);
+  if (sad) out.push({ id: 'med_family_answers', cast: {} });
+  if (m.job && hospital(m.job.hospitalId)?.teaching && !(m.research?.projects?.length)) out.push({ id: 'med_research_offer', cast: {} });
+  if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
+  if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
+  if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
   const thanks = (m.grateful ?? []).find((g) => g.year <= year() - 3 && !g.thanked);
   if (thanks) out.push({ id: 'med_grateful', cast: { words: { label: thanks.label.toLowerCase(), key: `${thanks.patientId}` } } });
   return out;
@@ -74,12 +118,19 @@ export function dramaYear() {
   if (!list.length) return;
   const n = rate >= 1 ? 2 : roll(rate) ? 1 : 0;
   // A disclosure or a thank-you comes whatever the setting: they are about patients, not drama.
-  const must = list.filter((x) => ['med_disclosure', 'med_grateful'].includes(x.id));
+  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away'].includes(x.id));
   const rest = list.filter((x) => !must.includes(x)).sort(() => rng.next() - 0.5).slice(0, n);
-  for (const x of [...must.slice(0, 1), ...rest]) {
+  for (const x of [...must.slice(0, 2), ...rest]) {
     m.scenes[x.id] = year();
     store.state.pendingEvents.push({ id: x.id, cast: x.cast });
   }
+}
+
+/** Asks for support in a hard year: once a year, from a mentor or the program. Never a weakness. */
+export function requestSupport() {
+  const m = M();
+  if (!once('support', m)) return result(false, 'You have asked this year; the support is in place.', 'neutral');
+  return result(true, medicineChoice('strain:support'), 'good');
 }
 
 /** What a hospital scene's choice does (effect type 'medicine', engine/effects.js). */
@@ -139,6 +190,82 @@ export function medicineChoice(value, cast = {}) {
       return '';
     }
     case 'offer': return answerOffer(how === 'yes').text;
+    case 'skill': {
+      // A story beat's lesson: 'skill:<name>:<amount>' (and the premed interview, 'skill:interview:<amount>').
+      const [, by] = String(value).split(':').slice(1);
+      if (how === 'interview') { m.premed.letters = Math.round((m.premed.letters + Number(by)) * 10) / 10; return ''; }
+      if (how in m.skills) grow(how, Number(by), m);
+      return '';
+    }
+    case 'strain': {
+      if (how === 'support') {
+        p.career.stress = clamp((p.career.stress ?? 50) - 15);
+        const mentor = npc(m.people.mentorId);
+        if (mentor?.alive) mentor.meters.relationship = clamp(mentor.meters.relationship + 4);
+        grow('professionalism', 1, m);
+        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'The program\'s wellbeing service finds you an hour a week, and a colleague swaps two of your nights.';
+      }
+      if (how === 'hours') return changeHours(-10).text;
+      if (how === 'leave') return takeLeave('vacation').text;
+      return '';
+    }
+    case 'away': {
+      const o = m.awayOffer;
+      if (!o) return '';
+      m.awayOffer = null;
+      if (how === 'accept') {
+        const spec = currentSpecialty(m);
+        const rank = m.job?.rank ?? 'attending';
+        p.finance.cash += moveCost();
+        const r = relocate(o.city);
+        if (!r.ok) { p.finance.cash -= moveCost(); return `The move fell through: ${r.text}`; }
+        startPost(spec, o.hospitalId, rank);
+        return `You move to ${o.city} and start at the new hospital.`;
+      }
+      if (how === 'negotiate') {
+        if (roll(0.5)) { p.career.salary = Math.round(p.career.salary * 1.08); return 'Your hospital matches part of the offer to keep you. You stay, better paid.'; }
+        return 'Your hospital will not match it. You stay, for now.';
+      }
+      if (how === 'family') { const pt = partner(); if (pt) pt.meters.relationship = clamp(pt.meters.relationship + 6); p.stats.mood = clamp(p.stats.mood + 4); }
+      return '';
+    }
+    case 'reunion':
+      if (how === 'go' && who) { who.meters.relationship = clamp(who.meters.relationship + 12); p.stats.mood = clamp(p.stats.mood + 5); }
+      return '';
+    case 'talk': {
+      // The rest of the hospital catalog: 'talk:<what>'. Relationships and skills move by how the player treats people.
+      const by = { congratulate: ['teamwork', 1, 6], resent: ['professionalism', -1, -8], learn: ['reasoning', 1.5, 4], speak: ['reasoning', 1.5, 0], defer: [null, 0, 0],
+        argue: ['professionalism', -2, 0], ask: ['professionalism', 1, 3], honest: ['communication', 1.5, 5], distance: [null, 0, -6], welcome: ['teamwork', 1, 0],
+        encourage: ['integrity', 0.5, 8], stay: [null, 0, -2], farewell: ['communication', 1, 10], mediate: ['leadership', 2, 0], side: ['leadership', 0.5, 0],
+        family: ['communication', 2, 0], letter: ['communication', 0.5, 0] }[how];
+      if (!by) return '';
+      if (by[0]) grow(by[0], by[1], m);
+      if (who && by[2]) who.meters.relationship = clamp(who.meters.relationship + by[2]);
+      if (how === 'farewell' && who) { who.flags.medRetired = true; who.flags.title = 'Mentor (retired)'; }
+      if (how === 'learn' && who) remember(who, 'medTaught', 'Taught you what everyone was talking about.');
+      return '';
+    }
+    case 'disclose_partner':
+      if (who) who.flags.medDisclosed = true;
+      if (how === 'yes') { grow('professionalism', 1, m); return 'The department moves your rotas so neither of you is ever in charge of the other. Nobody makes a fuss.'; }
+      grow('integrity', -1, m);
+      return '';
+    case 'research':
+      if (how === 'join') return doResearch('project').text;
+      return '';
+    case 'gift':
+      if (how === 'decline') { grow('integrity', 1, m); return 'You decline. Your prescribing stays yours.'; }
+      grow('integrity', -3, m);
+      if (roll(0.3)) { m.discipline.push({ year: year(), what: 'Accepted hospitality from a company whose products you prescribe, against hospital policy.' }); return 'A compliance review finds it. It goes on your record.'; }
+      return 'The trip is lovely. You notice, later, how often their name comes to mind.';
+    case 'record':
+      if (how === 'refuse') { grow('integrity', 3, m); grow('professionalism', 1, m); return 'You refuse, and say why. The note stays as it was written; the review is fair.'; }
+      grow('integrity', -6, m);
+      if (roll(0.5)) { m.discipline.push({ year: year(), what: 'Altered a medical record after the fact.' }); return 'The audit trail shows the change. Altering a record is a serious matter, and it is treated as one.'; }
+      return 'Nobody notices. You do.';
+    case 'calling':
+      if (how === 'drawn') p.flags.medCalling = true;
+      return '';
     default: return '';
   }
 }
