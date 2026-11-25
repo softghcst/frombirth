@@ -630,8 +630,9 @@ export function clubOptions() {
     joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1, bars: c.tryout ? checkBars(c.tryout) : null }));
 }
 /** Children can take classes before they start school; adults need to be enrolled. */
-export const canJoinClubs = () =>
-  (player().education.enrolled || player().age < 18) && clubOptions().length > 0;
+/** School clubs are joined at school, from School › Activities: not at university (campus life has its own), and not
+ *  out of school (Pursuits has the clubs and classes near home). */
+export const canJoinClubs = () => sch.atSchool(player()) && clubOptions().length > 0;
 
 export function joinClub(id) {
   const p = player();

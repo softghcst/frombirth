@@ -72,5 +72,16 @@ check(majorEdge('computer_science', built) > majorEdge('computer_science', bare)
 check(majorEdge('political_science', built) > 0.3 && majorEdge('criminal_justice', built) > 0.3, 'public speaking helps on the way to law school');
 check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engineer, built) > 0.3, 'and in getting work as a lawyer or an engineer');
 
+// Clubs are joined at school only (School › Activities): not by someone out of school.
+{
+  const { canJoinClubs } = await import('../js/engine/education.js');
+  const { titleCase } = await import('../js/ui/titles.js');
+  const q = life();
+  q.age = 15; q.birthYear = store.state.year - 15;
+  q.education.enrolled = false;
+  check(!canJoinClubs(), 'someone out of school cannot join school clubs');
+  check(titleCase('STEM magnet school') === 'STEM Magnet School' && titleCase('School for gifted children') === 'School for Gifted Children' && titleCase('Law and public service academy') === 'Law and Public Service Academy', 'school names read in Title Case');
+}
+
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Bright, techy and argumentative kids have schools and clubs of their own, and they count.');

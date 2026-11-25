@@ -1,6 +1,7 @@
 // School, as a book: where the player is at school and how they are doing in
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
+import { titleCase } from './titles.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { fitBars, fitBar } from './fitBars.js';
@@ -195,7 +196,7 @@ export function openSchool(onChange) {
     const go = t.closest('[data-go]')?.dataset.go;
     if (go === 'move') {
       const kind = await pickModal({ title: 'Change schools', cancel: 'Never mind', body: 'Ask your family. They decide, and your friends stay your friends.',
-        options: sch.choices().map((k) => ({ value: k.id, label: k.name, sub: k.why || `${k.blurb} ${k.fee}`, disabled: !!k.why })) });
+        options: sch.choices().map((k) => ({ value: k.id, label: titleCase(k.name), sub: k.why || `${k.blurb} ${k.fee}`, disabled: !!k.why })) });
       return kind ? say(sch.askToMove(kind)) : undefined;
     }
     if (go === 'dance') return say(cliques.schoolDance());

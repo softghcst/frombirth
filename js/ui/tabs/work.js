@@ -59,22 +59,6 @@ async function chooseClique(api) {
   if (id) await report(api, edu.joinClique(id));
 }
 
-async function chooseClub(api) {
-  const e = player().education;
-  const id = await pickModal({
-    title: 'Clubs and classes',
-    body: `You have time for ${MAX_CLUBS} at once. Each one builds a skill every year you stay.`,
-    options: edu.clubOptions().map((c) => ({
-      value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
-      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.' : 'By try-out.'].filter(Boolean).join(' '),
-      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your Level', needLabel: 'Club Wants' }) : '',
-      disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
-    })),
-  });
-  if (!id) return;
-  await report(api, e.clubs.includes(id) ? edu.quitClub(id) : edu.joinClub(id));
-}
-
 async function leaveSchool(api) {
   const where = edu.stageLabel(player().education.stage).toLowerCase();
   const sure = await confirmModal({
@@ -458,7 +442,6 @@ export default {
     }
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
-    if (edu.canJoinClubs() && !atSchoolNow) school.push(['club', 'Clubs and classes']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
@@ -514,7 +497,7 @@ export default {
       if (!id) return;
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
-        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api),
+        clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
