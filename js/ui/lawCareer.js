@@ -140,7 +140,7 @@ const filingRow = (r) => row(`data-case="${r.c.id}"`, r.name, `${r.c.title} · $
 function newCases() {
   const list = lp.offers();
   if (!list.length) return '<p class="empty">No new cases this half-year. More come in time.</p>';
-  return list.map((o) => `<div class="card law-offer"><h3>${esc(o.prominent ? 'A Prominent Client' : o.returning ? 'A Former Client Returns' : KIND_NAME[o.kind] ?? 'A New Case')}</h3>
+  return list.map((o) => `<div class="card law-offer"><h3>${esc(o.personal ? `Your ${o.personal.replace(/^./, (x) => x.toUpperCase())} Asks for Help` : o.prominent ? 'A Prominent Client' : o.returning ? 'A Former Client Returns' : KIND_NAME[o.kind] ?? 'A New Case')}</h3>
     <p>${esc(o.summary)}</p>${kv('Complexity', COMPLEXITY[o.level])}${kv('Expected fee', fmtMoney(o.fee, country()))}${o.second ? kv('Your part', 'Second chair, under a supervisor') : ''}
     <div class="btn-row">${btn('Accept', `data-accept="${o.id}"`, 'primary')}${btn('Refer', `data-refer="${o.id}"`)}${btn('Decline', `data-decline="${o.id}"`)}</div></div>`).join('');
 }
@@ -208,7 +208,7 @@ function casePage(c) {
   const next = c.done ? 'Closed' : c.awaiting ? (c.awaiting.what === 'trial' ? 'Trial: waiting for you' : 'Hearing: waiting for you') : `${lc.STAGE_NAME[c.stages[c.stageIdx + 1]?.s] ?? 'Next stage'} ${c.due - ls.nowM() > 0 ? `in ${c.due - ls.nowM()} month${c.due - ls.nowM() === 1 ? '' : 's'}` : 'next'}`;
   return `<div class="eyebrow">${esc(lc.roleName(c))}</div><h2>${esc(c.title)}</h2>
     <p class="muted">${esc(c.summary)}</p>
-    ${card('The case', `${kv('Stage', c.done ? 'Closed' : lc.STAGE_NAME[st] ?? st)}${kv('Where', lc.forumName(c))}${c.jury ? kv('Decided by', 'A jury') : ''}${kv('Complexity', COMPLEXITY[c.level])}${kv('Fee', { salary: 'Salaried: no fee', hourly: 'By the hour', flat: 'A flat fee', contingency: `A share of any award (${Math.round((lc.contingencyRule(c.templateId, c.countryId).share ?? 0) * 100)}%)` }[c.fee.model] ?? c.fee.model)}${kv('Next', next)}
+    ${card('The case', `${kv('Stage', c.done ? 'Closed' : lc.STAGE_NAME[st] ?? st)}${kv('Where', lc.forumName(c))}${c.jury ? kv('Decided by', 'A jury') : ''}${kv('Complexity', COMPLEXITY[c.level])}${kv('Fee', { salary: 'Salaried: no fee', pro_bono: 'No fee: you are doing this for family or a friend', hourly: 'By the hour', flat: 'A flat fee', contingency: `A share of any award (${Math.round((lc.contingencyRule(c.templateId, c.countryId).share ?? 0) * 100)}%)` }[c.fee.model] ?? c.fee.model)}${kv('Next', next)}
       ${c.clientId ? `<button type="button" class="tree-row" data-npcperson="${c.clientId}"><strong>${esc(nameOf(c.clientId))}</strong><small>Client${c.clientAccount ? ` · ${esc(c.clientAccount)}` : ''}</small></button>` : kv('Client', c.role === 'prosecution' ? 'The government (the people of the state)' : c.role === 'agency' ? 'The agency' : '—')}
       ${c.parties.otherId ? `<button type="button" class="tree-row" data-npcperson="${c.parties.otherId}"><strong>${esc(nameOf(c.parties.otherId))}</strong><small>Other party</small></button>` : c.vars.otherOrg && c.kind !== 'criminal' ? kv('Other party', c.vars.otherOrg) : ''}
       ${c.role === 'prosecution' ? `<button type="button" class="tree-row" data-npcperson="${c.parties.defendantId}"><strong>${esc(nameOf(c.parties.defendantId))}</strong><small>Defendant · not guilty unless proved</small></button>` : ''}

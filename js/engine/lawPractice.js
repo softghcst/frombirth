@@ -184,6 +184,18 @@ function openWindow(p, w) {
     L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: inTraining(p) || T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
       summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? 'some')).replace(/(^|[.!?]\s+)([a-z])/g, (x, a, b) => a + b.toUpperCase()) });
   }
+  // Now and then someone the player knows asks for help: a relative or a friend, with the kind of case the practice takes.
+  const KNOWN = ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandparent', 'relative', 'inlaw', 'friend', 'bestFriend'];
+  const known = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age >= 18 && KNOWN.includes(n.role) && (n.flags.askedForLegalHelp ?? -99) < store.state.year - 4);
+  const ownCases = [...new Set(SPECIALTY_BY_ID[L.specialty]?.cases ?? [])].filter((id) => { const T = CASE_TEMPLATES[id]; return T && T.level <= Math.max(cap, 2) && !['criminal', 'child'].includes(T.kind) && !T.gov && !T.appeal && !T.criminal && !/\{(?!client\}|other\}|otherOrg\}|child\})\w+\}/.test(T.summary); });
+  if (known.length && ownCases.length && rng.chance(0.15)) {
+    const who = rng.pick(known);
+    const tid = rng.pick(ownCases);
+    who.flags.askedForLegalHelp = store.state.year;
+    const rel = { bestFriend: 'best friend', inlaw: 'in-law' }[who.role] ?? who.role;
+    L.offers.push({ id: `of${w}_personal`, window: w, second: false, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
+      summary: `Your ${rel} ${who.firstName} asks for your help. ${CASE_TEMPLATES[tid].summary.replace(/\{client\}/g, who.firstName).replace(/\{\w+\}/g, (m) => ({ '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'their company' }[m] ?? 'some'))} You would not charge them.` });
+  }
   // A former client may come back with something new: the same person, their history with the player intact.
   const former = Object.values(store.state.npcs).filter((n) => n.alive && n.flags.formerClientOf === p.id && n.meters.relationship >= 55);
   if (former.length && rng.chance(0.35)) {
@@ -229,6 +241,9 @@ export function supervisor(p = player()) {
 /** Who a case would pit the player against: former clients on the other side, or family. */
 function conflictIn(o, p) {
   if (!o.clientId) return '';
+  // Acting for a relative who asks is allowed (no rule forbids it), though often unwise; a stranger's matter that
+  // turns out to be a relative's is not taken on as an ordinary file.
+  if (o.personal) return '';
   const n = store.state.npcs[o.clientId];
   if (n && p.npcIds.includes(n.id) && ['spouse', 'parent', 'child', 'sibling'].includes(n.role)) return 'You cannot act for your own family in a matter like this.';
   return '';
@@ -246,6 +261,7 @@ export function accept(offerId, p = player()) {
   if (load.points + o.level > load.capacity * 1.6) return result(false, 'You have no room on your desk for it. Finish or refer a case first.', 'neutral');
   L.offers = L.offers.filter((x) => x !== o);
   const c = openCase(p, o.templateId, { fee: SPECIALTY_BY_ID[o.specialty]?.fees?.[0], clientId: o.clientId, second: o.second, prominent: o.prominent, level: o.level });
+  if (o.personal) { c.personal = o.personal; c.fee.model = 'pro_bono'; cases.note(c, `Your ${o.personal} asked you to take this, and you said yes.`); }
   if (o.prominent) canon(`law:prominent:${c.id}`, 'A prominent client', `Took on ${o.prominent} as a client.`, { privacy: 'public', sig: 2, milestone: false });
   return result(true, `You took the case: ${c.title}.${c.supervisorId ? ` ${store.state.npcs[c.supervisorId].firstName} ${store.state.npcs[c.supervisorId].lastName} leads; you are second chair.` : ''}`, 'good', { caseId: c.id });
 }
@@ -254,6 +270,12 @@ export function decline(offerId, refer = false, p = player()) {
   const o = (L.offers ?? []).find((x) => x.id === offerId);
   if (!o) return result(false, 'That offer has gone.', 'neutral');
   L.offers = L.offers.filter((x) => x !== o);
+  const known = o.personal ? store.state.npcs[o.clientId] : null;
+  if (known) {
+    // Saying no to family is harder: finding them someone good is kind; just saying no is not.
+    known.meters.relationship = clamp(known.meters.relationship + (refer ? 3 : -5));
+    return result(true, refer ? `You found ${known.firstName} a colleague you trust. It is often wiser not to act for your own ${o.personal}.` : `You told ${known.firstName} you could not take it. They took it quietly.`, refer ? 'good' : 'bad');
+  }
   if (refer) { L.rep.clients = clamp(L.rep.clients + 0.5); return result(true, 'You referred the client to a colleague who handles this well.', 'neutral'); }
   return result(true, 'You declined.', 'neutral');
 }

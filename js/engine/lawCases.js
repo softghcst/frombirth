@@ -822,8 +822,10 @@ export function close(c, out, lines = []) {
   c.stageIdx = c.stages.length;
   note(c, `Outcome: ${out.text}`);
   // What the result changes in the world, on the people's and companies' own records.
-  // An adoption makes a parent; a guardianship a guardian; a protective order goes on the other person's record.
   const N = (id) => store.state.npcs[id];
+  // Acting for someone you know: they remember how it went.
+  if (c.personal && N(c.clientId)) { const n = N(c.clientId); n.meters.relationship = clamp(n.meters.relationship + (out.favorable > 0 ? 10 : out.favorable < 0 ? -6 : 2)); }
+  // An adoption makes a parent; a guardianship a guardian; a protective order goes on the other person's record.
   if (out.favorable > 0 && c.templateId === 'adoption' && N(c.parties.childId)) { const kid = N(c.parties.childId); kid.flags.parentIds = [...new Set([...(kid.flags.parentIds ?? []), c.clientId])]; kid.flags.adoptedBy = c.clientId; kid.flags.adoptedYear = store.state.year; }
   if (c.templateId === 'asylum' && N(c.clientId)?.residency) { N(c.clientId).residency.asylumPending = false; if (out.favorable > 0) { N(c.clientId).residency.status = 'permanent_resident'; N(c.clientId).flags.refugee = store.state.year; } }
   if (out.favorable > 0 && c.templateId === 'guardianship' && N(c.parties.childId)) N(c.parties.childId).flags.guardianId = c.clientId;
@@ -857,7 +859,7 @@ export function close(c, out, lines = []) {
   // The fee, once. Salaried lawyers are paid by their employer (the career engine); a private practice bills.
   if (!c.fee.paid) {
     c.fee.paid = true;
-    if (c.fee.model !== 'salary') {
+    if (c.fee.model !== 'salary' && c.fee.model !== 'pro_bono') {
       const c0 = COUNTRIES[c.countryId];
       const strategy = { premium: 1.5, accessible: 0.7 }[L.fees] ?? 1; // your own firm's fee strategy
       const base = Math.round(localCost([0, 1500, 4000, 9000, 22000, 60000][c.level], c0) * (c.track === 'own' ? strategy : 1));
