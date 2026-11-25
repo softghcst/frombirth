@@ -12,11 +12,12 @@ function seeded(key) {
   return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-// A right foot's print, in a 40 × 84 box: big toe on the left (the inside), the arch curving in on that side.
-const SOLE = 'M21 82C11 82 7 74 8.5 65c1-8 6.5-13 6.5-20 0-6-7-10-7-18C8 17 16 12 25 13.5c10 1.5 14 9 12.5 18-1.5 10-5.5 16-5.5 26 0 10-1 24.5-11 24.5Z';
-const TOES = [[13.5, 6.5, 5.6, 6.6], [22, 4, 3.3, 3.9], [27.8, 5.6, 2.8, 3.3], [32.4, 8.6, 2.4, 2.9], [35.8, 12.8, 2.1, 2.5]];
-// Creases in the skin, left white by the ink.
-const CREASES = ['M12 29c5 1 9 4 14 2s7-2 9 0', 'M11 38c4 3 9 1 13 3s6 0 8-2', 'M15 50c3-2 7 1 10-1s4-1 6 1', 'M14 60c4 2 8 0 12 2', 'M12 22c4-3 8-2 12-4s7 0 10 2', 'M17 70c3 2 6 1 9 2', 'M20 34c1 6 3 11 2 18', 'M27 22c-2 7-1 14 1 20']; 
+// A baby's right foot, in a 40 × 72 box: short and chubby, a round heel nearly as wide as the ball, hardly any arch
+// (a baby's is a pad of fat), and little round toes tucked close, the big toe on the left (the inside).
+const SOLE = 'M20.5 70C10 70 5.5 62.5 6.5 54c.8-6.5 4.5-9.5 4.5-14 0-4.5-4.5-7.5-4.5-14.5C6.5 17 13.5 12.5 22 13c9.5.5 14.5 7 14 15-.4 7.5-3.2 12.5-3.2 19.5 0 8.5 1.7 22.5-12.3 22.5Z';
+const TOES = [[12.8, 8.2, 4.5, 4.9], [19.8, 5.6, 2.7, 2.9], [24.8, 6, 2.4, 2.6], [29.3, 7.9, 2.1, 2.3], [32.9, 11, 1.9, 2]];
+// The soft creases of a baby's foot, left white by the ink.
+const CREASES = ['M10 24c4 2.5 9 2.5 14 .5s7.5-1 10 1', 'M9.5 31c4 2.5 9 2 13.5 1s6 0 8.5 1', 'M12 42c3 1.5 7 .5 10 1.5s4 .5 6-.5', 'M11 55c4 2 9 1 13 2', 'M14 63c3 1.5 7 1 10 0', 'M16 36c3 1 6 1 9 0'];
 
 /**
  * The two footprints, as SVG. `lengthIn` sizes them; `seed` (the baby's id) makes them that baby's own.
@@ -27,16 +28,16 @@ export function inkFeet({ lengthIn = 19.7, seed = 'x', width = 110, ink = '#1d1f
   const r = seeded(`feet:${seed}`);
   const k = Math.max(0.86, Math.min(1.14, lengthIn / 19.7));
   const foot = (left) => {
-    const tilt = (left ? -1 : 1) * (6 + r() * 8);
+    const tilt = (left ? -1 : 1) * (5 + r() * 7);
     const dy = r() * 6;
     const creases = CREASES.filter(() => r() < 0.8).map((d) => `<path d="${d}"/>`).join('');
-    const place = left ? `translate(${4 + 40} ${4 + dy}) scale(-1 1)` : `translate(${50} ${dy})`;
-    return `<g transform="${place} rotate(${tilt.toFixed(1)} 22 46)">
+    const place = left ? `translate(${4 + 40} ${3 + dy}) scale(-1 1)` : `translate(${50} ${dy})`;
+    return `<g transform="${place} rotate(${tilt.toFixed(1)} 21 40)">
       <g filter="url(#ink-${n})" fill="${ink}"><path d="${SOLE}"/>${TOES.map(([x, y, rx, ry]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}"/>`).join('')}</g>
       <g fill="none" stroke="#fff" stroke-width="0.7" stroke-linecap="round" opacity="0.8">${creases}</g></g>`;
   };
   const w = Math.round(width * k);
-  return `<svg class="ink-feet" viewBox="0 0 96 96" width="${w}" height="${w}" role="img" aria-label="Footprints">
+  return `<svg class="ink-feet" viewBox="0 0 96 84" width="${w}" height="${Math.round(w * 84 / 96)}" role="img" aria-label="Footprints">
     <defs><filter id="ink-${n}" x="-10%" y="-10%" width="120%" height="120%">
       <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="3" seed="${Math.floor(r() * 999)}" result="grain"/>
       <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.4 3.05" result="holes"/>
