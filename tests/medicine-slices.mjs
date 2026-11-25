@@ -259,6 +259,38 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   drama.medicineChoice('reunion:go', { peer: peer.id });
   check(peer.meters.relationship >= rel, 'M. former colleagues reconnect');
 }
+// ---------- Career branches: clinical, academic, administrative (to chief executive) ----------
+{
+  const branch = (track, start, seed) => {
+    rng.seed(seed);
+    const q = life('us', 45);
+    const bm = core.M(q);
+    for (const k of Object.keys(bm.skills)) bm.skills[k] = 95;
+    bm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 1990, to: 1993 });
+    bm.license = { status: 'full', countryId: 'us' };
+    const site = trainingSites('internal', q.countryId, q.city).find(({ h }) => h.kind === 'academic') ?? trainingSites('internal', q.countryId, q.city)[0];
+    train.startPost('internal', site.e.id, start);
+    bm.job.since = store.state.year - 20; bm.job.rankSince = store.state.year - 10;
+    ladder.setTrack(track);
+    if (track === 'academic') bm.research = { projects: [], papers: [{}, {}, {}], talks: 2, taught: 5, faculty: true, director: false };
+    const seen = [bm.job.rank];
+    for (let i = 0; i < 30 && seen.length < 4; i++) {
+      year(); q.age = Math.min(q.age, 60);
+      for (const k of Object.keys(bm.skills)) bm.skills[k] = 95;
+      if (bm.offer) ladder.answerOffer(true);
+      if (bm.job && seen.at(-1) !== bm.job.rank) { seen.push(bm.job.rank); bm.job.rankSince = store.state.year - 10; }
+    }
+    return { seen, career: q.career.careerId, title: q.career.title, patients: cases.roleNow(bm, q) };
+  };
+  const clin = branch('clinical', 'attending', 11);
+  check(clin.seen.slice(0, 3).join() === 'attending,experienced,senior', `clinical: attending, experienced, senior (${clin.seen.join(' → ')})`);
+  const acad = branch('academic', 'attending', 12);
+  check(acad.seen.includes('vice_chair') && !acad.seen.includes('director'), `academic: through academic leadership, not administration (${acad.seen.join(' → ')})`);
+  const admin = branch('administrative', 'cmo', 13);
+  check(admin.seen.includes('ceo') && admin.career === 'health_admin' && admin.patients === null, `administrative: a chief medical officer can become chief executive, and stops seeing patients (${admin.seen.join(' → ')}, ${admin.title})`);
+}
+section('career branches: clinical, academic, administrative');
+
 section('F, G, H, J, K, L, M: romance, transfer, disagreement, promotion, the patient returns, a new chief, the reunion');
 
 // ---------- One clinic ownership workflow ----------

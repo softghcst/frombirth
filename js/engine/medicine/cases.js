@@ -32,6 +32,7 @@ const ODDS = { best: [0.8, 0.17], ok: [0.55, 0.35], poor: [0.2, 0.45], unsafe: [
 export function roleNow(m = med(), p = player()) {
   if (!m) return null;
   if (m.training) return m.training.kind === 'fellowship' ? 'fellow' : 'resident';
+  if (m.job?.rank === 'ceo' && !m.clinicIds?.length) return null; // a chief executive runs the hospital and no longer sees patients
   if (m.job || m.clinicIds?.length || (m.legacy && p.career.careerId)) return 'physician';
   if (p.education.enrolled && ['medical', 'podiatric'].includes(p.education.stage) && (m.school?.year ?? 0) >= 3) return 'student';
   return null;

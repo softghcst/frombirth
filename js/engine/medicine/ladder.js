@@ -17,27 +17,92 @@ import { employer, chronicle } from '../employers.js';
 import { M, med, year, grow, note, result, roll, reputationOf, once, specialtyName, currentSpecialty, qualified } from './core.js';
 import { hospital, deptOf, deptHead, workplacesFor, careerFor, levelFor } from './hospitals.js';
 import { retitle, startPost } from './training.js';
+import { hire } from '../career.js';
+import { CAREER_BY_ID } from '../../data/careers.js';
 
 const an = (w) => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`;
-const ORDER = ['attending', 'senior', 'director', 'chief', 'chair', 'cmo'];
-/** What each step up asks: years at the rank below, reputation, leadership, and the kind of hospital. */
-const STEPS = {
-  senior: { from: 'attending', years: 5, rep: 52, lead: 0, odds: 0.45 },
-  director: { from: 'senior', years: 3, rep: 58, lead: 45, odds: 0.22, leader: true },
-  chief: { from: 'director', years: 3, rep: 62, lead: 55, odds: 0.18, leader: true },
-  chair: { from: 'chief', years: 4, rep: 68, lead: 62, odds: 0.12, leader: true, kinds: ['academic', 'childrens'] },
-  // A chief medical officer is chosen for running an organization, not for surgical fame: management counts.
-  cmo: { from: 'chief', years: 5, rep: 70, lead: 68, mgmt: 65, odds: 0.08, leader: true },
-};
+const ORDER = ['attending', 'experienced', 'senior', 'director', 'vice_chair', 'chief', 'chair', 'cmo', 'ceo'];
 
-/** The next step up from a rank, if this hospital has it. */
-export function nextRank(job, h) {
-  const opts = Object.entries(STEPS).filter(([, s]) => s.from === job.rank && (!s.kinds || s.kinds.includes(h.kind)));
-  return opts.map(([id, s]) => ({ id, ...s }));
+/**
+ * Separate career branches (not everyone becomes a chief, and nobody becomes chief executive for being a fine
+ * surgeon). What each step asks: years at the rank below, reputation, leadership, management, the kind of
+ * hospital, and for the academic branch a faculty post and a record of teaching and research.
+ *
+ *   clinical        attending → experienced attending → senior physician → chief of service (selected)
+ *   academic        attending → experienced attending → vice chair for education (faculty) → department chair
+ *   administrative  attending → medical director → department chair → chief medical officer → hospital chief executive
+ */
+export const TRACKS = {
+  clinical: { name: 'Clinical', words: 'Patients first: experience, seniority, and perhaps leading your service.' },
+  academic: { name: 'Academic', words: 'Teaching and research alongside patients: a faculty post, academic leadership, a chair.' },
+  administrative: { name: 'Administrative', words: 'Running things: medical director, chair, chief medical officer, perhaps the hospital itself.' },
+};
+const STEPS = [
+  { id: 'experienced', from: 'attending', tracks: ['clinical', 'academic'], years: 3, rep: 45, lead: 0, odds: 0.6 },
+  { id: 'senior', from: 'experienced', tracks: ['clinical'], years: 4, rep: 52, lead: 0, odds: 0.45 },
+  { id: 'chief', from: 'senior', tracks: ['clinical'], years: 4, rep: 62, lead: 55, odds: 0.15, leader: true },
+  { id: 'vice_chair', from: 'experienced', tracks: ['academic'], years: 3, rep: 58, lead: 50, odds: 0.25, leader: true, faculty: true },
+  { id: 'chair', from: 'vice_chair', tracks: ['academic'], years: 4, rep: 66, lead: 60, odds: 0.15, leader: true, kinds: ['academic', 'childrens', 'heart', 'bone'], faculty: true },
+  { id: 'director', from: 'attending', tracks: ['administrative'], years: 4, rep: 55, lead: 45, mgmt: 50, odds: 0.22, leader: true },
+  { id: 'chair', from: 'director', tracks: ['administrative'], years: 3, rep: 62, lead: 58, mgmt: 55, odds: 0.15, leader: true },
+  // A chief medical officer is chosen for running an organization, not for surgical fame: management counts.
+  { id: 'cmo', from: 'chair', tracks: ['administrative'], years: 4, rep: 68, lead: 65, mgmt: 65, odds: 0.1, leader: true },
+  { id: 'cmo', from: 'chief', tracks: ['administrative', 'clinical'], years: 5, rep: 70, lead: 68, mgmt: 65, odds: 0.08, leader: true },
+  { id: 'ceo', from: 'cmo', tracks: ['administrative'], years: 3, rep: 70, lead: 72, mgmt: 75, odds: 0.08, leader: true },
+  // Older records: a senior physician from before the branches, or a director on another path, still has a way on.
+  { id: 'director', from: 'senior', tracks: ['administrative'], years: 3, rep: 58, lead: 45, mgmt: 50, odds: 0.2, leader: true },
+];
+
+/** The branch a physician is on (clinical unless they choose otherwise). */
+export const trackOf = (m = med()) => m?.track ?? 'clinical';
+/** Chooses a branch. A change is allowed once a year; the rank already held stays. */
+export function setTrack(track) {
+  const m = M();
+  if (!TRACKS[track]) return result(false, 'There is no such path.', 'neutral');
+  if (m.track === track) return result(false, 'That is already your path.', 'neutral');
+  if (!once('track', m)) return result(false, 'You changed direction this year already.', 'neutral');
+  m.track = track;
+  return result(true, `You set your sights on the ${TRACKS[track].name.toLowerCase()} path: ${TRACKS[track].words}`, 'neutral');
+}
+
+/** The next step up from a rank on the physician's branch, if this hospital has it. */
+export function nextRank(job, h, m = med()) {
+  const track = trackOf(m);
+  const fromHere = STEPS.filter((s) => s.from === job.rank && (!s.kinds || s.kinds.includes(h.kind)));
+  const mine = fromHere.filter((s) => s.tracks.includes(track));
+  return (mine.length ? mine : fromHere.filter((s) => !STEPS.some((x) => x.from === job.rank && x.tracks.includes(track))).slice(0, 1))
+    .filter((s) => !s.faculty || m?.research?.faculty);
+}
+
+/** What the next step asks, for the career page. */
+export function nextStepNeeds(m = med()) {
+  if (!m?.job) return null;
+  const h = hospital(m.job.hospitalId);
+  const step = h ? nextRank(m.job, h, m)[0] : null;
+  if (!step) return { title: null, needs: [trackOf(m) === 'academic' && !m.research?.faculty ? 'a faculty post (Professional development)' : 'nothing further on this path here'] };
+  const years = year() - (m.job.rankSince ?? m.job.since);
+  const needs = [];
+  if (years < step.years) needs.push(`${step.years - years} more year${step.years - years === 1 ? '' : 's'} at your rank`);
+  if (reputationOf(m) < step.rep) needs.push(`reputation ${step.rep}`);
+  if (m.skills.leadership < step.lead) needs.push(`leadership ${step.lead}`);
+  if (m.skills.management < (step.mgmt ?? 0)) needs.push(`management ${step.mgmt}`);
+  return { title: RANKS[step.id].title, needs, selected: !!step.leader };
 }
 
 /** Takes a post offered by a hospital (or a leadership seat): the rank, the pay level, the title. */
 function takeRank(p, m, rank) {
+  if (rank === 'ceo') {
+    // The hospital's chief executive: an executive post (hospital administration), no longer a clinical one.
+    const e0 = employer(m.job.hospitalId);
+    const exec = CAREER_BY_ID.health_admin;
+    hire(exec, exec.levels.length - 1, 70, `You are appointed chief executive of ${e0.name}.`, { employerId: e0.id });
+    m.job.rank = 'ceo'; m.job.rankSince = year();
+    p.career.title = `Chief executive, ${e0.name}`;
+    m.topRank = 'ceo'; m.topTitle = p.career.title;
+    chronicle(e0, `${p.firstName} ${p.lastName} became chief executive.`);
+    note(`Became chief executive of ${e0.name}.`, 'career', { key: `rank:ceo:${e0.id}`, milestone: `Chief executive of ${e0.name}.`, significance: 3, log: false });
+    return;
+  }
   const career = careerFor(m.job.specialtyId);
   const want = levelFor(rank, career);
   while (p.career.level < want && promote()) { /* the payroll level follows the rank */ }
@@ -179,6 +244,7 @@ export function postYear() {
   const years = year() - (m.job.rankSince ?? m.job.since);
   for (const step of nextRank(m.job, h)) {
     if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead || m.skills.management < (step.mgmt ?? 0)) continue;
+    if (step.faculty && !m.research?.faculty) continue;
     if (!roll(step.odds + (m.reputation - step.rep) / 200)) continue;
     if (!step.leader) { takeRank(p, m, step.id); log(`You were made ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; }
     // A leadership seat has other candidates: a rival from residency who works here, or a colleague of long standing.
