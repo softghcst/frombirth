@@ -79,6 +79,7 @@ check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military
 // Joining: the way in, then the branch from a dropdown, then basic training.
 await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
 await tab('work');
+await page.waitForSelector('[data-act="military"]', { state: 'attached' });  // the tab is drawn before it is used: on a busy machine it takes a moment
 await page.evaluate(() => document.querySelector('[data-act="military"]').click()); await page.waitForTimeout(250);
 await page.locator('#modal-root .choice-btn', { hasText: 'Enlist' }).click(); await page.waitForTimeout(250);
 const branches = await page.locator('#modal-root select#m-pick option').allInnerTexts();
