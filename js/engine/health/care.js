@@ -16,6 +16,7 @@ import { dailyFunctioning } from './course.js';
 import { inHospital } from './hospital.js';
 import { seeNow } from './index.js';
 import { healthMilestone } from './story.js';
+import { linkFacility, staffPhysician, employClinician } from '../medicine/healthLink.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -38,8 +39,11 @@ export function facilitiesHere(p = player()) {
     if (store.state.year < def.from) continue;
     if (def.dbt && store.state.year < 1995) continue;
     const id = `fac_${p.countryId}_${slug(p.city)}_${def.id}`;
+    const fresh = !w.facilities[id];
     w.facilities[id] ??= { id, defId: def.id, name: def.name(p.city), kind: def.kind, countryId: p.countryId, city: p.city,
       public: def.public, fee: def.fee ?? 1, opened: store.state.year, staff: {} };
+    // The same hospital and clinics as the city's health employers, where physicians work (engine/medicine/healthLink.js).
+    linkFacility(w.facilities[id], def, fresh);
     out.push(w.facilities[id]);
   }
   return out;
@@ -65,6 +69,14 @@ export function clinicianAt(f, profession, o = {}) {
   const have = ids.map((id) => store.state.npcs[id]).filter(ok);
   if (have.length && !o.another) return o.exclude ? have.find((n) => !o.exclude.includes(n.id)) ?? null : have[0];
   if (have.length >= 3) return have.find((n) => !(o.exclude ?? []).includes(n.id)) ?? null;
+  // A physician who already works at this hospital, in this specialty, is the clinician: one set of doctors.
+  const staff = staffPhysician(f, profession, [...(o.exclude ?? []), ...ids, store.state.player?.id].filter(Boolean));
+  if (staff) {
+    const yrs = staff.life?.job?.years ?? 5;
+    staff.flags.clinician = { profession, facilityId: f.id, facilities: [f.id], dbt: false, approach: APPROACHES[yrs % APPROACHES.length], years: yrs, qual: PROFESSIONS[profession].qual, since: store.state.year - yrs };
+    ids.push(staff.id);
+    return staff;
+  }
   const pro = PROFESSIONS[profession];
   const years = rng.int(3, 28);
   const npc = makeNpc({ role: 'clinician', countryId: f.countryId, age: 26 + years + rng.int(0, 6), relationship: 40 });
@@ -73,6 +85,7 @@ export function clinicianAt(f, profession, o = {}) {
     approach: rng.pick(APPROACHES), years, qual: pro.qual, since: store.state.year - years };
   store.state.npcs[npc.id] = npc;
   ids.push(npc.id);
+  employClinician(npc, f, profession); // a physician here is on the hospital's staff, in their specialty
   return npc;
 }
 

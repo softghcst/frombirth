@@ -12,6 +12,9 @@ import { screen, MENTAL_CARE_AGE } from './health/care.js';
 import { parentsMoney, parentsSpend } from './conditions.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
+import { familyDoctor, plasticSurgeon } from './medicine/healthLink.js';
+import { facilitiesHere, clinicianAt } from './health/care.js';
+import { deptHead } from './medicine/hospitals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -87,7 +90,8 @@ export function seeDoctor(conditionId) {
   }
   cureCondition(conditionId);
   p.stats.health = clamp(p.stats.health + Math.round(cond.severity / 6));
-  const text = `The doctor treated your ${plain}, and it worked.${paid}`;
+  const doc = familyDoctor(facilitiesHere, clinicianAt);
+  const text = `${doc ? `Dr. ${doc.npc.lastName} at ${doc.place}` : 'The doctor'} treated your ${plain}, and it worked.${paid}`;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -147,7 +151,9 @@ export function surgeonOptions(procedureId) {
   return SURGEONS.map((s) => {
     const cost = localMoney(proc.cost * s.cost, country());
     const risk = Math.min(0.9, proc.risk * s.risk);
-    return { id: s.id, name: s.name, blurb: s.blurb, cost, affordable: p.finance.cash >= cost,
+    // A reputable or renowned surgeon is a real plastic surgeon on a city hospital's staff (engine/medicine/healthLink.js).
+    const who = plasticSurgeon(s.id, deptHead, p);
+    return { id: s.id, name: who ? `${s.name}: Dr. ${who.npc.lastName}, ${who.place}` : s.name, blurb: s.blurb, cost, affordable: p.finance.cash >= cost, surgeonNpcId: who?.npc.id ?? null,
       risk: risk >= 0.2 ? 'high' : risk >= 0.07 ? 'moderate' : 'low' };
   });
 }
@@ -190,7 +196,8 @@ export function haveSurgery(procedureId, surgeonId, tweaks) {
   const gain = rng.int(proc.gain[0], proc.gain[1]);
   p.stats.charm = clamp(p.stats.charm + gain);
   p.stats.mood = clamp(p.stats.mood + 6);
-  const text = `Your ${name} went well. Once the swelling goes down, you like what you see. It cost ${fmtMoney(cost, c)}.`;
+  const by = plasticSurgeon(surgeonId, deptHead, p);
+  const text = `Your ${name}${by ? `, by Dr. ${by.npc.lastName} at ${by.place},` : ''} went well. Once the swelling goes down, you like what you see. It cost ${fmtMoney(cost, c)}.`;
   log(text, 'system', 'good');
   return result(true, text);
 }

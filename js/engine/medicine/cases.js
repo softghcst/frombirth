@@ -23,6 +23,8 @@ import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs,
 import { makeNpc } from '../npcFactory.js';
 import { M, med, W, year, grow, nextId, result, roll, currentSpecialty, qualified } from './core.js';
 import { hospital, deptHead } from './hospitals.js';
+import { recordPatientCondition } from './healthLink.js';
+import { npcHealth } from '../health/story.js';
 
 export const CASES_PER_YEAR = 3;
 const QUALITY = { best: 90, ok: 65, poor: 35, unsafe: 10 };
@@ -56,6 +58,7 @@ export function fixturesFor(specialtyId, when = year()) {
   const ids = new Set([specialtyId, qualifiesAs(specialtyId)]);
   if (s?.kind === 'fellowship') for (const a of s.after) ids.add(a);
   if (specialtyId === 'ct_integrated') ids.add('ctsurg');
+  if (specialtyId === 'general') { ids.add('family'); ids.add('internal'); ids.add('pediatrics'); } // a general practitioner sees everyone
   const direct = CASES.filter((c) => !c.followUpOnly && c.minYear <= when && c.specialty.includes(specialtyId));
   if (direct.length >= 3) return direct;
   return CASES.filter((c) => !c.followUpOnly && c.minYear <= when && c.specialty.some((x) => ids.has(x)));
@@ -421,6 +424,8 @@ function resolve(c, plan, decision, how = 'played') {
   }
   if (plan.refer) notes.push(`Referred to ${SPECIALTY_BY_ID[plan.refer]?.name ?? 'a specialist'} as part of the plan.`);
   c.outcome = { result: res, points, rightDx, complication, how, year: year() };
+  // The patient's own health record (the Health Engine) has the condition, diagnosed if this work found it.
+  recordPatientCondition(store.state.npcs[c.patientId], fx, c, npcHealth);
   // A poor result after care below the standard may bring a complaint or a claim (decided in a later year, engine/medicine/ladder.js).
   // A trainee's care is the program's responsibility; a good-faith decision that went badly is not negligence.
   if (c.role === 'physician' && res === 'poor' && (quality === 'unsafe' || points < 30) && roll(0.3)) {

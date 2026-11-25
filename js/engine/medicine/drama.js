@@ -33,6 +33,8 @@ import { staffOf } from '../workplace.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 import { storyBeat, dramaSetting } from '../storyDirector.js';
+import { familyPatientChoice } from './healthLink.js';
+import { startCare } from '../health/kincare.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
 /** The drama setting is the life's own (Settings, Story drama): the same for hospital life as for every other story. */
@@ -450,6 +452,7 @@ export function medicineChoice(value, cast = {}) {
     case 'reconcile':
       if (who) { who.flags.medReconciled = true; if (how === 'yes') { who.meters.relationship = clamp(who.meters.relationship + 15); remember(who, 'medReconciled', `Made peace with you, years after a disagreement (${year()}).`); } }
       return '';
+    case 'familyPatient': return familyPatientChoice(how, npc(cast.who), startCare, cast.words?.condId);
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';
