@@ -814,7 +814,8 @@ export function admissionChance(progId, subjectId) {
   if (progId === 'graduate') return clamp(0.5 + (b.gpa - 3.0) * 0.5 + (iq - 50) / 200 + prof, 0.05, 0.97);
   // What a premedical student did besides their grades (engine/medicine/training.js) counts for medical and podiatric school.
   const pm = p.medicine?.premed;
-  const premed = pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0;
+  const calling = p.flags.medCalling && ['medical', 'podiatric'].includes(progId) ? 0.04 : 0;
+  const premed = calling + (pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0);
   if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
@@ -880,6 +881,12 @@ export function applyTo(progId, subjectId) {
   const major = progId === 'university' || progId === 'community' ? MAJOR_BY_ID[subjectId] : null;
   const trade = progId === 'apprenticeship' ? TRADE_BY_ID[subjectId] : null;
   if (!prog.repeat) acts().applied[progId] = true;
+  // Medical and podiatric schools interview their applicants: told once in a life (data/events/stories/medicine.js).
+  if (['medical', 'podiatric'].includes(progId) && !p.medicine?.scenes?.['story:med_school_interview']) {
+    if (p.medicine?.scenes) p.medicine.scenes['story:med_school_interview'] = store.state.year;
+    else p.flags.medInterviewed = store.state.year;
+    store.state.pendingEvents.push({ id: 'med_school_interview', cast: {} });
+  }
   const subject = major ? ` to study ${major.name}` : '';
   const rec = major?.audition && p.flags.directorRec;
 

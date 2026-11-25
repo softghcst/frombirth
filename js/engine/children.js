@@ -1,13 +1,15 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { birthdayFor, dateNow } from './birthday.js';
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo, adoptionInfoFor } from './birthTag.js';
 import { announce } from './pregnancyChoice.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { noteBirth } from './globalLife.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
-import { store, player, country, npcsByRole, log, milestone } from '../state.js';
+import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, addedTalents } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
@@ -61,19 +63,48 @@ export const canTryForBaby = (npc) =>
   (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy
   && !player().legal.incarceration;
 
+/** The chance a try works, by the mother's age and fertility: good when young, falling after 35, low past 42. */
+function conceiveChance(motherAge, fertility) {
+  const byAge = motherAge <= 34 ? 0.55 : motherAge <= 38 ? 0.4 : motherAge <= 42 ? 0.2 : 0.08;
+  return clamp(byAge * (0.6 + (fertility ?? 50) / 125), 0.04, 0.85);
+}
+
+/** Trying for a baby: as often as the couple likes, each try a fresh chance. */
 export function tryForBaby(npcId) {
   const p = player();
   const npc = store.state.npcs[npcId];
   if (!canTryForBaby(npc)) return result(false, 'That is not possible right now.', 'neutral');
-  if (!spendAction(npc, 'baby')) return result(false, 'You have been trying all year.', 'neutral');
   const motherAge = p.gender === 'female' ? p.age : npc.age;
-  const chance = clamp(p.hidden.fertility / 100 * (motherAge > 38 ? 0.45 : 0.85), 0.03, 0.9);
-  if (!rng.chance(chance)) {
-    const text = `You and ${npc.firstName} tried for a baby this year. It has not happened yet.`;
+  if (!rng.chance(conceiveChance(motherAge, p.hidden.fertility))) {
+    const text = `You and ${npc.firstName} tried for a baby. Not this time.`;
     log(text);
     return result(false, text, 'neutral');
   }
   const text = `You and ${npc.firstName} tried for a baby. ${conceive(npc, true)}`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** A round of IVF: from 1978, at a clinic's price; a much better chance, and twins (or more) about twice as often. */
+export const IVF_COST = 15000;
+export const ivfOpen = (npc) => canTryForBaby(npc) && store.state.year >= 1978;
+export const ivfPrice = () => localMoney(IVF_COST, country());
+export function tryIvf(npcId) {
+  const p = player();
+  const npc = store.state.npcs[npcId];
+  if (!ivfOpen(npc)) return result(false, store.state.year < 1978 ? 'IVF does not exist yet.' : 'That is not possible right now.', 'neutral');
+  const cost = ivfPrice();
+  if (p.finance.cash < cost) return result(false, `A round of IVF costs ${fmtMoney(cost, country())}.`, 'neutral');
+  p.finance.cash -= cost;
+  const motherAge = p.gender === 'female' ? p.age : npc.age;
+  const chance = clamp(conceiveChance(motherAge, p.hidden.fertility) * 1.6 + 0.1, 0.15, 0.9);
+  if (!rng.chance(chance)) {
+    const text = `A round of IVF with ${npc.firstName}: weeks of appointments and hope, and then a negative test. It cost ${fmtMoney(cost, country())}.`;
+    log(text, 'system', 'bad');
+    return result(false, text, 'neutral');
+  }
+  const text = `A round of IVF with ${npc.firstName}. ${conceive(npc, true)} It cost ${fmtMoney(cost, country())}.`;
+  p.flags.pregnancy.ivf = true;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -107,15 +138,43 @@ export function newborn(other) {
   return added;
 }
 
+/** A clock time some minutes later: "11:58 PM" and 5 is "12:03 AM". */
+function later(time, minutes) {
+  const [, h, m, ap] = time.match(/(\d+):(\d+) (AM|PM)/);
+  const t = ((Number(h) % 12) + (ap === 'PM' ? 12 : 0)) * 60 + Number(m) + minutes;
+  const hh = Math.floor(t / 60) % 24;
+  return `${hh % 12 || 12}:${String(t % 60).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
+}
+
+/** What several babies born together are called. */
+export const MULTIPLES = { 2: 'twins', 3: 'triplets', 4: 'quadruplets' };
+
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
+  const ivf = !!p.flags.pregnancy.ivf;
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
-  if (rng.chance(0.025)) babies.push(newborn(other));
+  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
+  if (rng.chance(ivf ? 0.05 : 0.025)) {
+    babies.push(newborn(other));
+    if (rng.chance(ivf ? 0.12 : 0.06)) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
+  }
+  // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
+  // share the day and the doctor, a few minutes apart, and are each a little smaller.
+  const date = dayInYearJustLived(babies[0].id);
+  playerBirthInfo(p); // the player's own size at birth, kept, so the baby leans toward the same one their tag shows
+  babies.forEach((b, i) => {
+    b.birthInfo = makeBirthInfo(b, { date, countryId: p.countryId, city: p.city, parents: [p, other], twin: babies.length > 1 ? babies.length : false });
+    if (i) { const first = babies[0].birthInfo; b.birthInfo = { ...b.birthInfo, doctor: first.doctor, place: first.place, room: first.room, atHome: first.atHome, time: later(babies[i - 1].birthInfo.time, 4 + (b.birthInfo.weightOz % 14)) }; }
+    b.birthday = birthdayFromDate(date);
+    b.flags.birthTag = 'new'; // shown when the turn is over (ui/shell.js birthNotice)
+  });
   const kind = (n) => (n.gender === 'male' ? 'boy' : 'girl');
-  const text = babies.length === 2
-    ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} twins: ${babies[0].firstName} and ${babies[1].firstName}.`
+  const many = MULTIPLES[babies.length];
+  const names = babies.map((b) => b.firstName);
+  const text = babies.length > 1
+    ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} ${many}: ${names.slice(0, -1).join(', ')} and ${names.at(-1)}.`
     : `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} a baby ${kind(babies[0])}, ${babies[0].firstName}.`;
   log(`${text} You can change the name from the People tab.`, 'system', 'good');
   // Historical Eras: in earlier years childbirth was dangerous for the mother (engine/history.js).
@@ -123,7 +182,7 @@ function birth() {
     if (p.gender === 'female') p.flags.birthDeath = true;
     else if (other?.alive) { other.alive = false; other.flags.diedYear = store.state.year; log(`${other.firstName} did not survive the birth. The midwife did everything she could.`, 'system', 'bad'); p.stats.mood = clamp(p.stats.mood - 30); }
   }
-  milestone(babies.length === 2 ? `Twins ${babies[0].firstName} and ${babies[1].firstName} were born.` : `${babies[0].firstName} was born.`, 'family');
+  milestone(babies.length > 1 ? `${MULTIPLES[babies.length].replace(/^./, (c) => c.toUpperCase())} ${names.slice(0, -1).join(', ')} and ${names.at(-1)} were born.` : `${babies[0].firstName} was born.`, 'family');
   p.stats.mood = clamp(p.stats.mood + 14);
   if (other?.alive && (other.role === 'spouse' || other.role === 'partner')) {
     other.meters.relationship = clamp(other.meters.relationship + 6);
@@ -147,6 +206,11 @@ export function adopt() {
   const child = addNpc(makeNpc({ role: 'child', countryId: p.countryId, lastName: p.lastName, age: rng.int(0, 8),
     relationship: rng.int(45, 70) }));
   child.adopted = true;
+  // The day they came home (ui/birthTag.js adoption card).
+  const partner = livingNpcs().find((n) => ['spouse', 'partner'].includes(n.role));
+  child.birthday ??= birthdayFor(child.id);
+  child.adoptionInfo = adoptionInfoFor(child, { date: dateNow(), countryId: c.id, city: p.city, by: [p.id, ...(partner ? [partner.id] : [])] });
+  child.flags.adoptionCard = 'new';
   child.stats = { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
   child.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60),
     singing: rng.int(0, 60), dance: rng.int(0, 60) };
@@ -156,7 +220,62 @@ export function adopt() {
   const text = `After a year of forms and home visits, you adopted ${child.firstName}, age ${child.age}. The fees came to ${fmtMoney(fee, c)}.`;
   log(text, 'system', 'good');
   milestone(`Adopted ${child.firstName}.`, 'family');
-  return result(true, text);
+  return { ...result(true, text), childId: child.id };
+}
+
+/** How long a name may be, and what it may be made of: letters (any alphabet, accents too), spaces, hyphens, apostrophes. */
+export const NAME_LIMITS = { first: 20, last: 30 };
+const NAME_OK = /^[\p{L}\p{M}][\p{L}\p{M}' .-]*$/u;
+/** A name as typed, tidied: spaces trimmed and collapsed. Null if it will not do. */
+export function cleanName(name, max) {
+  const s = String(name ?? '').trim().replace(/\s+/g, ' ').replace(/\s*-\s*/g, '-');
+  return s && s.length <= max && NAME_OK.test(s) && !/[-' .]{2}/.test(s) && !/[-]$/.test(s) ? s : null;
+}
+const HISPANIC = new Set('es mx ar co cl pe ve cu do ec gt bo py uy sv hn ni cr pa pr'.split(' '));
+const LUSOPHONE = new Set(['pt', 'br', 'ao']);
+/**
+ * The last names a baby could be given: the player's, their partner's, both joined, or both the way the country does
+ * it (father's then mother's in Spanish-speaking countries, mother's then father's in Portuguese-speaking ones). The
+ * first is the usual choice where they live.
+ */
+export function surnameChoices(baby, p = player()) {
+  const other = (baby.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
+  const mine = p.lastName;
+  const theirs = other?.lastName;
+  if (!theirs || theirs === mine) return [{ value: mine, label: mine }];
+  const [mom, dad] = p.gender === 'female' ? [mine, theirs] : [theirs, mine];
+  const first = (s) => s.split(/[ -]/)[0];
+  const local = HISPANIC.has(p.countryId) ? `${first(dad)} ${first(mom)}` : LUSOPHONE.has(p.countryId) ? `${first(mom)} ${first(dad)}` : null;
+  const list = [
+    ...(local ? [{ value: local, label: `${local} (both, as is the custom here)` }] : []),
+    { value: mine, label: `${mine} (yours)` },
+    { value: theirs, label: `${theirs} (${other.firstName}'s)` },
+    { value: `${first(mine)}-${first(theirs)}`, label: `${first(mine)}-${first(theirs)}` },
+    { value: `${first(theirs)}-${first(mine)}`, label: `${first(theirs)}-${first(mine)}` },
+  ];
+  return list.filter((x, i) => x.value.length <= NAME_LIMITS.last && list.findIndex((y) => y.value === x.value) === i);
+}
+
+/**
+ * Names a newborn, at birth: first name and last name. The day's lines in the life story are written with the name
+ * the baby is given, not the one the game first put down.
+ */
+export function nameBaby(npcId, first, last) {
+  const npc = store.state.npcs[npcId];
+  const f = cleanName(first, NAME_LIMITS.first);
+  const l = cleanName(last, NAME_LIMITS.last);
+  if (!npc || !canRename(npc)) return result(false, 'That baby cannot be named now.', 'neutral');
+  if (!f) return result(false, `A first name is up to ${NAME_LIMITS.first} letters: letters, spaces, hyphens and apostrophes.`, 'neutral');
+  if (!l) return result(false, `A last name is up to ${NAME_LIMITS.last} letters: letters, spaces, hyphens and apostrophes.`, 'neutral');
+  const old = npc.firstName;
+  npc.firstName = f;
+  npc.lastName = l;
+  const p = player();
+  // Whole names only, in any alphabet: "José" and "Zoë" too (\\b does not count accented letters as letters).
+  const re = new RegExp(`(?<![\\p{L}\\p{M}])${old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{M}])`, 'gu');
+  for (const e of store.state.journal.filter((x) => x.age === p.age)) e.text = e.text.replace(re, f);
+  for (const m of p.milestones.filter((x) => x.age === p.age)) m.text = m.text.replace(re, f);
+  return result(true, `Welcome, ${f} ${l}.`, 'good');
 }
 
 /** Only babies can be renamed. */

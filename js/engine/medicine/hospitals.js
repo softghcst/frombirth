@@ -54,6 +54,18 @@ export function hospitalsIn(countryId = player().countryId, city = player().city
     chronicle(e, `${city} General Hospital opened its residency programs.`);
     list = [...list, e];
   }
+  // The rest of a city's health system, made once: a public health service everywhere; in a capital, a government
+  // hospital; in the biggest cities, specialty hospitals for the heart and for bones and joints.
+  const key = `${countryId}/${city}`;
+  const done = (W().citySystems ??= {});
+  if (!done[key]) {
+    done[key] = true;
+    const kind = cityOf(countryId, city)?.kind;
+    const add = (name, medKind, size) => { const e = registerEmployer({ name, family: 'health', tracks: ['doctor', 'nurse'], countryId, city, owned: false }); e.size = size; e.medKind = medKind; list = [...list, e]; };
+    add(`${city} Public Health Service`, 'public_health', 'medium');
+    if (kind === 'capital') add(`${city} Government Hospital`, 'government', 'large');
+    if (kind === 'capital' || kind === 'largest') { add(`${city} Heart Institute`, 'heart', 'large'); add(`${city} Orthopedic Hospital`, 'bone', 'medium'); }
+  }
   return list.map((e) => ({ e, h: hospital(e) }));
 }
 

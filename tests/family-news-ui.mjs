@@ -43,7 +43,7 @@ const ids = await page.evaluate(async () => {
 // 1. Sleepover, from the friend's profile.
 await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
 await page.evaluate((id) => document.querySelector(`[data-npc="${id}"]`).click(), ids.pal); await page.waitForTimeout(300);
-await page.evaluate(() => document.querySelectorAll('#modal-root details.action-group').forEach((d) => { d.open = true; }));
+
 await page.locator('#modal-root [data-act="with:sleepover"]').click(); await page.waitForTimeout(250);
 check(await page.locator('#modal-root select#m-pick').count() === 1 && /Sleepover/.test(await page.locator('#modal-root .modal').last().innerText()), 'the sleepover asks with a dropdown');
 check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).some((x) => /^Sleep out in a tent$/i.test(x)), 'a night in a tent is one of the plans');

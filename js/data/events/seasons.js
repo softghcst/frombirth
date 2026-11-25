@@ -16,7 +16,7 @@ const working = (p) => !!p.career?.careerId;
 const retired = (p) => !!p.career?.retired && !p.career?.careerId;
 const kids = (s, a, b) => s.player.npcIds.map((id) => s.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.age >= a && n.age <= b);
 /** Whether the turn just played took in one of these months of the year (0 = January). */
-const covers = (s, months) => { const step = [6, 3].includes(s.settings?.step) ? s.settings.step : 12; const end = s.month || 12; return months.some((m) => turnCovers(end, step, m)); };
+const covers = (s, months) => { const step = [6, 3].includes(s.settings?.step) ? s.settings.step : 12; const end = s.month || 12; return months.some((m) => turnCovers(end, step, m, s.player?.birthday?.m ?? 0)); };
 const schoolStarts = (p, s) => covers(s, [schoolStart(p.countryId)]);
 const examTime = (p, s) => covers(s, examMonths(p.countryId));
 const playsTeamSport = (p, s) => Object.values(s.sports?.athletes?.[p.id]?.sports ?? {}).some((e) => e.status === 'active' && e.teamId);

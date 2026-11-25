@@ -12,9 +12,9 @@
 // review, and an ended prescription is never charged again.
 import { store, player, log } from '../../state.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
-import { healthOf, startCondition, migrateHealth, absorbLegacy } from './record.js';
+import { healthOf, startCondition, migrateHealth, absorbLegacy, presentConditions, diagnosisFor } from './record.js';
 import { WEEKS, now } from './util.js';
-import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName, attendNow } from './care.js';
+import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName, attendNow, CONCERNS, serviceOptions, seekAssessment } from './care.js';
 import { medWeek, review, considerStart, attendMonitoring, noticeBetterFit } from './meds.js';
 import { therapyWeek, setbacks } from './therapy.js';
 import { weekCourse, weekWellbeing, rollOnset, yearMood, yearBody } from './course.js';
@@ -181,3 +181,51 @@ export function careWaiting(p = player()) {
 }
 
 export { migrateHealth, legacySummary };
+
+// ---------- A check-up, when something seems off ----------
+
+/** Which kind of help a condition is looked into under (engine/health/care.js CONCERNS). */
+export function concernFor(conditionId) {
+  const def = CONDITION_BY_ID[conditionId];
+  if (!def) return 'body';
+  if (['dyslexia', 'dyscalculia', 'dysgraphia'].includes(def.id)) return 'learning';
+  if (def.id === 'adhd') return 'attention';
+  if (def.group === 'neurodev') return 'development';
+  if (def.group === 'sensory') return 'senses';
+  return Object.entries(CONCERNS).find(([, c]) => c.groups.includes(def.group))?.[0] ?? 'body';
+}
+
+/**
+ * Something the player has noticed that nobody has put a name to yet, and whether a check-up is worth suggesting
+ * now. Conditions stay hidden until a doctor finds them: this only says that something seems off. Asked about once,
+ * then again three years after a "not now".
+ * @returns {{recId:string, concern:string, text:string, child:boolean}|null}
+ */
+export function checkupDue(p = player()) {
+  const h = p.health;
+  if (!h || !p.alive) return null;
+  const year = store.state.year;
+  for (const rec of presentConditions(h)) {
+    if (!rec.noticed || rec.dx !== 'none' || diagnosisFor(rec, h)) continue;
+    if (rec.checkupAsked != null && year - rec.checkupAsked < 3) continue;
+    const concern = concernFor(rec.conditionId);
+    if (!serviceOptions(concern, p).some((o) => !o.referral)) continue;
+    const child = p.age < 16;
+    return { recId: rec.id, concern, child, text: child
+      ? 'Something has seemed a little different for you lately, and your parents are wondering whether a doctor should take a look.'
+      : 'Something has not felt quite right lately. A check-up could find out what is going on.' };
+  }
+  return null;
+}
+
+/** The player's answer to checkupDue: yes books the first place that can see them for it. */
+export function answerCheckup(recId, yes, p = player()) {
+  const h = healthOf(p);
+  const rec = h.conditions.find((c) => c.id === recId);
+  if (!rec) return null;
+  rec.checkupAsked = store.state.year;
+  if (!yes) return null;
+  const concern = concernFor(rec.conditionId);
+  const opt = serviceOptions(concern, p).find((o) => !o.referral);
+  return opt ? seekAssessment(concern, opt.facilityId, opt.profession, p) : null;
+}

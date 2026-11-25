@@ -5,6 +5,7 @@
 // Each person keeps a `life` record and a `life.history` timeline. Big moments
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate } from './birthTag.js';
 import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess, secondaryShare } from './history.js';
 import { rule as lawRule } from './rules.js';
 import { rng } from '../rng.js';
@@ -438,6 +439,12 @@ function haveBaby(npc, love) {
     addedTalents(baby.talents, () => 30, 0, 60);
   }
   baby.parentIds = [npc.id, love.id];
+  if (!adopted) {
+    // Their hospital tag; a grandchild's is shown to the player when the turn is over (ui/shell.js birthNotice).
+    baby.birthInfo = makeBirthInfo(baby, { date: dayInYearJustLived(baby.id), countryId: p.countryId, city: npc.city ?? p.city, parents: [mother, father] });
+    baby.birthday = birthdayFromDate(baby.birthInfo.date);
+    if (npc.role === 'child') baby.flags.birthTag = 'new';
+  }
   ensureLife(baby);
   L.kids += 1;
   love.life.kids = (love.life.kids ?? 0) + 1;

@@ -1,6 +1,7 @@
 // My Passport: the player's passport as a little book to leaf through. The first page is the photo page (who they
 // are, which country issued it, when it runs out); the pages after it hold a stamp for every border crossed, in the
 // order it happened: each trip abroad, each move to another country. Read-only: it shows what the save already holds.
+import { isoDate } from '../engine/birthday.js';
 import { player } from '../state.js';
 import { esc } from '../util.js';
 import { openModal } from './modals.js';
@@ -70,7 +71,7 @@ export function openPassportBook() {
         <dt>Surname</dt><dd>${esc(p.lastName.toUpperCase())}</dd>
         <dt>Given names</dt><dd>${esc(p.firstName.toUpperCase())}</dd>
         <dt>Nationality</dt><dd>${issuer ? `${issuer.flag} ${esc(issuer.name.toUpperCase())}` : '—'}</dd>
-        <dt>Born</dt><dd>${p.birthYear} · ${esc((COUNTRIES[p.birthCountryId]?.name ?? '').toUpperCase())}</dd>
+        <dt>Born</dt><dd>${esc(p.birthday ? stampDate(isoDate(p.birthYear, p.birthday.m, p.birthday.d)) : String(p.birthYear))} · ${esc((COUNTRIES[p.birthCountryId]?.name ?? '').toUpperCase())}</dd>
         <dt>Expires</dt><dd>${current ? esc(stampDate(current.expiresOn)) : 'NOT ISSUED YET'}</dd>
       </dl>
       <p class="pp-mrz" aria-hidden="true">P&lt;${esc((issuer?.id ?? 'XXX').toUpperCase())}${esc(p.lastName.toUpperCase().replace(/[^A-Z]/g, ''))}&lt;&lt;${esc(p.firstName.toUpperCase().replace(/[^A-Z]/g, ''))}&lt;&lt;&lt;&lt;&lt;&lt;</p>

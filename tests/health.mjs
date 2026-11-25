@@ -795,6 +795,41 @@ section("family members' care: their own clinicians, sessions attended, medicine
   section('mental health care is from five: nothing of the kind for a baby');
 }
 
+// ---------- Few at once, and found by a doctor ----------
+{
+  const idx = await import('../js/engine/health/index.js');
+  const few = gen.fewer(['dyslexia', 'dysgraphia', 'dld', 'adhd', 'autism', 'asthma']);
+  check(few.filter((x) => ['dyslexia', 'dyscalculia', 'dysgraphia', 'dld'].includes(x)).length === 1 && few.filter((x) => CONDITION_BY_ID[x].group === 'neurodev').length <= 2 && few.length <= 3, `nobody is born with that many at once (${few})`);
+  let most = 0;
+  for (let i = 0; i < 400; i++) most = Math.max(most, gen.bornWith(gen.genomeOf(adult(0)), `few_${i}`).length);
+  check(most <= 3, `at most three conditions from birth (${most})`);
+  const p = adult(8);
+  const rec = R.startCondition('dyslexia', { onsetAge: 0, showsAge: 6, severity: 45 }, p);
+  check(!idx.checkupDue(p), 'nothing to ask about before it is noticed');
+  course.rollOnset(p);
+  const due = idx.checkupDue(p);
+  check(rec.noticed && due?.recId === rec.id && due.child && !/dyslexia/i.test(due.text), `once noticed, a check-up is suggested without naming it (${JSON.stringify(due)})`);
+  check(!R.isDiagnosed('dyslexia', p.health), 'it is not known until a doctor finds it');
+  idx.answerCheckup(rec.id, false, p);
+  check(!idx.checkupDue(p), 'a "not now" is not asked again straight away');
+  rec.checkupAsked -= 3;
+  const r = idx.answerCheckup(rec.id, true, p);
+  check(r?.ok && rec.dx !== 'none', `saying yes books an assessment (${r?.text})`);
+  section('few at once: a believable handful from birth, nothing named until a doctor finds it, a check-up suggested');
+}
+
+// ---------- A child's doctor ----------
+{
+  const med = await import('../js/engine/medical.js');
+  do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+  const p = store.state.player;
+  p.age = 3; p.finance.cash = 0;
+  check(!med.therapy().ok && /from age 5/.test(med.therapy().text), 'no therapist for a three-year-old');
+  const r = med.checkUp();
+  check(r.ok && p.finance.cash === 0 && /parents/i.test(r.text), `a small child's check-up is paid by the parents (${r.text})`);
+  section("a child's doctor: only what fits their age, and the parents pay");
+}
+
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }
 console.log('\nThe health engine checks out.');

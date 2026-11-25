@@ -121,9 +121,10 @@ function formModal({ title, body, submit = 'Save', fields }) {
       if (f.type === 'check') return `<label class="dl-check"><input type="checkbox" name="${f.name}" ${f.value ? 'checked' : ''}> ${esc(f.label)}</label>`;
       return `<div class="field"><label for="${id}">${esc(f.label)}</label><input id="${id}" name="${f.name}" maxlength="${f.max ?? 40}" autocomplete="off" value="${esc(f.value ?? '')}"></div>`;
     }).join('');
-    const m = openModal(`<h2>${esc(title)}</h2>${body ? `<p class="body">${esc(body)}</p>` : ''}<form novalidate>${html}
+    // A form is a page of its own: room for every field, the title in the bar along the top.
+    const m = openModal(`${body ? `<p class="body">${esc(body)}</p>` : ''}<form novalidate>${html}
       <div class="btn-row"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn primary">${esc(submit)}</button></div></form>`,
-    { dismissable: true, onDismiss: () => resolve(null) });
+    { dismissable: true, full: true, title, onDismiss: () => resolve(null) });
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
     m.el.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -665,11 +666,30 @@ function pageArchive() {
     : '<p class="empty">When you carry the family on as someone\'s heir, their story is kept here.</p>'}`;
 }
 
+/** A physician ancestor's career, as the family remembers it (engine/medicine/core.js physicianSummary). No patients. */
+function medicineCard(id, entry) {
+  const people = Object.values(store.state.archive?.people ?? {});
+  const a = people.find((x) => x.id === id) ?? people.find((x) => `${x.firstName} ${x.lastName}` === entry.name && x.died === entry.died);
+  const md = a?.medicine;
+  if (!md) return '';
+  const rows = [
+    ['Trained', md.trained.length ? md.trained.map((t) => `${t.name}${t.hospital ? ` at ${t.hospital}` : ''} (${t.from}–${t.to})${t.chief ? ', chief resident' : ''}`).join('; ') : 'Before the family kept records'],
+    ...(md.boards.length ? [['Board certified', md.boards.join(', ')]] : []),
+    ...(md.topTitle ? [['Highest post', md.topTitle]] : []),
+    ...(md.hospitals.length ? [['Hospitals', md.hospitals.join(', ')]] : []),
+    ...(md.practices.length ? [['Private practice', md.practices.join(', ')]] : []),
+    ['Years in medicine', String(md.years)],
+  ];
+  return `<div class="section-label">Medicine</div>${rows.map(([k, x]) => `<div class="kv"><span>${esc(k)}</span><span>${esc(x)}</span></div>`).join('')}
+    <p class="muted">Their patients' records were confidential, and were not kept by the family.</p>`;
+}
+
 function pageAncestor(id) {
   const v = legacy.archiveOf(id);
   if (!v) return '<p class="empty">Nothing in the archive.</p>';
   return `<div class="dl-card"><div class="row" style="border:0;padding:0;background:none">${face(id, 'lg')}<div class="main"><strong>${esc(v.entry.name)}</strong><small>${v.entry.born}–${v.entry.died} · generation ${v.entry.generation}</small><small>Lived through: ${esc(erasBetween(v.entry.born, v.entry.died).map((x) => x.name).join(' → '))}</small></div></div></div>
     <div class="section-label">Life story</div>${v.entry.milestones.slice(-12).map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
+    ${medicineCard(id, v.entry)}
     <div class="section-label">Accounts</div>${v.accounts.map(accountCard).join('') || '<p class="empty">No public accounts.</p>'}
     ${v.hiddenAccounts ? `<p class="muted">${v.hiddenAccounts} other account${v.hiddenAccounts === 1 ? ' was' : 's were'} private, and stay${v.hiddenAccounts === 1 ? 's' : ''} that way.</p>` : ''}
     <div class="section-label">Digital memories</div>${v.memories.map((e) => `<div class="dl-card"><div class="dl-post-head">${e.charIds.filter((x) => x !== id).slice(0, 3).map((x) => face(x, 'sm')).join('')}<div><strong>${e.year}</strong></div></div><p>${esc(e.summary)}</p>${e.ref?.type === 'post' && v.posts.some((x) => x.id === e.ref.id) ? `<button class="btn small" data-open-post="${e.ref.id}">See the post</button>` : ''}</div>`).join('') || '<p class="empty">None recorded.</p>'}

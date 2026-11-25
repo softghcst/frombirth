@@ -11,12 +11,16 @@
 // Nothing is guaranteed: a residency or fellowship place is applied for and may not be offered.
 // A resident practices under supervision only; a student has no privileges of their own.
 import { rng } from '../../rng.js';
+import { MAJOR_BY_ID } from '../../data/majors.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
-import { M, med, year, grow, note, once, result, roll, specialtyName, qualified } from './core.js';
+import { citiesOf, relocate, moveCost } from '../cities.js';
+import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily, storyOnce } from './core.js';
+import { recordEvent, archiveIdOf } from '../chronicle.js';
+import { remember } from '../conditions.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
 
 const avg = (...xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -30,19 +34,28 @@ export const isPodiatry = (m = med()) => m?.route === 'dpm';
 /** Who can do premedical activities: someone at university, or a graduate who has not yet started medical school. */
 export function premedOpen(p = player()) {
   if (p.age < 17 || inMedSchool(p) || holds('medical', p) || holds('podiatric', p)) return false;
-  return (p.education.enrolled && p.education.stage === 'university') || holds('university', p);
+  // Only for someone on the way to medicine: studying (or holding a degree in) a subject that leads there, and not
+  // settled in another career. Anyone who has already started on it keeps it.
+  const towardMedicine = (id) => !!MAJOR_BY_ID[id]?.tracks?.includes('medical');
+  const studying = p.education.enrolled && p.education.stage === 'university' && towardMedicine(p.education.majorId);
+  const started = !!p.medicine?.premed && Object.values(p.medicine.premed).some((v) => typeof v === 'number' && v > 0);
+  const graduate = (started || p.education.degrees.some((d) => d.type === 'university' && towardMedicine(d.majorId))) && !p.career.careerId;
+  return studying || graduate;
 }
 
 /** Premedical activities, each once a year. */
 export function premedOptions() {
   const m = med();
-  return PREMED.map((a) => ({ ...a, done: !!m && m.acted.year === year() && !!m.acted[`premed:${a.id}`] }));
+  const fam = medicalFamily();
+  // Family in medicine: a parent's or grandparent's stories, or an ancestor's papers in the Family Archive.
+  const extra = fam ? [{ id: 'family_talk', name: fam.archived ? `Read ${fam.name}'s papers in the Family Archive` : `Talk about medicine with ${fam.name}`, adds: { exposure: 1, letters: fam.archived ? 0 : 0.5 } }] : [];
+  return [...PREMED, ...extra].map((a) => ({ ...a, done: !!m && m.acted.year === year() && !!m.acted[`premed:${a.id}`] }));
 }
 
 /** Does one premedical activity this year. */
 export function doPremed(id) {
   const p = player();
-  const a = PREMED.find((x) => x.id === id);
+  const a = premedOptions().find((x) => x.id === id);
   if (!a) return result(false, 'There is no such thing to do.', 'neutral');
   if (!premedOpen(p)) return result(false, 'Premedical activities are for university students and graduates who have not yet started medical school.', 'neutral');
   const m = M();
@@ -56,6 +69,8 @@ export function doPremed(id) {
     mentor: 'A professor agreed to advise you, and to write you a letter when the time comes.',
     science_club: 'The science club met on Thursdays. You argued about evolution until the building closed.',
     study_exam: 'You worked through practice papers for the entrance exam, every evening for months.',
+    family_talk: medicalFamily()?.archived ? `You read through ${medicalFamily().name}'s old papers: case notes with every name blacked out, and a letter about why they chose medicine.`
+      : `${medicalFamily()?.name} talked for hours: the nights on call, the patients they still think about, and what they would do differently.`,
   }[id];
   if (id === 'research') grow('research', 3, m);
   if (id === 'volunteer' || id === 'shadow') grow('communication', 1, m);
@@ -116,6 +131,10 @@ function rotate(p, m, rot) {
 function schoolYear(p, m, y) {
   const j = jurisdiction(m.school.countryId);
   const dpm = m.route === 'dpm';
+  if (y === 1) storyOnce('med_anatomy_exam', { words: { school: m.school.name } }, m);
+  if (y === 3) storyOnce('med_patient_remember', {}, m);
+  if (y === 3 && m.route !== 'dpm') storyOnce('med_choosing_specialty', {}, m);
+  if (y === 4 || (y === 3 && jurisdiction(m.school.countryId).schoolYears === 4)) storyOnce('med_residency_interview', {}, m);
   if (y <= 2) {
     grow('reasoning', 3, m); grow('professionalism', 1, m); grow('research', 0.5, m);
     log(y === 1 ? 'Your first year of medical school: anatomy, physiology, and more reading than you thought possible.' : 'Second year: how bodies go wrong, and how doctors find out.', 'system', 'neutral');
@@ -192,29 +211,109 @@ export function placeChance(specialtyId, m = med()) {
  * Applies for training places in order of preference; the first that offers one is taken.
  * Before the national match existed, places were offered directly; the result is the same kind of decision.
  */
-function runMatch(kind, wanted) {
+export function runMatch(kind, wanted) {
   const p = player();
   const m = M();
   const j = jurisdiction(p.countryId);
   const by = j.selection && !(p.countryId === 'us' && year() < ERA.residencyMatch) ? j.selection : 'direct offers from hospitals';
+  const what = kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`;
   m.match = { kind, year: year(), applied: [...wanted], tries: (m.match?.kind === kind ? m.match.tries ?? 0 : 0) + 1, status: 'unmatched' };
   for (const id of wanted) {
-    const chance = placeChance(id, m);
-    if (!roll(chance)) continue;
-    const sites = trainingSites(id, p.countryId, p.city);
-    if (!sites.length) continue;
-    const strength = applicationStrength(id, m);
-    const site = strength >= 70 ? sites[0] : sites[sites.length - 1];
-    m.match.status = 'matched';
-    m.match.specialtyId = id;
-    m.match.hospitalId = site.e.id;
-    log(`${kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`}: you matched into ${specialtyName(id)} at ${site.e.name}.`, 'system', 'good');
-    return startTraining(kind, id, site.e.id);
+    // One fellowship place, two strong residents: when a rival from the program applies too, the program chooses
+    // between the two applications, on the record. Otherwise it is the ordinary chance of a place.
+    const rival = kind === 'fellowship' && SPECIALTY_BY_ID[id].compete >= 0.5
+      ? (m.people.rivalIds ?? []).map((x) => store.state.npcs[x]).find((n) => n?.alive && !n.flags.medFellowship) : null;
+    if (!rival && !roll(placeChance(id, m))) continue;
+    const site = pickSite(id, m, p);
+    if (!site) continue;
+    if (kind === 'fellowship') {
+      if (rival) {
+        const theirs = (rival.meters.intellect ?? 50) * 0.7 + rng.int(0, 30);
+        const mine = applicationStrength(id, m) * 0.7 + rng.int(0, 30);
+        rival.flags.medFellowship = id;
+        m.fellowshipRace = { year: year(), specialtyId: id, rivalId: rival.id, won: mine >= theirs };
+        if (mine < theirs) {
+          remember(rival, `medFellowship:${id}`, `Was chosen over you for the ${specialtyName(id)} fellowship.`);
+          log(`There was one ${specialtyName(id)} fellowship place, and the program chose ${rival.firstName} ${rival.lastName}. On paper it was close.`, 'system', 'bad');
+          continue;
+        }
+        remember(rival, `medFellowship:${id}`, `Lost the ${specialtyName(id)} fellowship place to you.`);
+        rival.flags.medFellowship = 'missed';
+      }
+    }
+    return matched(kind, id, site, what);
   }
-  log(`${kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
+  // A second round for places left unfilled: less competitive programs, for those who opt in (the default).
+  if (kind === 'residency' && m.secondRound !== false && m.route !== 'dpm') {
+    const left = applicationOptions(p, m).filter((o) => !o.block && !wanted.includes(o.id) && o.compete <= 0.45)
+      .sort((a, b) => b.interest - a.interest || a.compete - b.compete).slice(0, 2);
+    for (const o of left) {
+      if (!roll(placeChance(o.id, m) * 0.7)) continue;
+      const site = pickSite(o.id, m, p);
+      if (site) return matched(kind, o.id, site, 'In the second round, for places left unfilled');
+    }
+  }
+  if (kind === 'residency') storyOnce('med_match_day_unmatched', { words: { specialty: specialtyName(wanted[0]), day: matchDay(p) } }, m);
+  log(`${what}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
   p.stats.mood = clamp(p.stats.mood - 12);
   note(`Did not match into ${specialtyName(wanted[0])} (${year()}).`, 'career', { log: false });
   return null;
+}
+
+/**
+ * Where a place is offered. Applying nationwide (the default) can mean another city: a strong
+ * application gets the best-resourced program in the country, others wherever there is room.
+ * Applying only at home keeps to the player's own city.
+ */
+function pickSite(id, m, p) {
+  const here = trainingSites(id, p.countryId, p.city).map((x) => ({ ...x, city: p.city }));
+  const strength = applicationStrength(id, m);
+  if (m.local || p.age < 18) return here.length ? (strength >= 70 ? here[0] : here[here.length - 1]) : null;
+  const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => trainingSites(id, p.countryId, c.name).map((x) => ({ ...x, city: c.name })));
+  const all = [...here, ...away];
+  if (!all.length) return null;
+  if (strength >= 70) return [...all].sort((a, b) => b.h.resources - a.h.resources || (a.city === p.city ? -1 : 1))[0];
+  return roll(0.45) && here.length ? here[here.length - 1] : rng.pick(all);
+}
+
+/** Takes the place: moving city first if the program is elsewhere (the program pays the move). */
+function matched(kind, id, site, what) {
+  const p = player();
+  const m = M();
+  if (kind === 'residency') storyOnce('med_match_day', { words: { specialty: specialtyName(id), hospital: site.e.name, city: site.city, day: matchDay(p) } }, m);
+  m.match.status = 'matched';
+  m.match.specialtyId = id;
+  m.match.hospitalId = site.e.id;
+  log(`${what}: you matched into ${specialtyName(id)} at ${site.e.name}${site.city !== p.city ? `, in ${site.city}` : ''}.`, 'system', 'good');
+  if (site.city !== p.city) {
+    p.finance.cash += moveCost(); // a relocation allowance from the program
+    const r = relocate(site.city);
+    if (r.ok) m.match.moved = site.city;
+    else { p.finance.cash -= moveCost(); log(`You could not move to ${site.city} (${r.text}) and gave up the place.`, 'system', 'bad'); m.match.status = 'declined'; return null; }
+  }
+  return startTraining(kind, id, site.e.id);
+}
+
+/** What the day training places are announced is called: Match Day in the US (from 1952), plainer words elsewhere. */
+function matchDay(p) {
+  if (p.countryId === 'us') return year() >= ERA.residencyMatch ? 'Match Day' : 'The day the hospital letters arrive';
+  if (p.countryId === 'ca') return 'Match Day';
+  return 'Results day for specialty training';
+}
+
+/** Applying nationwide (may mean moving) or only in the player's own city. */
+export function setLocal(on) { M().local = !!on; return result(true, on ? `You will apply only to programs in ${player().city}.` : 'You will apply nationwide, and move if the place is elsewhere.', 'neutral'); }
+/** Whether to enter the second round for unfilled places if the first does not work out. */
+export function setSecondRound(on) { M().secondRound = !!on; return result(true, on ? 'If you do not match, you will try for places left unfilled.' : 'You will not enter the second round.', 'neutral'); }
+
+/** A research year while waiting to apply again: a stronger application next time. Once a year. */
+export function researchYear() {
+  const m = M();
+  if (m.stage !== 'graduate' || m.training) return result(false, 'That is for graduates waiting to apply again.', 'neutral');
+  if (!once('research_year', m)) return result(false, 'You are already doing research this year.', 'neutral');
+  grow('research', 6, m); grow('reasoning', 1, m);
+  m.premed.letters += 1;
+  return result(true, 'You join a research group for the year: a paper in progress, and a professor who will write you a letter.');
 }
 
 // ---------- Training ----------
@@ -232,6 +331,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   const how = kind === 'fellowship' ? `Your fellowship in ${s.name} begins.` : kind === 'internship' ? 'Your internship begins: a year on the wards, supervised.' : `Residency in ${s.name} begins.`;
   hire(career, levelFor(kind === 'fellowship' ? 'fellow' : 'resident', career), 55, how, { employerId: hospitalId });
   m.training = { kind, specialtyId: kind === 'internship' ? null : specialtyId, hospitalId, pgy: 1, years, startYear: year(), chief: false, probation: 0, evals: [] };
+  if (kind !== 'fellowship') storyOnce('med_first_night', { words: { hospital: e.name } }, m);
   m.stage = kind;
   m.job = null;
   hospital(e);
@@ -243,13 +343,27 @@ export function startTraining(kind, specialtyId, hospitalId) {
     m.people.supervisorIds = [...new Set([...m.people.supervisorIds, boss.id])];
   }
   const peers = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'coworker' && n.flags.workedWith === e.name);
-  for (const n of peers) { n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6); }
+  for (const n of peers) {
+    n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6);
+    remember(n, `medTrained:${e.id}`, `You trained together at ${e.name}${s ? `, in ${s.name}` : ''}, from ${year()}.`);
+  }
+  if (boss) remember(boss, `medSupervised:${e.id}`, `Supervised your ${kind === 'fellowship' ? 'fellowship' : 'training'} at ${e.name}, from ${year()}.`);
   m.people.colleagueIds = [...new Set([...m.people.colleagueIds, ...peers.map((n) => n.id)])];
   retitle();
+  familyHospital(p, e);
   chronicle(e, `${p.firstName} ${p.lastName} started ${kind === 'fellowship' ? 'a fellowship' : kind === 'internship' ? 'an internship' : 'residency'}${s ? ` in ${s.name}` : ''}.`);
   note(`${kind === 'fellowship' ? 'Began a fellowship' : kind === 'internship' ? 'Began an internship' : 'Began residency'}${s ? ` in ${s.name}` : ''} at ${e.name}.`, 'career',
     { key: `${kind}:${specialtyId ?? 'intern'}:${year()}`, milestone: `${kind === 'fellowship' ? 'Began a fellowship' : kind === 'internship' ? 'Began an internship' : 'Matched into residency'}${s ? ` in ${s.name}` : ''}.`, log: false });
   return m.training;
+}
+
+/** Working where a parent or grandparent once worked: the hospital remembers, and so does the family. */
+function familyHospital(p, e) {
+  const a = ancestorAt(e.id);
+  if (!a || a.id === archiveIdOf(p)) return;
+  const said = `${a.firstName} ${a.lastName} worked at ${e.name} too. ${a.medicine.topTitle ? `Some of the older staff still remember ${a.firstName} as ${a.medicine.topTitle.toLowerCase()}.` : 'There is a photograph of them in the corridor by the old wing.'}`;
+  log(said, 'system', 'good');
+  recordEvent({ key: `med:familyHospital:${archiveIdOf(p)}:${e.id}`, kind: 'medical_career', text: `Worked at ${e.name}, where ${a.firstName} ${a.lastName} had worked before.`, privacy: 'family', people: [a.id], significance: 1 });
 }
 
 /** The job title that goes with a training year or a post. */
@@ -259,11 +373,16 @@ export function retitle(p = player(), m = med()) {
   const t = m.training;
   if (t) {
     const s = SPECIALTY_BY_ID[t.specialtyId];
-    c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? 'Intern' : t.chief ? `Chief resident, ${s.name}` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
+    // Before the modern residency system, a doctor in hospital training was a house officer (US, before about 1950).
+    const old = year() < 1950;
+    c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? (old ? 'House officer' : 'Intern') : t.chief ? `Chief resident, ${s.name}`
+      : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}`
+        // Outside the United States the game does not use US titles: a plain "specialty trainee" with the year.
+        : p.countryId !== 'us' ? `Specialty trainee, ${s.name} (year ${t.pgy})` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
   } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
-    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: `Chief of ${s?.name ?? 'Medicine'}`,
+    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
       chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
   }
 }
@@ -434,6 +553,11 @@ export function startPost(specialtyId, hospitalId, rank = 'attending') {
   m.stage = 'practice';
   hospital(e);
   retitle(p, m);
+  if (!m.topRank) { m.topRank = rank; m.topTitle = p.career.title; }
+  familyHospital(p, e);
+  // An old rival from residency, already working here: the past follows you in.
+  const rival = (m.people.rivalIds ?? []).map((id) => store.state.npcs[id]).find((n) => n?.alive && n.life?.job?.employerId === hospitalId);
+  if (rival) log(`${rival.firstName} ${rival.lastName}, your rival from residency, works at ${e.name} too. They nod at you across the cafeteria.`, 'system', 'neutral');
   note(`Joined ${e.name} as ${an(p.career.title.toLowerCase())}.`, 'career', { key: `post:${hospitalId}:${year()}`, log: false });
   return m.job;
 }
