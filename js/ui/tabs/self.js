@@ -1,6 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
 import { noticed } from '../../engine/talentGrowth.js';
-import { faceGenderOf } from '../../avatar/render.js';
 import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
@@ -17,10 +16,9 @@ import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
-import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
+import { openSalonVisit } from '../salonVisit.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
-import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
@@ -100,15 +98,7 @@ export default {
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
-    if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
-      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,
-        scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance',
-        treatments: { treatmentFor: salon.treatmentFor, years: salon.TREATMENT_YEARS, minAge: salon.TREATMENT_MIN_AGE } });
-      if (!next) return;
-      const r = salon.applySalon(next);
-      api.changed();
-      await messageModal({ body: r.text, tone: r.tone });
-    };
+    if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = () => openSalonVisit(api);  // the visit: js/ui/salonVisit.js
     el.querySelector('[data-world]').onclick = () => openWorld({ start: p.countryId, home: p.countryId });
     el.querySelector('[data-news]').onclick = () => openNews();
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
