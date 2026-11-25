@@ -382,7 +382,7 @@ export function retitle(p = player(), m = med()) {
   } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
-    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
+    c.title = { attending: year() < 1950 ? `Staff ${doc}` : `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
       chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
   }
 }
@@ -599,6 +599,8 @@ export function tickTraining() {
 /** After school: an internship first where the country has one, otherwise straight to residency applications. */
 function startAfterSchool(p, m) {
   const j = jurisdiction(p.countryId);
+  // Where the license comes with graduation (afterTraining 0), it is sat now, before any training place.
+  if (j.license.afterTraining === 0 && m.route !== 'dpm') licenseCheck(p, m, null);
   if (m.route !== 'dpm' && j.internship > 0 && !m.completed.length && !(m.evaluations ?? []).some((x) => x.kind === 'internship')) {
     const site = trainingSites('internal', p.countryId, p.city)[0];
     log(`Every graduate here works ${j.internship === 1 ? 'a supervised year' : `${j.internship} supervised years`} before specialty training.`, 'system', 'neutral');

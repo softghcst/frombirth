@@ -291,6 +291,20 @@ export const JURISDICTIONS = {
     license: { name: 'full GMC registration', afterTraining: 1 }, internship: 2, selection: 'specialty training recruitment' },
   au: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD / MBBS'], exams: [{ id: 'finals', name: 'Final examinations', year: 4 }],
     license: { name: 'general registration', afterTraining: 1 }, internship: 1, selection: 'specialty college selection' },
+  // Broad shapes only (marked simplified): how long the supervised years after school last before specialty
+  // training, and plain words for registration and selection. No exam names, fees or rules are claimed.
+  in: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'medical registration', afterTraining: 1 }, selection: 'postgraduate entrance examinations' },
+  ph: { ...SIMPLE, entry: 'graduate', degrees: ['MD'], internship: 1, license: { name: 'the physician licensure examination and registration', afterTraining: 1 }, selection: 'residency applications to hospitals' },
+  jp: { ...SIMPLE, degrees: ['MD'], internship: 2, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'the postgraduate training match' },
+  de: { ...SIMPLE, degrees: ['Medical degree (state examination)'], internship: 0, license: { name: 'a full license to practice medicine', afterTraining: 0 }, selection: 'applications to hospitals for specialty training' },
+  fr: { ...SIMPLE, degrees: ['Doctor of Medicine'], internship: 0, license: { name: 'registration with the medical council', afterTraining: 0 }, selection: 'the national ranking examination' },
+  br: { ...SIMPLE, degrees: ['Medical degree'], internship: 0, license: { name: 'registration with the regional medical council', afterTraining: 0 }, selection: 'residency selection examinations' },
+  ng: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'full registration with the medical council', afterTraining: 1 }, selection: 'residency applications to teaching hospitals' },
+  kr: { ...SIMPLE, degrees: ['MD'], internship: 1, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'residency selection at teaching hospitals' },
+  mx: { ...SIMPLE, degrees: ['Médico cirujano'], internship: 1, license: { name: 'a professional license', afterTraining: 1 }, selection: 'the national residency examination' },
+  za: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration with the health professions council', afterTraining: 2 }, selection: 'registrar post applications' },
+  ie: { ...SIMPLE, degrees: ['MB BCh BAO'], internship: 1, license: { name: 'registration with the medical council', afterTraining: 1 }, selection: 'specialty training applications' },
+  nz: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration in a general scope', afterTraining: 1 }, selection: 'specialty college selection' },
   default: SIMPLE,
 };
 export const jurisdiction = (countryId) => JURISDICTIONS[countryId] ?? JURISDICTIONS.default;
