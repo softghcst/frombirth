@@ -8,7 +8,8 @@ import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
-import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
+import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, STUDY, coverageOf, SOURCES } from '../data/investigations.js';
+import { MAJOR_BY_ID } from '../data/majors.js';
 import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
@@ -54,6 +55,22 @@ function sectionsFor(p, r) {
   return out;
 }
 
+const MAJOR_NAME = (id) => MAJOR_BY_ID[id]?.name ?? (id === 'law' ? 'Law' : id);
+/** The ways into the work, what each asks, and which of the player's studies count. */
+function waysIn(p) {
+  const mine = (path) => C.studied(path, p);
+  const list = (ids) => ids.filter((id) => MAJOR_BY_ID[id] || id === 'law').map(MAJOR_NAME).join(', ');
+  const held = (path) => (mine(path).length ? ` You have: ${mine(path).map(MAJOR_NAME).join(', ')}.` : '');
+  const rows = [
+    ['Police officer', `A high school diploma and 21 or older, then the academy. A degree is not required to start, but it helps with the entrance assessment and the academy. Useful studies: ${list(STUDY.police)}.${held('police')}`],
+    ['Detective', `Three years as an officer, then selection for a seat in a unit. Studies that help: ${list(STUDY.detective)}; some units favor their own (accounting for fraud, cybersecurity for cybercrime).${held('detective')}`],
+    ['Senior ranks', 'Captain, deputy chief, chief and detective lieutenant ask for a bachelor\'s degree. Many officers study part-time while serving.'],
+    ...(p.countryId === 'us' ? [['Federal agent (FBI, DEA, ATF)', `A bachelor's degree is required, and for the FBI professional experience too. Valued backgrounds: accounting and finance, technology, law, languages, science, criminal justice.${C.backgrounds(p).length ? ` Yours: ${C.backgrounds(p).join(', ').replace(/_/g, ' ')}.` : ''}`]] : []),
+    ['Private investigator', `A license, after years of related work; a relevant degree (${list(STUDY.pi)}) shortens it by a year.${held('pi')}`],
+  ];
+  return card('Ways in', kv(rows) + muted('In the game, as in many places, police work is open without a degree; leadership and federal work favor those who studied. University planning is under School.'));
+}
+
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
@@ -63,6 +80,7 @@ const VIEWS = {
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
       ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : 'Simplified: one national or regional police service, no federal careers'],
     ]) + muted('Investigative careers here are gameplay. Agency rules are simplified and not verified against the agencies themselves.'));
+    if (!r?.job) out += waysIn(p);
     if (!r?.job) {
       out += card('Getting ready', muted('Before applying: study, train, write, and see the work for yourself. Each once a year.')
         + stack(Object.entries(C.PREP).map(([id, d]) => btn(`prep`, d.label, { arg: id })).join('')));

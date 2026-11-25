@@ -718,6 +718,35 @@ section('more: six new case types, autonomy for the person harmed, each federal 
 }
 section('forensic medicine for the court and death investigations, policing decided by those with the authority, journalism from the public record');
 
+// ---------- 14. Studying for the work ----------
+{
+  const { MAJOR_BY_ID } = await import('../js/data/majors.js');
+  check(['criminology', 'forensic_science', 'cybersecurity', 'accounting'].every((m) => MAJOR_BY_ID[m]), 'criminology, forensic science, cybersecurity and accounting can be studied');
+  let p = life('us', 24, { degree: 'criminal_justice' });
+  check(C.studied('police', p).includes('criminal_justice') && C.studied('detective', p).length && !C.studied('fraud', p).length, 'a criminal justice degree counts for police and detective work, not for the fraud unit');
+  const r = core.I(p);
+  const law0 = r.skills.law;
+  C.studyCredit(p, r); C.studyCredit(p, r);
+  check(r.skills.law === law0 + 8, 'a relevant degree gives a head start in its skills, once');
+  p = life('us', 26, { degree: 'accounting' });
+  check(C.studied('fraud', p).length && C.backgrounds(p).includes('accounting'), 'accounting suits the fraud unit and the FBI');
+  // Senior posts ask for a degree; officers without one can serve and rise to lieutenant.
+  p = life('us', 40);
+  p.education.degrees = p.education.degrees.filter((d) => d.type === 'high');
+  makeOfficer();
+  const ro = core.I();
+  ro.job.rank = 'lieutenant'; ro.job.rankSince = store.state.year - 10;
+  const cap = C.promotionOptions(p).find((x) => x.id === 'captain');
+  check(cap && /degree/.test(cap.block), 'captain asks for a degree');
+  p.education.degrees.push({ type: 'university', majorId: 'criminology', age: 38 });
+  check(!/degree/.test(C.promotionOptions(p).find((x) => x.id === 'captain').block), 'a degree finished while serving opens it');
+  // A relevant degree shortens the way to a private investigator's license.
+  p = life('us', 30, { degree: 'criminology' });
+  p.career.experience = { pi: 2 };
+  check(!C.licenseUnmet(p).some((x) => /years/.test(x)), 'with a criminology degree, two years of work are enough for a license');
+}
+section('studying: new majors, degrees that count for each path, a head start once, senior posts that ask for a degree, a shorter way to a license');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

@@ -20,8 +20,11 @@ import { rate } from './currency.js';
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
 
+// A partner, spouse or ex is called that, whatever title they had before (a best friend who became a wife is a wife).
+const LOVE_ROLES = ['partner', 'spouse', 'ex'];
+
 export function roleLabel(npc) {
-  if (npc.flags.title) return npc.flags.title;
+  if (npc.flags.title && !LOVE_ROLES.includes(npc.role)) return npc.flags.title;
   switch (npc.role) {
     case 'parent': return byGender(npc, 'Father', 'Mother', 'Parent');
     case 'sibling': {

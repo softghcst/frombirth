@@ -60,22 +60,6 @@ async function chooseClique(api) {
   if (id) await report(api, edu.joinClique(id));
 }
 
-async function chooseClub(api) {
-  const e = player().education;
-  const id = await pickModal({
-    title: 'Clubs and classes',
-    body: `You have time for ${MAX_CLUBS} at once. Each one builds a skill every year you stay.`,
-    options: edu.clubOptions().map((c) => ({
-      value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
-      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.' : 'By try-out.'].filter(Boolean).join(' '),
-      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your Level', needLabel: 'Club Wants' }) : '',
-      disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
-    })),
-  });
-  if (!id) return;
-  await report(api, e.clubs.includes(id) ? edu.quitClub(id) : edu.joinClub(id));
-}
-
 async function leaveSchool(api) {
   const where = edu.stageLabel(player().education.stage).toLowerCase();
   const sure = await confirmModal({
@@ -404,7 +388,7 @@ const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family:
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */
-const SPECIAL = new Set(['myfame', 'myidol', 'fame']);
+const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations']);
 const has = (list, id) => list.find(([x]) => x === id);
 const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
 
@@ -427,6 +411,8 @@ function specialCareers(p, list) {
   const rows = [];
   rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
   rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
+  // Law enforcement and investigations: police, detectives, federal agents, private investigators (ui/investigations.js).
+  rows.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
   if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
   // Famous before they can use it (a royal baby): shown, locked until old enough.
   else if (career.fame() >= 10) rows.push(lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)));
@@ -461,7 +447,6 @@ export default {
     }
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
-    if (edu.canJoinClubs() && !atSchoolNow) school.push(['club', 'Clubs and classes']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
@@ -517,7 +502,7 @@ export default {
       if (!id) return;
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
-        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api), law: () => openLawCareer({ changed: () => api.changed(), openNpc: async (n) => { const { openNpc } = await import('./people.js'); openNpc(n, { changed: () => api.changed() }); } }),
+        clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api), law: () => openLawCareer({ changed: () => api.changed(), openNpc: async (n) => { const { openNpc } = await import('./people.js'); openNpc(n, { changed: () => api.changed() }); } }),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
