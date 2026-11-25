@@ -267,11 +267,31 @@ section('F, G, H, J, K, L, M: romance, transfer, disagreement, promotion, the pa
   m = core.M(p);
   m.completed.push({ specialtyId: 'dermatology', kind: 'residency', from: 2000, to: 2004 });
   m.license = { status: 'full', countryId: 'us' };
-  const r = practice.openPractice('dermatology_clinic');
-  check(r.ok && practice.practices(m).length === 1, 'a dermatologist opens a dermatology clinic');
-  check(practice.practiceOptions(m, p).find((o) => o.id === 'ortho_clinic').block, 'and not an orthopedic one');
+  check(practice.practiceOptions(m, p).find((o) => o.id === 'ortho_clinic').block, 'a dermatologist cannot open an orthopedic clinic');
+  const cash0 = p.finance.cash;
+  const r = practice.openPractice('dermatology_clinic', '', { premises: 'large', equipment: 'advanced', strategy: 'self_pay', borrow: 50000 });
+  const b = practice.practices(m)[0];
+  check(r.ok && b && b.medical.premises === 'large' && b.medical.equipment === 'advanced' && b.pricing === 'premium' && b.debt >= 50000 && p.finance.cash < cash0,
+    `opening follows the plan: premises, equipment, strategy, a loan (${r.text})`);
+  b.cash += 5000000;
+  const roles = ['nurse', 'receptionist', 'physician'].map((x) => practice.hireRole(b.id, x));
+  const titles = b.staff.map((x) => store.state.npcs[x.id].occupation);
+  check(roles.every((x) => x.ok) && titles.join() === 'staff nurse,receptionist,associate physician', `hiring by role (${titles.join(', ')})`);
+  check(practice.addService(b.id, 'procedures').ok && !practice.addService(b.id, 'lab').ok, 'one new service a year');
   year();
-  check(practice.practices(m)[0].years >= 1 || practice.practices(m)[0].last, 'the clinic runs its first year');
+  check(b.medical.costs && b.medical.costs.insurance > 0 && b.medical.costs.compliance > 0, `insurance and compliance are paid (${JSON.stringify(b.medical.costs)})`);
+  check(typeof b.last?.profit === 'number', 'the practice has a year of books, profit or loss');
+  const partnerNpc = makeNpc({ role: 'colleague', countryId: 'us', age: 45, relationship: 95 });
+  partnerNpc.occupation = 'dermatologist'; partnerNpc.meters.money = 100; store.state.npcs[partnerNpc.id] = partnerNpc; p.npcIds.push(partnerNpc.id);
+  let partnered = false;
+  for (let i = 0; i < 5 && !partnered; i++) { partnered = practice.bringPartner(b.id, partnerNpc.id).ok; if (!partnered) year(); }
+  const rec = practice.partnerRecords(b.id).find((x) => x.id === partnerNpc.id);
+  check(!partnered || (rec && rec.stake === 0.25 && rec.invested > 0 && rec.exit && rec.comp), `a partner's terms are recorded (${JSON.stringify(rec ?? null)})`);
+  if (rec) check(practice.setPartnerManages(b.id, partnerNpc.id, true).ok && practice.partnerRecords(b.id).find((x) => x.id === partnerNpc.id).manages, 'a partner can share the management');
+  check(!practice.formGroup().ok, 'a medical group needs two sites');
+  b.sites = 2;
+  check(practice.formGroup().ok && m.groupLeader, 'two sites can become a medical group the owner leads');
+  check(practice.retireFromPractice(b.id).text.length > 0, 'retiring from practice hands it on or offers it for sale');
 }
 section('a clinic of one\'s own');
 
