@@ -18,6 +18,7 @@ import { currentCareer, hire, promote, adjustPerformance, PROMOTION_GATES } from
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
+import { events, visible, archiveIdOf } from './chronicle.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const WINDOW = 6;
@@ -94,19 +95,27 @@ const pickTemplate = (specialtyId, maxLevel) => {
  */
 export function refreshOpportunities(p = player()) {
   const L = lawOf(p);
+  const now = Math.floor(nowM() / WINDOW);
+  if (L.window === now) return;
+  // Every half-year a turn passed through brings its own opportunities, so a year lived in one turn brings as many
+  // as a year in four. Offers stay open for a year: two windows.
+  const from = L.window == null ? now : Math.max(L.window + 1, now - 1);
+  L.offers = (L.offers ?? []).filter((o) => o.window == null || o.window >= now - 1);
+  for (let w = from; w <= now; w++) openWindow(p, w);
+  L.window = now;
+}
+function openWindow(p, w) {
+  const L = lawOf(p);
   const t = trackOf(p);
-  const w = Math.floor(nowM() / WINDOW);
-  if (L.window === w) return;
-  L.window = w;
-  L.offers = [];
   if (!t || mayPractice(p) || t === 'attorney_general') return;
   L.specialty ??= defaultSpecialty(t);
   const cap = leadCap(p);
-  const load = cases.workload(p);
   if (['prosecutor', 'defender', 'gov_counsel'].includes(t)) {
     // Assigned by the office: a public defender's caseload is heavy; nobody chooses their clients.
+    // The office assigns a set share every half-year, whatever is on the desk: that is what a heavy caseload is.
+    // A ceiling keeps it from growing without end; too much work shows in deadlines, health and reliability.
     const n = t === 'defender' ? 3 : t === 'prosecutor' ? 2 : 1;
-    for (let i = 0; i < n && cases.workload(p).points < load.capacity * (t === 'defender' ? 1.3 : 1.1); i++) {
+    for (let i = 0; i < n && cases.workload(p).open < 14; i++) {
       const second = rng.chance(0.25) && cap < 5;
       const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
       if (!tid) break;
@@ -120,7 +129,7 @@ export function refreshOpportunities(p = player()) {
     const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
     if (!tid) continue;
     const T = CASE_TEMPLATES[tid];
-    L.offers.push({ id: `of${w}_${i}`, templateId: tid, level: T.level, second: T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
+    L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
       summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? '…')) });
   }
   // A former client may come back with something new: the same person, their history with the player intact.
@@ -128,7 +137,7 @@ export function refreshOpportunities(p = player()) {
   if (former.length && rng.chance(0.35)) {
     const back = rng.pick(former);
     const tid = pickTemplate(L.specialty, cap) ?? 'contract_dispute';
-    L.offers.push({ id: `of${w}_back`, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: feeFor(CASE_TEMPLATES[tid].level), kind: CASE_TEMPLATES[tid].kind, clientId: back.id, returning: true,
+    L.offers.push({ id: `of${w}_back`, window: w, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: feeFor(CASE_TEMPLATES[tid].level), kind: CASE_TEMPLATES[tid].kind, clientId: back.id, returning: true,
       summary: `${back.firstName} ${back.lastName}, whose case you handled in ${store.state.npcs[back.id].flags.lastCaseYear ?? 'the past'}, is back with a new matter.` });
   }
   // A prominent client, only for an experienced lawyer whose name is known in the right field. Not a reward for wins.
@@ -136,7 +145,7 @@ export function refreshOpportunities(p = player()) {
     const tid = pickTemplate(L.specialty, 5);
     if (tid && CASE_TEMPLATES[tid].level >= 3) {
       const who = rng.pick(['a professional athlete', 'a television actor', 'a large company', 'a city council', 'a well-known chef']);
-      L.offers.push({ id: `of${w}_major`, templateId: tid, level: Math.max(4, CASE_TEMPLATES[tid].level), fee: feeFor(5), kind: CASE_TEMPLATES[tid].kind, prominent: who,
+      L.offers.push({ id: `of${w}_major`, window: w, templateId: tid, level: Math.max(4, CASE_TEMPLATES[tid].level), fee: feeFor(5), kind: CASE_TEMPLATES[tid].kind, prominent: who,
         summary: `${who.charAt(0).toUpperCase()}${who.slice(1)} wants you, and only you. ${CASE_TEMPLATES[tid].summary.replace(/\{\w+\}/g, 'the client')}` });
     }
   }
@@ -149,8 +158,7 @@ function openCase(p, templateId, o = {}) {
   const L = lawOf(p);
   const t = trackOf(p);
   const sup = o.second ? supervisor(p) : null;
-  const c = cases.createCase(templateId, { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId });
-  c.track = t;
+  const c = cases.createCase(templateId, { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t });
   c.second = !!o.second;
   if (o.prominent) { c.prominent = o.prominent; c.level = Math.max(c.level, o.level ?? c.level); }
   if (!L.firstClient && !c.clinic) { L.firstClient = c.id; queue('law_first_client', { client: c.vars.client }); }
@@ -219,7 +227,6 @@ export function clinicCase(p = player()) {
   L.acts[`clinic:${y}`] = nowM();
   const sup = keepPerson(p, 'clinicDirector', 'mentor', 'Clinic director', rng.int(40, 64));
   const c = cases.createCase(rng.pick(['will', 'family_petition']), { role: 'clinic', clinic: true, supervisorId: sup.id });
-  c.track = 'clinic';
   gain(p, { counseling: 1 });
   canon(`law:clinic:${p.id}:${y}`, 'A legal clinic case', `Helped a client under the supervision of ${sup.firstName} ${sup.lastName}.`, { milestone: false, sig: 1 });
   return result(true, `The clinic assigns you ${c.vars.client}'s case. ${sup.firstName} ${sup.lastName} will check every step: you are a student, not yet a lawyer.`, 'good', { caseId: c.id });
@@ -408,9 +415,11 @@ export function tickLaw(o = {}) {
   }
   // The toll of too much work, counted once per half-year whatever the turn length.
   const half = Math.floor(nowM() / WINDOW);
-  if (L.tollHalf !== half) {
+  const halves = L.tollHalf == null ? 1 : Math.min(2, half - L.tollHalf); // each half-year passed through, once
+  if (halves > 0) {
     L.tollHalf = half;
     const w = cases.workload(p);
+    for (let h = 1; h < halves; h++) if (w.points > w.capacity) { p.stats.health = clamp(p.stats.health - 2); p.stats.mood = clamp(p.stats.mood - 3); L.rep.reliability = clamp(L.rep.reliability - 1); }
     if (w.points > w.capacity) {
       p.stats.health = clamp(p.stats.health - 2);
       p.stats.mood = clamp(p.stats.mood - 3);
@@ -468,6 +477,16 @@ export function lawChoice(value) {
     }
     default: return '';
   }
+}
+
+// ---------- Legacy ----------
+
+/**
+ * A legal career as the family archive keeps it: milestones that were public or family history, never a client's
+ * confidential details (those events are restricted to the lawyer while they live: engine/chronicle.js visible).
+ */
+export function legalLegacy(subjectId, viewerId = archiveIdOf(player())) {
+  return events((e) => e.type === 'legal_career' && e.subject === subjectId && visible(e, viewerId)).sort((a, b) => a.year - b.year);
 }
 
 // ---------- For the hub ----------

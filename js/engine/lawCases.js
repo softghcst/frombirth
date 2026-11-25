@@ -13,7 +13,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS } from '../data/law.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 
@@ -62,6 +62,7 @@ export function createCase(templateId, o = {}) {
   const role = o.role ?? (T.kind === 'criminal' ? 'defense' : T.role ?? (T.gov ? 'agency' : ROLE_FOR[T.kind]));
   const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: nowM(), openedYear: store.state.year, role, lawyerId: o.lawyerId ?? p.id,
     supervisorId: o.supervisorId ?? null, clinic: !!o.clinic, assigned: !!o.assigned, specialty: o.specialty ?? null,
+    track: o.track ?? (o.clinic ? 'clinic' : LEGAL_CAREERS.includes(p.career?.careerId) ? p.career.careerId : null), // the job it was done in
     stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: nowM() + T.stages[0][1],
     jury: !!T.jury && (T.kind === 'criminal' ? prof.juries.criminal : T.kind === 'civil' ? prof.juries.civil : false), forum: T.forum,
     vars: {}, parties: {}, evidence: [], witnesses: [], filings: [], deadlines: [], hearings: [], tasks: {}, research: null,
@@ -532,9 +533,13 @@ export function close(c, out, lines = []) {
     }
   }
   const isFirst = !L.history.filter((h) => !h.clinic).length;
-  L.history.push({ caseId: c.id, title: c.title, kind: c.kind, role: c.role, outcome: c.outcome.kind, favorable: out.favorable, trial: !!out.trial, level: c.level, year: store.state.year, clinic: c.clinic });
-  if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'Your first case', `${c.title}: ${out.text}`, { privacy: 'family', sig: 2 });
-  if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, `A major case: ${c.title}`, out.text, { privacy: 'public', sig: 3 });
+  L.history.push({ caseId: c.id, title: c.title, kind: c.kind, role: c.role, outcome: c.outcome.kind, favorable: out.favorable, trial: !!out.trial, level: c.level, year: store.state.year, clinic: c.clinic, track: c.track });
+  // What the family archive may keep: a public trial is public record; a client's private matter is not. The details
+  // stay restricted to the lawyer; descendants see that there was a case, not whose.
+  const open = out.trial && ['criminal', 'civil'].includes(c.kind);
+  if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'Your first case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
+  if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
+  canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.
   if (out.favorable < 0 && ['criminal', 'civil', 'immigration', 'family'].includes(c.kind) && out.kind !== 'plea') c.appealable = { until: nowM() + 6 };
   return result(out.favorable > 0, [...lines, out.text].filter((x, i, a) => a.indexOf(x) === i).join(' '), out.favorable > 0 ? 'good' : out.favorable < -0.4 ? 'bad' : 'neutral', { outcome: c.outcome, lines });
