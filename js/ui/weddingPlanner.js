@@ -23,28 +23,49 @@ const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
   <g fill="#FFFFFF" stroke="#23140f" stroke-width="2" stroke-linejoin="round"><path d="M28 32l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M95 36l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z"/></g>
 </svg>`;
 
-/** Each venue's backdrop (400 x 300): its sky, its ground, and a thing or two that says where you are. */
-const SCENERY = {
-  courthouse: { sky: ['#DCE8F2', '#F3F6F9'], ground: '#CFC7BD', props: `<g stroke="#23140f" stroke-width="3" stroke-linejoin="round"><path d="M60 70l140-40 140 40z" fill="#F1ECE4"/><rect x="70" y="70" width="260" height="14" fill="#E6DED2"/>${[90, 140, 190, 240, 290].map((x) => `<rect x="${x}" y="84" width="20" height="120" fill="#F7F3EC"/>`).join('')}<rect x="60" y="204" width="280" height="14" fill="#E6DED2"/></g>` },
-  backyard: { sky: ['#9FD4F2', '#E8F6FF'], ground: '#8CC77D', props: `<path d="M0 60 Q100 90 200 62 T400 60" fill="none" stroke="#23140f" stroke-width="2"/>${[30, 80, 130, 180, 230, 280, 330, 380].map((x, i) => `<circle cx="${x}" cy="${70 + (i % 2) * 8}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}<g stroke="#23140f" stroke-width="3"><path d="M0 190h400" /><path d="${Array.from({ length: 21 }, (_, i) => `M${i * 20} 150v40`).join('')}" stroke-width="4" stroke="#F4EFE6"/></g>` },
-  chapel: { sky: ['#F7D9C4', '#FFF2E6'], ground: '#C9B79C', props: `<g stroke="#23140f" stroke-width="3" stroke-linejoin="round"><path d="M150 210V110l50-40 50 40v100z" fill="#F7F1E8"/><path d="M200 70V30M188 42h24" fill="none"/><path d="M183 210v-50a17 17 0 0 1 34 0v50z" fill="#8A5A3B"/><circle cx="200" cy="112" r="16" fill="#F3B9C9"/><path d="M200 96v32M184 112h32" stroke-width="2"/></g>` },
-  beach: { sky: ['#FFB38A', '#FFE3B3'], ground: '#F3D9A4', props: `<circle cx="300" cy="150" r="40" fill="#FFD36E"/><rect y="150" width="400" height="40" fill="#5FB4D9"/><path d="M0 160h400M0 175h400" stroke="#FFFFFF" stroke-width="2" opacity=".6"/><g stroke="#23140f" stroke-width="3" stroke-linejoin="round"><path d="M60 200c4-40 2-80-6-110" fill="none" stroke-width="6" stroke="#8A5A3B"/><path d="M54 92c-30-6-44 6-48 16 18-10 34-10 48-16zM54 92c26-14 44-8 52 2-20-4-34-2-52-2zM54 92c-10-20-2-34 8-40-2 16-4 26-8 40z" fill="#6DBB7B"/></g>` },
-  garden: { sky: ['#BFE3F5', '#F2FAFF'], ground: '#9ACB86', props: `<g stroke="#23140f" stroke-width="3">${[40, 90, 310, 360].map((x) => `<circle cx="${x}" cy="150" r="30" fill="#7DB86E"/>`).join('')}</g>${[30, 52, 85, 100, 300, 322, 352, 372].map((x, i) => `<circle cx="${x}" cy="${138 + (i % 3) * 10}" r="5" fill="${['#F28CA8', '#FFFFFF', '#FFD36E'][i % 3]}" stroke="#23140f" stroke-width="1.5"/>`).join('')}` },
-  vineyard: { sky: ['#F7C27E', '#FFF0D2'], ground: '#B8A26A', props: `<path d="M0 140 Q100 100 200 130 T400 120 V200 H0z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/>${[0, 1, 2, 3].map((r) => `<path d="M0 ${150 + r * 14} Q200 ${130 + r * 14} 400 ${145 + r * 14}" fill="none" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="10 8"/>`).join('')}<circle cx="80" cy="70" r="26" fill="#FFE08A" opacity=".8"/>` },
-  ballroom: { sky: ['#4B2E5C', '#7A4E86'], ground: '#C9A26B', props: `<g stroke="#23140f" stroke-width="3"><path d="M200 0v34" /><path d="M160 34h80l-14 26h-52z" fill="#F7D774"/>${[168, 184, 200, 216, 232].map((x) => `<circle cx="${x}" cy="66" r="4" fill="#FFF6D6"/>`).join('')}</g>${[50, 350].map((x) => `<rect x="${x - 18}" y="40" width="36" height="160" rx="6" fill="#E9D3EE" stroke="#23140f" stroke-width="3"/>`).join('')}<path d="M0 200 L400 200 L400 300 L0 300z" fill="#C9A26B"/><path d="${Array.from({ length: 10 }, (_, i) => `M${i * 40} 200l40 100`).join('')}" stroke="#B28A55" stroke-width="2"/>` },
-  castle: { sky: ['#A7C7EC', '#E7F0FB'], ground: '#93BE80', props: `<g stroke="#23140f" stroke-width="3" stroke-linejoin="round" fill="#D9D2E6"><rect x="120" y="80" width="160" height="110"/><rect x="100" y="50" width="40" height="140"/><rect x="260" y="50" width="40" height="140"/><path d="M96 50l24-34 24 34z" fill="#C25B7A"/><path d="M256 50l24-34 24 34z" fill="#C25B7A"/><path d="M180 190v-40a20 20 0 0 1 40 0v40z" fill="#8A5A3B"/><path d="M120 80h160" /></g><path d="M120 66h12v14h12v-14h12v14h12v-14h12v14h12v-14h12v14h12v-14h12v14h12v-14h12v14h12" fill="none" stroke="#23140f" stroke-width="3"/>` },
+/**
+ * Each venue as a room or a view, drawn like the salon's and the barbershop's (bold outlines, flat colors): a wall or a
+ * sky with a pattern, a floor, and a few things at either side, leaving the middle to the couple and the arch.
+ * `wall` is a <pattern> body (28 x 28 unless `size` says otherwise), `floor` the floor's color, `left`/`right` the props.
+ */
+const INK = 'stroke="#23140f" stroke-width="3" stroke-linejoin="round"';
+const VENUES = {
+  courthouse: { wall: '<rect width="28" height="28" fill="#EDE6DA"/><rect width="28" height="2" fill="#E0D6C6"/>', floor: '#B9A98F',
+    left: `<g ${INK}><rect x="18" y="40" width="34" height="170" fill="#F7F3EC"/><rect x="12" y="30" width="46" height="12" rx="2" fill="#E6DED2"/><rect x="12" y="206" width="46" height="12" rx="2" fill="#E6DED2"/></g><path d="M28 50v150M42 50v150" stroke="#D9CFBF" stroke-width="3"/>`,
+    right: `<g ${INK}><path d="M336 30v120" fill="none"/><path d="M338 34h42v28h-42z" fill="#5C7FB8"/><rect x="318" y="150" width="40" height="56" rx="4" fill="#8A5A3B"/><path d="M322 162h32M322 176h32M322 190h32" stroke-width="2"/></g>` },
+  backyard: { wall: '<rect width="28" height="28" fill="#BFE3F5"/>', floor: '#8CC77D',
+    left: `<g ${INK}><path d="M0 222V168h80v54" fill="#F4EFE6"/><path d="M16 168v54M32 168v54M48 168v54M64 168v54" fill="none" stroke-width="2"/><circle cx="34" cy="96" r="30" fill="#7DB86E"/><path d="M34 126v42" stroke-width="6" stroke="#8A5A3B"/></g>`,
+    right: `<g ${INK}><path d="M320 222V168h80v54" fill="#F4EFE6"/><path d="M336 168v54M352 168v54M368 168v54M384 168v54" fill="none" stroke-width="2"/></g><path d="M300 40 Q340 66 400 44" fill="none" stroke="#23140f" stroke-width="2"/>${[316, 340, 364, 388].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}<path d="M0 40 Q40 64 100 44" fill="none" stroke="#23140f" stroke-width="2"/>${[14, 40, 66, 90].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}` },
+  chapel: { wall: '<rect width="28" height="28" fill="#F6E9DA"/><rect width="14" height="28" fill="#F1E1CE"/>', floor: '#B98E6A',
+    left: `<g ${INK}><path d="M18 170V80a26 26 0 0 1 52 0v90z" fill="#7FB5E0"/><path d="M44 54v116M18 110h52" stroke-width="2.5" fill="none"/><path d="M30 88l-6 14h12zM58 132l-6 14h12z" fill="#F28CA8" stroke-width="2"/></g>`,
+    right: `<g ${INK}><path d="M330 170V80a26 26 0 0 1 52 0v90z" fill="#F7D774"/><path d="M356 54v116M330 110h52" stroke-width="2.5" fill="none"/><path d="M342 132l-6 14h12zM370 88l-6 14h12z" fill="#7FB5E0" stroke-width="2"/></g>` },
+  beach: { wall: '<rect width="28" height="28" fill="#FFD3A8"/>', floor: '#F3D9A4',
+    left: `<g ${INK}><path d="M46 222c4-50 2-90-8-126" fill="none" stroke-width="7" stroke="#8A5A3B"/><path d="M38 98c-30-8-40 6-44 14 18-8 30-8 44-14zM38 98c26-14 44-8 52 4-20-4-34-4-52-4zM38 98c-10-22 0-36 10-42-2 16-6 28-10 42z" fill="#6DBB7B"/></g>`,
+    right: `<circle cx="350" cy="140" r="34" fill="#FFB65C" stroke="#23140f" stroke-width="3"/><rect x="290" y="160" width="110" height="62" fill="#5FB4D9"/><path d="M290 160h110" stroke="#23140f" stroke-width="3"/><path d="M300 178h30M344 190h40M306 204h24" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>` },
+  garden: { wall: '<rect width="28" height="28" fill="#CDEBF7"/><circle cx="14" cy="14" r="2" fill="#E6F6FC"/>', floor: '#9ACB86',
+    left: `<g ${INK}><rect x="4" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[22, 150], [50, 142], [70, 168], [30, 186], [60, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#F28CA8', '#FFFFFF', '#FFD36E'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}`,
+    right: `<g ${INK}><rect x="312" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[330, 150], [358, 142], [378, 168], [338, 186], [368, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#FFD36E', '#F28CA8', '#FFFFFF'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}` },
+  vineyard: { wall: '<rect width="28" height="28" fill="#FFE2B0"/>', floor: '#B8A26A',
+    left: `<path d="M0 170 Q50 140 100 160 V222 H0z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M6 182h80M10 198h84" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><circle cx="40" cy="70" r="22" fill="#FFD36E" stroke="#23140f" stroke-width="3"/>`,
+    right: `<path d="M300 160 Q350 140 400 166 V222 H300z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M310 182h84M306 198h88" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><g ${INK}><path d="M346 110v40" fill="none" stroke-width="4" stroke="#8A5A3B"/>${[[340, 112], [352, 112], [346, 122], [340, 132], [352, 132], [346, 142]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#8E5BB5" stroke-width="2"/>`).join('')}</g>` },
+  ballroom: { wall: '<rect width="28" height="28" fill="#5A3A6E"/><path d="M14 4l6 10-6 10-6-10z" fill="#6B4882"/>', floor: '#C9A26B',
+    left: `<g ${INK}><rect x="20" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="14" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="14" y="206" width="50" height="12" rx="3" fill="#F7D774"/></g>`,
+    right: `<g ${INK}><rect x="342" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="336" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="336" y="206" width="50" height="12" rx="3" fill="#F7D774"/><path d="M300 0v20" fill="none"/><path d="M282 20h36l-8 16h-20z" fill="#F7D774"/></g>${[290, 300, 310].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}<g ${INK}><path d="M100 0v20" fill="none"/><path d="M82 20h36l-8 16h-20z" fill="#F7D774"/></g>${[90, 100, 110].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}` },
+  castle: { wall: '<rect width="28" height="28" fill="#C9C3D6"/><path d="M0 13h28M14 0v13M0 27h28M7 13v14M21 13v14" stroke="#B4ADC4" stroke-width="2"/>', floor: '#8E7A6A',
+    left: `<g ${INK}><path d="M22 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M44 62v108M22 110h44" stroke-width="2.5" fill="none"/><path d="M74 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>`,
+    right: `<g ${INK}><path d="M334 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M356 62v108M334 110h44" stroke-width="2.5" fill="none"/><path d="M302 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>` },
 };
 
-/** The backdrop for a venue: sky, ground, scenery, and rows of chairs for the guests. */
-function backdrop(venue, guests) {
-  const v = SCENERY[venue] ?? SCENERY.garden;
-  const rows = guests >= 200 ? 3 : guests >= 80 ? 2 : guests >= 20 ? 1 : 0;
-  const chairs = Array.from({ length: rows }, (_, r) => [40, 80, 120, 280, 320, 360].map((x) => `<rect x="${x - 10}" y="${232 + r * 22}" width="20" height="16" rx="3" fill="#FFFFFF" stroke="#23140f" stroke-width="2"/>`).join('')).join('');
+/** The backdrop for a venue: its wall or sky, its floor and a runner down the aisle, its things at either side. */
+function backdrop(venue) {
+  const v = VENUES[venue] ?? VENUES.garden;
   return `<svg class="sv-room" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs><linearGradient id="wp-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${v.sky[0]}"/><stop offset="1" stop-color="${v.sky[1]}"/></linearGradient></defs>
-    <rect width="400" height="300" fill="url(#wp-sky)"/>${v.props}
-    <rect y="200" width="400" height="100" fill="${v.ground}"/><path d="M0 200h400" stroke="#23140f" stroke-width="3"/>
-    <path d="M170 300 L190 200 L210 200 L230 300z" fill="#FFFFFF" opacity=".75"/>${chairs}</svg>`;
+    <defs><pattern id="wp-wall-${venue}" width="28" height="28" patternUnits="userSpaceOnUse">${v.wall}</pattern></defs>
+    <rect width="400" height="300" fill="url(#wp-wall-${venue})"/>
+    <rect y="222" width="400" height="78" fill="${v.floor}"/><path d="M0 222h400" stroke="#23140f" stroke-width="3"/>
+    <path d="M0 262h400M0 284h400" stroke="#23140f" stroke-width="2" opacity=".12"/>
+    <path d="M168 300 L186 222 L214 222 L232 300z" fill="#FFFFFF" opacity=".8" stroke="#23140f" stroke-width="2"/>
+    ${v.left}${v.right}</svg>`;
 }
 
 /** The arch the couple stand under, dressed in the theme's color with the flowers chosen. */
@@ -97,7 +118,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     /** The stage: the venue, the arch, the couple under it, and what has been chosen so far. */
     const stage = ({ kiss = false } = {}) => `
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
-        ${backdrop(chosen('venue'), love.WEDDING_PLAN.guests.find((g) => g.id === chosen('guests')).count)}
+        ${backdrop(chosen('venue'))}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
         <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${arch(themeHex(), chosen('flowers'))}
           <div class="wp-couple"><div class="wp-person">${youFace()}</div><div class="wp-person">${themFace()}</div></div></div>
@@ -146,11 +167,16 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       const opts = love.WEDDING_PLAN[key];
       const guests = love.WEDDING_PLAN.guests.find((g) => g.id === chosen('guests')).count;
       const price = (o) => (key === 'guests' ? `${o.count} people` : key === 'food' ? fmtMoney(localMoney(o.perGuest, c) * guests, c) : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'Free');
-      const dreamTag = (o) => (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 80 : o.count <= 20)) ? '<em class="wp-dream">♥ their dream</em>' : '';
+      const dreamTag = (o) => (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 80 : o.count <= 20)) ? '<em class="wp-dream">♥ dream</em>' : '';
+      // In the game's own list style: a row each, its picture, what it is, and its price (or a check, once chosen).
+      // The colors are the salon's round swatches, named underneath.
       const tiles = key === 'theme'
-        ? `<div class="wp-swatches">${opts.map((o) => `<button type="button" class="wp-swatch${plan[key] === o.id ? ' on' : ''}" data-pick="${o.id}" style="--sw:${o.hex}" aria-pressed="${plan[key] === o.id}"><span></span>${esc(o.name)}</button>`).join('')}</div>`
-        : `<div class="wp-tiles">${opts.map((o) => `<button type="button" class="wp-tile${plan[key] === o.id ? ' on' : ''}" data-pick="${o.id}" aria-pressed="${plan[key] === o.id}">
-            <span class="wp-ico" aria-hidden="true">${o.icon}</span><strong>${esc(o.name)}</strong><small>${esc(o.sub ?? '')}</small><span class="wp-price">${esc(price(o))}</span>${dreamTag(o)}</button>`).join('')}</div>`;
+        ? `<div class="wp-swatches">${opts.map((o) => `<button type="button" class="wp-swatch" data-pick="${o.id}" aria-pressed="${plan[key] === o.id}">
+            <span class="av-opt av-swatch${plan[key] === o.id ? ' on' : ''}" style="background:${o.hex}"></span>${esc(o.name)}</button>`).join('')}</div>`
+        : `<div class="nav-group wp-rows">${opts.map((o) => `<button type="button" class="nav-row wp-row${plan[key] === o.id ? ' on' : ''}" data-pick="${o.id}" aria-pressed="${plan[key] === o.id}">
+            <span class="nr-icon emoji" aria-hidden="true">${o.icon}</span>
+            <span class="nr-main"><span class="nr-label">${esc(o.name)}${dreamTag(o)}</span><small>${esc(o.sub ?? '')}</small></span>
+            <span class="wp-price">${plan[key] === o.id ? '<span class="wp-check" aria-hidden="true">✓</span>' : ''}${esc(price(o))}</span></button>`).join('')}</div>`;
       const dots = `<div class="wp-steps" aria-label="Step ${i + 1} of ${love.PLAN_STEPS.length}">${love.PLAN_STEPS.map((k, j) => `<i class="${j < i ? 'done' : j === i ? 'now' : ''}"></i>`).join('')}</div>`;
       scene({
         line: LINES[key] + (key === 'food' && guests > 2 ? ` That's ${guests} plates.` : ''),
