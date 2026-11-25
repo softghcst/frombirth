@@ -98,7 +98,7 @@ const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).fl
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), ...[CUR.PRISON, CUR.GRADUATION.outfit].filter(Boolean), ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
-for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
+for (const h of AVATAR_MANIFEST.hair) if (!/^hair_(baby|kid)_/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
 // 3. Colors that saves store by id.
 const SHIPPED = {
@@ -851,6 +851,23 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
     const bf = BABY_FIT[id];
     check(bf ? out.includes(`scale(${bf.sx} ${bf.sy})`) && bf.sx >= 0.9 && bf.sx <= 1.15 && bf.sy >= 0.9 && bf.sy <= 1.15
       : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the head (${JSON.stringify(bf)})`);
+  }
+}
+
+const { KID_HAIR_FIT: KID_FIT } = await import('../js/avatar/kidHairFit.js');
+// Kid hair, by gender and texture, drawn on the kid template: worn from 7 to 13 only, placed as drawn, in the kid's own hair color.
+{
+  for (const [sex, byTex] of Object.entries(CUR.KID_HAIR)) for (const [tex, ids] of Object.entries(byTex)) for (const id of ids) {
+    check(PART_BY_ID[id]?.tags?.age === 'kid', `${id} exists, as a kid's hair`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(svg.includes('var(--hair-color'), `${id} takes the kid's hair color`);
+    const look = { ...resolveLook({ v: 3, inherited: { hairTexture: tex } }, 'kh', sex), kidDrawnHair: id };
+    const at = (age) => dressFor(look, { age, gender: sex }).hair;
+    check(at(10) === id && at(5) !== id && at(16) !== id, `${id} is a kid's (${sex}, ${tex}): worn at 10, not at 5 or 16`);
+    const kf = KID_FIT[id];
+    const out = characterAvatarSvg(look, { age: 10, gender: sex });
+    check(kf ? out.includes(`scale(${kf.sx} ${kf.sy})`) && kf.sx >= 0.9 && kf.sx <= 1.15 && kf.sy >= 0.9 && kf.sy <= 1.15
+      : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the kid head (${JSON.stringify(kf)})`);
   }
 }
 
