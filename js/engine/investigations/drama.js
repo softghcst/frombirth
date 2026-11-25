@@ -11,6 +11,7 @@ import { agency, office, officeOf, staffer, federalCities } from './agencies.js'
 import { acceptAcademy, declineOffer, meet } from './careers.js';
 import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings, reviewCandidates, openReview } from './casework.js';
 import * as k from '../cases.js';
+import { storyBeat } from '../storyDirector.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : 'someone');
@@ -23,7 +24,7 @@ function queue(r, id, words, key = id) {
   if (st.pendingEvents.filter((x) => x.id.startsWith('inv_')).length >= 2) return false;
   if (st.pendingEvents.some((x) => x.id === id)) return false;
   r.scenes[key] = year();
-  st.pendingEvents.push({ id, cast: { words } });
+  storyBeat(id, { words }, { source: 'investigations' });
   return true;
 }
 

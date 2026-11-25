@@ -16,6 +16,7 @@ import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
 import { decide } from './pregnancyChoice.js';
 import { tickFamilyStories, familyChoice, FAMILY_IDS } from './familyStories.js';
+import { storyBeat } from './storyDirector.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -68,7 +69,7 @@ export function tickLoveStories() {
     if (told()[`story/${c.s.id}`] === year) continue; // never the same story twice in a year
     told()[c.key] = year;
     told()[`story/${c.s.id}`] = year;
-    store.state.pendingEvents.push({ id: `love_${c.s.id}`, cast: { them: c.npc.id } });
+    storyBeat(`love_${c.s.id}`, { them: c.npc.id }, { source: 'love' });
     n++;
   }
 }
@@ -102,7 +103,7 @@ export function loveChoice(value, cast) {
     }
     case 'anniversary_hidden': {
       if (choice === 'celebrate') { bump(npc, 6); (b.acts[store.state.year] ??= {}).time = ((b.acts[store.state.year].time) ?? 0) + 1; return say('A dinner in a town where nobody knows either of you.'); }
-      if (choice === 'secrecy') { bump(npc, 2); if (!b.arc.complicated) { b.arc.complicated = { year: store.state.year, choice: null }; store.state.pendingEvents.push({ id: 'romance_complicated_001', cast: { them: npc.id } }); } return say(`${npc.firstName} has been waiting for you to bring it up.`); }
+      if (choice === 'secrecy') { bump(npc, 2); if (!b.arc.complicated) { b.arc.complicated = { year: store.state.year, choice: null }; storyBeat('romance_complicated_001', { them: npc.id }, { source: 'love', must: true }); } return say(`${npc.firstName} has been waiting for you to bring it up.`); }
       if (choice === 'commitments') { bump(npc, -4); return say(`You spend the day where you are expected to be. ${npc.firstName} says they understand.`); }
       bonds.end(npc.id, 'ended on the anniversary');
       return `${npc.firstName} is not surprised that it is today you say it.`;
@@ -221,7 +222,7 @@ function teenYear() {
   if (!rng.chance({ low: 0.01, balanced: 0.02, high: 0.04 }[dramaOf()] * safetyFactor())) return;
   p.flags.teenPregnancy = { year: store.state.year, otherId: other.id, told: [], school: null, plan: null };
   p.flags.pregnancy = { dueAge: p.age + 1, otherId: other.id, teen: true };
-  store.state.pendingEvents.push({ id: 'teen_life_changing', cast: { them: other.id, words: { who: (p.flags.bornAs ?? p.gender) === 'female' ? 'You are pregnant.' : `${other.firstName} is pregnant.` } } });
+  storyBeat('teen_life_changing', { them: other.id, words: { who: (p.flags.bornAs ?? p.gender) === 'female' ? 'You are pregnant.' : `${other.firstName} is pregnant.` } }, { source: 'love', must: true });
 }
 
 function teenChoice(story, choice, cast) {

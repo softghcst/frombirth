@@ -22,6 +22,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { makeNpc } from './npcFactory.js';
 import { breakUp, divorce } from './romance.js';
 import { bonds as relationships } from './bonds.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -691,7 +692,8 @@ function godchildFor(sib) {
 
 // ---------- The year, between the player's own actions ----------
 
-const queue = (id, cast) => { const st = store.state; if (!st.pendingEvents.some((x) => x.id === id)) st.pendingEvents.push({ id, cast }); };
+// An affair that has come out is a consequence and always plays; friendship stories are paced (engine/storyDirector.js).
+const queue = (id, cast) => { const st = store.state; if (!st.pendingEvents.some((x) => x.id === id)) storyBeat(id, cast, { source: 'friends', must: id.startsWith('with_affair') }); };
 
 /** An affair that has come out: the player decides what happens (with_affair_*). */
 function affairOut(n, scene) {

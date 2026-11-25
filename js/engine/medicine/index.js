@@ -20,6 +20,7 @@ import { practiceYear } from './practice.js';
 import { researchYear } from './research.js';
 import { dramaYear, hospitalYear } from './drama.js';
 import { storyYear } from './story.js';
+import { storyBeat } from '../storyDirector.js';
 
 export * from './core.js';
 export const MEDICAL_CAREERS = ['doctor', 'surgery', 'psychiatry', 'podiatrist'];
@@ -52,7 +53,7 @@ export function tickMedicine() {
     const fam = medicalFamily(p);
     if (fam) {
       p.flags.medFamilyScene = true;
-      store.state.pendingEvents.push({ id: 'med_family_calling', cast: { words: { relative: fam.name, what: fam.what.toLowerCase(), how: fam.archived ? 'in the photographs in the Family Archive' : 'at the kitchen table, tired after a long shift' } } });
+      storyBeat('med_family_calling',  { words: { relative: fam.name, what: fam.what.toLowerCase(), how: fam.archived ? 'in the photographs in the Family Archive' : 'at the kitchen table, tired after a long shift' } }, { source: 'family', must: true });
     }
   }
   // The medical school interview: for a premed student who has done the groundwork, once.

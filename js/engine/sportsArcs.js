@@ -19,6 +19,7 @@ import { clamp } from '../util.js';
 import { sportOf, REHAB } from '../data/sports.js';
 import * as sp from './sports.js';
 import { answer } from './sportsLife.js';
+import { storyBeat } from './storyDirector.js';
 
 export const ARC_LETTERS = {
   A: 'First team', B: 'A coach who believes in you', C: 'The big scholarship', D: 'The championship season', E: 'The doubles partnership',
@@ -53,7 +54,7 @@ export function tickSportsArcs(state = store.state, started = []) {
     if (waiting.has(id)) return false;
     // A scene that names a coach the player does not have says "your coach" instead.
     if ('coach' in cast && !state.npcs[cast.coach]?.alive) { delete cast.coach; cast.words = { ...cast.words, coach: 'your coach', Coach: 'Your coach' }; } else if (cast.coach) cast.Coach = cast.coach;
-    state.pendingEvents.push({ id, cast });
+    storyBeat(id, cast, { source: 'sport' }, state);
     return true;
   };
   const tries = [];
