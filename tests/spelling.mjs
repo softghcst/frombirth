@@ -33,7 +33,8 @@ for (const f of files) {
 }
 check(!found.length, `no British spellings (${found.length}: ${found.slice(0, 8).join('; ')})`);
 // British words, as well as spellings: the American word in the game's text.
-const VOCAB = /\b(?:dearer|fortnight|(?<!rice )pudding|solicitor|washing-up|tea towel|pram|nappy|nappies|petrol|car park|rings off|in hospital|at university|polling day|in the post|high street|head teacher|shop assistant|a flat in|rent a flat)\b/i;
+// 'Solicitor General' is the American office, and an English solicitor is a profession of its own (data/law.js).
+const VOCAB = /\b(?:dearer|fortnight|(?<!rice )pudding|(?<!as a )solicitor(?! general)|washing-up|tea towel|pram|nappy|nappies|petrol|car park|rings off|in hospital|at university|polling day|in the post|high street|head teacher|shop assistant|a flat in|rent a flat)\b/i;
 const words = [];
 for (const f of files) {
   if (EXEMPT.has(f) || f.startsWith('tests/') || f.startsWith('docs/')) continue;

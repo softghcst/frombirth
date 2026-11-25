@@ -23,6 +23,7 @@ export const MENU_RULES = [
   [/acting work$/i, '🎬', 'Audition for parts in plays, films and ads'],
   [/^quick one-off gigs$/i, '🛠️', 'A day\'s work for a day\'s pay'],
   [/^military$/i, '🎖️', 'Enlist, train, and serve your country'],
+  [/^my legal career$/i, '⚖️', 'Law school, the bar, cases and the courtroom'],
   [/^special careers$/i, '🌟', 'Fame, idols, sport and politics'],
   [/^my fame$/i, '⭐', 'Acting, music and being known'],
   [/^k-pop idol$/i, '🎤', 'Auditions, training and debut'],

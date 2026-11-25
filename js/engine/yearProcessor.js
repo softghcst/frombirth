@@ -1,5 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
+import { tickLaw } from './lawPractice.js';
 import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickHair } from './salon.js';
@@ -152,6 +153,7 @@ export const YEARLY = [
   ['local', () => { for (const n of tickLocal()) log(n.text, 'system', n.tone); }],
   ['activism', tickActivism],
   ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
+  ['law', () => booked('legal', 'Legal practice', () => tickLaw())], // law school terms, cases and a lawyer's opportunities (engine/lawPractice.js)
   ['care', () => booked('auto', 'Who looks after you', checkCare)],
   ['neighborhood', () => { hood.openYear(); hoodLife.syncBusinesses(); hoodLife.neighborsAsCustomers(); }], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
   ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care

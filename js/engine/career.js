@@ -137,7 +137,9 @@ export function unmet(career, o = {}) {
   if (r.program && !hasDegree(r.program)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
       cosmetology: 'Needs a hair and makeup license.' }[r.program] ?? `Needs you to have finished ${PROGRAMS[r.program].label.toLowerCase()}.`);
-  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched) {
+  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched
+    // A law graduate in practical training (articling, qualifying work, the Referendariat) may join a firm as a trainee.
+    && !(career.id === 'lawyer' && p.law?.bar?.training && !p.law.bar.training.done)) {
     // The degree is not the right to practice.
     out.push(`Needs you to pass the ${examName(licenseFor(r.program))}.`);
   }
@@ -525,10 +527,22 @@ export const scaleSalary = (m) => {
 };
 
 /** Thresholds the next level demands that the player does not yet meet. */
+/**
+ * Extra conditions some careers put on a promotion, beyond years and reviews: a law firm's partnership vote, an
+ * election to District Attorney (engine/lawPractice.js registers its own). Each gate: (careerId, nextLevel) → [why].
+ */
+// A function, not a const: modules that register a gate may load before this one has run (a circular import), and a
+// function declaration exists from the moment the module is linked.
+function promotionGates() { promotionGates.list ??= []; return promotionGates.list; }
+export function addPromotionGate(fn) { promotionGates().push(fn); }
 function missingFor(level) {
-  return Object.entries(level?.needs ?? {})
+  const c = player().career;
+  const career = currentCareer();
+  const at = career?.levels.indexOf(level) ?? -1;
+  return [...Object.entries(level?.needs ?? {})
     .filter(([path, min]) => (Number(resolve(path)) || 0) < min)
-    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`);
+    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`),
+  ...(at > 0 && c.careerId ? promotionGates().flatMap((g) => g(c.careerId, at) ?? []) : [])];
 }
 
 /** What stands between the player and the next level, for display. */
