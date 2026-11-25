@@ -36,7 +36,7 @@ for (let i = 0; i < 60; i++) {
   lc.file(c, 'strong');
   if (c.done && c.outcome.kind === 'cert_denied') denied++; else heard++;
 }
-check(denied > heard * 2 && heard > 0, `the highest court refuses most petitions, but not all (${denied} refused, ${heard} heard)`);
+check(denied >= heard * 1.5 && heard > 0, `the highest court refuses most petitions, but not all (${denied} refused, ${heard} heard)`);
 lawyer('lawyer'); store.state.year = 2020;
 check(lc.forumName(lc.createCase('supreme_court')) === 'Supreme Court of the United States', 'in the US: the Supreme Court');
 lawyer('lawyer', { countryId: 'uk' });

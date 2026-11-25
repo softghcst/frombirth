@@ -64,6 +64,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
   await rowBtn.click(); await hub().waitFor();
   check(/Every case tells a story/i.test(await hub().innerText()), `${label}: the hub opens, with its subtitle`);
+  const guide = page.locator('#modal-root .modal', { hasText: 'Your Legal Career' }).last();
+  check(await guide.count() === 1 && /Handle the Routine Steps/.test(await guide.innerText()), `${label}: the first time, a short guide explains how it works`);
+  await guide.locator('[data-guideok]').click(); await page.waitForTimeout(80);
+  check(await page.locator('#modal-root [data-guideok]').count() === 0, `${label}: and it closes`);
   await hub().locator('[data-tab="education"]').click();
   check(await hub().locator('[data-tab="cases"]').count() === 0 && await hub().locator('[data-tab="new"]').count() === 0, `${label}: no docket for someone who is not a lawyer`);
   await hub().locator('[data-law="sitEntrance"]').click(); await ok();

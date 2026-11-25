@@ -355,6 +355,22 @@ async function schoolAct(id) {
  * @param {{changed:Function, openNpc?:Function}} api
  * @param {{tab?:string, caseId?:string}} [start]
  */
+/** A short guide to the legal career: shown the first time the screen opens, and again from How It Works. */
+const GUIDE = [
+  ['Education & Licensing', 'Law school term by term, then the bar exam. Nobody practices until they are admitted.'],
+  ['My Cases', 'Your docket. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
+  ['In court', 'When a case reaches a hearing or trial, you choose your opening, your objections, your questions and your closing.'],
+  ['Career Progress', 'Your five skills, named for your practice area, your reputation, and the bigger jobs: partner, District Attorney, judge.'],
+  ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],
+];
+export function openGuide() {
+  const m = openModal(`<div class="eyebrow">How it works</div><h2>Your Legal Career</h2>
+    ${GUIDE.map(([t, d], i) => `<div class="kv law-guide"><span><strong>${i + 1}. ${esc(t)}</strong></span></div><p class="muted">${esc(d)}</p>`).join('')}
+    <div class="btn-row">${btn('Got It', 'data-guideok', 'primary')}</div>`, { dismissable: true });
+  m.el.querySelector('[data-guideok]').addEventListener('click', () => m.close());
+  return m;
+}
+
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
@@ -365,7 +381,7 @@ export function openLawCareer(api, start = {}) {
     if (!ts.some(([id]) => id === tab)) tab = 'overview';
     const c = caseId ? lc.caseById(caseId) : null;
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
-      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2>
+      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2><button type="button" class="btn small" data-guide>How It Works</button>
         <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
         <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
@@ -374,6 +390,7 @@ export function openLawCareer(api, start = {}) {
     const t = e.target.closest('button');
     if (!t || t.disabled) return;
     let r;
+    if (t.hasAttribute('data-guide')) { openGuide(); return undefined; }
     if (t.dataset.tab) { tab = t.dataset.tab; caseId = null; return draw(); }
     if (t.hasAttribute('data-back')) { caseId = null; tab = 'cases'; return draw(); }
     if (t.dataset.case) { caseId = t.dataset.case; return draw(); }
@@ -429,6 +446,9 @@ export function openLawCareer(api, start = {}) {
     return undefined;
   });
   draw();
+  // The first time: a short guide, once per player (it can be opened again from How It Works).
+  const p = player();
+  if (!p.flags.lawGuideSeen) { p.flags.lawGuideSeen = true; openGuide(); }
   return m;
 }
 
