@@ -121,6 +121,7 @@ node tests/together.mjs        # what you can do with the people in your life, b
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
+node tests/investigations.mjs  # police, detectives, federal agents and private investigators: agencies, the academy, cases on the justice records, the laboratory, warrants, prosecutors and courts, cold cases, 3/6/12-month turns (docs/INVESTIGATIONS.md)
 node tests/global-life.mjs     # travel, passports, borders, relocation, children born abroad, generations; the three vertical slices (SEED=n to vary)
 node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
 node tests/eras.mjs            # Historical Eras: careers, money and currencies, laws, schooling, health and events by era; lives born 1800–today; a German family 1900 → today
@@ -131,6 +132,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 
 ```bash
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
+node tests/investigations-ui.mjs # My Investigations and a case file, at phone and desktop widths
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.

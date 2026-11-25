@@ -9,6 +9,7 @@ import { dutyButtons, runDuty } from '../justice.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { openOccupation } from '../occupation.js';
 import { openMedicine, medicineOpen } from '../medicine.js';
+import { openInvestigations, investigationsOpen } from '../investigations.js';
 import { openFame } from '../fame.js';
 import { openIdol } from '../kpop.js';
 import { workOf } from '../../engine/entertainment.js';
@@ -71,6 +72,7 @@ export function careerButtons() {
   const waiting = offers().length + leads().length;
   if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Jobs${waiting ? ` (${waiting} waiting)` : ''}`]);
   if (medicineOpen(p)) list.push(['medicine', 'My Medical Career']);
+  if (investigationsOpen(p)) list.push(['investigations', 'My Investigations']);
   if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
@@ -207,6 +209,7 @@ async function quit(api) {
 export const careerHandlers = (api) => ({
   hub: () => openOccupation(api),
   medicine: () => openMedicine(api),
+  investigations: () => openInvestigations(api),
   myfame: () => openFame(api),
   myidol: () => openIdol(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
