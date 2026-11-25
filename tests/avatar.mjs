@@ -665,7 +665,7 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(!CUR.ROYAL.grownOnly.includes(c), `a ${rank} of ${age} is not in grown-up dress (${c})`);
   // A royal child (baby, toddler or kid head, under 14) is dressed as a child: the children's clothes are being redrawn,
   // so for now nothing (or the baby's royal dress, once there is one); from 14, in royal dress.
-  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) check(c == null || CUR.ROYAL.outfits.baby.includes(c) || (CUR.ROYAL.outfits.kid[g] ?? []).includes(c) || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a ${rank} of ${age} is dressed as a child (${c})`);
+  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) check(c == null || CUR.ROYAL.outfits.baby.includes(c) || [...(CUR.ROYAL.outfits.kid[g] ?? []), CUR.ROYAL.outfits.kidHeir?.[g]].includes(c) || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a ${rank} of ${age} is dressed as a child (${c})`);
   else {
     // A royal teen wears royal dress drawn for their age; while all of it is grown-up dress, their own clothes.
     const list = rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g];
@@ -781,7 +781,7 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
       check(c == null || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a child of ${age} wears no grown-up's clothes (${c})`);
       check(dressFor(look, { age, gender: g, career: { id: 'police' } }).clothes === c, 'and no uniform');
       const r = dressFor(look, { age, gender: g, royal: { rank: 'royal' } });
-      check(r.clothes === c || (age < 7 && CUR.ROYAL.outfits.baby.includes(r.clothes)) || (age >= 7 && (CUR.ROYAL.outfits.kid[g] ?? []).includes(r.clothes)), `a royal child of ${age} is dressed as a child (${r.clothes})`);
+      check(r.clothes === c || (age < 7 && CUR.ROYAL.outfits.baby.includes(r.clothes)) || (age >= 7 && [...(CUR.ROYAL.outfits.kid[g] ?? []), CUR.ROYAL.outfits.kidHeir?.[g]].includes(r.clothes)), `a royal child of ${age} is dressed as a child (${r.clothes})`);
     }
     check(dressFor(look, { age: 14, gender: g }).clothes === 'outfit_55_zip_hoodie', 'from 14, their own style');
   }
@@ -831,7 +831,8 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
   for (const g of ['male', 'female']) for (const rank of ['royal', 'heir']) for (const age of [7, 10, 13]) {
     const c = dressFor(resolveLook(randomAppearance(undefined, g), 'rk' + age, g), { age, gender: g, royal: { rank } }).clothes;
     const list = CUR.ROYAL.outfits.kid[g] ?? [];
-    check(list.length ? list.includes(c) : !CUR.ROYAL.grownOnly.includes(c), `a royal ${g === 'male' ? 'boy' : 'girl'} of ${age} (${rank}) wears ${c}`);
+    const heir = rank === 'heir' && CUR.ROYAL.outfits.kidHeir?.[g];
+    check(heir ? c === heir : list.length ? list.includes(c) : !CUR.ROYAL.grownOnly.includes(c), `a royal ${g === 'male' ? 'boy' : 'girl'} of ${age} (${rank}) wears ${c}`);
   }
   check(dressFor(resolveLook(randomAppearance(undefined, 'male'), 'rk', 'male'), { age: 9, gender: 'male' }).clothes !== 'outfit_kid_01_royal_tunic', 'a boy who is not royal does not wear the prince\'s tunic');
 }
