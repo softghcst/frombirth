@@ -27,7 +27,34 @@ const done = () => (C().acts[player().age] ??= []);
 
 // ---------- Things to do ----------
 
-/** What a child of this age can do now. @returns {{id, label, done, why?}[]} */
+/** What each kind of thing a child does draws on: the traits, talents and early likings that make a child love it. */
+const LEANS = {
+  music: { traits: ['musical'], talents: ['music', 'singing'], early: 'music' },
+  move: { traits: ['athletic', 'restless'], talents: ['sports', 'dance'], early: 'movement' },
+  water: { traits: ['athletic', 'hardy'], talents: ['sports'], early: 'water' },
+  books: { traits: ['bookish', 'steady'], talents: ['writing', 'science'], early: 'books' },
+  people: { traits: ['radiant', 'sunny', 'gentle'], talents: [], early: 'people' },
+  stage: { traits: ['dramatic', 'radiant'], talents: ['acting', 'singing', 'dance'], early: null },
+  art: { traits: ['dramatic', 'steady'], talents: ['art'], early: null },
+  make: { traits: ['steady', 'bookish'], talents: ['tech', 'science', 'art'], early: 'books' },
+};
+const LEAN_OF = { lullaby: ['music'], musicclass: ['music'], singing: ['music', 'stage'], tummy: ['move'], tumbling: ['move'], dance: ['move', 'stage'],
+  stagedance: ['move', 'stage'], playground: ['move', 'people'], swim: ['water'], story: ['books'], toys: ['books'], hobby: ['make'],
+  babygroup: ['people'], playdate: ['people'], sleepover: ['people'], fair: ['people'], club: ['people'], acting: ['stage'], youththeater: ['stage', 'music'], art: ['art'] };
+
+/** How well something suits this child: 0 not especially, 1 likes it, 2 loves it. From who they are, never from chance. */
+export function suits(id, p = player()) {
+  let score = 0;
+  for (const k of LEAN_OF[id] ?? []) {
+    const l = LEANS[k];
+    score += l.traits.filter((t) => (p.traits ?? []).includes(t)).length * 2;
+    score += Math.max(0, ...l.talents.map((t) => p.talents?.[t] ?? 0)) / 12;
+    if (l.early) score += (C().early[l.early] ?? 0) / 2;
+  }
+  return score >= 3 ? 2 : score >= 1.5 ? 1 : 0;
+}
+
+/** What a child of this age can do now, the things that suit them most first. @returns {{id, label, done, why?, suits}[]} */
 export function childActivities() {
   const p = player();
   if (p.age > 15) return [];
@@ -36,8 +63,8 @@ export function childActivities() {
   return CHILD_ACTIVITIES.filter((a) => p.age >= a.ages[0] && p.age <= a.ages[1]).map((a) => {
     const needsParent = a.parent || (a.parentUnder && p.age < a.parentUnder);
     const why = needsParent && !guardians().length ? 'Nobody to take you' : a.sibling && !mine('sibling').length ? 'No brothers or sisters' : a.needsFriend && !friends().length ? 'No friend to ask yet' : null;
-    return { id: a.id, label: a.name, done: used.includes(a.id) || (full && !used.includes(a.id)) || !!why, why: used.includes(a.id) ? 'done this year' : full ? 'enough for one year' : why };
-  });
+    return { id: a.id, label: a.name, done: used.includes(a.id) || (full && !used.includes(a.id)) || !!why, why: used.includes(a.id) ? 'done this year' : full ? 'enough for one year' : why, suits: suits(a.id, p) };
+  }).map((x, i) => [x, i]).sort(([a, i], [b, j]) => Number(a.done) - Number(b.done) || b.suits - a.suits || i - j).map(([x]) => x);
 }
 
 function grow(path, by, lesson = false) {

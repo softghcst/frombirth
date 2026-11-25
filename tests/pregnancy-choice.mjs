@@ -206,6 +206,24 @@ section('teenagers have the choice too; school goes on; nobody pays; a boyfriend
 }
 section('a teenager can look after themselves: health class, a talk, a private doctor; each makes the storyline less likely');
 
+// ---------- Trying, as often as you like, and IVF ----------
+{
+  const t = life(29, 'female'); const u = person('spouse', 30, 'male', 95);
+  let tries = 0;
+  while (!t.flags.pregnancy && tries < 60) { kids.tryForBaby(u.id); tries++; }
+  check(t.flags.pregnancy && tries > 0, `trying again and again in the same year is allowed, until it works (${tries} tries)`);
+  let got = 0;
+  for (let i = 0; i < 400; i++) { t.flags.pregnancy = null; kids.tryForBaby(u.id); if (t.flags.pregnancy) got++; }
+  check(got > 120, `at 29, most tries come good within a few goes (${got} of 400)`);
+  t.flags.pregnancy = null; t.finance.cash = 10;
+  check(!kids.tryIvf(u.id).ok && !t.flags.pregnancy, 'IVF costs money');
+  t.finance.cash = 1e9;
+  let ivf = 0;
+  for (let i = 0; i < 200; i++) { t.flags.pregnancy = null; kids.tryIvf(u.id); if (t.flags.pregnancy?.ivf) ivf++; }
+  check(ivf > got / 2, `IVF works more often than trying (${ivf} of 200)`);
+}
+section('trying for a baby as often as you like; IVF for a better chance, and twins more often');
+
 if (problems.length) {
   console.log(`${problems.length} problem(s):`);
   for (const p of problems) console.log(' ✗', p);

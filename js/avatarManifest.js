@@ -207,18 +207,6 @@ export const AVATAR_MANIFEST = {
   hats: [
   ],
   glasses: [
-    {"id": "glasses_07_browline", "file": "avatars/glasses/glasses_07_browline.svg", "label": "Browline"},
-    {"id": "glasses_08_octagonal", "file": "avatars/glasses/glasses_08_octagonal.svg", "label": "Octagonal"},
-    {"id": "glasses_09_oversized_square", "file": "avatars/glasses/glasses_09_oversized_square.svg", "label": "Oversized square"},
-    {"id": "glasses_1", "file": "avatars/glasses/glasses_1.svg", "label": "Glasses 1"},
-    {"id": "glasses_10_retro_rect", "file": "avatars/glasses/glasses_10_retro_rect.svg", "label": "Retro rect"},
-    {"id": "glasses_11_star_shades", "file": "avatars/glasses/glasses_11_star_shades.svg", "label": "Star shades"},
-    {"id": "glasses_12_sport_visor", "file": "avatars/glasses/glasses_12_sport_visor.svg", "label": "Sport visor"},
-    {"id": "glasses_2", "file": "avatars/glasses/glasses_2.svg", "label": "Glasses 2"},
-    {"id": "glasses_3", "file": "avatars/glasses/glasses_3.svg", "label": "Glasses 3"},
-    {"id": "glasses_4", "file": "avatars/glasses/glasses_4.svg", "label": "Glasses 4"},
-    {"id": "glasses_5", "file": "avatars/glasses/glasses_5.svg", "label": "Glasses 5"},
-    {"id": "glasses_6", "file": "avatars/glasses/glasses_6.svg", "label": "Glasses 6"},
   ],
   jewelry: [
     {"id": "accessory_01_gold_hoop_earrings", "file": "avatars/jewelry/accessory_01_gold_hoop_earrings.svg", "label": "Gold hoop earrings", "tags": {"kind": "ears"}},
@@ -235,22 +223,9 @@ export const AVATAR_MANIFEST = {
     {"id": "jewelry_12_gold_chain", "file": "avatars/jewelry/jewelry_12_gold_chain.svg", "label": "Gold chain", "tags": {"kind": "necklace"}},
   ],
   makeup: [
-    {"id": "makeup_01_soft_blush", "file": "avatars/makeup/makeup_01_soft_blush.svg", "label": "Soft blush"},
-    {"id": "makeup_02_winged_eyeliner", "file": "avatars/makeup/makeup_02_winged_eyeliner.svg", "label": "Winged eyeliner"},
-    {"id": "makeup_03_sparkle_eyeshadow", "file": "avatars/makeup/makeup_03_sparkle_eyeshadow.svg", "label": "Sparkle eyeshadow"},
     {"id": "makeup_04_freckles", "file": "avatars/makeup/makeup_04_freckles.svg", "label": "Freckles"},
-    {"id": "makeup_05_highlighter", "file": "avatars/makeup/makeup_05_highlighter.svg", "label": "Highlighter"},
     {"id": "makeup_06_beauty_mark", "file": "avatars/makeup/makeup_06_beauty_mark.svg", "label": "Beauty mark"},
-    {"id": "makeup_07_sunkissed_blush", "file": "avatars/makeup/makeup_07_sunkissed_blush.svg", "label": "Sunkissed blush"},
-    {"id": "makeup_08_double_wing", "file": "avatars/makeup/makeup_08_double_wing.svg", "label": "Double wing"},
-    {"id": "makeup_09_cut_crease", "file": "avatars/makeup/makeup_09_cut_crease.svg", "label": "Cut crease"},
-    {"id": "makeup_10_egirl_hearts", "file": "avatars/makeup/makeup_10_egirl_hearts.svg", "label": "Egirl hearts"},
     {"id": "makeup_11_dense_freckles", "file": "avatars/makeup/makeup_11_dense_freckles.svg", "label": "Dense freckles"},
-    {"id": "makeup_12_smoky_wing", "file": "avatars/makeup/makeup_12_smoky_wing.svg", "label": "Smoky wing"},
-    {"id": "makeup_13_soft_contour", "file": "avatars/makeup/makeup_13_soft_contour.svg", "label": "Soft contour"},
-    {"id": "makeup_14_fairy_glitter", "file": "avatars/makeup/makeup_14_fairy_glitter.svg", "label": "Fairy glitter"},
-    {"id": "makeup_15_pinup_liner", "file": "avatars/makeup/makeup_15_pinup_liner.svg", "label": "Pinup liner"},
-    {"id": "makeup_16_peach_blush", "file": "avatars/makeup/makeup_16_peach_blush.svg", "label": "Peach blush"},
   ],
   aging: [
     {"id": "aging_01_smile_cheek_lines", "file": "avatars/aging/aging_01_smile_cheek_lines.svg", "label": "Smile cheek lines"},
@@ -273,6 +248,8 @@ export const AVATAR_MANIFEST = {
   ],
   baby_eyes: [
     {"id": "baby_eyes_6", "file": "avatars/baby_eyes/baby_eyes_6.svg", "label": "Baby 6"},
+  ],
+  facial_hair: [
   ],
 };
 

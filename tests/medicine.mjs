@@ -135,6 +135,14 @@ section(`registry: ${SPECIALTIES.length} specialties, ${CASES.length} cases; pla
 // 2. Premedical years, medical school, rotations and exams, the Match.
 let p = life('us', 22);
 check(train.premedOpen(p), 'a biology graduate can do premedical activities');
+{
+  const keep = JSON.parse(JSON.stringify({ d: p.education.degrees, c: p.career.careerId }));
+  p.education.degrees = [{ type: 'university', majorId: 'business', gpa: 3 }];
+  check(!train.premedOpen(p), 'a business graduate is not offered premedical activities');
+  p.education.degrees = keep.d; p.career.careerId = 'baseball';
+  check(!train.premedOpen(p), 'nor is someone settled in another career');
+  p.career.careerId = keep.c;
+}
 check(train.doPremed('shadow').ok && !train.doPremed('shadow').ok, 'a premedical activity is once a year');
 train.doPremed('research'); train.doPremed('volunteer'); train.doPremed('mentor');
 const chance = edu.admissionChance('medical');

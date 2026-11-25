@@ -9,6 +9,7 @@ import { propertyTaxLabel, COUNTRIES } from '../data/countries.js';
 import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
 import * as med from '../engine/medical.js';
+import { MENTAL_CARE_AGE } from '../engine/health/care.js';
 import * as fun from '../engine/activities.js';
 import { CHARM_ACTIVITIES } from '../data/activities.js';
 import * as clubs from '../engine/clubs.js';
@@ -27,19 +28,23 @@ async function report(api, r) {
 
 export async function seeDoctor(api) {
   const c = country();
+  const p = player();
   const list = med.treatable();
   const k = sys.cover();
+  // A child goes with their parents, who pay; a baby is only taken for what a baby needs. Insurance is an adult's to arrange.
+  const kid = p.age < 18;
+  const price = (n) => (!n ? 'Free' : med.parentsPayCare(p) ? `Your parents pay ${fmtMoney(n, c)}` : fmtMoney(n, c));
   const pick = await pickModal({
     title: 'The doctor',
-    body: `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
+    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}${k.model.name}. ${k.how}` : `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
     options: [
       ...list.map((x) => ({ value: x.id, label: `Treat your ${x.name.replace(/^an? /, '')}`, disabled: x.seen || !x.affordable || (x.manage && x.managed),
         sub: x.manage && x.managed ? 'Under control. Nothing more to do.' : x.seen ? 'Already seen this year.'
-          : `${x.cost ? fmtMoney(x.cost, c) : 'Free'}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
-      { value: 'checkup', label: 'Have a check-up', sub: `${fmtMoney(med.careCost(200), c)}. Makes illness less likely next year.` },
-      { value: 'therapy', label: 'See a therapist', sub: `${fmtMoney(med.careCost(1200), c)} for a year of sessions. Lifts your mood.` },
-      ...(k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
-      ...(k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
+          : `${price(x.cost)}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
+      { value: 'checkup', label: 'Have a check-up', sub: `${price(med.careCost(200))}. Makes illness less likely next year.` },
+      ...(p.age >= MENTAL_CARE_AGE ? [{ value: 'therapy', label: kid ? 'See a children\'s therapist' : 'See a therapist', sub: `${price(med.careCost(1200))} for a year of sessions. Lifts your mood.` }] : []),
+      ...(!kid && k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
+      ...(!kid && k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
     ],
   });
   if (!pick) return undefined;
