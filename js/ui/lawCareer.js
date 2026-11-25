@@ -11,6 +11,7 @@ import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
+import { caseLaws, eraNotes } from '../engine/realLaw.js';
 import { COMPLEXITY, SIMULATION_NOTE, COURSE_BY_ID } from '../data/law.js';
 
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
@@ -93,7 +94,8 @@ function education() {
     : `<p class="muted">Before law schools were the way in, lawyers learned in a practicing lawyer's office.</p>${btn('Read the Law', 'data-law="readLaw"', 'primary')}`));
   if (!parts.length) parts.push(`<p class="muted">${esc(p.education.degrees.some((d) => d.type === 'university') ? 'Apply to law school from Plan What Comes Next.' : 'Law school comes after a first degree.')}</p>`);
   const note = prof.depth === 'full' ? '' : `<p class="muted">${esc(prof.name)}: ${esc(prof.note ?? 'a simplified model of how lawyers qualify here.')}</p>`;
-  return parts.join('') + note;
+  const era = eraNotes(p.countryId);
+  return parts.join('') + note + (era.length ? card(`The law in ${store.state.year}`, era.map((x) => `<p class="muted">${esc(x)}</p>`).join('')) : '');
 }
 
 function myCases() {
@@ -206,6 +208,8 @@ function casePage(c) {
       ${c.otherCounselId ? `<button type="button" class="tree-row" data-npcperson="${c.otherCounselId}"><strong>${esc(nameOf(c.otherCounselId))}</strong><small>Opposing counsel</small></button>` : ''}
       ${c.supervisorId ? `<button type="button" class="tree-row" data-npcperson="${c.supervisorId}"><strong>${esc(nameOf(c.supervisorId))}</strong><small>${c.clinic ? 'Clinic supervisor' : 'Supervising attorney'}</small></button>` : ''}`)}
     ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${acts.map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
+    ${(() => { const laws = caseLaws(c); return card('The law', laws.length ? laws.map(({ law }) => `<div class="law-ev"><strong>${esc(law.name)}</strong><small>${esc(law.summary)}${law.note ? ` ${esc(law.note)}` : ''}</small></div>`).join('')
+      : '<p class="muted">Pathways does not list this country\'s laws for this kind of case: the rules here are simplified.</p>'); })()}
     ${card('Evidence', ev || '<p class="muted">No evidence in this file.</p>')}
     ${c.witnesses.length ? card('Witnesses', c.witnesses.map((w) => `<button type="button" class="tree-row" data-npcperson="${w.npcId}"><strong>${esc(nameOf(w.npcId))}</strong><small>${esc(w.role)}${w.examined ? ` · ${w.examined === 'shaken' ? 'shaken on cross' : 'held firm'}` : ''}</small></button>`).join('')) : ''}
     ${c.filings.length ? card('Filings', c.filings.map((f) => kv(f.name, `${f.ruling ?? 'pending'}${f.routine ? ' (routine)' : ''}`)).join('')) : ''}

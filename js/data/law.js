@@ -4,7 +4,7 @@
 // The United States is modeled in depth; other countries use the justice system family they already have
 // (data/justice.js) with a simplified, clearly labeled profile.
 
-export const SIMULATION_NOTE = 'Simplified rules made for the game. Not the exact law of any country, and not legal advice.';
+export const SIMULATION_NOTE = 'Real laws are cited by name and year where Pathways lists them. How a case plays out is simplified, and none of it is legal advice.';
 
 // ---------- Jurisdictions ----------
 

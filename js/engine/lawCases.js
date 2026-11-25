@@ -15,6 +15,7 @@ import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
 import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES } from '../data/law.js';
 import { gain as fameGain } from './fame.js';
+import * as realLaw from './realLaw.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -192,7 +193,17 @@ export function createCase(templateId, o = {}) {
   if (c.otherCounselId && rivals.length && rng.chance(0.25)) c.otherCounselId = rng.pick(rivals).id;
   c.title = fill(T.title, c);
   c.summary = fill(T.summary, c);
+  // A divorce before no-fault laws needed proof of fault (adultery, cruelty, desertion): the law of the time.
+  if (templateId === 'divorce') {
+    const df = realLaw.divorceNeedsFault(countryId);
+    if (df?.fault) {
+      c.faultRequired = true;
+      c.summary += ` Under the law of ${store.state.year}, a divorce needs proof of a fault ground.`;
+      c.evidenceFault = true;
+    }
+  }
   c.evidence = T.evidence.map((e) => ({ ...e, label: fill(e.label, c), reviewed: false, status: e.admissibility === 'ok' ? 'admitted' : 'disputed', reliability: e.reliability }));
+  if (c.evidenceFault) c.evidence.push({ id: 'fault', kind: 'witness_statement', label: `Evidence that ${c.vars.other} deserted the marriage, the fault ground pleaded`, favors: 'client', weight: 3, reliability: 55, admissibility: 'ok', status: 'admitted', reviewed: false });
   c.witnesses = (T.witnesses ?? []).map((w) => ({ ...w, npcId: party(countryId, { title: w.role, kind: 'witness' }).id, examined: false }));
   for (const w of c.witnesses) if (store.state.npcs[w.npcId]) store.state.npcs[w.npcId].flags.justice.caseIds.push(id);
   // A filing deadline for the first stage that needs one.
@@ -240,6 +251,8 @@ const ours = (c, e) => (c.role === 'prosecution' || CHILD_ROLES[c.role]?.side ==
 const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
 /** Where a case is held, in words. */
 export function forumName(c) {
+  const era = c.forum === 'trial' && c.kind === 'criminal' ? realLaw.courtName(c.countryId, 'trial') : c.forum === 'family' ? realLaw.courtName(c.countryId, 'family') : c.forum === 'immigration' ? realLaw.courtName(c.countryId, 'immigration') : null;
+  if (era) return era;
   return { trial: 'Trial court', family: 'Family court', juvenile: 'Juvenile court', agency: 'Agency review', immigration: 'Immigration court', tribunal: 'Employment tribunal', probate: 'Probate court', tax: 'Tax tribunal', appeal: 'Court of Appeal', none: 'No court: a transaction' }[c.forum] ?? 'Court';
 }
 /** Strength of each side's case from the evidence still in it: weight × reliability, for what is admitted. */
@@ -307,6 +320,14 @@ export function review(c) {
 }
 /** The research question. A right answer makes the filing and the argument stronger; a wrong one costs a little. */
 export function researchQuestion(c) { const T = { ...template(c), ...(CHILD_ROLES[c.role]?.research && c.templateId === 'dependency' ? { research: CHILD_ROLES[c.role].research } : {}) }; return T.research ? { text: fill(T.research.text, c), options: T.research.options.map((o) => fill(o, c)), right: T.research.right, why: fill(T.research.why, c) } : null; }
+/** The real law behind a case's research question, if Pathways lists it for this country and year. */
+function researchLaw(c) {
+  const ground = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced')?.basis;
+  if (ground) return realLaw.exclusion(ground, c.countryId);
+  const topic = c.templateId === 'divorce' ? 'divorce' : ['custody', 'dependency'].includes(c.templateId) ? 'custody' : c.templateId === 'dismissal' ? 'retaliation' : c.templateId === 'trademark' ? 'trademark' : c.templateId === 'police_conduct' ? 'force' : c.templateId === 'removal' ? 'removal' : null;
+  const law = topic ? realLaw.governing(topic, c.countryId) : null;
+  return law ? { law, why: `${law.name}: ${law.summary}` } : null;
+}
 export function research(c, answer) {
   if (c.research) return result(false, 'You have researched it.', 'neutral');
   const rq = researchQuestion(c);
@@ -314,7 +335,9 @@ export function research(c, answer) {
   c.research = { m: nowM(), right };
   gain(player(), { research: right ? 3 : 1, interpretation: 1 });
   note(c, right ? 'Research found the issue that decides the case.' : 'Research went down the wrong path.');
-  return result(right, right ? rq.why : `Not quite. ${rq.why}`, right ? 'good' : 'neutral', { why: rq.why });
+  const rl = researchLaw(c);
+  const cite = rl ? ` The law here: ${rl.why}` : '';
+  return result(right, `${right ? rq.why : `Not quite. ${rq.why}`}${cite}`, right ? 'good' : 'neutral', { why: rq.why, law: rl?.law ?? null });
 }
 /** The filing's choices: the strongest supported argument, a weak one, conceding, or delay. */
 export function filingOptions(c) { const T = template(c); return T.motion ? { name: fill(T.motion.name, c), options: T.motion.options.map(([t, kind]) => ({ text: fill(t, c), kind })) } : null; }
@@ -352,8 +375,13 @@ export function file(c, kind, o = {}) {
     // A judge rules on the merits: a strong, well-researched filing usually succeeds, never always; and judges make mistakes.
     const judge = store.state.npcs[c.judgeId];
     const jskill = judge?.flags.justice?.skill ?? 70;
-    const merit = kind === 'strong' && (!target || target.admissibility === 'challengeable' || target.favors !== (c.role === 'prosecution' ? 'other' : 'client'));
-    const granted = rng.chance(clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
+    // Whether the law in force lets the court leave the evidence out: no exclusionary rule, no exclusion (data/realLaw.js).
+    const rule = target?.basis ? realLaw.exclusion(target.basis, c.countryId) : null;
+    const merit = kind === 'strong' && (!target || target.admissibility === 'challengeable' || target.favors !== (c.role === 'prosecution' ? 'other' : 'client')) && (rule?.allowed ?? true);
+    f.law = rule?.law?.name ?? null;
+    // Where the law of the time gives no way to leave the evidence out, no judge does it.
+    const barred = !!(rule && !rule.allowed && target);
+    const granted = !barred && rng.chance(clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
     f.ruling = granted ? 'granted' : 'denied';
     if (merit && !granted && rng.chance(0.5 + (75 - jskill) / 100)) c.errors.push({ kind: 'motion', text: `The ${f.name.toLowerCase()} was denied though it had merit.` });
     if (granted && target) {
@@ -361,7 +389,8 @@ export function file(c, kind, o = {}) {
       else if (!ours(c, target)) target.reliability = Math.round(target.reliability * 0.6);
     }
     if (granted && c.kind !== 'criminal' && kind === 'strong') c.bonus = (c.bonus ?? 0) + 0.06;
-    text = granted ? (target && target.status === 'excluded' ? `Granted. The ${target.label.toLowerCase()} is out of the case.` : 'Granted.') : 'Denied.';
+    const thing = target ? target.label.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toLowerCase()) : '';
+    text = granted ? (target && target.status === 'excluded' ? `Granted. The ${thing} is out of the case.${rule ? ` (${rule.law.name})` : ''}` : 'Granted.') : `Denied.${rule && !rule.allowed ? ` ${rule.why}` : ''}`;
   }
   c.hearings.push({ m: nowM(), kind: 'motion', result: f.ruling });
   note(c, `${f.name}: ${text}`);
@@ -438,11 +467,13 @@ export function fileProcedure(c, id, kind, o = {}) {
     else text = kind === 'weak' ? 'Two long days of questions. Expensive, and nothing new.' : 'No deposition.';
   } else if (id === 'disclosure' || id === 'fin_disclosure') {
     if (kind === 'strong') { L.rep.integrity = clamp(L.rep.integrity + 2); gain(player(), { ethics: 2 }); if (id === 'fin_disclosure') c.bonus = (c.bonus ?? 0) + 0.02; text = 'Full disclosure, on time, as the law requires.'; }
-    else if (kind === 'weak') { L.rep.integrity = clamp(L.rep.integrity - 2); c.errors.push({ kind: 'disclosure', text: 'Disclosure came late.' }); text = 'Disclosure went in late. The other side noticed.'; }
+    else if (kind === 'weak') { L.rep.integrity = clamp(L.rep.integrity - 2); if (realLaw.governing('disclosure', c.countryId) || c.kind !== 'criminal') c.errors.push({ kind: 'disclosure', text: 'Disclosure came late.' }); text = 'Disclosure went in late. The other side noticed.'; }
     else {
       L.rep.integrity = clamp(L.rep.integrity - 10); L.misconduct = (L.misconduct ?? 0) + 1;
-      c.errors.push({ kind: 'disclosure', text: 'Material was withheld from disclosure.' });
-      text = 'You left it out. If it comes to light, the case and your name will suffer.';
+      // Under Brady v. Maryland (1963) and the like, withholding is a ground of appeal; before such a rule, it is still wrong.
+      const duty = c.kind === 'criminal' ? realLaw.governing('disclosure', c.countryId) : null;
+      if (duty || c.kind !== 'criminal') c.errors.push({ kind: 'disclosure', text: `Material was withheld from disclosure${duty ? `, contrary to ${duty.name}` : ''}.` });
+      text = duty || c.kind !== 'criminal' ? 'You left it out. If it comes to light, the case and your name will suffer.' : 'You left it out. No court rule of the time requires disclosure, but it is still a lawyer hiding the truth.';
       if (rng.chance(0.5)) { c.bonus = (c.bonus ?? 0) - 0.08; text = 'You left it out, and the other side found it anyway. The judge is not impressed.'; }
     }
   } else if (id === 'evidence_packet') {
@@ -524,7 +555,7 @@ export function courtroom(c) {
     phases.push({ id: 'closing', title: 'Rebuttal', options: [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']].map(([t, v]) => ({ text: t, v })) });
     return { title: c.title, what: 'hearing', jury: false, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
   }
-  if (c.jury) phases.push({ id: 'jury', title: 'Jury selection', text: 'Twelve people from the community, questioned by both sides and the judge.', options: [['Ask about experience with the police and with eyewitnesses', 'fair'], ['Try to keep off anyone who looks like a homeowner', 'improper'], ['Accept the first twelve', 'quick']].map(([t, v]) => ({ text: t, v })) });
+  if (c.jury) phases.push({ id: 'jury', title: 'Jury selection', text: 'Twelve people from the community, questioned by both sides and the judge.', options: [['Ask about experience with the police and with eyewitnesses', 'fair'], ['Try to keep off anyone who looks like a homeowner', 'improper'], ['Strike jurors because of their race', 'race'], ['Accept the first twelve', 'quick']].map(([t, v]) => ({ text: t, v })) });
   if (c.kind !== 'transaction') phases.push({ id: 'opening', title: c.kind === 'immigration' || c.kind === 'family' || c.kind === 'child' ? 'Your statement to the court' : 'Opening statement', options: (pros ? generic.opening : T.opening ?? generic.opening).map(([t, v]) => ({ text: fill(t, c), v })) });
   if (T.objection && !pros) phases.push({ id: 'objection', title: 'An objection?', text: fill(T.objection.text, c), options: T.objection.options.map(([t, v]) => ({ text: t, v })), valid: T.objection.valid });
   if (pros && c.kind === 'criminal') phases.push({ id: 'objection', title: 'An objection?', text: 'Defense counsel asks your witness: "You have hated my client for years, haven\'t you, and you are lying now?"', options: [['Object: argumentative', 'argumentative'], ['Object: hearsay', 'hearsay'], ['Let it go', 'none']].map(([t, v]) => ({ text: t, v })), valid: 'argumentative' });
@@ -544,7 +575,7 @@ export function courtroom(c) {
   return { title: c.title, what: c.awaiting.what, jury: c.jury, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
 }
 const PHASE_POINTS = {
-  jury: { fair: 0.02, quick: 0, improper: -0.04 },
+  jury: { fair: 0.02, quick: 0, improper: -0.04, race: 0 },
   opening: { burden: 0.04, theory: 0.05, evidence: 0.05, brief: 0.02, overpromise: -0.05, merits: -0.02, improper: -0.06 },
   direct: { open: 0.04, leading: -0.02, skip: 0 },
   bench: { strong: 0.06, dodge: -0.02, rude: -0.06 },
@@ -597,6 +628,13 @@ export function argue(c, answers = {}, o = {}) {
     if (ph.id === 'opening') lines.push(pts > 0.03 ? 'Your opening is clear, and grounded in the file.' : pts < 0 ? 'You promised more than the evidence can give. The jury will remember.' : 'A short opening.');
     if (ph.id === 'closing') lines.push(pts > 0.03 ? 'You close on the evidence, and on what the law asks.' : pts < 0 ? 'Your closing goes too far.' : 'An even closing.');
     if (ph.id === 'jury' && pts < 0) L.rep.integrity = clamp(L.rep.integrity - 1);
+    if (ph.id === 'jury' && a === 'race') {
+      // Unlawful and wrong. Under Batson v. Kentucky (1986) the judge stops it; before, it was hard to challenge, and still discrimination.
+      const law = realLaw.governing('jury', c.countryId);
+      L.rep.integrity = clamp(L.rep.integrity - 10); L.misconduct = (L.misconduct ?? 0) + 1;
+      if (law?.id === 'us_batson') { adv -= 0.06; lines.push(`The judge stops you: striking jurors for their race is unlawful (${law.name}).`); }
+      else { adv -= 0.02; c.errors.push({ kind: 'jury', text: 'Jurors were struck for their race.' }); lines.push(law ? `It is discrimination, unlawful in law since ${law.name}, even where hard to prove in court.` : 'It is discrimination. It will be remembered.'); }
+    }
     if (ph.id === 'closing' && a === 'walk' && c.kind === 'transaction') return close(c, { kind: 'abandoned', text: 'You advised the client to walk away from the deal.', favorable: 0.2 });
   }
   gain(player(), { oral: 3, procedure: 2, cross: answers.cross ? 2 : 0, examination: answers.direct ? 2 : 0, strategy: 2 }, o.routine ? 0.4 : 1);
