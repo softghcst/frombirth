@@ -109,6 +109,42 @@ export const SKILL_GROUP = {
   counseling: 'clients', management: 'clients', family: 'clients', immigration: 'clients', business: 'clients', leadership: 'ethics',
 };
 export const skillId = (id) => SKILL_GROUP[id] ?? id;
+
+/**
+ * What the five skills are called in each line of work: the same five underneath (research, courtroom, negotiation,
+ * clients, ethics), named for what they mean there. A specialty's names win; then the track's; then the plain ones.
+ */
+export const SKILL_NAMES = {
+  default: ['Research & Writing', 'Courtroom', 'Negotiation', 'Client Care', 'Ethics & Judgment'],
+  criminal_defense: ['Case Research', 'Trial Defense', 'Plea Bargaining', 'Client Trust', 'Ethics & Judgment'],
+  public_defense: ['Case Prep', 'Trial Defense', 'Plea Bargaining', 'Client Trust', 'Fairness Under Pressure'],
+  prosecution: ['Building the Case', 'Trial Advocacy', 'Plea Offers', 'Victims & Witnesses', 'Prosecutorial Ethics'],
+  family: ['Family Code', 'Custody Hearings', 'Mediation', 'Supporting Families', 'Children\'s Best Interests'],
+  divorce: ['Property & Support Law', 'Divorce Trials', 'Settlement Talks', 'Clients in Crisis', 'Discretion'],
+  child_welfare: ['Child Welfare Law', 'Dependency Hearings', 'Case Planning', 'Working With Families', 'The Child\'s Interests'],
+  juvenile_defense: ['Juvenile Law', 'Juvenile Court', 'Diversion Deals', 'Young Clients', 'Second Chances'],
+  immigration: ['Immigration Law', 'Immigration Court', 'Working With Agencies', 'Clients Far From Home', 'Ethics & Judgment'],
+  civil_litigation: ['Research & Briefs', 'Trial Work', 'Settlement', 'Client Care', 'Ethics & Judgment'],
+  personal_injury: ['Proving Damages', 'Jury Trials', 'Insurance Talks', 'Injured Clients', 'Ethics & Judgment'],
+  corporate: ['Deal Drafting', 'Disputes', 'Dealmaking', 'Client Relations', 'Compliance'],
+  employment: ['Workplace Law', 'Hearings & Trials', 'Settlements', 'Workers & Employers', 'Ethics & Judgment'],
+  estate: ['Wills & Trusts', 'Probate Court', 'Family Agreements', 'Grieving Families', 'Ethics & Judgment'],
+  appellate: ['Briefs & Records', 'Oral Argument', 'Settling on Appeal', 'Client Counsel', 'Candor to the Court'],
+  civil_rights: ['Constitutional Law', 'Trial Work', 'Settlements & Reform', 'Communities', 'Ethics & Judgment'],
+  real_estate: ['Titles & Contracts', 'Property Disputes', 'Closings', 'Buyers & Sellers', 'Ethics & Judgment'],
+  ip: ['Patents & Trademarks', 'IP Litigation', 'Licensing Deals', 'Creators & Companies', 'Ethics & Judgment'],
+  tax: ['Tax Code', 'Tax Court', 'Settling With the Agency', 'Client Finances', 'Compliance'],
+  environmental: ['Environmental Law', 'Hearings & Trials', 'Permits & Agreements', 'Communities', 'Ethics & Judgment'],
+  government: ['Statutes & Rules', 'Agency Hearings', 'Interagency Talks', 'Serving the Public', 'Public Ethics'],
+  legal_aid: ['Legal Research', 'Hearings', 'Negotiation', 'Clients in Need', 'Ethics & Judgment'],
+  judiciary: ['Legal Analysis', 'Running the Courtroom', 'Settlement Conferences', 'Fairness to the Parties', 'Judicial Ethics'],
+  student: ['Research & Writing', 'Moot Court & Trial', 'Negotiation', 'Client Counseling', 'Professional Responsibility'],
+};
+/** The five skills with the names they carry in a line of work: [{ id, name }]. */
+export const skillsFor = (specialtyId, track) => {
+  const names = (track === 'judiciary' && SKILL_NAMES.judiciary) || SKILL_NAMES[specialtyId] || SKILL_NAMES[track] || SKILL_NAMES.default;
+  return LEGAL_SKILLS.map((s, i) => ({ id: s.id, name: names[i] }));
+};
 export const SKILL_NAME = Object.fromEntries(LEGAL_SKILLS.map((s) => [s.id, s.name]));
 
 /** What a reputation is made of: several things, not a win count. */
@@ -183,7 +219,7 @@ export const ELECTIVES = [
     q('Police search a car without a warrant or consent and find stolen goods. What does the defense lawyer consider?',
       ['A motion to suppress the evidence as unlawfully obtained', 'Asking the police to apologize', 'Pleading guilty right away', 'Nothing can be done'], 0,
       'Evidence found in an unlawful search may be excluded, depending on the rules that apply.') ] },
-  { id: 'family_law', name: 'Family Law', skills: { family: 4, negotiation: 1 }, leads: ['family'], exam: [
+  { id: 'family_law', name: 'Family Law', skills: { family: 4, negotiation: 1 }, leads: ['family', 'divorce'], exam: [
     q('In deciding custody, what does a family court usually put first?',
       ['The best interests of the child', 'Which parent earns more', 'Which parent filed first', 'Which parent has the better lawyer'], 0,
       'Custody is decided on the child\'s interests, not wealth or tactics.') ] },
@@ -274,7 +310,8 @@ export const SPECIALTIES = [
   { id: 'criminal_defense', name: 'Criminal Defense', tracks: ['lawyer', 'own'], cases: ['burglary_hale', 'burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['flat', 'hourly'] },
   { id: 'public_defense', name: 'Public Defense', tracks: ['defender'], cases: ['burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['salary'] },
   { id: 'prosecution', name: 'Criminal Prosecution', tracks: ['prosecutor'], cases: ['burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'examination', 'ethics'], fees: ['salary'] },
-  { id: 'family', name: 'Family & Divorce Law', tracks: ['lawyer', 'own'], cases: ['divorce', 'custody'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
+  { id: 'family', name: 'Family Law', tracks: ['lawyer', 'own'], cases: ['custody', 'custody', 'divorce'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
+  { id: 'divorce', name: 'Divorce Law', tracks: ['lawyer', 'own'], cases: ['divorce', 'divorce', 'custody'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
   { id: 'child_welfare', name: 'Child Welfare Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['dependency'], playable: true, skills: ['family', 'counseling'], fees: ['salary', 'flat'] },
   { id: 'juvenile_defense', name: 'Juvenile Defense', tracks: ['defender', 'lawyer'], cases: ['juvenile'], playable: true, skills: ['counseling', 'procedure'], fees: ['salary', 'flat'] },
   { id: 'immigration', name: 'Immigration Law', tracks: ['lawyer', 'own'], cases: ['family_petition', 'removal'], playable: true, skills: ['immigration', 'research'], fees: ['flat', 'hourly'] },

@@ -188,6 +188,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   });
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
   await page.evaluate(() => document.querySelector('[data-act="law"]').click()); await hub().waitFor(); await hub().locator('[data-tab="progress"]').click();
+  const prog = await hub().innerText();
+  check(/Victims & Witnesses|Trial Advocacy/.test(prog) && !/Weighing Evidence/.test(prog), `${label}: a prosecutor's five skills carry a prosecutor's names`);
   await hub().locator('[data-seek="da"]').click(); await ok(); await ok();
   const trail = () => page.locator('#modal-root .law-campaign');
   await trail().waitFor();

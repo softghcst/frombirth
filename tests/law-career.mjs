@@ -305,4 +305,15 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(!JSON.stringify(leg).includes(secret), 'and nothing of a client\'s private matter');
 }
 
+// The practice area follows the job; the skills take its names.
+{
+  lawyer('lawyer');
+  lp.chooseSpecialty('divorce');
+  check(lp.overview().skills.some((x) => x.name === 'Divorce Trials'), 'a divorce lawyer\'s skills have divorce names');
+  const before = L().skills.courtroom;
+  career.hire(CAREER_BY_ID.prosecutor, 0, 60, 'test');
+  check(lp.fitSpecialty() === 'prosecution' && lp.overview().specialty.id === 'prosecution', 'joining the prosecutor\'s office makes the practice prosecution');
+  check(lp.overview().skills.some((x) => x.name === 'Trial Advocacy') && L().skills.courtroom === before, 'the names change; what was learned stays');
+}
+
 finish('A legal career holds together.');

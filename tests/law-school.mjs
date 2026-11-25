@@ -186,6 +186,12 @@ rng.seed(20261125);
   p.law.skills = { oral: 40, cross: 60, research: 30, writing: 50, ethics: 70, negotiation: 20, counseling: 44 };
   const S = ls.lawOf(p).skills;
   check(Object.keys(S).length === 5 && S.courtroom === 50 && S.research === 40 && S.clients === 44 && S.ethics === 70, `an older save's twenty skills are folded into five (${JSON.stringify(S)})`);
+  // The same five, named for the line of work.
+  const { skillsFor, SKILL_NAMES, SPECIALTIES } = await import('../js/data/law.js');
+  const fam = skillsFor('family', 'lawyer').map((x) => x.name); const div = skillsFor('divorce', 'lawyer').map((x) => x.name);
+  check(fam.includes('Custody Hearings') && div.includes('Divorce Trials') && fam.join() !== div.join(), `family law and divorce law have their own names (${fam.join(', ')} / ${div.join(', ')})`);
+  check(skillsFor(null, 'judiciary').some((x) => x.name === 'Judicial Ethics') && skillsFor('prosecution', 'prosecutor')[3].name === 'Victims & Witnesses', 'a judge and a prosecutor see their own names');
+  check(SPECIALTIES.every((sp) => SKILL_NAMES[sp.id]?.length === 5) && Object.values(SKILL_NAMES).every((n) => n.length === 5), 'every practice area names all five, and never more');
 }
 
 finish('Law school and the bar hold.');

@@ -11,7 +11,7 @@ import { rng } from '../rng.js';
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION } from '../data/law.js';
+import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION, skillsFor } from '../data/law.js';
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
@@ -108,6 +108,17 @@ export function chooseSpecialty(id, p = player()) {
   return result(true, `Your practice: ${s.name}.`, 'good');
 }
 const defaultSpecialty = (t) => ({ prosecutor: 'prosecution', defender: 'public_defense', gov_counsel: 'government' }[t] ?? 'civil_litigation');
+/**
+ * Keeps the practice area in step with the job: a defense lawyer who joins the prosecutor's office practices
+ * prosecution there. Offices whose work no specialty lists (the bench, the Attorney General) keep what they had.
+ */
+export function fitSpecialty(p = player()) {
+  const t = trackOf(p);
+  const L = lawOf(p);
+  if (!t || !SPECIALTIES.some((s) => s.tracks.includes(t))) return L.specialty ?? null;
+  if (!L.specialty || !SPECIALTY_BY_ID[L.specialty]?.tracks.includes(t)) L.specialty = defaultSpecialty(t);
+  return L.specialty;
+}
 
 /** The hardest case the player leads on their own: by job and level, or for a practice of their own, by its standing. */
 export function leadCap(p = player()) {
@@ -145,7 +156,7 @@ function openWindow(p, w) {
   const L = lawOf(p);
   const t = trackOf(p);
   if (!t || mayPractice(p) || t === 'attorney_general') return;
-  L.specialty ??= defaultSpecialty(t);
+  fitSpecialty(p);
   const cap = leadCap(p);
   if (['prosecutor', 'defender', 'gov_counsel'].includes(t)) {
     // Assigned by the office: a public defender's caseload is heavy; nobody chooses their clients.
@@ -1077,7 +1088,7 @@ export function overview(p = player()) {
   const L = lawOf(p);
   const t = trackOf(p);
   return { track: t, trackName: t === 'own' ? 'Your own practice' : TRACKS[t]?.name ?? null, title: p.career?.careerId && LEGAL.has(p.career.careerId) ? p.career.title : t === 'own' ? 'Principal' : null,
-    specialty: SPECIALTY_BY_ID[L.specialty] ?? null, years: legalYears(p), stats: stats(p), skills: LEGAL_SKILLS.map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
+    specialty: SPECIALTY_BY_ID[fitSpecialty(p)] ?? null, years: legalYears(p), stats: stats(p), skills: skillsFor(L.specialty, trackOf(p) ?? (p.education.enrolled && p.education.stage === 'law' ? 'student' : null)).map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
     rep: REPUTATION.map((r) => ({ ...r, v: Math.round(L.rep[r.id] ?? 0) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
     admitted: admitted(p), legacy: L.legacy ?? null, discipline: L.discipline ?? [], why: mayPractice(p) };
 }

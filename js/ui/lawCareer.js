@@ -153,7 +153,7 @@ function progress() {
     ${ns ? card('Next step', `${kv('Next', ns.title)}${ns.yearsLeft ? kv('Years to go', String(ns.yearsLeft)) : ''}${ns.missing.length ? `<p class="muted">Also needed: ${esc(ns.missing.join('; '))}.</p>` : '<p class="muted">Eligible. It depends on your reviews and on a place opening up.</p>'}`) : ''}
     ${campaignCard()}
     ${ops.length ? card('Opportunities', ops.map((x) => row(`data-seek="${x.id}" ${x.why ? 'disabled' : ''}`, x.name, x.why || (x.how ? `Chosen by: ${x.how}` : ''))).join('')) : ''}
-    ${card('Skills', o.skills.map((s) => fitBar(s.name, s.v)).join(''))}
+    ${card(o.specialty ? `Skills in ${o.specialty.name}` : 'Skills', o.skills.map((s) => fitBar(s.name, s.v)).join('') + (o.specialty ? '<p class="muted">Named for your practice area. Change areas and they take new names; what you have learned stays.</p>' : ''))}
     ${card('Reputation', o.rep.map((r) => fitBar(r.name, r.v)).join('') + '<p class="muted">Built from how you work, not how many cases you win.</p>')}`;
 }
 
