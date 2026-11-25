@@ -6,7 +6,7 @@
 import { avatarSvg, faceGenderOf } from '../avatar/render.js';
 import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
-import { venueScene } from './weddingScenery.js';
+import { venueScene, cakeArt, bandArt, postcardFront } from './weddingScenery.js';
 import { player, country } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
@@ -58,6 +58,8 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const chosen = (k) => plan[k] ?? love.WEDDING_PLAN[k][0].id;
     const themeHex = () => love.WEDDING_PLAN.theme.find((t) => t.id === chosen('theme')).hex;
     const filled = () => Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)]));
+    /** "at the castle", "on the beach", "at city hall": where, for the banner. */
+    const venueAt = () => { const v = love.WEDDING_PLAN.venue.find((o) => o.id === plan.venue); return /^On /.test(v.name) ? v.name.toLowerCase() : `at ${v.name.replace(/^A /, 'a ').replace(/^An /, 'an ').replace(/^City hall/, 'city hall')}`; };
     const totals = () => love.planTotals(filled(), npc, c);
 
     /**
@@ -70,6 +72,9 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
         ${venueScene(chosen('venue'), themeHex(), chosen('flowers'))}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
+        <div class="wp-banner" style="--wp-theme:${themeHex()}"><span>${esc(p.firstName)} ♥ ${esc(npc.firstName)}${plan.venue ? `<small>${esc(venueAt())}</small>` : ''}</span></div>
+        ${plan.cake ? `<div class="wp-side wp-cake" title="${esc(love.WEDDING_PLAN.cake.find((o) => o.id === plan.cake).name)}">${cakeArt(plan.cake, themeHex())}</div>` : ''}
+        ${plan.music ? `<div class="wp-side wp-band" title="${esc(love.WEDDING_PLAN.music.find((o) => o.id === plan.music).name)}">${bandArt(plan.music)}</div>` : ''}
         <div class="wp-altar${kiss ? ' wp-kiss' : ''}">
           <div class="wp-couple"><div class="wp-person">${youFace(90, closeUp)}</div><div class="wp-person">${themFace(90, closeUp)}</div>
           ${kiss ? '<span class="wp-kiss-heart" aria-hidden="true">♥</span>' : ''}</div></div>
@@ -211,6 +216,16 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
         <p class="wp-names">${esc(p.firstName)} &amp; ${esc(npc.firstName)}</p>
         <p class="wp-after">${esc(honey.id === 'home' ? 'And then home, together.' : `Next stop: ${honey.name.toLowerCase()}.`)}</p>
         <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
+      root.querySelector('[data-done]').onclick = () => postcard();
+      root.querySelector('[data-done]').focus?.();
+    }
+
+    /** After the honeymoon (if they went anywhere): the postcard home, then back to the game. */
+    function postcard() {
+      const card = love.sendPostcard(npc.id, chosen('honeymoon'));
+      if (!card) { close(); return; }
+      api?.changed?.();
+      root.innerHTML = postcardHtml(card, chosen('honeymoon'), themeHex(), reduced);
       root.querySelector('[data-done]').onclick = close;
       root.querySelector('[data-done]').focus?.();
     }
@@ -320,6 +335,12 @@ export function openQuickWedding(api, npc) {
       api?.changed?.();
       if (!res.ok) { await messageModal({ body: res.text, tone: 'neutral' }); resolve({}); return; }
       await justMarried(p, npc, plan);
+      const card = love.sendPostcard(npc.id, plan.honeymoon);
+      if (card) {
+        api?.changed?.();
+        const hex = love.WEDDING_PLAN.theme.find((t) => t.id === plan.theme)?.hex ?? '#F6B8C8';
+        await new Promise((done) => { const pm = openModal(postcardHtml(card, plan.honeymoon, hex, true, 'wq-postcard'), { tone: 'good' }); pm.el.querySelector('[data-done]').onclick = () => { pm.close(); done(); }; });
+      }
       resolve({ married: true });
     };
   });
@@ -345,4 +366,23 @@ function justMarried(p, npc, plan) {
 /** Planning the wedding: as scenes, or on one page if they are turned off in Settings. */
 export function openWedding(api, npc) {
   return weddingScenesOn() ? openWeddingPlanner(api, npc) : openQuickWedding(api, npc);
+}
+
+/**
+ * The honeymoon postcard: the picture on the front ("Greetings from…"), and the back, written home, with a stamp and
+ * a postmark. Shown after the wedding, in the scene or (with the scenes off) as a card.
+ */
+function postcardHtml(card, honeymoon, hex, still = false, extra = '') {
+  return `<div class="wp-postcard-screen ${extra}${still ? ' sv-still' : ''}">
+    <p class="wp-pc-eyebrow">A few weeks later, in the mailbox at home…</p>
+    <div class="wp-postcard">
+      <div class="wp-pc-front">${postcardFront(honeymoon, card.place, hex)}</div>
+      <div class="wp-pc-back">
+        <div class="wp-pc-stamp" style="--wp-theme:${hex}" aria-hidden="true">♥</div><div class="wp-pc-mark" aria-hidden="true">${esc(card.place.toUpperCase())}</div>
+        <p class="wp-pc-to">Dear ${esc(card.to)},</p>
+        <p class="wp-pc-body">${esc(card.body)} Wish you were here (well, almost).</p>
+        <p class="wp-pc-from">Love, ${esc(card.from)}</p>
+      </div>
+    </div>
+    <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
 }

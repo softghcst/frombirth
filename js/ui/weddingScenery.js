@@ -296,3 +296,80 @@ export function venueScene(venue, hex = '#F6B8C8', flowers = 'roses') {
 }
 
 export const VENUE_IDS = Object.keys(VENUES);
+
+// ---------- What stands either side of the couple, and the postcard home ----------
+
+/** The cake chosen, on a little stand (100 x 120), in the couple's color. */
+export function cakeArt(cake, hex) {
+  const stand = `<ellipse cx="50" cy="114" rx="30" ry="4" fill="#000" opacity=".18"/><path d="M38 112 h24 l-4 -10 h-16z" fill="#E9E2D6" stroke="${LINE}" stroke-width="1"/><ellipse cx="50" cy="101" rx="36" ry="5" fill="#FFFFFF" stroke="${LINE}" stroke-width="1"/>`;
+  const tier = (y, w, h, i) => `<rect x="${50 - w / 2}" y="${y - h}" width="${w}" height="${h}" rx="4" fill="#FFFDF8" stroke="${LINE}" stroke-width="1"/>
+    <path d="M${50 - w / 2} ${y - h + 5} q${w / 8} 6 ${w / 4} 0 t${w / 4} 0 t${w / 4} 0 t${w / 4} 0" fill="#FFFFFF" stroke="#E8E0D4" stroke-width="1.5"/>
+    <rect x="${50 - w / 2}" y="${y - 6}" width="${w}" height="4" fill="${hex}" opacity=".95"/>${i % 2 ? `<circle cx="${50 - w / 2 + 6}" cy="${y - h + 8}" r="2.2" fill="#C8324A"/><circle cx="${50 + w / 2 - 6}" cy="${y - h + 8}" r="2.2" fill="#C8324A"/>` : ''}`;
+  const bloom = (x, y, r = 4) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${hex}" stroke="${LINE}" stroke-width=".7"/><circle cx="${x}" cy="${y}" r="${r / 3}" fill="#FFD36E"/>`;
+  if (cake === 'cupcakes') {
+    const cup = (x, y) => `<path d="M${x - 6} ${y} l2 9 h8 l2 -9z" fill="#E6C39A" stroke="${LINE}" stroke-width=".8"/><path d="M${x - 7} ${y} q0 -8 7 -9 q7 1 7 9z" fill="${hex}" stroke="${LINE}" stroke-width=".8"/><circle cx="${x}" cy="${y - 9}" r="1.8" fill="#C8324A"/>`;
+    return `<svg viewBox="0 0 100 120" aria-hidden="true">${stand}<path d="M50 98V40" stroke="#D9CFBF" stroke-width="2"/><ellipse cx="50" cy="72" rx="26" ry="3.5" fill="#FFFFFF" stroke="${LINE}" stroke-width="1"/><ellipse cx="50" cy="46" rx="16" ry="3" fill="#FFFFFF" stroke="${LINE}" stroke-width="1"/>
+      ${[[24, 90], [38, 90], [62, 90], [76, 90], [32, 63], [50, 63], [68, 63], [42, 37], [58, 37]].map(([x, y]) => cup(x, y)).join('')}${cup(50, 22)}</svg>`;
+  }
+  if (cake === 'showstopper') {
+    const tiers = [[98, 64, 16], [82, 52, 15], [67, 42, 14], [53, 32, 13], [40, 22, 12]].map(([y, w, h], i) => tier(y, w, h, i)).join('');
+    const cascade = [[70, 92], [64, 82], [58, 72], [56, 62], [50, 52], [46, 40], [52, 30], [30, 94], [36, 86]].map(([x, y], i) => bloom(x, y, i % 2 ? 3.4 : 4.4)).join('');
+    return `<svg viewBox="0 0 100 120" aria-hidden="true">${stand}${tiers}${cascade}<path d="M50 28 v-8" stroke="#C9A24A" stroke-width="1.5"/><path d="M46 16 q4 -6 8 0 q-4 5 -8 0z" fill="#E8C563" stroke="#A68A3A" stroke-width=".8"/></svg>`;
+  }
+  // The three tiers: buttercream, a ribbon of the couple's color on each, berries, a flower on top.
+  return `<svg viewBox="0 0 100 120" aria-hidden="true">${stand}${tier(98, 66, 22, 0)}${tier(76, 50, 20, 1)}${tier(56, 34, 18, 2)}${bloom(50, 36, 6)}${bloom(42, 39, 4)}${bloom(58, 39, 4)}</svg>`;
+}
+
+const person = (x, y, skin, suit, hair) => `<rect x="${x - 9}" y="${y}" width="18" height="30" rx="7" fill="${suit}" stroke="${LINE}" stroke-width="1"/><path d="M${x - 3} ${y} l3 8 3 -8z" fill="#FFFFFF"/>
+  <circle cx="${x}" cy="${y - 8}" r="8" fill="${skin}" stroke="${LINE}" stroke-width="1"/><path d="M${x - 8} ${y - 9} q1 -9 8 -9 q7 0 8 9 q-4 -5 -8 -5 q-4 0 -8 5z" fill="${hair}"/>`;
+
+/** Whoever is playing (100 x 120): a speaker for the playlist, a DJ, a band, a string quartet. */
+export function bandArt(music) {
+  const note = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 0 v-12 l8 -3 v12" fill="none" stroke="#3B3030" stroke-width="1.6"/><ellipse cx="-2" cy="0" rx="3" ry="2.2" fill="#3B3030"/><ellipse cx="6" cy="-3" rx="3" ry="2.2" fill="#3B3030"/></g>`;
+  const floor = '<ellipse cx="50" cy="114" rx="40" ry="4" fill="#000" opacity=".16"/>';
+  if (music === 'playlist') {
+    return `<svg viewBox="12 18 76 100" aria-hidden="true">${floor}<rect x="32" y="56" width="36" height="58" rx="6" fill="#3D3A44" stroke="${LINE}" stroke-width="1"/><circle cx="50" cy="94" r="12" fill="#22202A" stroke="#6E6A78" stroke-width="2"/><circle cx="50" cy="94" r="4" fill="#6E6A78"/><circle cx="50" cy="70" r="6" fill="#22202A" stroke="#6E6A78" stroke-width="1.5"/>
+      ${note(26, 46)}${note(64, 38, 0.8)}${note(44, 26, 0.7)}</svg>`;
+  }
+  if (music === 'dj') {
+    return `<svg viewBox="12 18 76 100" aria-hidden="true">${floor}${person(50, 58, '#C68B5E', '#2E2A3A', '#2A1A12')}<path d="M40 48 q10 -14 20 0" fill="none" stroke="#E2557A" stroke-width="3"/><rect x="37" y="46" width="6" height="8" rx="2" fill="#E2557A"/><rect x="57" y="46" width="6" height="8" rx="2" fill="#E2557A"/>
+      <path d="M14 80 h72 l-6 34 h-60z" fill="#4A3F5C" stroke="${LINE}" stroke-width="1"/><ellipse cx="34" cy="80" rx="12" ry="3" fill="#22202A"/><ellipse cx="66" cy="80" rx="12" ry="3" fill="#22202A"/><path d="M20 96 h60" stroke="#8E7AB5" stroke-width="2"/>${note(78, 50, 0.8)}</svg>`;
+  }
+  if (music === 'band') {
+    return `<svg viewBox="12 18 76 100" aria-hidden="true">${floor}${person(28, 62, '#8D5A3B', '#3B3030', '#1E140E')}${person(72, 62, '#F1C7A0', '#7A2440', '#8A5A2A')}
+      <path d="M34 72 q10 8 6 22 q-2 6 -8 4 q4 -10 -4 -18z" fill="#E8C563" stroke="#A68A3A" stroke-width="1"/><circle cx="31" cy="96" r="4" fill="#E8C563" stroke="#A68A3A" stroke-width="1"/>
+      <path d="M86 112 V60" stroke="#6E6A78" stroke-width="2"/><rect x="83" y="52" width="6" height="10" rx="3" fill="#3B3030"/><path d="M78 76 l7 -14" stroke="#F1C7A0" stroke-width="3" stroke-linecap="round"/>${note(52, 36, 0.8)}</svg>`;
+  }
+  // The quartet: two violinists in black, bows raised.
+  const violin = (x, y, flip) => `<g transform="translate(${x} ${y}) rotate(${flip ? 20 : -20})"><ellipse cx="0" cy="0" rx="6" ry="9" fill="#A0522D" stroke="${LINE}" stroke-width=".8"/><path d="M0 -9 v-12" stroke="#3B2416" stroke-width="2"/></g>
+    <path d="M${x + (flip ? -14 : 14)} ${y - 16} L${x + (flip ? 10 : -10)} ${y + 6}" stroke="#D9CFBF" stroke-width="1.5"/>`;
+  return `<svg viewBox="12 18 76 100" aria-hidden="true">${floor}${person(30, 64, '#E8B48C', '#22202A', '#4A2C1A')}${person(70, 64, '#6E4630', '#22202A', '#120C08')}${violin(38, 62, false)}${violin(62, 62, true)}${note(50, 34, 0.8)}</svg>`;
+}
+
+/** The front of the honeymoon postcard (300 x 190): where they went, drawn, with "Greetings from" across it. */
+export function postcardFront(honeymoon, place, hex) {
+  const id = 'pc';
+  const greet = `<text x="150" y="40" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width=".6">Greetings from</text>
+    <text x="150" y="${place.length > 14 ? 70 : 74}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${place.length > 14 ? 24 : 32}" fill="${hex}" stroke="#23140f" stroke-width="1.4" paint-order="stroke">${place.replace(/&/g, '&amp;')}</text>`;
+  if (honeymoon === 'roadtrip') {
+    return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#7FB2E6'], [1, '#FFE2B8']])}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
+      <path d="M0 120 L60 70 L110 110 L170 60 L230 105 L300 75 V190 H0z" fill="#9AA9CC"/><path d="M0 140 Q80 112 160 130 T300 126 V190 H0z" fill="#8CC775"/>
+      <path d="M120 190 Q140 150 150 128 Q156 118 168 116" fill="none" stroke="#5A5A62" stroke-width="22"/><path d="M120 190 Q140 150 150 128 Q156 118 168 116" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="6 6"/>
+      <g transform="translate(128 150)"><rect x="-22" y="-12" width="44" height="16" rx="5" fill="${hex}" stroke="#23140f" stroke-width="1.5"/><path d="M-12 -12 l5 -9 h16 l5 9z" fill="#CFE6F7" stroke="#23140f" stroke-width="1.5"/><circle cx="-12" cy="5" r="5" fill="#2A2A30"/><circle cx="12" cy="5" r="5" fill="#2A2A30"/></g>
+      ${greet}</svg>`;
+  }
+  if (honeymoon === 'world') {
+    return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#3E5A9A'], [1, '#9DC3EC']])}${rad(`${id}-globe`, [[0, '#7FC6E8'], [1, '#2E7BB8']], 0.4, 0.35, 0.7)}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
+      ${[[30, 30], [270, 40], [250, 160], [40, 150], [90, 100]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#FFF"/>`).join('')}
+      <circle cx="150" cy="128" r="52" fill="url(#${id}-globe)" stroke="#23140f" stroke-width="1.5"/><path d="M120 104 q14 -8 22 4 q6 10 -4 18 q-12 4 -16 -6z M156 96 q16 2 20 14 q2 14 -10 18 q-10 -2 -8 -14z M140 150 q12 -4 18 6 q-2 10 -14 8z" fill="#7DBA68" stroke="#3F7A3A" stroke-width="1"/>
+      <path d="M60 150 Q150 40 250 120" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 6"/><g transform="translate(232 104) rotate(30)"><path d="M-14 0 h26 l6 -3 v6 l-6 -3z M-2 0 l-8 -12 h5 l10 12z M-2 0 l-8 12 h5 l10 -12z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/></g>
+      ${greet}</svg>`;
+  }
+  // The resort: overwater huts on a turquoise lagoon at sunset.
+  return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#F79B7A'], [1, '#FFE3B3']])}${lin(`${id}-sea`, [[0, '#4FC3C8'], [1, '#1E8FA8']])}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
+    <circle cx="210" cy="112" r="26" fill="#FFD36E"/><rect y="112" width="300" height="78" fill="url(#${id}-sea)"/><path d="M0 128 h300 M0 146 h300" stroke="#FFFFFF" stroke-width="1" opacity=".4"/>
+    ${[[60, 118], [104, 122], [148, 118]].map(([x, y]) => `<path d="M${x - 2} ${y + 14} v12 M${x + 12} ${y + 14} v12" stroke="#7A5233" stroke-width="2"/><rect x="${x - 4}" y="${y}" width="20" height="14" fill="#E9C48B" stroke="#23140f" stroke-width="1"/><path d="M${x - 8} ${y} L${x + 6} ${y - 12} L${x + 20} ${y}z" fill="#C8963E" stroke="#23140f" stroke-width="1"/>`).join('')}
+    <path d="M58 140 H176" stroke="#7A5233" stroke-width="3"/>
+    <path d="M270 190 c2 -40 0 -70 -8 -98" stroke="#7A5233" stroke-width="6" fill="none"/><path d="M262 94 c-24 -6 -34 4 -38 12 14 -6 26 -6 38 -12z M262 94 c22 -12 36 -6 42 2 -16 -4 -28 -2 -42 -2z M262 94 c-8 -18 0 -30 8 -34 -2 14 -4 24 -8 34z" fill="#5FAE5A" stroke="#2F5E33" stroke-width="1"/>
+    ${greet}</svg>`;
+}

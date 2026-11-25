@@ -75,6 +75,7 @@ const mid = await page.evaluate(async (id) => { const { store } = await import('
 check(mid.role === 'spouse' && /^(Wife|Husband)$/.test(mid.label) && mid.cash < info.cash && mid.wedding?.venue === info.dream.venue, `booking it marries them and pays for it; the best friend is now ${mid.label}`);
 // The day.
 await page.click('.sv-reply:has-text("Take their hand")');
+check(await page.locator('.wp-banner').count() === 1 && await page.locator('.wp-cake svg').count() === 1 && await page.locator('.wp-band svg').count() === 1, 'the names on a banner, the cake and the band either side');
 check(await page.locator('.sv-reply').count() === 3, 'three kinds of vows');
 await page.click('.sv-reply:has-text("Vows I wrote myself")');
 check(await page.locator('.wp-narration').count() === 1, 'what the vows do is told');
@@ -82,6 +83,10 @@ await page.click('.sv-reply:has-text("Listen")');
 await page.click('.sv-reply:has-text("I do")');
 await page.click('.sv-reply:has-text("Kiss")');
 check(await page.locator('.wp-finale .wp-just').innerText() === 'Just married!' && await page.locator('.wp-finale .wp-frame svg').count() === 2, 'the finale: just married, the two of you');
+await page.click('[data-done]');
+// The honeymoon (a road trip): a postcard home, to the family.
+const pc = await page.locator('.wp-postcard').innerText().catch(() => '');
+check(/Dear /.test(pc) && /Love, /.test(pc) && await page.locator('.wp-pc-front svg').count() === 1, `then the postcard home from the honeymoon (${pc.slice(0, 80)})`);
 await page.click('[data-done]');
 await page.waitForTimeout(100);
 check(!(await page.locator('.wp-screen').count()) && (await page.evaluate(() => window.__wedDone))?.married === true, 'back to the game, married');

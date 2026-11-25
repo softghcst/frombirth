@@ -1450,3 +1450,36 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wq-married .wp-frame { width: min(30vw, 110px); }
 .wq-married .wp-just { font-size: 1.9rem; color: var(--ink); }
 .wq-married .wp-names { color: var(--ink); }
+
+/* The banner over the couple, and the cake and the musicians either side (js/ui/weddingPlanner.js). */
+.wp-banner { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); z-index: 2; max-width: 64%; }
+.wp-banner span { animation: sv-drop .4s var(--ease) both; }
+.wp-banner span { display: block; position: relative; padding: 4px 18px; background: var(--wp-theme); color: #23140f; border: 2px solid #23140f; border-radius: 4px;
+  font-family: var(--serif); font-weight: 700; font-size: .95rem; text-align: center; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 3px 0 rgba(35, 20, 15, .25); }
+.wp-banner small { display: block; font-family: var(--sans, inherit); font-weight: 600; font-size: .7rem; opacity: .8; }
+.wp-banner::before, .wp-banner::after { content: ''; position: absolute; top: 8px; width: 16px; height: 70%; background: color-mix(in srgb, var(--wp-theme) 70%, #23140f); z-index: -1; }
+.wp-banner::before { left: -10px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 40% 50%); }
+.wp-banner::after { right: -10px; clip-path: polygon(0 0, 100% 0, 60% 50%, 100% 100%, 0 100%); }
+.wp-side { position: absolute; top: 62px; width: 25%; max-width: 104px; z-index: 1; animation: sv-pop .45s var(--ease) both; filter: drop-shadow(0 4px 6px rgba(35, 20, 15, .25)); }
+.wp-side svg { width: 100%; height: auto; display: block; }
+.wp-cake { left: 3%; }
+.wp-band { right: 3%; }
+
+/* The honeymoon postcard. */
+.wp-postcard-screen { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 16px;
+  background: radial-gradient(circle at 50% 30%, #FFFDF8 0%, #F3E6D3 100%); }
+.wp-pc-eyebrow { margin: 0; font-family: var(--serif); font-style: italic; color: #5A3A1E; }
+.wp-postcard { width: min(100%, 420px); display: grid; gap: 0; transform: rotate(-1.5deg); animation: sv-pop .55s var(--ease) both; filter: drop-shadow(0 12px 20px rgba(60, 40, 20, .28)); }
+.wp-pc-front { border: 6px solid #FFFFFF; border-bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden; line-height: 0; background: #FFFFFF; }
+.wp-pc-front svg { width: 100%; height: auto; }
+.wp-pc-back { position: relative; background: #FFFDF6; border-radius: 0 0 10px 10px; padding: 14px 16px 16px; color: #3B2A20;
+  background-image: repeating-linear-gradient(transparent 0 27px, #E8DCC8 27px 28px); background-position: 0 44px; }
+.wp-pc-stamp { position: absolute; right: 14px; top: -22px; width: 44px; height: 52px; display: grid; place-items: center; font-size: 1.4rem; color: #FFFFFF;
+  background: var(--wp-theme); border: 3px dotted #FFFFFF; outline: 2px solid #23140f; transform: rotate(6deg); text-shadow: 0 1px 0 #23140f; }
+.wp-pc-mark { position: absolute; right: 54px; top: 8px; padding: 6px 8px; border: 2px solid rgba(90, 60, 80, .45); border-radius: 50%; font-size: .55rem; font-weight: 700; letter-spacing: .08em; color: rgba(90, 60, 80, .6); transform: rotate(-12deg); }
+.wp-pc-to, .wp-pc-body, .wp-pc-from { margin: 0; font-family: var(--serif); font-style: italic; line-height: 28px; }
+.wp-pc-to { padding-top: 14px; font-weight: 700; }
+.wp-pc-from { text-align: right; font-weight: 700; }
+.wq-postcard { position: static; padding: 0; background: none; }
+.wp-postcard-screen.sv-still .wp-postcard { animation: none; }
+@media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
