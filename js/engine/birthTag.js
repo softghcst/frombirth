@@ -42,13 +42,15 @@ export function sizeAtBirth(person) {
 
 /** A baby's size: leaning toward their parents' own, a little heavier for a boy, lighter for a twin. */
 export function inheritSize(id, gender, parents = [], twin = false) {
+  // `twin`: true for twins, or how many were born together (3 for triplets): each more makes them smaller.
+  const more = twin === true ? 1 : Math.max(0, (Number(twin) || 1) - 1);
   const r = seeded(`born:${id}`);
   const known = parents.filter(Boolean).map(sizeAtBirth);
   const dev = (k, mean) => (known.length ? known.reduce((t, s) => t + (s[k] - mean), 0) / known.length : 0);
-  const weight = AT_BIRTH.weight + (gender === 'male' ? AT_BIRTH.boy : 0) + (twin ? AT_BIRTH.twin : 0)
+  const weight = AT_BIRTH.weight + (gender === 'male' ? AT_BIRTH.boy : 0) + more * AT_BIRTH.twin
     + AT_BIRTH.heritable * dev('weightOz', AT_BIRTH.weight + 2) + r.normal() * AT_BIRTH.weightSd * 0.85;
-  const length = AT_BIRTH.length + (twin ? -0.6 : 0) + AT_BIRTH.heritable * dev('lengthIn', AT_BIRTH.length) + r.normal() * AT_BIRTH.lengthSd * 0.85;
-  return { weightOz: Math.round(Math.max(64, Math.min(176, weight))), lengthIn: Math.round(Math.max(16.5, Math.min(23, length)) * 4) / 4 };
+  const length = AT_BIRTH.length - more * 0.6 + AT_BIRTH.heritable * dev('lengthIn', AT_BIRTH.length) + r.normal() * AT_BIRTH.lengthSd * 0.85;
+  return { weightOz: Math.round(Math.max(more ? 40 : 64, Math.min(176, weight))), lengthIn: Math.round(Math.max(more ? 15 : 16.5, Math.min(23, length)) * 4) / 4 };
 }
 
 // Hospital names, by country: a few that sound like the place. {city} is the city, {saint} a saint, {name} a surname.

@@ -1,6 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
-import { openBirthTag, nameBabyModal } from './birthTag.js';
+import { openBirthTag, nameBabyModal, announceMultiples } from './birthTag.js';
 import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
@@ -393,14 +393,15 @@ export function mountGame(app, hooks) {
   async function birthNotice(knownBefore) {
     // The player's own children: their hospital tag, filled in (ui/birthTag.js).
     const mine = player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.flags?.birthTag === 'new' && n.birthInfo);
-    // First the name: the player picks it, and the tag is written out with it.
+    // Twins and more are announced first; then each is named, and the tags are written out with their names.
+    await announceMultiples(mine);
     for (const [i, b] of mine.entries()) { await nameBabyModal(b, { twinOf: i ? mine[0] : null }); persist(); render(); }
     for (const [i, b] of mine.entries()) {
       b.flags.birthTag = 'seen';
       persist();
       const other = (b.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
       const twins = mine.length > 1;
-      await openBirthTag(b, { title: twins ? `Twins! ${i ? 'And' : 'Welcome,'} ${b.firstName}` : `Welcome, ${b.firstName}!`,
+      await openBirthTag(b, { title: twins ? `${['First', 'Second', 'Third', 'Fourth'][i]}: ${b.firstName}` : `Welcome, ${b.firstName}!`,
         parents: [player(), other], button: i < mine.length - 1 ? 'Next' : `Hello, ${b.firstName}` });
     }
     const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])

@@ -116,25 +116,34 @@ function later(time, minutes) {
   return `${hh % 12 || 12}:${String(t % 60).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
 }
 
+/** What several babies born together are called. */
+export const MULTIPLES = { 2: 'twins', 3: 'triplets', 4: 'quadruplets' };
+
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
-  if (rng.chance(0.025)) babies.push(newborn(other));
+  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000).
+  if (rng.chance(0.025)) {
+    babies.push(newborn(other));
+    if (rng.chance(0.06)) { babies.push(newborn(other)); if (rng.chance(0.1)) babies.push(newborn(other)); }
+  }
   // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
   // share the day and the doctor, a few minutes apart, and are each a little smaller.
   const date = dayInYearJustLived(babies[0].id);
   playerBirthInfo(p); // the player's own size at birth, kept, so the baby leans toward the same one their tag shows
   babies.forEach((b, i) => {
-    b.birthInfo = makeBirthInfo(b, { date, countryId: p.countryId, city: p.city, parents: [p, other], twin: babies.length > 1 });
-    if (i) { const first = babies[0].birthInfo; b.birthInfo = { ...b.birthInfo, doctor: first.doctor, place: first.place, room: first.room, atHome: first.atHome, time: later(first.time, 4 + (b.birthInfo.weightOz % 14)) }; }
+    b.birthInfo = makeBirthInfo(b, { date, countryId: p.countryId, city: p.city, parents: [p, other], twin: babies.length > 1 ? babies.length : false });
+    if (i) { const first = babies[0].birthInfo; b.birthInfo = { ...b.birthInfo, doctor: first.doctor, place: first.place, room: first.room, atHome: first.atHome, time: later(babies[i - 1].birthInfo.time, 4 + (b.birthInfo.weightOz % 14)) }; }
     b.birthday = birthdayFromDate(date);
     b.flags.birthTag = 'new'; // shown when the turn is over (ui/shell.js birthNotice)
   });
   const kind = (n) => (n.gender === 'male' ? 'boy' : 'girl');
-  const text = babies.length === 2
-    ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} twins: ${babies[0].firstName} and ${babies[1].firstName}.`
+  const many = MULTIPLES[babies.length];
+  const names = babies.map((b) => b.firstName);
+  const text = babies.length > 1
+    ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} ${many}: ${names.slice(0, -1).join(', ')} and ${names.at(-1)}.`
     : `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} a baby ${kind(babies[0])}, ${babies[0].firstName}.`;
   log(`${text} You can change the name from the People tab.`, 'system', 'good');
   // Historical Eras: in earlier years childbirth was dangerous for the mother (engine/history.js).
@@ -142,7 +151,7 @@ function birth() {
     if (p.gender === 'female') p.flags.birthDeath = true;
     else if (other?.alive) { other.alive = false; other.flags.diedYear = store.state.year; log(`${other.firstName} did not survive the birth. The midwife did everything she could.`, 'system', 'bad'); p.stats.mood = clamp(p.stats.mood - 30); }
   }
-  milestone(babies.length === 2 ? `Twins ${babies[0].firstName} and ${babies[1].firstName} were born.` : `${babies[0].firstName} was born.`, 'family');
+  milestone(babies.length > 1 ? `${MULTIPLES[babies.length].replace(/^./, (c) => c.toUpperCase())} ${names.slice(0, -1).join(', ')} and ${names.at(-1)} were born.` : `${babies[0].firstName} was born.`, 'family');
   p.stats.mood = clamp(p.stats.mood + 14);
   if (other?.alive && (other.role === 'spouse' || other.role === 'partner')) {
     other.meters.relationship = clamp(other.meters.relationship + 6);

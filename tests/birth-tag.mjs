@@ -19,6 +19,7 @@ const avg = (parents, k, twin = false) => { let t = 0; for (let i = 0; i < 400; 
 check(avg(big, 'weightOz') - avg(small, 'weightOz') > 15, `big parents, bigger babies (${avg(big, 'weightOz').toFixed(1)} oz against ${avg(small, 'weightOz').toFixed(1)})`);
 check(avg(big, 'lengthIn') - avg(small, 'lengthIn') > 0.8, 'and longer ones');
 check(avg([], 'weightOz', true) < avg([], 'weightOz') - 12, 'twins are smaller');
+check(avg([], 'weightOz', 3) < avg([], 'weightOz', true) - 12 && avg([], 'weightOz', 4) < avg([], 'weightOz', 3) - 12, 'triplets smaller still, and quadruplets smaller again');
 let lo = Infinity; let hi = 0;
 for (let i = 0; i < 2000; i++) { const s = inheritSize(`r${i}`, i % 2 ? 'male' : 'female'); lo = Math.min(lo, s.weightOz); hi = Math.max(hi, s.weightOz); check(s.lengthIn >= 16.5 && s.lengthIn <= 23, 'a length a baby could have'); }
 check(lo >= 64 && hi <= 176 && hi - lo > 40, `weights from ${lo} to ${hi} oz`);

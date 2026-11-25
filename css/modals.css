@@ -130,7 +130,7 @@
 .swaddle-front .flap.r { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2; }
 .swaddle-front .fold, .swaddle-front .tuck { fill: none; stroke: var(--blanket-deep); stroke-width: 2; stroke-linecap: round; }
 /* Inked footprints and the wristband. */
-.btag-feet { display: block; height: auto; fill: #3b3f66; opacity: 0.82; margin-top: 2px; }
+.btag-left .ink-feet { display: block; margin-top: -2px; }
 .btag-band { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 10px 5px 6px; border-radius: 999px; background: #fff;
   border: 1.5px solid var(--tag-edge); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05); font: 800 0.62rem/1 var(--sans); letter-spacing: 0.06em; color: var(--ink); overflow: hidden; }
 .btag-band-snap { width: 12px; height: 12px; border-radius: 50%; background: var(--tag); border: 1.5px solid var(--tag-edge); flex: none; }
@@ -165,3 +165,17 @@
 .bname-last { cursor: pointer; padding: 9px 12px; }
 .bname-last input[type="radio"] { appearance: auto; -webkit-appearance: radio; width: 18px; height: 18px; min-height: 0; flex: none; margin: 0; padding: 0; box-shadow: none; accent-color: var(--accent); }
 .bname-last input[type="text"] { padding: 6px 10px; min-height: 0; }
+/* Twins, triplets and quadruplets: an announcement on fine paper (ui/birthTag.js announceMultiples). */
+.announce { background: #fdfcf9; color: #24232b; border-radius: 10px; padding: 18px 14px 16px; text-align: center; box-shadow: 0 6px 20px rgba(30, 30, 50, 0.15);
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 3px); }
+.announce-word { font-family: 'Great Vibes', 'Snell Roundhand', cursive; font-size: 3.4rem; line-height: 1; }
+.announce-flourish { width: 70%; height: 12px; margin: -4px auto 6px; display: block; }
+.announce-flourish path { fill: none; stroke: #24232b; stroke-width: 1.1; stroke-linecap: round; }
+.announce-who, .announce-date, .announce-line { font-family: var(--serif); letter-spacing: 0.22em; }
+.announce-who { font-size: 0.82rem; margin-bottom: 14px; }
+.announce-babies { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.announce-baby { padding: 8px 8px 4px; box-shadow: none; transform: rotate(var(--r, -1deg)); }
+.announce-baby:nth-child(2n) { --r: 1.5deg; }
+.announce-babies .swaddle { width: 72px; height: 90px; }
+.announce-date { font-size: 1.05rem; }
+.announce-line { font-size: 0.72rem; margin-top: 6px; opacity: 0.85; }

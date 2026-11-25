@@ -10,6 +10,7 @@ import { longDate } from '../engine/birthday.js';
 import { seasonAt, SNOWY } from '../engine/calendar.js';
 import { sizeWords, starSign, birthdayFromDate, keepsake } from '../engine/birthTag.js';
 import { store } from '../state.js';
+import { inkFeet } from './footprints.js';
 import { nameBaby, surnameChoices, NAME_LIMITS } from '../engine/children.js';
 
 /** Blanket colors: soft pink for a girl, soft blue for a boy, mint otherwise. */
@@ -35,16 +36,8 @@ export function swaddleHtml(person, look) {
   </div>`;
 }
 
-/** Two inked footprints, sized by the baby's length. */
-function footprintsHtml(info) {
-  const k = Math.max(0.85, Math.min(1.15, info.lengthIn / 19.7));
-  // Drawn as a right foot (big toe on the left, inward); the left foot is its mirror, on the left.
-  const foot = (left) => `<g transform="${left ? 'translate(30 0) scale(-1 1)' : 'translate(30 0)'}">
-      <path d="M14 46c-6-2-8-12-6-22 2-8 8-12 13-10 6 2 7 10 5 18-1 6-1 10 1 14 2 6-6 4-13 0Z"/>
-      <circle cx="9" cy="10" r="3.2"/><circle cx="14.5" cy="7" r="2.6"/><circle cx="19.5" cy="7.5" r="2.2"/><circle cx="23.5" cy="10" r="1.8"/><circle cx="26.5" cy="13.5" r="1.5"/>
-    </g>`;
-  return `<svg class="btag-feet" viewBox="0 0 60 52" style="width:${Math.round(78 * k)}px" aria-label="Footprints">${foot(true)}${foot(false)}</svg>`;
-}
+/** Two inked footprints, left foot then right, sized by the baby's length (ui/footprints.js). */
+const footprintsHtml = (info, id) => inkFeet({ lengthIn: info.lengthIn, seed: id, width: 84 });
 
 /** A hospital wristband: the baby's name, a number and a little barcode. */
 function braceletHtml(person, ks) {
@@ -78,7 +71,7 @@ export function birthTagHtml(person, { who, parents = [] } = {}) {
     <div class="btag-card">
       <div class="btag-row btag-room"><span class="btag-label">Room</span><span class="btag-ink">${esc(info.room ?? '—')}</span></div>
       <div class="btag-main">
-        <div class="btag-left">${swaddleHtml(person)}${footprintsHtml(info)}</div>
+        <div class="btag-left">${swaddleHtml(person)}${footprintsHtml(info, person.id)}</div>
         <div class="btag-fields">
           <div class="btag-row"><span class="btag-label">Name</span><span class="btag-ink">${esc(who ?? `${person.firstName} ${person.lastName}`)}</span>${sex ? pick('BOY', 'GIRL', sex) : ''}</div>
           <div class="btag-row"><span class="btag-label">Date of Birth</span><span class="btag-ink">${esc(longDate(info.date))}</span></div>
@@ -169,5 +162,46 @@ export function nameBabyModal(baby, { twinOf } = {}) {
       m.close(); resolve(r);
     });
     preview();
+  });
+}
+
+/** How babies born together are announced. */
+const WORD = { 2: 'Twins', 3: 'Triplets', 4: 'Quadruplets' };
+const COUNT = ['', 'a', 'two', 'three', 'four'];
+/** "Two girls", "A boy & a girl", "Two boys & a girl". */
+function whoAreThey(babies) {
+  const n = (g) => babies.filter((b) => b.gender === g).length;
+  const part = (k, one, many) => (k ? `${k === 1 ? 'a' : COUNT[k]} ${k === 1 ? one : many}` : '');
+  const parts = [part(n('male'), 'boy', 'boys'), part(n('female'), 'girl', 'girls'), part(babies.length - n('male') - n('female'), 'baby', 'babies')].filter(Boolean);
+  const s = parts.join(' & ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+/** "07 | 14 | 27" in the US, "14 | 07 | 27" elsewhere, as a birth announcement writes it. */
+function shortDate(date, countryId) {
+  const [y, m, d] = date.split('-');
+  return (countryId === 'us' ? [m, d, y.slice(2)] : [d, m, y.slice(2)]).join(' | ');
+}
+const minutesApart = (a, b) => {
+  const t = (s) => { const [, h, m, ap] = s.match(/(\d+):(\d+) (AM|PM)/); return ((Number(h) % 12) + (ap === 'PM' ? 12 : 0)) * 60 + Number(m); };
+  return ((t(b) - t(a)) + 1440) % 1440;
+};
+
+/** Twins, triplets or quadruplets: an announcement, before they are named. */
+export function announceMultiples(babies) {
+  if (babies.length < 2) return Promise.resolve();
+  return new Promise((resolve) => {
+    const info = babies[0].birthInfo;
+    const apart = minutesApart(babies[0].birthInfo.time, babies.at(-1).birthInfo.time);
+    const m = openModal(`
+      <div class="announce">
+        <div class="announce-word">${WORD[babies.length] ?? 'Babies'}!</div>
+        <svg class="announce-flourish" viewBox="0 0 200 14" aria-hidden="true"><path d="M4 8c30-8 60 6 96 0s66-8 96 0"/></svg>
+        <div class="announce-who">${esc(whoAreThey(babies)).toUpperCase()}</div>
+        <div class="announce-babies">${babies.map((b) => `<div class="btag btag-${SHADE[b.gender] ?? 'mint'} announce-baby">${swaddleHtml(b)}</div>`).join('')}</div>
+        <div class="announce-date">${esc(shortDate(info.date, info.countryId))}</div>
+        <div class="announce-line">${esc(info.time)}${apart ? ` · ${babies.length > 2 ? `ALL IN ${apart} MINUTES` : `${apart} MINUTES APART`}` : ''}</div>
+      </div>
+      <button class="btn primary" data-ok style="width:100%;margin-top:14px">Name Them</button>`, { tone: 'good' });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });
 }
