@@ -175,7 +175,7 @@ export function answerExam(answers, p = player()) {
   t.exam.right = ex.questions.map((qq, i) => answers[i] === qq.right);
   const n = t.exam.right.filter(Boolean).length;
   gain(p, { analysis: n, research: 1 });
-  if (t.n === 0) canon(`law:firstExam:${aid()}`, 'Your first law school exam', `Sat a first exam in ${ex.questions.map((x) => x.courseName).join(' and ')}.`, { milestone: false, sig: 1 });
+  if (t.n === 0) canon(`law:firstExam:${aid()}`, 'First law school exam', `Sat a first exam in ${ex.questions.map((x) => x.courseName).join(' and ')}.`, { milestone: false, sig: 1 });
   return result(n === ex.questions.length, n === ex.questions.length ? 'You knew exactly what each question was testing.' : n ? 'Some of it went well.' : 'You spotted the wrong issues. It happens to everyone once.',
     n === ex.questions.length ? 'good' : 'neutral', { right: t.exam.right, explain: ex.questions.map((qq) => qq.why) });
 }

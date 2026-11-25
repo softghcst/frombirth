@@ -19,7 +19,7 @@ import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } fro
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
-import { events, visible, archiveIdOf } from './chronicle.js';
+import { events, visible, archiveIdOf, archived } from './chronicle.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const WINDOW = 6;
@@ -740,6 +740,25 @@ function caseChoice(scene, choice, p, L) {
  */
 export function legalLegacy(subjectId, viewerId = archiveIdOf(player())) {
   return events((e) => e.type === 'legal_career' && e.subject === subjectId && visible(e, viewerId)).sort((a, b) => a.year - b.year);
+}
+
+/**
+ * Every legal career in the family, as the Family Archive keeps it: one entry per person, with the milestones the
+ * viewer may see. A client's confidential matter never appears (engine/chronicle.js visible).
+ */
+export function familyLegalLegacy(viewerId = archiveIdOf(player())) {
+  const p = player();
+  const by = new Map();
+  for (const e of events((x) => x.type === 'legal_career' && visible(x, viewerId) && x.privacy !== 'restricted')) {
+    if (!by.has(e.subject)) by.set(e.subject, []);
+    by.get(e.subject).push(e);
+  }
+  return [...by.entries()].map(([id, list]) => {
+    const a = archived(id);
+    const me = id === archiveIdOf(p);
+    return { id, name: me ? `${p.firstName} ${p.lastName}` : a ? `${a.firstName} ${a.lastName}` : 'A relative', born: me ? p.birthYear : a?.born?.year ?? null, died: me ? null : a?.died?.year ?? a?.died ?? null,
+      you: me, milestones: list.sort((x, y) => x.year - y.year).map((e) => ({ year: e.year, title: e.title, text: e.text, public: e.privacy === 'public' })) };
+  }).sort((x, y) => (x.born ?? 0) - (y.born ?? 0));
 }
 
 // ---------- For the hub ----------

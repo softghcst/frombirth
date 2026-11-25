@@ -214,4 +214,25 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(L().history.length >= 1, 'the professional history stays after leaving work');
 }
 
+// The next generation: the Family Archive keeps the ancestor's legal career, never the clients' private matters.
+{
+  const { die } = await import('../js/engine/death.js');
+  const { continueAs, heirs } = await import('../js/engine/legacy.js');
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  lawyer('lawyer');
+  const me = p();
+  const kid = makeNpc({ role: 'child', countryId: me.countryId, age: 24, relationship: 80 });
+  store.state.npcs[kid.id] = kid; me.npcIds.push(kid.id);
+  const private1 = lc.createCase('divorce', { track: 'lawyer' }); playCase(private1);
+  const secret = store.state.npcs[private1.clientId].lastName;
+  const ancestor = { first: me.firstName, last: me.lastName };
+  die('old age');
+  const h = heirs().find((x) => x.id === kid.id) ?? heirs()[0];
+  store.state = continueAs(h.id);
+  const leg = lp.familyLegalLegacy();
+  const theirs = leg.find((x) => x.name === `${ancestor.first} ${ancestor.last}`);
+  check(theirs && theirs.milestones.some((m) => /First case/i.test(m.title)), `the heir finds the ancestor's legal career in the Family Archive (${theirs?.milestones.map((m) => m.title).join('; ')})`);
+  check(!JSON.stringify(leg).includes(secret), 'and nothing of a client\'s private matter');
+}
+
 finish('A legal career holds together.');

@@ -166,6 +166,15 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await hub().locator('[data-back]').click();
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
+  // The Family Archive keeps the legal career.
+  await clear();
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
+  await page.evaluate(() => document.querySelector('[data-top="archive"]').click()); await page.waitForTimeout(250);
+  await page.locator('#modal-root [data-go="law"]').click(); await page.waitForTimeout(200);
+  const legacy = await page.locator('#modal-root .modal').last().innerText();
+  check(/Legal careers in the family/i.test(legacy) && /Admitted to practice/i.test(legacy) && /you/i.test(legacy), `${label}: Family Archive → Professional legacy shows the career (${legacy.replace(/\n/g, ' ').slice(0, 120)})`);
+  await shot('legacy');
+  await clear();
   // Save, reload, continue: everything is still there, nothing counted twice.
   const before = await engine(async () => { const { store } = await import('/js/state.js'); const { saveGame } = await import('/js/save.js'); saveGame(store.state); const L = store.state.player.law; return { n: L.history.length, cases: L.caseIds.length, cash: store.state.player.finance.cash, slot: store.state.slotId }; });
   await page.reload();

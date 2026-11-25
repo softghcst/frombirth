@@ -553,7 +553,7 @@ export function close(c, out, lines = []) {
   // What the family archive may keep: a public trial is public record; a client's private matter is not. The details
   // stay restricted to the lawyer; descendants see that there was a case, not whose.
   const open = out.trial && ['criminal', 'civil'].includes(c.kind);
-  if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'Your first case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
+  if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'First case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.

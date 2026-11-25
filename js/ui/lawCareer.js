@@ -346,3 +346,13 @@ export function lawRowSub() {
 }
 /** Whether the row belongs on the Work tab at all. */
 export const showLawRow = (p = player()) => !!p.law || p.age >= 18 && (p.education.degrees.some((d) => d.type === 'university') || p.education.stage === 'university');
+
+/** Family Archive → Professional legacy → Legal careers: each lawyer in the family, and what the family may see of it. */
+export function openLegalLegacy() {
+  const list = lp.familyLegalLegacy();
+  const years = (x) => (x.born ? ` (${x.born}${x.died ? `–${typeof x.died === 'object' ? x.died.year ?? '' : x.died}` : x.you ? '' : '–'})` : '');
+  return openModal(`<div class="eyebrow">Professional legacy</div><h2>Legal careers in the family</h2>
+    ${list.length ? list.map((x) => card(`${x.name}${years(x)}${x.you ? ' · you' : ''}`, x.milestones.map((m) => kv(String(m.year), m.title)).join(''))).join('')
+      : '<p class="empty">Nobody in the family has practiced law yet.</p>'}
+    <p class="muted">Clients' confidential matters are not kept here: only the career, and cases that were public.</p>`, { dismissable: true });
+}
