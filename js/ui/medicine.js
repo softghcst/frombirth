@@ -60,7 +60,22 @@ const VIEWS = {
     if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, a residency place applied for, and years of supervised training.</p>
       ${kv([['Route here', `${j.entry === 'graduate' ? 'After a university degree' : 'Direct entry in reality; in the game, after a university degree'} · ${j.detail === 'detailed' ? 'modeled in detail' : 'simplified profile'}`], ['Training places', j.selection]])}`);
     const spec = currentSpecialty(m);
-    return card(stageWords(m, p), kv([
+    // Hospital life at a glance: where, with whom, what is open, what could come next.
+    const at = m.training?.hospitalId ?? m.job?.hospitalId;
+    const sup = (m.people.supervisorIds ?? []).map((id) => store.state.npcs[id]).find((n) => n?.alive);
+    const open = cases.roleNow(m, p) ? cases.caseload(m, p).filter((c) => c.status !== 'closed').length : 0;
+    const chances = [...(jobs.offers(m).length ? [`${jobs.offers(m).length} job offer${jobs.offers(m).length > 1 ? 's' : ''} waiting`] : []),
+      ...(m.offer && m.offer.year === store.state.year ? [`an offer to become ${RANKS[m.offer.rank].title.toLowerCase()}`] : []),
+      ...(train.fellowshipOptions(m).some((f) => !f.block) ? ['fellowships open to you'] : [])];
+    const glance = at ? card('Hospital life', kv([
+      ['Hospital', hospitalName(at)], ['Department', DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
+      ...(sup && m.training ? [['Supervising physician', `${sup.firstName} ${sup.lastName}`]] : []),
+      ['Colleagues you know', String([...m.people.colleagueIds, ...m.people.friendIds, ...(m.people.traineeIds ?? [])].filter((id) => store.state.npcs[id]?.alive).length)],
+      ['Patients open this year', String(open)],
+      ...(m.training ? [['Training', `${m.training.pgy} of ${m.training.years} years`]] : []),
+      ...(chances.length ? [['Opportunities', chances.join('; ')]] : []),
+    ])) : '';
+    return glance + card(stageWords(m, p), kv([
       ['Route', m.route === 'dpm' ? 'Podiatric medicine (DPM)' : m.route === 'do' ? 'Osteopathic medicine (DO)' : 'Medicine (MD)'],
       ['Specialty', spec ? specialtyName(spec) : 'Not yet chosen'],
       ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Training license: practices under supervision' : 'None yet'],
