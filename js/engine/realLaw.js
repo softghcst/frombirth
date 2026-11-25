@@ -51,6 +51,7 @@ function topicsOf(c) {
   if (c.templateId === 'trademark') t.push('trademark');
   if (c.templateId === 'police_conduct') t.push('force');
   if (c.templateId === 'removal') t.push('removal');
+  if (c.donorConflict) t.push('recusal');
   if (c.fee?.model === 'contingency' || (c.kind === 'family' && c.countryId === 'us')) t.push('contingency');
   return t;
 }
@@ -75,4 +76,21 @@ export function eraNotes(countryId, year = yearNow()) {
 export function courtName(countryId, kind, year = yearNow()) {
   const list = COURT_HISTORY[countryId]?.[kind];
   return list?.find(([from]) => year >= from)?.[1] ?? null;
+}
+
+/**
+ * What a candidate for a judgeship may do in a campaign, under the rules in force: personally ask for money, promise
+ * how they will rule, announce views on disputed issues, and attack an opponent falsely. Each is `true` where no listed
+ * rule forbids it. The laws behind the answer come with it.
+ */
+export function campaignRules(countryId, year = yearNow()) {
+  const laws = lawsFor('campaign', countryId, year);
+  const latest = (key) => laws.find((l) => key in l)?.[key];
+  return {
+    solicit: !laws.some((l) => l.solicit === false),
+    promises: !laws.some((l) => l.promises === false),
+    announce: latest('announce') ?? true,
+    falsehood: !laws.some((l) => l.falsehood === false),
+    laws,
+  };
 }

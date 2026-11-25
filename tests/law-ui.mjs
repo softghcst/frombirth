@@ -175,6 +175,33 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Legal careers in the family/i.test(legacy) && /Admitted to practice/i.test(legacy) && /you/i.test(legacy), `${label}: Family Archive → Professional legacy shows the career (${legacy.replace(/\n/g, ' ').slice(0, 120)})`);
   await shot('legacy');
   await clear();
+  // A race for District Attorney, from the Progress tab: the trail, the debate, the polls as bars, the count.
+  await engine(async () => {
+    const { store } = await import('/js/state.js');
+    const career = await import('/js/engine/career.js'); const { CAREER_BY_ID } = await import('/js/data/careers.js');
+    const p = store.state.player;
+    career.hire(CAREER_BY_ID.prosecutor, 2, 70, 'test');
+    p.age = 48; p.career.experience = { prosecutor: 16 }; p.finance.cash = 5e6;
+    store.notify();
+  });
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
+  await page.evaluate(() => document.querySelector('[data-act="law"]').click()); await hub().waitFor(); await hub().locator('[data-tab="progress"]').click();
+  await hub().locator('[data-seek="da"]').click(); await ok(); await ok();
+  check(/Running for District Attorney/i.test(await hub().innerText()) && await hub().locator('.fit-bars').count() >= 1, `${label}: running for District Attorney, with the race drawn as bars`);
+  check(!/\d+%/.test(await hub().locator('.card', { hasText: 'Running for' }).innerText()), `${label}: no percentages on the trail`);
+  await hub().locator('[data-camp="committee"]').click(); await ok();
+  await hub().locator('[data-camp="town_hall"]').click(); await ok();
+  await hub().locator('[data-campnext]').click(); await ok();
+  await hub().locator('[data-campdebate]').click(); await pick(/what you would change/i); await ok();
+  await hub().locator('[data-campnext]').click(); await ok();
+  await hub().locator('[data-campnext]').click(); await ok();
+  await hub().locator('.card', { hasText: 'Running for' }).scrollIntoViewIfNeeded();
+  await shot('campaign');
+  await hub().locator('[data-campvote]').click();
+  const count = await page.locator('#modal-root .modal').last().innerText();
+  check(/won the election|lost|voters/i.test(count), `${label}: election day (${count.replace(/\n/g, ' ').slice(0, 100)})`);
+  await ok();
+  await clear();
   // Save, reload, continue: everything is still there, nothing counted twice.
   const before = await engine(async () => { const { store } = await import('/js/state.js'); const { saveGame } = await import('/js/save.js'); saveGame(store.state); const L = store.state.player.law; return { n: L.history.length, cases: L.caseIds.length, cash: store.state.player.finance.cash, slot: store.state.slotId }; });
   await page.reload();

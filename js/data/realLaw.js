@@ -5,7 +5,8 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will'
+//          'trademark', 'force', 'removal', 'contingency', 'will',
+//          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
 const L = (id, countryIds, topic, name, from, summary, o = {}) => ({ id, countryIds, topic, name, from, summary, ...o });
@@ -33,6 +34,15 @@ export const REAL_LAWS = [
   L('us_graham', ['us'], 'force', 'Graham v. Connor (1989)', 1989, 'Force in an arrest is judged by whether it was objectively reasonable in the circumstances.'),
   L('us_ina', ['us'], 'removal', 'Immigration and Nationality Act, section 240A(b)', 1997, 'Cancellation of removal for some long-term residents: ten years\' presence, good moral character, and exceptional hardship to a citizen or resident spouse, parent or child.'),
   L('us_aba15d', ['us'], 'contingency', 'ABA Model Rule of Professional Conduct 1.5(d)', 1983, 'A lawyer may not charge a contingent fee in a domestic relations matter or for defending a criminal case.'),
+  // Campaigns for legal office (engine/lawCampaign.js): what a candidate for a judgeship may and may not do, and when a
+  // judge must step aside because of who paid for the campaign.
+  L('us_canons30', ['us'], 'campaign', 'ABA Canons of Judicial Ethics (1924), Canon 30', 1924, 'A candidate for judicial office should not make promises of conduct in office that appeal to self-interest or partisan prejudice.', { promises: false }),
+  L('us_code7', ['us'], 'campaign', 'ABA Code of Judicial Conduct (1972), Canon 7', 1972, 'A judicial candidate should not make pledges or promises of conduct in office, announce views on disputed legal or political issues, or personally solicit campaign funds; a committee raises them.', { promises: false, solicit: false, announce: false }),
+  L('us_rule82', ['us'], 'campaign', 'ABA Model Rule of Professional Conduct 8.2(a)', 1983, 'A lawyer must not make a statement known to be false, or made with reckless disregard for the truth, about the integrity or qualifications of a judge or a candidate for legal office.', { falsehood: false }),
+  L('us_white', ['us'], 'campaign', 'Republican Party of Minnesota v. White (2002)', 2002, 'A state may not forbid judicial candidates from announcing their views on disputed legal and political issues.', { announce: true }),
+  L('us_code41', ['us'], 'campaign', 'ABA Model Code of Judicial Conduct (2007), Rule 4.1', 2007, 'A judicial candidate must not make pledges, promises or commitments about cases likely to come before the court, personally solicit contributions, or knowingly make false statements.', { promises: false, solicit: false, falsehood: false }),
+  L('us_yulee', ['us'], 'campaign', 'Williams-Yulee v. Florida Bar (2015)', 2015, 'A state may forbid judicial candidates from personally asking for campaign money.', { solicit: false }),
+  L('us_caperton', ['us'], 'recusal', 'Caperton v. A.T. Massey Coal Co. (2009)', 2009, 'Due process requires a judge to step aside when a party\'s campaign support had a significant and disproportionate influence on the judge\'s election.'),
   // ---------- England and Wales ----------
   L('uk_sang', ['uk'], 'search', 'R v Sang (1979)', 1979, 'A judge has no general discretion to exclude relevant evidence because of how it was obtained (confessions apart).', { excludes: false, until: 1985 }),
   L('uk_pace78', ['uk'], 'search', 'Police and Criminal Evidence Act 1984, section 78', 1986, 'A court may exclude prosecution evidence whose admission would make the proceedings unfair.', { excludes: true }),

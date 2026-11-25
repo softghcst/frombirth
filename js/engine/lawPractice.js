@@ -29,9 +29,9 @@ import { discipline } from './lawCases.js';
 /**
  * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
  * real politician of the world (engine/polity.js), and kept with the player's other races (p.flags.races).
- * Simplified: one count, not the full campaign trail of engine/campaign.js.
+ * The campaign itself (engine/lawCampaign.js) comes in as `boost`; a race nobody campaigned for is the count alone.
  */
-function legalElection(p, title, level, s, boost = 0) {
+export function legalElection(p, title, level, s, boost = 0, officeId = null, rivalName = null) {
   const w = world.polity(p.countryId);
   const mine = world.membership(p.countryId);
   const fig = w.kind === 'party' || w.kind === 'none' ? null : world.opponentFor(level === 'local' ? 'mayor' : 'region', p.countryId);
@@ -44,8 +44,8 @@ function legalElection(p, title, level, s, boost = 0) {
   const them = { id: 'rival', positions: theirs?.positions ?? NEUTRAL, appeal: fig ? ((fig.t?.charisma ?? 55) - 55) / 8 : 0 };
   const res = duel(me, them, VOTERS, (n) => (rng.next() * 2 - 1) * n, level === 'local' ? 400000 : 3000000);
   const share = res.shares.me;
-  const rival = level === 'local' && legalRival ? `${legalRival.firstName} ${legalRival.lastName}` : fig?.name ?? 'your opponent';
-  const rec = { year: store.state.year, countryId: p.countryId, officeId: level === 'local' ? 'district_attorney' : 'attorney_general', title, rival, rivalParty: theirs?.name ?? null, rivalColor: theirs?.color ?? '#777',
+  const rival = rivalName ?? (level === 'local' && legalRival ? `${legalRival.firstName} ${legalRival.lastName}` : fig?.name ?? 'your opponent');
+  const rec = { year: store.state.year, countryId: p.countryId, officeId: officeId ?? (level === 'local' ? 'district_attorney' : 'attorney_general'), title, rival, rivalParty: theirs?.name ?? null, rivalColor: theirs?.color ?? '#777',
     party: mine?.name ?? null, color: mine?.color ?? '#444', share, won: share > 50, votes: { ...res.votes }, total: res.total, turnout: res.turnout, legal: true };
   const races = (p.flags.races ??= []);
   races.push(rec);
@@ -335,16 +335,18 @@ export function opportunities(p = player()) {
     const served = c.yearsInRole >= (career.levels[c.level]?.years ?? 99);
     out.push({ id: 'elevation', name: `Seek appointment as ${career.levels[c.level + 1].title.toLowerCase()}`, why: !served ? `After ${career.levels[c.level].years} years as ${c.title.toLowerCase()}` : L.rep.integrity < 60 ? 'A better name for integrity first' : (L.misconduct ?? 0) > 0 ? 'Not with misconduct on your record' : cool('elevation', 36), how: prof.judges });
   }
-  if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da });
+  if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da, campaign: prof.da === 'elected' });
   if (t === 'defender' && c.level >= 1) out.push({ id: 'chief_defender', name: `Seek appointment as ${prof.titles.defenderChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('chief_defender', 24) });
   if (t === 'gov_counsel' && c.level >= 2) out.push({ id: 'general_counsel', name: 'Seek appointment as agency general counsel', why: yrs < 8 ? 'After eight years of legal work' : cool('general_counsel', 24) });
   if (admitted(p) && t && t !== 'judiciary') {
     const clean = !convictionsOf(p).length;
     out.push({ id: 'judge', name: 'Apply for a judicial vacancy', why: p.age < 35 ? 'From age 35' : yrs < 8 ? 'After eight years of legal work' : !clean ? 'A judge needs a clean record' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('judge', 24), how: prof.judges });
+    // Many American states elect their trial judges: a campaign, with rules of its own (engine/lawCampaign.js).
+    if (prof.depth === 'full') out.push({ id: 'judge_election', name: 'Run for an elected judgeship', why: p.age < 35 ? 'From age 35' : yrs < 8 ? 'After eight years of legal work' : !clean ? 'A judge needs a clean record' : cool('judge_election', 24), how: 'the voters, in a state that elects its judges', campaign: true });
   }
   if (admitted(p) && t && t !== 'attorney_general') {
     const senior = (t === 'lawyer' && c.level >= 2) || (['prosecutor', 'gov_counsel'].includes(t) && c.level >= 2) || (t === 'defender' && c.level >= 2) || t === 'judiciary' || !!p.politics;
-    out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal });
+    out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal, campaign: prof.depth === 'full' });
     // The federal offices exist only in the United States, and each is a nomination and then a Senate vote.
     if (prof.depth === 'full') {
       const fed = ['prosecutor', 'gov_counsel', 'attorney_general', 'us_attorney'].includes(t) && c.level >= (t === 'prosecutor' || t === 'gov_counsel' ? 2 : 0);
@@ -358,7 +360,7 @@ export function opportunities(p = player()) {
 }
 
 /** The chance a selection goes the player's way: their standing, never their win count alone, and luck. */
-function standing(p) {
+export function standing(p) {
   const L = lawOf(p);
   const s = stats(p);
   return (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
@@ -367,10 +369,10 @@ function standing(p) {
  * Seeks a post by its own process: a partnership vote, an election or an appointment. It may fail; trying again waits.
  * Elections here are simplified (a campaign and a result), not the full politics simulation.
  */
-export function seek(id, p = player()) {
+export function seek(id, p = player(), o2 = {}) {
   const o = opportunities(p).find((x) => x.id === id);
   if (!o) return result(false, 'That is not open to you.', 'neutral');
-  if (o.why) return result(false, o.why, 'neutral');
+  if (o.why && !o2.vote) return result(false, o.why, 'neutral'); // a campaign checked it when it was declared
   const L = lawOf(p);
   (L.tried ??= {})[id] = nowM();
   const prof = profileFor(p.countryId);
@@ -386,12 +388,12 @@ export function seek(id, p = player()) {
   }
   if (id === 'da' || id === 'chief_defender' || id === 'general_counsel') {
     const elected = id === 'da' && prof.da === 'elected';
-    const cost = elected ? localCost(30000, country()) : 0;
+    const cost = elected && !o2.vote ? localCost(30000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
     const chance = clamp(0.25 + s + 0.05, 0.05, 0.8);
     const name = id === 'da' ? prof.titles.prosecutorChief : id === 'chief_defender' ? prof.titles.defenderChief : 'General Counsel';
-    const vote = elected ? legalElection(p, name, 'local', s) : null;
+    const vote = elected ? o2.vote ?? legalElection(p, name, 'local', s) : null;
     const against = vote ? ` against ${vote.rival}, with ${vote.share}% of the vote` : '';
     if (elected ? !vote.won : luck >= chance) {
       log(elected ? `You ran for ${name}${against} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
@@ -408,6 +410,12 @@ export function seek(id, p = player()) {
     select(p, 'elevation'); promote();
     canon(`law:elevation:${p.id}:${p.career.level}`, `Appointed ${p.career.title.toLowerCase()}`, `Elevated to ${p.career.title.toLowerCase()}.`, { privacy: 'public', sig: 3 });
     return result(true, `You were appointed ${p.career.title.toLowerCase()}.`, 'good');
+  }
+  if (id === 'judge_election') {
+    const vote = o2.vote ?? legalElection(p, 'Judge', 'local', s + (lawOf(p).rep.integrity - 55) / 150, 0, 'judge');
+    if (!vote.won) return result(false, `You ran for the bench against ${vote.rival} and lost, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%.`, 'bad');
+    becomeJudge(p, true);
+    return result(true, `You won the election, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%. From now on you rule on cases; you do not argue them.`, 'good');
   }
   if (id === 'judge') {
     const chance = clamp(0.2 + s + (lawOf(p).rep.integrity - 55) / 150, 0.05, 0.7);
@@ -434,11 +442,11 @@ export function seek(id, p = player()) {
   }
   if (id === 'ag') {
     const elected = prof.depth === 'full';
-    const cost = elected ? localCost(250000, country()) : 0;
+    const cost = elected && !o2.vote ? localCost(250000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A statewide campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
     const chance = clamp(0.12 + s + 0.03, 0.03, 0.6);
-    const vote = elected ? legalElection(p, 'Attorney General', 'state', s - 0.1) : null;
+    const vote = elected ? o2.vote ?? legalElection(p, 'Attorney General', 'state', s - 0.1) : null;
     if (elected ? !vote.won : luck >= chance) return result(false, elected ? `You ran for Attorney General against ${vote.rival} and lost the statewide vote, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%.` : 'The government appointed someone else.', 'bad');
     withdrawAll(p, 'You left private practice for public office.');
     hire(CAREER_BY_ID.attorney_general, 1, 65, elected ? 'elected' : 'appointed');
@@ -450,10 +458,10 @@ export function seek(id, p = player()) {
   return result(false, 'Nothing happened.', 'neutral');
 }
 /** Becomes a judge: the old cases go to colleagues, because a judge cannot be counsel in any of them. */
-function becomeJudge(p) {
+function becomeJudge(p, elected = false) {
   withdrawAll(p, 'You left practice for the bench.');
-  hire(CAREER_BY_ID.judiciary, 0, 65, 'appointed');
-  canon(`law:judge:${p.id}`, 'Appointed a judge', `Selected for the ${profileFor(p.countryId).name === 'United States' ? 'trial court' : 'bench'}.`, { privacy: 'public', sig: 3 });
+  hire(CAREER_BY_ID.judiciary, 0, 65, elected ? 'elected' : 'appointed');
+  canon(`law:judge:${p.id}`, elected ? 'Elected a judge' : 'Appointed a judge', `${elected ? 'Won an election for' : 'Selected for'} the ${profileFor(p.countryId).name === 'United States' ? 'trial court' : 'bench'}.`, { privacy: 'public', sig: 3 });
 }
 function withdrawAll(p, why) {
   for (const c of lawOf(p).caseIds.map(cases.caseById).filter((x) => x && !x.done)) referOut(c.id, p);
@@ -914,6 +922,9 @@ export function benchMatter(p = player()) {
   L.caseIds = L.caseIds.filter((x) => x !== c.id); // a judge's matter is not a client's case
   c.lawyerId = null; c.judgeId = p.id; c.bench = true; c.role = 'judge';
   for (const e of c.evidence) e.reviewed = true;
+  // A firm that paid for the judge's election campaign comes before the judge (engine/lawCampaign.js).
+  const donor = (L.donors ?? []).find((d) => store.state.npcs[d.id]?.alive);
+  if (donor && c.parties?.otherId && rng.chance(0.35)) { c.parties.otherId = donor.id; c.donorConflict = { id: donor.id, amount: donor.amount }; }
   (L.bench ??= []).push(c.id);
   return c;
 }
@@ -931,15 +942,19 @@ export function rule(caseId, ruling, p = player()) {
   const L = lawOf(p);
   const known = [c.clientId, c.parties.otherId].map((id) => store.state.npcs[id]).find((n) => n && (p.npcIds.includes(n.id) || n.flags.formerClientOf === p.id));
   if (ruling === 'recuse') { c.done = true; c.outcome = { kind: 'recused', text: 'The judge stepped aside.', m: nowM(), year: store.state.year }; return result(true, 'You step aside, and the matter goes to another judge.', 'good'); }
-  if (known) { L.rep.integrity = clamp(L.rep.integrity - 8); L.misconduct = (L.misconduct ?? 0) + 1; }
+  if (known && !c.donorConflict) { L.rep.integrity = clamp(L.rep.integrity - 8); L.misconduct = (L.misconduct ?? 0) + 1; }
+  // Hearing a big campaign donor's case: the loser may appeal on that alone, and since Caperton (2009) win.
+  const caperton = c.donorConflict ? realLawMod.governing('recusal', p.countryId) : null;
+  if (c.donorConflict) { L.rep.integrity = clamp(L.rep.integrity - 6); L.misconduct = (L.misconduct ?? 0) + 1; }
   const right = ruling === 'improper' ? false : c.templateId === 'custody' ? ruling === 'for' : ruling === supported(c);
-  const reversed = !right && rng.chance(0.5);
+  const reversed = (!right && rng.chance(0.5)) || (!!caperton && ruling === 'against' && rng.chance(0.6));
   c.done = true;
   c.outcome = { kind: `ruled_${ruling}`, text: `${{ for: 'For the claimant', against: 'For the respondent', part: 'In part', improper: 'Custody to the wealthier parent' }[ruling]}.${reversed ? ' Reversed on appeal.' : ''}`, m: nowM(), year: store.state.year, right, reversed };
   (L.benchRecord ??= []).push({ caseId: c.id, title: c.title, ruling, right, reversed, year: store.state.year });
   if (right) { adjustPerformance(2); L.rep.integrity = clamp(L.rep.integrity + 1); }
   if (reversed) adjustPerformance(-3);
   if (ruling === 'improper') { L.rep.integrity = clamp(L.rep.integrity - 6); return result(false, 'Wealth is not the test: the child\'s interests are. The appeal court will say so.', 'bad'); }
+  if (c.donorConflict) return result(false, `${caperton ? `Under ${caperton.name}, a` : 'A'} judge whose campaign a party paid for that heavily should have stepped aside.${reversed ? ' The appeal court sent the case back to another judge.' : ' People noticed.'}`, 'bad');
   return result(right, right ? 'Your ruling follows the evidence and the law.' : reversed ? 'The appeal court reverses you: the evidence did not support the ruling.' : 'Your ruling stands, though it was a close thing.', right ? 'good' : 'neutral');
 }
 
