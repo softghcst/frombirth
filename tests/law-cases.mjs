@@ -200,6 +200,44 @@ const npc = (id) => store.state.npcs[id];
   void many;
 }
 
+// ---------- Cases about the world's own people, papers and companies ----------
+{
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  const { residency } = await import('../js/engine/citizenship.js');
+  const { placeAt, jobs } = await import('../js/engine/employers.js');
+  lawyer('lawyer');
+  const me = store.state.player;
+  // A married couple living in the world, nothing to do with the player.
+  const a = makeNpc({ role: 'official', countryId: me.countryId, age: 41 }); const b = makeNpc({ role: 'official', countryId: me.countryId, age: 43 });
+  for (const n of [a, b]) { store.state.npcs[n.id] = n; n.life = { ...(n.life ?? {}), married: true }; }
+  a.life.partnerId = b.id; b.life.partnerId = a.id;
+  let div = null;
+  for (let i = 0; i < 20 && !div; i++) { const c = lc.createCase('divorce'); if (c.realCouple) div = c; }
+  check(div && [a.id, b.id].includes(div.clientId) && [a.id, b.id].includes(div.parties.otherId), 'a divorce can be a real marriage in the world');
+  lc.close(div, { kind: 'settlement', text: 'Settled.', favorable: 0.5 });
+  check(!a.life.married && !b.life.married && !a.life.partnerId, 'and the decree ends that marriage on both their records');
+  const rem = lc.createCase('removal');
+  const cl = npc(rem.clientId);
+  check(residency(cl).status === 'temporary_resident' && !residency(cl).workAuthorized === false || residency(cl).status === 'temporary_resident', `a removal client has real papers: ${residency(cl).status}, a citizen of ${cl.citizenships[0].jurisdictionId}`);
+  lc.close(rem, { kind: 'approved', text: 'Relief granted.', favorable: 1 });
+  check(residency(cl).status === 'permanent_resident', 'relief makes them a permanent resident, in the citizenship engine\'s own record');
+  const pet = lc.createCase('family_petition');
+  const rel = npc(pet.parties.relativeId);
+  check(rel && rel.countryId !== me.countryId, 'a family petition is for a real relative living abroad');
+  lc.close(pet, { kind: 'approved', text: 'Approved.', favorable: 1 });
+  check(rel.countryId === me.countryId && residency(rel).status === 'permanent_resident', 'approved: the relative comes to live here, as a permanent resident');
+  for (const id of ['lawyer', 'engineer', 'scientist', 'journalist']) placeAt(id, me.countryId, me.city);
+  const acq = lc.createCase('acquisition');
+  const buyer = jobs().employers[acq.parties.clientOrgId]; const target = jobs().employers[acq.parties.otherOrgId];
+  check(buyer && target && acq.title.includes(buyer.name), `a corporate deal is between real companies (${acq.title})`);
+  lc.close(acq, { kind: 'closed', text: 'Closed.', favorable: 1 });
+  check(target.owner === buyer.id && buyer.history.some((h) => h.text.includes(target.name)), 'and the acquisition goes into both companies\' histories');
+  const dead = makeNpc({ role: 'official', countryId: me.countryId, age: 80 }); store.state.npcs[dead.id] = dead; dead.alive = false; dead.flags.diedYear = store.state.year;
+  const pro = lc.createCase('probate');
+  const who = npc(pro.parties.deceasedId);
+  check(who && !who.alive && who.flags.diedYear >= store.state.year - 2 && pro.title.includes(who.lastName), `probate settles the estate of someone who really died (${who?.firstName} ${who?.lastName})`);
+}
+
 // ---------- Contingency fees follow the law of the country and the kind of case ----------
 {
   const model = (country, tid, fee = 'contingency') => { lawyer('lawyer', { countryId: country }); return lc.createCase(tid, { fee }); };

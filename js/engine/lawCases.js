@@ -16,6 +16,27 @@ import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
 import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE } from '../data/law.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
+import { jobs, chronicle as companyNote } from './employers.js';
+
+// ---------- The world's own people and companies ----------
+
+/** A married couple already living their lives in the world, with no tie to the player: real clients for a family case. */
+function realCouple(countryId, p) {
+  const busy = new Set(Object.values(LC()).filter((x) => !x.done).flatMap((x) => [x.clientId, x.parties.otherId]));
+  const all = Object.values(store.state.npcs).filter((n) => n.alive && n.life?.married && n.life.partnerId && (n.age ?? 0) >= 25 && !p.npcIds.includes(n.id) && !busy.has(n.id)
+    && store.state.npcs[n.life.partnerId]?.alive && !p.npcIds.includes(n.life.partnerId) && (n.countryId ?? countryId) === countryId);
+  if (!all.length) return null;
+  const a = rng.pick(all);
+  return [a, store.state.npcs[a.life.partnerId]];
+}
+/** Companies registered in the world (engine/employers.js), for corporate and civil matters. */
+function realCompanies(countryId) {
+  return Object.values(jobs().employers ?? {}).filter((e) => e && !e.closed && e.countryId === countryId && !e.sportClub);
+}
+/** Someone in the world who died lately, whose estate needs settling. */
+function recentDeath(countryId, p) {
+  return Object.values(store.state.npcs).find((n) => !n.alive && (n.flags.diedYear ?? 0) >= store.state.year - 2 && !p.npcIds.includes(n.id) && !n.flags.estateCaseId && (n.countryId ?? countryId) === countryId) ?? null;
+}
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const ORG_A = ['Harlow', 'Brightwater', 'Cedar', 'Northgate', 'Ridgeway', 'Kestrel', 'Summit', 'Bluepoint'];
@@ -91,12 +112,14 @@ export function createCase(templateId, o = {}) {
     c.vars.client = nameOf(c.parties.defendantId);
     c.vars.charge = OFFENSE_BY_ID[T.offense]?.name ?? T.offense;
   } else {
-    // A returning client is the same person, with their history intact.
-    const client = (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client' });
+    // A returning client is the same person, with their history intact; a divorce or custody case may be a real couple.
+    const couple = T.kind === 'family' && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
+    const client = couple ? couple[0] : (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client' });
+    if (couple) c.realCouple = true;
     c.clientId = role === 'agency' ? null : client.id;
     c.vars.client = nameOf(client.id);
     if (['family', 'child'].includes(T.kind)) {
-      const other = party(countryId, { title: T.kind === 'family' ? 'Spouse' : 'Parent' });
+      const other = couple ? couple[1] : party(countryId, { title: T.kind === 'family' ? 'Spouse' : 'Parent' });
       other.flags.spouseId = client.id; client.flags.spouseId = other.id; // a marriage on the record, between two real people
       c.parties.otherId = other.id;
       c.vars.other = nameOf(other.id);
@@ -106,7 +129,7 @@ export function createCase(templateId, o = {}) {
       c.vars.child = first(kid.id);
       c.vars.childAge = String(kid.age);
       if (T.kind === 'child') { c.clientId = kid.id; c.vars.client = nameOf(kid.id); }
-      c.vars.years = String(rng.int(6, 22));
+      c.vars.years = String(couple && client.flags.weddingYear ? Math.max(1, store.state.year - client.flags.weddingYear) : rng.int(6, 22));
       c.otherCounselId = party(countryId, { title: 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
     } else if (T.kind === 'immigration') {
       c.vars.relation = rng.pick(['mother', 'father', 'spouse', 'brother', 'sister']);
@@ -114,16 +137,42 @@ export function createCase(templateId, o = {}) {
       c.parties.agency = T.forum === 'immigration' ? 'the immigration court' : 'the immigration agency';
       c.otherCounselId = T.forum === 'immigration' ? party(countryId, { title: 'Government counsel', kind: 'lawyer' }).id : null;
       const home = Object.keys(COUNTRIES).filter((x) => x !== countryId);
-      client.flags.originCountryId = rng.pick(home); // where the client came from: a real country in the world
+      const origin = rng.pick(home);
+      client.flags.originCountryId = origin; // where the client came from: a real country in the world
+      client.countryId = countryId;
+      if (templateId === 'removal') {
+        // Their papers, in the citizenship engine's own form: a citizen of where they came from, on a lapsed visa here.
+        client.citizenships = [{ jurisdictionId: origin, how: 'birth', year: client.birthYear ?? store.state.year - (client.age ?? 30) }];
+        client.residency = { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year - Number(c.vars.years), expired: true };
+      } else {
+        client.citizenships = [{ jurisdictionId: origin, how: 'birth' }, { jurisdictionId: countryId, how: 'naturalization', year: store.state.year - rng.int(3, 15) }];
+        const rel = party(origin, { title: c.vars.relation[0].toUpperCase() + c.vars.relation.slice(1), age: rng.int(25, 70) });
+        rel.countryId = origin; rel.flags.abroad = origin;
+        rel.citizenships = [{ jurisdictionId: origin, how: 'birth' }];
+        c.parties.relativeId = rel.id;
+      }
     } else if (T.kind === 'transaction') {
-      c.vars.clientOrg = `${orgName()}`;
-      c.vars.otherOrg = `${orgName()}`;
-      c.vars.deceased = `${client.lastName} senior`;
+      const cos = realCompanies(countryId);
+      const [co1, co2] = cos.length >= 2 ? [rng.pick(cos), null] : [null, null];
+      const co2b = co1 ? rng.pick(cos.filter((x) => x.id !== co1.id)) : co2;
+      c.vars.clientOrg = co1?.name ?? orgName();
+      c.vars.otherOrg = co2b?.name ?? orgName();
+      if (co1) { c.parties.clientOrgId = co1.id; c.parties.otherOrgId = co2b?.id ?? null; }
+      if (templateId === 'probate') {
+        const dead = recentDeath(countryId, p);
+        if (dead) { c.vars.deceased = `${dead.firstName} ${dead.lastName}`; c.parties.deceasedId = dead.id; dead.flags.estateCaseId = id; client.flags.executorOf = dead.id; }
+      }
+      c.vars.deceased ??= `${client.lastName} senior`; // a real recent death, found above, takes precedence
       client.flags.title = templateId === 'acquisition' || templateId === 'supply_deal' ? `General counsel, ${c.vars.clientOrg}` : 'Client';
       c.otherCounselId = templateId === 'will' ? null : party(countryId, { title: 'Opposing counsel', kind: 'lawyer' }).id;
     } else {
-      c.vars.otherOrg = orgName();
-      c.vars.clientOrg = T.title.includes('{clientOrg}') ? orgName() : c.vars.otherOrg;
+      const cos = realCompanies(countryId);
+      const other = cos.length ? rng.pick(cos) : null;
+      c.vars.otherOrg = other?.name ?? orgName();
+      const mine = T.title.includes('{clientOrg}') ? (cos.filter((x) => x.id !== other?.id)[0] ?? null) : null;
+      c.vars.clientOrg = T.title.includes('{clientOrg}') ? mine?.name ?? orgName() : c.vars.otherOrg;
+      if (other) c.parties.otherOrgId = other.id;
+      if (mine) c.parties.clientOrgId = mine.id;
       c.otherCounselId = party(countryId, { title: T.gov || T.forum === 'tax' ? 'Government counsel' : 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
       // A dispute between two people (a boundary between neighbors) has a person on the other side.
       if (`${T.title}${T.summary}`.includes('{other}')) { const o2 = party(countryId, { title: 'Neighbor' }); c.parties.otherId = o2.id; c.vars.other = nameOf(o2.id); }
@@ -628,6 +677,20 @@ export function close(c, out, lines = []) {
   c.outcome = { ...out, m: nowM(), year: store.state.year };
   c.stageIdx = c.stages.length;
   note(c, `Outcome: ${out.text}`);
+  // What the result changes in the world, on the people's and companies' own records.
+  if (c.templateId === 'divorce' && ['orders', 'settlement'].includes(out.kind)) {
+    for (const id of [c.clientId, c.parties.otherId]) { const n = store.state.npcs[id]; if (!n) continue; n.flags.divorced = store.state.year; n.flags.spouseId = null; if (n.life) { n.life.married = false; n.life.partnerId = null; } }
+  }
+  if (c.kind === 'immigration' && out.favorable > 0) {
+    const n = store.state.npcs[c.templateId === 'removal' ? c.clientId : c.parties.relativeId];
+    if (n) { n.countryId = c.countryId; delete n.flags.abroad; n.residency = { jurisdictionId: c.countryId, status: 'permanent_resident', since: store.state.year }; }
+  }
+  if (c.parties.clientOrgId && out.favorable > 0 && c.kind === 'transaction') {
+    const a = jobs().employers[c.parties.clientOrgId]; const b = jobs().employers[c.parties.otherOrgId];
+    if (c.templateId === 'acquisition' && a && b) { companyNote(a, `Acquired ${b.name}.`); companyNote(b, `Acquired by ${a.name}.`); b.owner = a.id; }
+    else if (a) companyNote(a, `Signed: ${c.title}.`);
+  }
+  if (c.parties.deceasedId && out.favorable > 0) { const d = store.state.npcs[c.parties.deceasedId]; if (d) d.flags.estateSettled = store.state.year; }
   // A will drafted and signed is the client's will from now on, on their own record.
   if (c.templateId === 'will' && out.favorable > 0 && c.clientId && store.state.npcs[c.clientId]) store.state.npcs[c.clientId].flags.will = { year: store.state.year, by: p.id, caseId: c.id, guardianNamed: true };
   // The lawyer on the other side of a trial remembers it: a professional rival, who may turn up again.

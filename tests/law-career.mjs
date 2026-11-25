@@ -173,7 +173,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   p().age = 48; p().career.experience = { lawyer: 15 }; L().rep.integrity = 75;
   const open = lc.createCase('contract_dispute', { track: 'lawyer' });
   let made = false;
-  for (let i = 0; i < 12 && !made; i++) { made = lp.seek('judge').ok; if (!made) L().tried.judge -= 24; }
+  for (let i = 0; i < 40 && !made; i++) { made = lp.seek('judge').ok; if (!made) L().tried.judge -= 24; } // a seat is a long shot each time
   check(made && p().career.careerId === 'judiciary', 'selected for the bench through the vacancy process');
   check(open.done && open.outcome.kind === 'referred', 'their open cases went to colleagues');
   check(/judge/i.test(lp.mayPractice()), 'a judge does not take clients');
