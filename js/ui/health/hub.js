@@ -139,7 +139,8 @@ function overview(p, h) {
 
 /** My Health for a baby or small child: what there is to know, with nothing to do. */
 function youngView(p, h) {
-  const known = [...activeDiagnoses(h).map((d) => d.name), ...presentConditions(h).filter((r) => !diagnosisFor(r, h)).map((r) => CONDITION_BY_ID[r.conditionId].name)];
+  // Only what a doctor has found: a condition nobody has diagnosed is not known yet (hearing and sight excepted, which show).
+  const known = [...activeDiagnoses(h).map((d) => d.name), ...presentConditions(h).filter((r) => !diagnosisFor(r, h) && ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group)).map((r) => CONDITION_BY_ID[r.conditionId].name)];
   const next = care.upcoming(h).slice(0, 2);
   return `
     ${card('How you are', `${kv('Health', words('Health', p.stats.health))}${kv('Sleep', words('Sleep', h.wellbeing.sleep))}`)}

@@ -156,7 +156,7 @@ export function mountAppearanceEditor(el, o = {}) {
     const thumbBox = (k) => (stageOf(shownAge()) === 'adult' ? ZOOM[k] : undefined);
     const options = optionsFor(key).map((x) => {
       const on = isOn(x.id) ? 'on' : '';
-      if (c.kind === 'swatch') return `<button type="button" class="av-opt av-swatch ${on}" data-key="${key}" data-id="${x.id}" style="background:${x.hex}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}"></button>`;
+      if (c.kind === 'swatch') return `<button type="button" class="av-opt av-swatch ${on}" data-key="${key}" data-id="${x.id}" style="background:${key === 'lipColor' ? lipShade(x.id, part('skin', a.inherited.skin)?.depth) : x.hex}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}"></button>`;
       if (c.kind === 'chip') return `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${x.id}" aria-pressed="${!!on}">${esc(x.name)}</button>`;
       // A grown-up's outfits are shown on their own, like a photo in a shop, in the color chosen.
       const pic = key === 'outfit' ? outfitPhoto(x.id, a.style.outfitColor ? part('outfitColor', a.style.outfitColor)?.hex : null, x.name)
@@ -171,9 +171,11 @@ export function mountAppearanceEditor(el, o = {}) {
         : `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${esc(c.none)}</button>`);
     }
     const chosen = c.multi ? current.map((id) => part(key, id)?.name).filter(Boolean).join(', ') : part(key, shown)?.name ?? part('hair', shown)?.name ?? c.none ?? '';
+    // A row whose designs are being redrawn (glasses, make-up): only None for now, and it says so.
+    const soon = !c.swatch && c.kind === 'thumb' && c.none && options.length <= 1 ? '<p class="muted av-soon">New designs are on the way.</p>' : '';
     const filters = c.filter ? `<div class="av-filters">${HAIR_FILTERS.map(([id, label]) => `<button type="button" class="av-chip av-filter ${hairFilter === id ? 'on' : ''}" data-filter="${id}">${esc(label)}</button>`).join('')}</div>` : '';
     return `<div class="av-control"><div class="av-label"><strong>${esc(c.label)}</strong><span>${esc(chosen)}</span></div>${filters}
-      <div class="av-options ${c.kind}">${options.join('')}</div></div>`;
+      <div class="av-options ${c.kind}">${options.join('')}</div>${soon}</div>`;
   }
 
   /**
@@ -287,7 +289,7 @@ export function mountAppearanceEditor(el, o = {}) {
       else {
         a.style = { ...defaultStyle(a.inherited, o.gender), jewelry: a.style.jewelry };
         if (rng.chance(0.3)) a.style.hairDye = rng.pick(CATALOG.hairDye).id;
-        if (rng.chance(0.25)) a.style.glasses = rng.pick(CATALOG.glasses).id;
+        if (rng.chance(0.25) && CATALOG.glasses.length) a.style.glasses = rng.pick(CATALOG.glasses).id;
         if (rng.chance(0.3)) a.style.outfitColor = rng.pick(CATALOG.outfitColor).id;
       }
       render();

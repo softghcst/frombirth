@@ -115,6 +115,8 @@ INDEX.hair.bald = { id: 'bald', name: 'Shaved', type: 'any' };
  */
 export function lipsFor(id, gender) {
   const match = gender === 'male' ? LIP_MATCH.male : gender === 'female' ? LIP_MATCH.female : null;
+  // A men's mouth is never drawn on a woman, nor offered to one: any not matched above is drawn as a neutral one.
+  if (gender === 'female' && /^lips_masc_/.test(id ?? '')) return match[id] ?? 'lips_8';
   return match?.[id] ?? id;
 }
 
@@ -185,8 +187,9 @@ const OLD_HAIRSTYLE = {
   curls_tight: 'hair_boy_short_11', coils: 'hair_girl_short_14', braids: 'hair_girl_long_09', locs: 'hair_boy_medium_09', bob: 'hair_girl_short_01',
   long_straight: 'hair_girl_long_02', long_wavy: 'hair_girl_long_01', long_curly: 'hair_girl_long_07', ponytail: 'hair_boy_updo_11_high_ponytail', bun: 'hair_updo_03', puffs: 'hair_updo_09',
 };
-const OLD_GLASSES = { round: 'glasses_1', square: 'glasses_3', cat_eye: 'glasses_2', aviator: 'glasses_4' };
-const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_eyeliner', bold: 'makeup_12_smoky_wing' };
+// The glasses and make-up are being redrawn: older saves' choices have nothing to map to, and are dropped.
+const OLD_GLASSES = {};
+const OLD_MAKEUP = {};
 /**
  * The random pools as they were when the earlier avatar system's saves were first converted. An old shape
  * id is converted from these, then moved off anything since withdrawn, so it always lands on the same part
@@ -282,9 +285,18 @@ export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] 
  * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
  * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
  */
+/** A lipstick's shade on a skin of this depth (PAL.LIP_SHADES), blended between the nearest anchors. */
+export function lipShade(id, depth = 8) {
+  const ramp = PAL.LIP_SHADES[id];
+  if (!ramp) return part('lipColor', id)?.hex ?? null;
+  const d = Math.max(ramp[0][0], Math.min(ramp.at(-1)[0], depth));
+  const i = Math.max(0, ramp.findIndex(([at]) => at >= d) - 1);
+  const [a, b] = [ramp[i], ramp[Math.min(i + 1, ramp.length - 1)]];
+  return b[0] === a[0] ? a[1] : mixHex(a[1], b[1], (d - a[0]) / (b[0] - a[0]));
+}
 export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 } };
 function lipColors(skin, lipColor, gender) {
-  if (lipColor) return { lip: part('lipColor', lipColor).hex };
+  if (lipColor) return { lip: lipShade(lipColor, skin.depth) };
   if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= DEPTH.chestnut ? W.deepK : W.k) }; }
   return { lip: PAL.NATURAL_LIP_LOWER[skin.depth], lipUpper: PAL.NATURAL_LIP_UPPER[skin.depth] };
 }

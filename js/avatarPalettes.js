@@ -36,6 +36,20 @@ export const EYE_COLOR_NAMES = ['Dark brown', 'Brown', 'Hazel', 'Amber', 'Green'
 export const LIP_COLORS = ['#c96a7b', '#b6222f', '#7e2b4e', '#e27c60', '#bd8777', '#2b2226'];
 export const LIP_COLOR_IDS = ['rose', 'red', 'berry', 'coral', 'nude', 'black'];
 export const LIP_COLOR_NAMES = ['Rose', 'Red', 'Berry', 'Coral', 'Nude', 'Black'];
+/**
+ * Each lipstick, as it is worn on each skin: [skin depth, color] anchors from the lightest skin (0) to the deepest (16),
+ * blended between them (lipShade in js/avatar/catalog.js). The way makeup ranges are made for different skins: a rose is
+ * a soft pink on fair skin and a deep mauve rose on deep skin; a red goes from a bright blue-red to a rich wine-red;
+ * a nude is always a little deeper and warmer than the skin, from pinky beige to deep cocoa, never ashy or chalky.
+ */
+export const LIP_SHADES = {
+  rose: [[0, '#d97f90'], [5, '#c86a7c'], [9, '#ab5468'], [13, '#8c3f57'], [16, '#743349']],
+  red: [[0, '#c4232f'], [5, '#b51f2c'], [9, '#a31a29'], [13, '#8c1626'], [16, '#741221']],
+  berry: [[0, '#93365c'], [5, '#842e52'], [9, '#722646'], [13, '#5f1f3c'], [16, '#4e1832']],
+  coral: [[0, '#ee8c70'], [5, '#e2785a'], [9, '#cf6444'], [13, '#b44f32'], [16, '#963f27']],
+  nude: [[0, '#d69a8d'], [3, '#c9897a'], [6, '#b67966'], [9, '#975d48'], [10, '#7d4835'], [11, '#6b3d2c'], [12, '#5f3526'], [13, '#552f22'], [14, '#4b291e'], [15, '#3c2018'], [16, '#311a12']],
+  black: [[0, '#2f2528'], [8, '#2a2023'], [16, '#1f171a']],
+};
 
 /** Colors an everyday outfit can be dyed. */
 export const OUTFIT_COLORS = ['#2f4d7a', '#7a2f3b', '#2f6a4a', '#e0b23a', '#6b4aa0', '#e07a5f', '#3a3a3f', '#f2efe8', '#c77ba6', '#4fa3c7'];
