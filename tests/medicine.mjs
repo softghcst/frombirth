@@ -38,6 +38,9 @@ rng.seed(20261125);
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
+/** Applies, sits the interview answering well, and says whether an offer came. */
+const seekOffer = (id) => { if (!jobs.applyFor(id).ok) return false; while (jobs.interview()) jobs.answer(0); return jobs.offers().some((o) => o.hospitalId === id); };
+
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'us', age = 22) => {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
@@ -126,6 +129,23 @@ check(cases.fixturesFor('internal', 1910).every((c) => c.minYear <= 1910), 'a 19
 for (const id of Object.keys(JURISDICTIONS).filter((k) => k !== 'default')) {
   check(!!COUNTRIES[id], `country profile ${id} is a country the game knows`);
   check(id === 'us' || JURISDICTIONS[id].detail === 'simplified', `country profile ${id} is marked simplified`);
+}
+// Historical access: before about 1870 almost no school took women; until about 1920, fewer did.
+{
+  const q = life('us', 22);
+  const was = store.state.year;
+  q.gender = 'female';
+  store.state.year = 1860;
+  check(/admits women/.test(edu.programOptions().find((x) => x.id === 'medical').reason), 'in 1860 medical school is closed to women');
+  store.state.year = 1900;
+  const her = edu.admissionChance('medical');
+  q.gender = 'male';
+  const his = edu.admissionChance('medical');
+  store.state.year = 2000;
+  const now = edu.admissionChance('medical');
+  q.gender = 'female';
+  check(her < his && edu.admissionChance('medical') === now, `in 1900 fewer places for women; today the same (${her.toFixed(2)} vs ${his.toFixed(2)})`);
+  store.state.year = was;
 }
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
@@ -225,7 +245,7 @@ if (mine) {
   check(biz.partnerOptions(b).every((n) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')), 'a practice takes physicians as partners');
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
-check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
+check(['attending', 'experienced', 'senior'].includes(m.job?.rank) || !!m.offer || !m.job, 'ranks change only through reviews and offers');
 section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} practice(s)`);
 
 // 5. Drama never touches outcomes; unsafe plans are not rewarded.
@@ -528,18 +548,31 @@ section('research and teaching, wellbeing, and an offer from another city');
   const v = jobs.hospitalProfile(all[0].id);
   check(v && v.ownership && v.departments.length && v.physicians > 0, 'an employer can be reviewed before applying');
   let offered = null;
-  for (const o of all.filter((x) => !x.block)) { const r = jobs.applyFor(o.id); if (r.ok) { offered = o; break; } }
+  for (const o of all.filter((x) => !x.block && !x.locum)) { if (seekOffer(o.id)) { offered = o; break; } }
   check(!!offered && jobs.offers(jm).length === 1 && !jm.job, 'an interview can end in an offer, which waits for an answer');
+  const terms = jobs.offers(jm)[0];
+  check(terms && terms.hours > 0 && ['light', 'regular', 'heavy'].includes(terms.call) && typeof terms.nonCompete === 'number', `an offer has terms: hours, on-call, non-compete (${JSON.stringify(terms)})`);
   if (offered) {
     const before = jobs.offers(jm)[0]?.salary;
-    jobs.negotiate(offered.id);
-    check(!jobs.negotiate(offered.id).ok, 'an offer is negotiated once');
+    jobs.negotiate(offered.id, 'salary');
+    check(!jobs.negotiate(offered.id, 'hours').ok, 'an offer is negotiated once');
     const still = jobs.offers(jm)[0];
     if (still) {
       check(still.salary >= before, 'negotiating never lowers an offer');
       const r = jobs.acceptOffer(offered.id);
       check(r.ok && jm.job?.hospitalId === offered.id && q.city === offered.city && q.career.salary === still.salary, `accepting starts the post where it is (${r.text})`);
     }
+  }
+  // A temporary post at a rural or public facility lasts a year (a family physician, whose department they all have).
+  jm.completed.push({ specialtyId: 'family', kind: 'residency', from: 2004, to: 2007 });
+  jm.job = null; q.career.employerId = null;
+  const locum = jobs.postings('country', q, jm).find((x) => x.locum && !x.block);
+  check(!!locum, 'temporary (locum) posts are offered by rural and public services');
+  if (locum && seekOffer(locum.id)) {
+    jobs.acceptOffer(locum.id);
+    check(jm.job?.contract?.locum && /Locum/.test(q.career.title), `a locum post is taken (${q.career.title})`);
+    year(); year();
+    check(!jm.job || jm.job.hospitalId !== locum.id, 'and it ends with its year');
   }
 }
 section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');

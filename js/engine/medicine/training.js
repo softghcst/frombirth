@@ -144,7 +144,7 @@ function schoolYear(p, m, y) {
       : y === 3 ? ROTATIONS.slice(0, 6) : [ROTATIONS[6], ROTATIONS[7], ROTATIONS.find((r) => r.id === m.school.elective) ?? ROTATIONS[8 + (m.school.startYear % 2)]];
     const done = list.map((r) => rotate(p, m, r));
     const best = done.filter((d) => d.grade === 'Honors').map((d) => d.rot.name);
-    log(`Clinical rotations this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
+    log(`${year() < 1950 ? 'Clinical clerkships' : 'Clinical rotations'} this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
     store.state.pendingEvents.push({ id: 'med_rotation', cast: { words: { rotation: done[0].rot.name, shows: done[0].rot.shows } } });
   }
   const exams = dpm ? [{ id: 'apmle1', name: 'the first podiatric board exam', year: 2 }, { id: 'apmle2', name: 'the second podiatric board exam', year: 4 }] : j.exams;
@@ -379,10 +379,11 @@ export function retitle(p = player(), m = med()) {
       : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}`
         // Outside the United States the game does not use US titles: a plain "specialty trainee" with the year.
         : p.countryId !== 'us' ? `Specialty trainee, ${s.name} (year ${t.pgy})` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
-  } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
+  } else if (m.job && m.job.rank !== 'ceo' && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
     c.title = { attending: year() < 1950 ? `Staff ${doc}` : `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
+      experienced: `Experienced attending ${doc}`, vice_chair: `Vice chair for education, ${s?.name ?? 'Medicine'}`,
       chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
   }
 }

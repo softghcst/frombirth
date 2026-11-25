@@ -32,6 +32,7 @@ const ODDS = { best: [0.8, 0.17], ok: [0.55, 0.35], poor: [0.2, 0.45], unsafe: [
 export function roleNow(m = med(), p = player()) {
   if (!m) return null;
   if (m.training) return m.training.kind === 'fellowship' ? 'fellow' : 'resident';
+  if (m.job?.rank === 'ceo' && !m.clinicIds?.length) return null; // a chief executive runs the hospital and no longer sees patients
   if (m.job || m.clinicIds?.length || (m.legacy && p.career.careerId)) return 'physician';
   if (p.education.enrolled && ['medical', 'podiatric'].includes(p.education.stage) && (m.school?.year ?? 0) >= 3) return 'student';
   return null;
@@ -157,7 +158,11 @@ export function caseView(id) {
   return {
     id: c.id, status: c.status, role: c.role, label: fx.label, tier: fx.tier, supervised: supervised(c.role),
     patient: patient ? { name: `${patient.firstName} ${patient.lastName}`, first: patient.firstName, age: patient.age, gender: patient.gender } : null,
-    guardian: !!fx.guardian, household: !!fx.household, followUp: !!c.followOf,
+    guardian: !!fx.guardian, household: !!fx.household, followUp: !!c.followOf, patientId: c.patientId, specialty: SPECIALTY_BY_ID[c.specialtyId]?.name ?? 'Medicine',
+    // Where the encounter stands, in the words a chart would use.
+    stage: c.status === 'closed' ? (c.followUpDue && !c.followUpArranged ? 'Follow-up to arrange' : 'Closed') : c.status === 'or' ? 'Operating room' : c.status === 'deciding' ? 'Treatment under way'
+      : c.plan ? 'Treatment' : c.dx ? 'Considering treatment options' : c.tests.length ? 'Diagnostic evaluation' : 'Assessment',
+    followUpNeeded: c.status === 'closed' && !!c.followUpDue && !c.followUpArranged, followUpBooked: !!c.followUpArranged,
     family: (W().patients[c.patientId]?.household ?? []).map((x) => ({ name: store.state.npcs[x.id] ? `${store.state.npcs[x.id].firstName} ${store.state.npcs[x.id].lastName}` : 'A relative', as: x.as })),
     // One emergency, several teams: who else is working on the same patient (data/medicineCases.js `episode`).
     teams: c.episodeKey ? (W().episodes[c.episodeKey]?.teams ?? []).map((t) => { const n = store.state.npcs[t.physicianId]; return `${SPECIALTY_BY_ID[t.specialtyId]?.name ?? 'Another team'}${n ? ` (${n.firstName} ${n.lastName})` : ''}`; })
@@ -435,7 +440,11 @@ function resolve(c, plan, decision, how = 'played') {
   const rv = (m.yearReview?.year === c.year ? m.yearReview : (m.yearReview = { year: c.year, n: 0, quality: 0 }));
   rv.n += 1; rv.quality += points;
   // A patient asked to come back does, in a later year.
-  if (fx.followUp && CASE_BY_ID[fx.followUp]) (m.followUps ??= []).push({ fixtureId: fx.followUp, patientId: c.patientId, caseId: c.id, year: c.year + 1 });
+  // A patient who needs to come back is asked to by the physician: arranging the follow-up is a step of its own.
+  if (fx.followUp && CASE_BY_ID[fx.followUp]) {
+    c.followUpDue = fx.followUp;
+    if (how !== 'played') arrange(c, m); // in the run of a busy year, it is booked as part of the plan
+  }
   // Someone who was well looked after may remember it (engine/medicine/drama.js reads this years later).
   if (res === 'good' && points >= 75) (m.grateful ??= []).push({ patientId: c.patientId, year: year(), label: fx.label });
   if (how === 'played') log(`A case closed: ${fx.label.toLowerCase()}. ${res === 'good' ? 'The patient did well.' : res === 'fair' ? 'The patient recovered, not completely.' : 'It went badly for the patient.'}`, 'system', res === 'poor' ? 'bad' : 'neutral');
@@ -464,6 +473,13 @@ export function closeYear(m = med()) {
     c.plan = plan.id;
     resolve(c, plan, fx.decision ? { quality: rng.next() < sharp ? 'best' : 'ok' } : null, 'busy year');
   }
+  // Follow-ups the physician meant to book in a busy year: most are, some slip (a careful manager rarely lets them).
+  for (const id of m.caseIds) {
+    const c = W().cases[id];
+    if (c?.status === 'closed' && c.followUpDue && !c.followUpArranged && c.year < year() && !c.followUpLapsed) {
+      if (rng.next() < 0.5 + m.skills.management / 200) arrange(c, m); else c.followUpLapsed = true;
+    }
+  }
   // Keep the record list bounded: case details older than thirty years are summarized away.
   const cutoff = year() - KEEP_YEARS;
   m.caseIds = m.caseIds.filter((id) => { const c = W().cases[id]; if (c && c.year < cutoff) { delete W().cases[id]; return false; } return !!c; });
@@ -491,6 +507,22 @@ export function prunePatients(m = med()) {
   }
   for (const [k, ep] of Object.entries(W().episodes)) if (ep.year < year() - KEEP_YEARS) delete W().episodes[k];
   if (m?.grateful) m.grateful = m.grateful.filter((g) => !g.thanked && g.year >= year() - KEEP_YEARS);
+}
+
+function arrange(c, m) {
+  if (!c.followUpDue || c.followUpArranged) return false;
+  c.followUpArranged = true;
+  (m.followUps ??= []).push({ fixtureId: c.followUpDue, patientId: c.patientId, caseId: c.id, year: c.year + 1 });
+  return true;
+}
+/** Arranges a closed case's follow-up: the same patient comes back next year. */
+export function arrangeFollowUp(id) {
+  const c = W().cases[id];
+  if (!c || c.status !== 'closed') return result(false, 'Finish the encounter first.', 'neutral');
+  if (!c.followUpDue) return result(false, 'This patient does not need to come back.', 'neutral');
+  if (!arrange(c, M())) return result(false, 'The follow-up is already booked.', 'neutral');
+  grow('management', 0.5);
+  return result(true, 'Follow-up booked: they will come back next year.');
 }
 
 /** Counts for the career page (no patient names). */

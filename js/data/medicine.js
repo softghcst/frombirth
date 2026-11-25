@@ -223,6 +223,9 @@ export const RANKS = {
   chief_resident: { title: 'Chief resident', level: 0 },
   fellow: { title: 'Fellow', level: 0 },
   attending: { title: 'Attending physician', level: 1 },
+  experienced: { title: 'Experienced attending', level: 1 },
+  vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
+  ceo: { title: 'Hospital chief executive', level: 3, leader: true },
   senior: { title: 'Senior attending', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
@@ -258,6 +261,7 @@ export const ERA = {
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
+  womenWidelyAdmitted: 1920, // by about here most medical schools take women, if often in small numbers
 };
 
 /**
