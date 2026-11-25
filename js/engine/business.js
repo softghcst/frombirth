@@ -460,7 +460,9 @@ export function valuation(b) {
 }
 
 /** People who might buy in as a partner. */
-export const partnerOptions = (b) => livingNpcs().filter((n) => ['friend', 'colleague', 'sibling', 'spouse'].includes(n.role) && n.age >= 21 && n.age < 70 && !b.partners.some((x) => x.id === n.id) && !n.flags.abroad);
+export const partnerOptions = (b) => livingNpcs().filter((n) => ['friend', 'colleague', 'sibling', 'spouse', 'coworker'].includes(n.role) && n.age >= 21 && n.age < 70 && !b.partners.some((x) => x.id === n.id) && !n.flags.abroad
+  // A physician-owned practice takes physicians as partners (data/medicine.js JURISDICTIONS ownership): a colleague from training, an associate.
+  && (!b.medical || ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')));
 
 /** Sells a quarter of the business to someone the player knows, for money put into it. */
 export function takePartner(b, npcId) {

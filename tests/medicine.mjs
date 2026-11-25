@@ -181,6 +181,7 @@ if (mine) {
   biz.hire(b, 0); biz.hire(b, 0);
   const titles = b.staff.map((x) => store.state.npcs[x.id].occupation);
   check(titles[0] === 'staff nurse' && titles[1] === 'practice manager', `a practice is staffed like one (${titles.join(', ')})`);
+  check(biz.partnerOptions(b).every((n) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')), 'a practice takes physicians as partners');
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
 check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
