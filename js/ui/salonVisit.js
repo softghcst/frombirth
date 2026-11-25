@@ -45,6 +45,20 @@ const ROOM = `<svg class="sv-room" viewBox="0 0 400 300" preserveAspectRatio="xM
 </svg>`;
 
 /** The visit, over the whole screen. `api` is the game's (changed() after paying). */
+/**
+ * Vanity bulbs set into the mirror's frame, as on a dressing-room mirror: round its arched top and down both sides,
+ * none along the bottom. Positions are in percent of the frame: the arch is an ellipse about (50%, 48%).
+ */
+const BULBS = (() => {
+  const at = [];
+  for (let i = 0; i <= 8; i++) {
+    const t = Math.PI * (1 - i / 8);
+    at.push([50 + 46.5 * Math.cos(t), 48 - 45 * Math.sin(t)]);
+  }
+  for (const y of [63, 78]) at.push([3.5, y], [96.5, y]);
+  return `<div class="sv-bulbs" aria-hidden="true">${at.map(([x, y]) => `<i style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%"></i>`).join('')}</div>`;
+})();
+
 export function openSalonVisit(api, { intro = true } = {}) {
   const p = player();
   const c = country();
@@ -90,7 +104,7 @@ export function openSalonVisit(api, { intro = true } = {}) {
         <div class="sv-stage">
           ${ROOM}
           <div class="sv-sign">${esc(name)}</div>
-          <div class="sv-mirror"><div class="sv-glass" data-mirror>${mirror()}</div>${sparkle ? '<div class="sv-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' : ''}</div>
+          <div class="sv-mirror">${BULBS}<div class="sv-glass" data-mirror>${mirror()}</div>${sparkle ? '<div class="sv-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' : ''}</div>
           <button type="button" class="sv-leave" data-leave aria-label="Leave the salon">×</button>
         </div>
         <div class="sv-talk">
