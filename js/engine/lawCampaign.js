@@ -17,6 +17,8 @@ import { lawOf, nowM, canon, keepPerson, gain } from './lawSchool.js';
 import { opportunities, legalElection, standing, seek } from './lawPractice.js';
 import { discipline } from './lawCases.js';
 import { campaignRules } from './realLaw.js';
+import * as world from './polity.js';
+import { report } from './news.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const ROUNDS = 3;
@@ -262,6 +264,7 @@ export function pollingDay(p = player()) {
   }
   if (vote.won && c.judicial && c.donors.length) (L.donors ??= []).push(...c.donors.map((d) => ({ ...d, year: store.state.year })));
   (L.campaigns ??= []).push({ year: store.state.year, title: c.title, won: vote.won, share: vote.share, rival: vote.rival, broke: broke.filter(Boolean) });
+  report(world.polity(p.countryId), vote.won ? 'legal_won' : 'legal_lost', { office: c.title, share: vote.share, rival: vote.rival });
   canon(`law:campaign:${c.id}:${nowM()}`, `${vote.won ? 'Won' : 'Lost'} the race for ${c.title}`, `${vote.share}% of the vote against ${vote.rival}.`, { privacy: 'public', sig: vote.won ? 3 : 2, milestone: vote.won });
   L.campaign = null;
   return result(vote.won, `${r.text}${after}`, vote.won ? 'good' : 'bad', { vote });

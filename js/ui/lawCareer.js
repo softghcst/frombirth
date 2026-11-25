@@ -452,5 +452,6 @@ export function openLegalLegacy() {
   return openModal(`<div class="eyebrow">Professional legacy</div><h2>Legal careers in the family</h2>
     ${list.length ? list.map((x) => card(`${x.name}${years(x)}${x.you ? ' · you' : ''}`, x.milestones.map((m) => kv(String(m.year), m.title)).join(''))).join('')
       : '<p class="empty">Nobody in the family has practiced law yet.</p>'}
+    ${(() => { const h = lp.legalHeadlines().slice(0, 8); return h.length ? card('In the papers', h.map((x) => kv(String(x.year), `${x.outlet}: ${x.text}`)).join('')) : ''; })()}
     <p class="muted">Clients' confidential matters are not kept here: only the career, and cases that were public.</p>`, { dismissable: true });
 }

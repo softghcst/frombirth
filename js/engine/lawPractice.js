@@ -605,6 +605,12 @@ export function storyBeats(p = player()) {
   const prof = store.state.npcs[L.people?.lawProfessor];
   if (S && !S.done && prof?.alive && prof.meters.relationship >= 62) lifeScene('law_professor', { name: prof.lastName });
   if (S?.done && S.endM != null && nowM() - S.endM <= 6) lifeScene('law_graduation');
+  // A child of the player's, old enough to read the papers, finds a story about them (engine/news.js).
+  if (L.seen.law_child_reads == null) {
+    const kid = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'child' && n.age >= 12);
+    const story = (world.polity(p.countryId).news ?? []).filter((x) => x.you && x.year <= store.state.year - 3).at(-1);
+    if (kid && story) { L.seen.law_child_reads = nowM(); L.childReads = kid.id; queue('law_child_reads', { kid: kid.firstName, headline: story.text }); }
+  }
   const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done);
   for (const c of open) {
     const st = cases.stageOf(c);
@@ -676,6 +682,13 @@ export function lawChoice(value) {
     case 'vacancy': {
       if (choice === 'apply') { const r = seek('judge', p); return r.text; }
       return 'You let the vacancy pass. There will be others.';
+    }
+    case 'childReads': {
+      const kid = store.state.npcs[L.childReads];
+      if (!kid) return '';
+      if (choice === 'tell') { kid.meters.relationship = clamp(kid.meters.relationship + 8); kid.flags.inspiredByLaw = true; return `${kid.firstName} listens to all of it. Later you find them reading about law schools.`; }
+      if (choice === 'lesson') { kid.meters.relationship = clamp(kid.meters.relationship + 6); kid.flags.inspiredByLaw = true; return `${kid.firstName} is quiet for a while, then asks a question you did not expect: a good one.`; }
+      return `${kid.firstName} looks a little disappointed, and puts the paper away.`;
     }
     case 'burnout': {
       const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done && !c.awaiting).sort((a, b) => b.level - a.level);
@@ -1089,6 +1102,10 @@ export function legalLegacy(subjectId, viewerId = archiveIdOf(player())) {
  * Every legal career in the family, as the Family Archive keeps it: one entry per person, with the milestones the
  * viewer may see. A client's confidential matter never appears (engine/chronicle.js visible).
  */
+export const LEGAL_NEWS = ['courtWin', 'courtLoss', 'conviction_overturned', 'supreme_win', 'supreme_loss', 'legal_won', 'legal_lost', 'disbarred'];
+/** What the papers said about the player's legal career, newest first (engine/news.js). */
+export const legalHeadlines = (p = player()) => (world.polity(p.countryId).news ?? []).filter((x) => x.you && LEGAL_NEWS.includes(x.kind)).slice().reverse();
+
 export function familyLegalLegacy(viewerId = archiveIdOf(player())) {
   const p = player();
   const by = new Map();

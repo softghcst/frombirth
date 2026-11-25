@@ -17,6 +17,8 @@ import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CON
 import { gain as fameGain } from './fame.js';
 import * as realLaw from './realLaw.js';
 import { policeWitness } from './lawPolice.js';
+import * as world from './polity.js';
+import { report } from './news.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -803,6 +805,7 @@ export function discipline(level) {
   const L = lawOf(player());
   (L.discipline ??= []).push({ level, m: nowM(), year: store.state.year });
   if (level === 'suspended') { L.suspendedUntil = nowM() + 12; canon(`law:suspended:${player().id}:${nowM()}`, 'Suspended from practice', 'Suspended for a year by the bar for professional misconduct.', { privacy: 'public', sig: 2 }); }
+  if (level === 'disbarred') report(world.polity(player().countryId), 'disbarred', {});
   if (level === 'disbarred') { L.bar.disbarred = nowM(); (player().flags.licenses ?? []).splice((player().flags.licenses ?? []).indexOf('law'), 1); canon(`law:disbarred:${player().id}`, 'Disbarred', 'Struck off for serious professional misconduct.', { privacy: 'public', sig: 3 }); }
   const text = { reprimand: 'The bar issued a formal reprimand.', suspended: 'The bar suspended you from practice for a year.', disbarred: 'You were disbarred.' }[level];
   log(text, 'system', 'bad');
@@ -877,6 +880,15 @@ export function close(c, out, lines = []) {
   if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'First case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
   // A big public case puts a lawyer's name in the papers (engine/fame.js): fame, which is not the same as a good name.
   if (open && (c.level >= 4 || c.prominent)) { fameGain({ audience: 'public', amount: c.prominent ? 5 : 3, countryId: c.countryId, lasting: 0.2, why: `${c.title}` }, p); L.rep.recognition = clamp(L.rep.recognition + 2); }
+  // In the news: what happened in open court, never a confidential file (engine/news.js).
+  if (!c.clinic && (open || (c.forum === 'appeal' && out.kind !== 'settlement'))) { // an appeal is argued in public, on the record
+    const T = template(c);
+    const w = world.polity(c.countryId);
+    const words = { case: c.title };
+    if (T.supreme) report(w, out.favorable > 0 ? 'supreme_win' : 'supreme_loss', words);
+    else if (c.templateId === 'criminal_appeal' && out.favorable > 0) report(w, 'conviction_overturned', words);
+    else if (c.level >= 3 && c.jury) report(w, out.favorable > 0 ? 'courtWin' : 'courtLoss', words);
+  }
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.
