@@ -69,16 +69,20 @@ function backdrop(venue) {
     ${v.left}${v.right}</svg>`;
 }
 
-/** The arch the couple stand under, dressed in the theme's color with the flowers chosen. */
-function arch(hex, flowers) {
-  const n = flowers === 'peonies' ? 14 : flowers === 'roses' ? 10 : 7;
+/**
+ * The garland over the couple: a curve of flowers in the theme's color (and white), fuller for grander flowers. Wild
+ * flowers are little and few, roses more, peonies and orchids big and many.
+ */
+function garland(hex, flowers) {
+  const n = flowers === 'peonies' ? 15 : flowers === 'roses' ? 11 : 8;
+  const r = flowers === 'peonies' ? 11 : flowers === 'roses' ? 9 : 7;
   const blooms = Array.from({ length: n }, (_, i) => {
-    const t = Math.PI * (i / (n - 1));
-    const x = 100 - 84 * Math.cos(t); const y = 104 - 90 * Math.sin(t);
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${flowers === 'peonies' ? 9 : 7}" fill="${i % 3 === 1 ? '#FFFFFF' : hex}" stroke="#23140f" stroke-width="2"/>`;
+    const t = Math.PI * (0.08 + 0.84 * (i / (n - 1)));
+    const x = 150 - 136 * Math.cos(t); const y = 150 - 128 * Math.sin(t);
+    const fill = i % 3 === 1 ? '#FFFFFF' : hex;
+    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="${r}" fill="${fill}" stroke="#23140f" stroke-width="2.5"/><circle r="${(r / 3).toFixed(1)}" fill="#FFD36E" stroke="#23140f" stroke-width="1.5"/></g>`;
   }).join('');
-  return `<svg class="wp-arch" viewBox="0 0 200 200" aria-hidden="true"><path d="M16 200V104a84 90 0 0 1 168 0v96" fill="none" stroke="#23140f" stroke-width="9"/>
-    <path d="M16 200V104a84 90 0 0 1 168 0v96" fill="none" stroke="#FFFFFF" stroke-width="4"/>${blooms}</svg>`;
+  return `<svg class="wp-garland" viewBox="0 0 300 170" aria-hidden="true"><path d="M24 128 A136 128 0 0 1 276 128" fill="none" stroke="#6DBB7B" stroke-width="6" stroke-linecap="round"/>${blooms}</svg>`;
 }
 
 /**
@@ -109,20 +113,25 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     document.body.appendChild(root);
     const close = () => { root.remove(); resolve(married ? { married: true } : {}); };
 
-    const youFace = (mood = 90) => avatarSvg({ appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, mood, label: p.firstName });
-    const themFace = (mood = 90) => avatarSvg({ appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, mood, label: npc.firstName });
+    const youFace = (mood = 90, o = {}) => avatarSvg({ appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, mood, label: p.firstName, ...o });
+    const themFace = (mood = 90, o = {}) => avatarSvg({ appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, mood, label: npc.firstName, ...o });
     const chosen = (k) => plan[k] ?? love.WEDDING_PLAN[k][0].id;
     const themeHex = () => love.WEDDING_PLAN.theme.find((t) => t.id === chosen('theme')).hex;
     const filled = () => Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)]));
     const totals = () => love.planTotals(filled(), npc, c);
 
-    /** The stage: the venue, the arch, the couple under it, and what has been chosen so far. */
+    /**
+     * The stage: the venue behind, and in front the couple up close, in two round frames side by side (as close as
+     * the salon's mirror), under a garland of the flowers and colors chosen. At the kiss the frames meet, with a heart.
+     */
+    const closeUp = { viewBox: '86 120 340 340' };
     const stage = ({ kiss = false } = {}) => `
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
         ${backdrop(chosen('venue'))}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
-        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${arch(themeHex(), chosen('flowers'))}
-          <div class="wp-couple"><div class="wp-person">${youFace()}</div><div class="wp-person">${themFace()}</div></div></div>
+        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${garland(themeHex(), chosen('flowers'))}
+          <div class="wp-couple"><div class="wp-person">${youFace(90, closeUp)}</div><div class="wp-person">${themFace(90, closeUp)}</div>
+          ${kiss ? '<span class="wp-kiss-heart" aria-hidden="true">♥</span>' : ''}</div></div>
         <button type="button" class="sv-leave" data-leave aria-label="Stop planning">×</button>
       </div>`;
 
