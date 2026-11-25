@@ -335,7 +335,7 @@ const VIEWS = {
       ['Fans', fans.toLocaleString('en-US')], ['Songs ready', String(f.songs.length)], ['Label', deal ? `${deal.name} (${Math.round(a.deal.royalty * 100)}%, ${a.deal.albumsOwed} albums owed${a.deal.unrecouped > 0 ? `, ${money(a.deal.unrecouped, COUNTRIES[a.countryId])} of the advance still to earn back` : ''})` : 'Independent']])}</div>
       ${offerL ? `<div class="card"><h3>A record deal</h3><p class="muted" style="margin:0">${esc(offerL.name)} (${offerL.tier === 'major' ? 'a major label' : 'an independent label'}) offers ${money(a.offer.advance, COUNTRIES[a.countryId])} up front, ${Math.round(a.offer.royalty * 100)}% royalties, ${a.offer.albums} albums. The advance is paid back from royalties first.</p>
         <div class="btn-stack">${btn('lawyer', 'Have a lawyer read it', { disabled: a.offer.lawyer })}${btn('negdeal', 'Ask for better terms', { disabled: a.offer.asked })}${btn('signdeal', 'Sign', { cls: 'primary' })}${btn('nodeal2', 'Turn it down')}</div></div>` : ''}
-      ${a.status === 'active' ? `<div class="btn-stack">${btn('write', 'Write a song', { sub: `${2 - f.musicActs.writes} left this year` })}${btn('gig', 'Play a gig', { sub: `${4 - f.musicActs.gigs} left this year` })}
+      ${a.status === 'active' ? `<div class="btn-stack">${btn('write', 'Write a song', { sub: `${music.songsLeft(p)} left this year` })}${btn('gig', 'Play a gig', { sub: `${4 - f.musicActs.gigs} left this year` })}
         ${Object.entries(RELEASE_TYPES).map(([k, t]) => btn('record', `Record ${aRelease(k)}`, { arg: k, disabled: f.songs.length < t.songs, sub: `${t.songs} ${t.songs === 1 ? 'song' : 'songs'}${a.deal ? ', label pays' : `, ${money(Math.round(localWage(t.cost, c)))}`}` })).join('')}
         ${scales.map(([k, v]) => btn('tour', `Tour: ${v.name.toLowerCase()}`, { arg: k, disabled: fans < v.fans, sub: fans < v.fans ? `Needs about ${v.fans.toLocaleString('en-US')} fans` : `${v.capacity.toLocaleString('en-US')} a night` })).join('')}
         ${a.kind === 'band' ? btn('advert', 'Advertise for a member', { sub: gaps.length ? `The line-up is missing: ${gaps.map((g) => posLow(g)).join(', ')}` : 'Anyone you would like to add' }) : ''}</div>` : ''}
@@ -483,7 +483,7 @@ const VIEWS = {
     const f = music.musicOf(p);
     const credits = f.songCredits ?? [];
     return `<div class="section-label">Writing for others, and session work</div><div class="btn-stack">
-      ${music.myAct(p) ? '' : btn('write', 'Write a song', { sub: `${2 - f.musicActs.writes} left this year · ${f.songs.length} ready` })}
+      ${music.myAct(p) ? '' : btn('write', 'Write a song', { sub: `${music.songsLeft(p)} left this year · ${f.songs.length} ready` })}
       ${btn('pitch', 'Offer a song to another act', { disabled: !f.songs.length || !!f.musicActs.pitched, sub: f.songs.length ? 'Your best unused song. A fee now, a writer\'s share later.' : 'Write one first.' })}
       ${btn('session', 'Play a session', { sub: `On someone else's record, for a fee · ${3 - (f.musicActs.sessions ?? 0)} left this year` })}</div>
       ${credits.length ? `<div class="section-label">Songs you wrote for others</div>${credits.map((c) => { const r = music.release(c.releaseId); return r ? row('release', r.id, r.title, `${music.act(r.actId)?.name ?? ''}${c.kind === 'album' ? ` · ${r.type === 'ep' ? 'EP' : 'album'}, with your song ${c.song}` : ''} · ${r.released ?? 'coming out'}${r.chart ? ` · #${r.chart}` : ''}`) : ''; }).join('')}` : ''}

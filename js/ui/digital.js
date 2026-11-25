@@ -121,9 +121,10 @@ function formModal({ title, body, submit = 'Save', fields }) {
       if (f.type === 'check') return `<label class="dl-check"><input type="checkbox" name="${f.name}" ${f.value ? 'checked' : ''}> ${esc(f.label)}</label>`;
       return `<div class="field"><label for="${id}">${esc(f.label)}</label><input id="${id}" name="${f.name}" maxlength="${f.max ?? 40}" autocomplete="off" value="${esc(f.value ?? '')}"></div>`;
     }).join('');
-    const m = openModal(`<h2>${esc(title)}</h2>${body ? `<p class="body">${esc(body)}</p>` : ''}<form novalidate>${html}
+    // A form is a page of its own: room for every field, the title in the bar along the top.
+    const m = openModal(`${body ? `<p class="body">${esc(body)}</p>` : ''}<form novalidate>${html}
       <div class="btn-row"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn primary">${esc(submit)}</button></div></form>`,
-    { dismissable: true, onDismiss: () => resolve(null) });
+    { dismissable: true, full: true, title, onDismiss: () => resolve(null) });
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
     m.el.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();

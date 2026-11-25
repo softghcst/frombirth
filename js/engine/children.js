@@ -63,19 +63,48 @@ export const canTryForBaby = (npc) =>
   (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy
   && !player().legal.incarceration;
 
+/** The chance a try works, by the mother's age and fertility: good when young, falling after 35, low past 42. */
+function conceiveChance(motherAge, fertility) {
+  const byAge = motherAge <= 34 ? 0.55 : motherAge <= 38 ? 0.4 : motherAge <= 42 ? 0.2 : 0.08;
+  return clamp(byAge * (0.6 + (fertility ?? 50) / 125), 0.04, 0.85);
+}
+
+/** Trying for a baby: as often as the couple likes, each try a fresh chance. */
 export function tryForBaby(npcId) {
   const p = player();
   const npc = store.state.npcs[npcId];
   if (!canTryForBaby(npc)) return result(false, 'That is not possible right now.', 'neutral');
-  if (!spendAction(npc, 'baby')) return result(false, 'You have been trying all year.', 'neutral');
   const motherAge = p.gender === 'female' ? p.age : npc.age;
-  const chance = clamp(p.hidden.fertility / 100 * (motherAge > 38 ? 0.45 : 0.85), 0.03, 0.9);
-  if (!rng.chance(chance)) {
-    const text = `You and ${npc.firstName} tried for a baby this year. It has not happened yet.`;
+  if (!rng.chance(conceiveChance(motherAge, p.hidden.fertility))) {
+    const text = `You and ${npc.firstName} tried for a baby. Not this time.`;
     log(text);
     return result(false, text, 'neutral');
   }
   const text = `You and ${npc.firstName} tried for a baby. ${conceive(npc, true)}`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** A round of IVF: from 1978, at a clinic's price; a much better chance, and twins (or more) about twice as often. */
+export const IVF_COST = 15000;
+export const ivfOpen = (npc) => canTryForBaby(npc) && store.state.year >= 1978;
+export const ivfPrice = () => localMoney(IVF_COST, country());
+export function tryIvf(npcId) {
+  const p = player();
+  const npc = store.state.npcs[npcId];
+  if (!ivfOpen(npc)) return result(false, store.state.year < 1978 ? 'IVF does not exist yet.' : 'That is not possible right now.', 'neutral');
+  const cost = ivfPrice();
+  if (p.finance.cash < cost) return result(false, `A round of IVF costs ${fmtMoney(cost, country())}.`, 'neutral');
+  p.finance.cash -= cost;
+  const motherAge = p.gender === 'female' ? p.age : npc.age;
+  const chance = clamp(conceiveChance(motherAge, p.hidden.fertility) * 1.6 + 0.1, 0.15, 0.9);
+  if (!rng.chance(chance)) {
+    const text = `A round of IVF with ${npc.firstName}: weeks of appointments and hope, and then a negative test. It cost ${fmtMoney(cost, country())}.`;
+    log(text, 'system', 'bad');
+    return result(false, text, 'neutral');
+  }
+  const text = `A round of IVF with ${npc.firstName}. ${conceive(npc, true)} It cost ${fmtMoney(cost, country())}.`;
+  p.flags.pregnancy.ivf = true;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -123,12 +152,13 @@ export const MULTIPLES = { 2: 'twins', 3: 'triplets', 4: 'quadruplets' };
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
+  const ivf = !!p.flags.pregnancy.ivf;
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
-  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000).
-  if (rng.chance(0.025)) {
+  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
+  if (rng.chance(ivf ? 0.05 : 0.025)) {
     babies.push(newborn(other));
-    if (rng.chance(0.06)) { babies.push(newborn(other)); if (rng.chance(0.1)) babies.push(newborn(other)); }
+    if (rng.chance(ivf ? 0.12 : 0.06)) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
   }
   // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
   // share the day and the doctor, a few minutes apart, and are each a little smaller.

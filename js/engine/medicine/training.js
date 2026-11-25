@@ -11,6 +11,7 @@
 // Nothing is guaranteed: a residency or fellowship place is applied for and may not be offered.
 // A resident practices under supervision only; a student has no privileges of their own.
 import { rng } from '../../rng.js';
+import { MAJOR_BY_ID } from '../../data/majors.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
@@ -33,7 +34,13 @@ export const isPodiatry = (m = med()) => m?.route === 'dpm';
 /** Who can do premedical activities: someone at university, or a graduate who has not yet started medical school. */
 export function premedOpen(p = player()) {
   if (p.age < 17 || inMedSchool(p) || holds('medical', p) || holds('podiatric', p)) return false;
-  return (p.education.enrolled && p.education.stage === 'university') || holds('university', p);
+  // Only for someone on the way to medicine: studying (or holding a degree in) a subject that leads there, and not
+  // settled in another career. Anyone who has already started on it keeps it.
+  const towardMedicine = (id) => !!MAJOR_BY_ID[id]?.tracks?.includes('medical');
+  const studying = p.education.enrolled && p.education.stage === 'university' && towardMedicine(p.education.majorId);
+  const started = !!p.medicine?.premed && Object.values(p.medicine.premed).some((v) => typeof v === 'number' && v > 0);
+  const graduate = (started || p.education.degrees.some((d) => d.type === 'university' && towardMedicine(d.majorId))) && !p.career.careerId;
+  return studying || graduate;
 }
 
 /** Premedical activities, each once a year. */
