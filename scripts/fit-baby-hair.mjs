@@ -15,10 +15,11 @@ import { createRequire } from 'node:module';
 
 /** Each kind of drawn child's hair: the head it is drawn on, and the file and name it is written to. */
 const KINDS = [
-  { prefix: 'hair_baby_', file: 'heads/toddler.svg', head: 'head_00_toddler', out: 'babyHairFit.js', name: 'BABY_HAIR_FIT', who: 'baby', slack: 0, min: 0.9 },
-  // A kid's hair has volume: it may stand up to SLACK past the outline at the sides before that counts against it, and it
-  // is drawn on the kid head itself, so it is only ever made larger (to close a gap), never smaller (min 1).
-  { prefix: 'hair_kid_', file: 'heads/kid.svg', head: 'head_00_kid', out: 'kidHairFit.js', name: 'KID_HAIR_FIT', who: 'kid', slack: 14, min: 1 },
+  { prefix: 'hair_baby_', file: 'heads/toddler.svg', head: 'head_00_toddler', out: 'babyHairFit.js', name: 'BABY_HAIR_FIT', who: 'baby', slack: 0, min: 0.9, max: 1.15, tol: 0 },
+  // A kid's hair is drawn on the kid head itself, with volume, and is worn exactly as drawn (min = max = 1): stretching it
+  // to an outline squashed ponytails and pulled hairlines down onto the brows. The edge is still measured and reported,
+  // so a drawing that leaves the skull showing is caught (look at it, and have it redrawn).
+  { prefix: 'hair_kid_', file: 'heads/kid.svg', head: 'head_00_kid', out: 'kidHairFit.js', name: 'KID_HAIR_FIT', who: 'kid', slack: 14, min: 1, max: 1, tol: 4 },
 ];
 const MARGIN = 2.5; // how far outside the head's outline the hair's edge sits (512 units): covers the outline's ink
 
@@ -36,7 +37,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.goto(`http://localhost:${server.address().port}/index.html`);
 for (const kind of KINDS) {
-const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN, SLACK, MIN }) => {
+const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN, SLACK, MIN, MAX, TOL }) => {
   const { PART_BY_ID } = await import('/js/avatarManifest.js');
   const K = 4; const W = 512;
   const spans = async (text) => {
@@ -71,7 +72,7 @@ const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN, SLACK
     const headTops = COLS.map((x) => top(head, x));
     // Hair short of the outline (scalp or outline showing, d > 0) counts far more than hair a little past it: a style with
     // a jagged edge is fitted so the dips between its tufts still cover the head, not so its edge is right on average.
-    const gap = (d) => (d > 0 ? 12 * d * d : Math.max(0, -d - SLACK) ** 2);
+    const gap = (d) => (d > TOL ? 12 * (d - TOL) ** 2 : d > 0 ? 0 : Math.max(0, -d - SLACK) ** 2);
     // Scaled by sx across and sy down about (cx, ay), where the hair ends at the ears.
     const ay = hi;
     const err = (sx, sy) => {
@@ -93,14 +94,14 @@ const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN, SLACK
       return { e: e / Math.max(1, n) };
     };
     let best = { sx: 1, sy: 1, ...err(1, 1) };
-    for (let sx = MIN; sx <= 1.15001; sx += 0.005) for (let sy = MIN; sy <= 1.15001; sy += 0.005) {
+    for (let sx = MIN; sx <= MAX + 1e-6; sx += 0.005) for (let sy = MIN; sy <= MAX + 1e-6; sy += 0.005) {
       const r = err(sx, sy);
       if (r.e < best.e) best = { sx: Math.round(sx * 1000) / 1000, sy: Math.round(sy * 1000) / 1000, ...r };
     }
     out[id] = { sx: best.sx, sy: best.sy, ay: Math.round(ay * 10) / 10, cx, before: Math.round(Math.sqrt(err(1, 1).e) * 10) / 10, after: Math.round(Math.sqrt(best.e) * 10) / 10 };
   }
   return out;
-}, { HEAD: kind.file, HEAD_ID: kind.head, PREFIX: kind.prefix, MARGIN, SLACK: kind.slack, MIN: kind.min });
+}, { HEAD: kind.file, HEAD_ID: kind.head, PREFIX: kind.prefix, MARGIN, SLACK: kind.slack, MIN: kind.min, MAX: kind.max, TOL: kind.tol });
 
 delete result._head;
 for (const [id, r] of Object.entries(result)) console.log(`${id.padEnd(36)} ${r.sx}x wide, ${r.sy}x tall (edge off the outline by ${r.before} -> ${r.after})`);
