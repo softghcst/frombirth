@@ -12,7 +12,8 @@ import { clamp, localCost, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION } from '../data/law.js';
-import { lawOf, nowM, profileFor, canon, admitted, progressSchool, keepPerson, gain, school } from './lawSchool.js';
+import { lawOf, nowM, profileFor, canon, admitted, progressSchool, keepPerson, gain, school, prepareBar } from './lawSchool.js';
+import * as k from './cases.js';
 import * as cases from './lawCases.js';
 import { currentCareer, hire, promote, adjustPerformance, PROMOTION_GATES } from './career.js';
 import { businesses } from './business.js';
@@ -407,6 +408,7 @@ export function tickLaw(o = {}) {
   if (p.education.stage === 'law' && p.education.enrolled) { progressSchool(p); finishLawSchool(); }
   cases.progressCases(p);
   if (trackOf(p)) refreshOpportunities(p);
+  storyBeats(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
@@ -453,6 +455,67 @@ export function migrate(p = player()) {
 // ---------- Story scenes ----------
 
 const queue = (id, words) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast: { words } }); };
+/** A scene about one case, once for that case: the case it is about is remembered for the choice. */
+function caseScene(id, c, words = {}) {
+  if ((c.scenes ??= []).includes(id)) return;
+  c.scenes.push(id);
+  (lawOf().sceneCase ??= {})[id] = c.id;
+  queue(id, { client: c.vars.client ?? '', title: c.title, child: c.vars.child ?? '', charge: (c.vars.charge ?? '').toLowerCase(), ...words });
+}
+/** A scene of a legal life, once ever, or again only after `gap` months. */
+function lifeScene(id, words = {}, gap = 0) {
+  const L = lawOf();
+  if (L.seen[id] != null && (!gap || nowM() - L.seen[id] < gap)) return;
+  L.seen[id] = nowM();
+  queue(id, words);
+}
+
+/**
+ * The moments of a legal life, noticed as they happen: each scene has a real prerequisite in the player's school,
+ * cases or career, plays once (or once per case), and its choice changes that school year, case or career.
+ */
+export function storyBeats(p = player()) {
+  const L = lawOf(p);
+  const S = L.school;
+  if (S && !S.done && S.terms.length === 1 && S.terms[0].gpa == null) lifeScene('law_first_exam', { course: 'Contracts' });
+  const prof = store.state.npcs[L.people?.lawProfessor];
+  if (S && !S.done && prof?.alive && prof.meters.relationship >= 62) lifeScene('law_professor', { name: prof.lastName });
+  if (S?.done && S.endM != null && nowM() - S.endM <= 6) lifeScene('law_graduation');
+  const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done);
+  for (const c of open) {
+    const st = cases.stageOf(c);
+    if (c.clinic) { if (st !== 'intake') caseScene('law_clinic_hard', c); continue; }
+    if (c.awaiting && L.seen.law_first_hearing == null) { L.seen.law_first_hearing = nowM(); caseScene('law_first_hearing', c); }
+    const dl = c.deadlines.find((d) => d.met == null);
+    if (dl && !c.filings.some((f) => f.main) && dl.due - nowM() <= 3 && dl.due >= nowM()) caseScene('law_deadline', c);
+    if (c.kind === 'criminal' && c.role === 'defense') {
+      if (L.seen.law_client_accused == null) { L.seen.law_client_accused = nowM(); caseScene('law_client_accused', c); }
+      const id = c.evidence.find((e) => e.kind === 'witness_statement' && e.favors === 'other' && e.reviewed && e.status !== 'excluded');
+      if (id) caseScene('law_identification', c);
+      if (st === 'pretrial') caseScene('law_plea_offer', c);
+    }
+    if (c.role === 'prosecution') {
+      if (cases.strength(c).share < 0.38) caseScene('law_must_dismiss', c);
+      if (st === 'discovery' && rng.chance(0.3)) caseScene('law_new_witness', c);
+      if (c.level >= 4 && c.awaiting) caseScene('law_high_stakes', c);
+    }
+    if (c.templateId === 'divorce' && L.seen.law_marriage_apart == null) { L.seen.law_marriage_apart = nowM(); caseScene('law_marriage_apart', c); }
+    if (c.templateId === 'custody' && ['negotiation', 'evaluation'].includes(st)) caseScene('law_parenting', c);
+    if (c.kind === 'family' && st === 'negotiation') caseScene('law_settlement_conf', c);
+    if (c.templateId === 'dependency' && c.awaiting) caseScene('law_childs_future', c);
+    if (c.templateId === 'family_petition' && st === 'review') caseScene('law_rfe', c);
+    if (c.templateId === 'removal' && c.awaiting) caseScene('law_hearing_approaches', c);
+    if (c.clientId && c.negotiation.offers.some((o) => !o.accepted) && rng.chance(0.4)) caseScene('law_wont_listen', c);
+  }
+  for (const c of L.caseIds.map(cases.caseById).filter((x) => x?.done && x.kind === 'immigration' && x.outcome?.kind === 'denied' && x.appealable && !x.appeal)) caseScene('law_imm_appeal', c);
+  const t = trackOf(p);
+  if (t === 'lawyer' && p.career.level === 0 && rng.chance(0.25)) { const sup = supervisor(p); lifeScene('law_partner_help', { name: `${sup.firstName} ${sup.lastName}` }, 24); }
+  const major = (L.offers ?? []).find((o) => o.prominent);
+  if (major) lifeScene('law_major_client', { who: major.prominent.charAt(0).toUpperCase() + major.prominent.slice(1) }, 24);
+  if (t === 'lawyer' && p.career.level >= 3 && rng.chance(0.15)) lifeScene('law_firm_choice', {}, 36);
+  if (['lawyer', 'defender', 'prosecutor', 'gov_counsel'].includes(t) && legalYears(p) >= 12 && p.career.level >= 2 && rng.chance(0.2)) lifeScene('law_gov_offer', {}, 48);
+  if (opportunities(p).some((x) => x.id === 'ag' && !x.why) && rng.chance(0.25)) lifeScene('law_ag', {}, 48);
+}
 /** What a choice in one of the legal scenes does (data/events/stories/law.js). */
 export function lawChoice(value) {
   const p = player();
@@ -478,6 +541,154 @@ export function lawChoice(value) {
       if (choice === 'leave') { p.stats.health = clamp(p.stats.health + 4); p.stats.mood = clamp(p.stats.mood + 6); return 'You take two weeks off and do not open your email.'; }
       p.stats.health = clamp(p.stats.health - 3); return 'You push through. The work gets done. You do not sleep much.';
     }
+    default: return caseChoice(scene, choice, p, L);
+  }
+}
+
+/** Choices in the scenes about school, a case or the senior career. Each changes what it is about. */
+function caseChoice(scene, choice, p, L) {
+  const byScene = { clinicHard: 'law_clinic_hard', deadline: 'law_deadline', wontListen: 'law_wont_listen', firstHearing: 'law_first_hearing', accused: 'law_client_accused',
+    ident: 'law_identification', pleaTalk: 'law_plea_offer', newWitness: 'law_new_witness', mustDismiss: 'law_must_dismiss', highStakes: 'law_high_stakes', marriage: 'law_marriage_apart',
+    parenting: 'law_parenting', settleConf: 'law_settlement_conf', childFuture: 'law_childs_future', rfe: 'law_rfe', immHearing: 'law_hearing_approaches', immAppeal: 'law_imm_appeal' };
+  const c = byScene[scene] ? cases.caseById(L.sceneCase?.[byScene[scene]]) : null;
+  const client = c ? store.state.npcs[c.clientId] : null;
+  const rel = (n, d) => { if (n?.meters) n.meters.relationship = clamp(n.meters.relationship + d); };
+  switch (scene) {
+    case 'firstExam': {
+      const t = L.school?.terms.at(-1);
+      if (choice === 'allnight') { if (t) L.acts[`study:${t.n}`] = nowM(); p.stats.health = clamp(p.stats.health - 2); return 'You know the cases cold, and you are very tired.'; }
+      if (choice === 'group') { gain(p, { analysis: 2 }); keepPerson(p, 'studyMate', 'friend', 'Law school classmate', rng.int(22, 30)); return 'Three of you take turns at the whiteboard until it makes sense.'; }
+      p.stats.mood = clamp(p.stats.mood + 3); return 'You wake up rested. It helps more than you expected.';
+    }
+    case 'professor': {
+      const prof = store.state.npcs[L.people?.lawProfessor];
+      if (choice === 'yes') { gain(p, { research: 3, writing: 3 }); rel(prof, 8); L.honors = [...(L.honors ?? []), `Research assistant, ${store.state.year}`]; return 'Footnotes, archives, and a professor who now knows your name.'; }
+      return 'They understand, and say the offer stands next year.';
+    }
+    case 'graduation': {
+      if (choice === 'prep') { const r = prepareBar('self', p); return r.ok ? 'You start that evening.' : r.text; }
+      p.stats.mood = clamp(p.stats.mood + 6);
+      for (const n of Object.values(store.state.npcs).filter((x) => x.alive && p.npcIds.includes(x.id) && x.role === 'parent')) rel(n, 4);
+      return 'Your family takes more photos than anyone needs.';
+    }
+    case 'clinicHard': {
+      if (!c) return '';
+      if (choice === 'beyond') { L.rep.integrity = clamp(L.rep.integrity - 4); rel(store.state.npcs[c.supervisorId], -6); cases.note(c, 'Acted beyond what a student may do.'); return 'It works out, but your supervisor finds out, and is not pleased: you are a student, not yet a lawyer.'; }
+      gain(p, { ethics: 2, counseling: 1 }); rel(client, 3);
+      return choice === 'refer' ? 'They call the help line the same afternoon, and you keep working the case.' : 'Your supervisor makes the call with you listening. You learn how it is done.';
+    }
+    case 'partnerHelp': {
+      const sup = supervisor(p);
+      if (choice === 'stay') { L.rep.preparation = clamp(L.rep.preparation + 3); p.stats.health = clamp(p.stats.health - 2); rel(sup, 6); adjustPerformance(2); return 'The brief goes in at 8:40. They remember who stayed.'; }
+      rel(sup, -3); return 'They find someone else. It is fine. Mostly.';
+    }
+    case 'deadline': {
+      if (!c || c.done) return '';
+      if (choice === 'weekend') { if (!c.filings.some((f) => f.main)) cases.file(c, 'strong'); p.stats.health = clamp(p.stats.health - 2); return 'Filed on Monday morning, and it is good work.'; }
+      if (choice === 'extension') { const dl = c.deadlines.find((d) => d.met == null); if (dl) dl.due += 1; c.due += 1; return 'The court gives you a month.'; }
+      return 'The template version goes in on time.';
+    }
+    case 'wontListen': {
+      if (!c || c.done) return '';
+      if (choice === 'explain') { rel(client, 3); gain(p, { counseling: 2 }); return 'This time it lands. They are not happy, but they understand.'; }
+      if (choice === 'writing') { L.rep.integrity = clamp(L.rep.integrity + 2); gain(p, { ethics: 1 }); return 'Your advice is on the record. The decision is theirs.'; }
+      referOut(c.id, p); return 'You withdraw, and help them find another lawyer.';
+    }
+    case 'firstHearing': {
+      if (!c || c.done) return '';
+      if (choice === 'prepare') { c.bonus = (c.bonus ?? 0) + 0.03; p.stats.health = clamp(p.stats.health - 1); return 'You know every page of the file.'; }
+      if (choice === 'mentor') { c.bonus = (c.bonus ?? 0) + 0.02; rel(supervisor(p), 3); return 'Knowing they are there steadies you.'; }
+      c.bonus = (c.bonus ?? 0) - 0.02; return 'You sleep well, and wish you had read the file once more.';
+    }
+    case 'accused': {
+      if (choice === 'presume') { gain(p, { ethics: 2, counseling: 1 }); rel(client, 3); return 'You listen to their account before you form a view.'; }
+      L.rep.integrity = clamp(L.rep.integrity - 2); rel(client, -5); return 'Your client can tell what you think of them.';
+    }
+    case 'ident': {
+      if (!c || c.done) return '';
+      if (choice === 'expert') {
+        const cost = localCost(3000, country());
+        if (p.finance.cash < cost && c.fee.model !== 'salary') return 'There is no money for an expert.';
+        if (c.fee.model !== 'salary') p.finance.cash -= cost;
+        const e = c.evidence.find((x) => x.kind === 'witness_statement' && x.favors === 'other');
+        if (e) e.reliability = Math.round(e.reliability * 0.75);
+        return 'The expert explains how memory works at night, from across a street. The identification looks weaker.';
+      }
+      return 'You will do it on cross.';
+    }
+    case 'pleaTalk': {
+      if (choice === 'honest') { rel(client, 3); gain(p, { counseling: 2 }); return 'You lay out both roads. The choice is theirs.'; }
+      rel(client, -4); L.rep.integrity = clamp(L.rep.integrity - 1); return 'They feel pushed, and they are right.';
+    }
+    case 'newWitness': {
+      if (!c || c.done) return '';
+      if (choice === 'interview') { if (!c.evidence.some((e) => e.id === 'newwit')) c.evidence.push({ id: 'newwit', kind: 'witness_statement', label: 'A new witness\'s statement', favors: 'other', weight: 2, reliability: 60, admissibility: 'ok', status: 'admitted', reviewed: true }); gain(p, { evidence: 2, ethics: 1 }); return 'A careful statement, disclosed to the defense the same day.'; }
+      return 'You let it go.';
+    }
+    case 'mustDismiss': {
+      if (!c || c.done) return '';
+      if (choice === 'dismiss') { const jc = c.justiceCaseId ? k.J().cases[c.justiceCaseId] : null; if (jc) k.dismissFrom(jc, 'The prosecution withdrew: the evidence no longer held.'); L.rep.integrity = clamp(L.rep.integrity + 3); cases.close(c, { kind: 'dismissed', text: 'You dropped the charges: the evidence no longer held.', favorable: 0.6 }); return 'The case is withdrawn. It was the right call.'; }
+      c.weakPush = true; L.rep.integrity = clamp(L.rep.integrity - 3); return 'You press on with a case you do not believe in.';
+    }
+    case 'highStakes': {
+      if (!c || c.done) return '';
+      if (choice === 'prepare') { c.bonus = (c.bonus ?? 0) + 0.03; return 'You live in the file for a week.'; }
+      L.rep.recognition = clamp(L.rep.recognition + 3); L.rep.integrity = clamp(L.rep.integrity - 1); return 'You are on the evening news.';
+    }
+    case 'marriage': {
+      if (choice === 'listen') { rel(client, 4); gain(p, { counseling: 2 }); return 'It takes an hour. Then you can start.'; }
+      if (c) c.bonus = (c.bonus ?? 0) - 0.02; rel(client, 2); return 'They like hearing it. The other side hears about it too.';
+    }
+    case 'parenting': {
+      if (!c || c.done) return '';
+      if (choice === 'child') { c.bonus = (c.bonus ?? 0) + 0.04; gain(p, { family: 2 }); return 'A plan that fits the child\'s week is one a court can adopt.'; }
+      c.bonus = (c.bonus ?? 0) - 0.02; return 'You count the days. The judge will count something else.';
+    }
+    case 'settleConf': {
+      if (!c || c.done) return '';
+      if (choice === 'prepare') { c.bonus = (c.bonus ?? 0) + 0.03; gain(p, { negotiation: 2 }); return 'Your figures are better than theirs. The offer moves.'; }
+      return 'Nobody moves. The hearing it is.';
+    }
+    case 'childFuture': {
+      if (!c || c.done) return '';
+      if (choice === 'wishes') { gain(p, { ethics: 2, family: 1 }); c.bonus = (c.bonus ?? 0) + 0.02; rel(client, 4); return 'The court hears what the child wants, in their own words.'; }
+      L.rep.integrity = clamp(L.rep.integrity - 3); rel(client, -6); return 'You argue your own view. That is a guardian\'s job, not the child\'s attorney\'s.';
+    }
+    case 'rfe': {
+      if (!c || c.done) return '';
+      const gap = c.evidence.find((e) => e.id === 'gap');
+      if (choice === 'full') { if (gap) gap.reliability = Math.round(gap.reliability * 0.3); gain(p, { immigration: 2 }); return 'Everything they asked for, translated and certified, sent early.'; }
+      c.bonus = (c.bonus ?? 0) - 0.04; return 'It goes in as it is.';
+    }
+    case 'immHearing': {
+      if (!c || c.done) return '';
+      if (choice === 'prepare') { c.bonus = (c.bonus ?? 0) + 0.04; gain(p, { immigration: 1, examination: 2 }); return 'They know what the judge will ask, and they answer it truthfully.'; }
+      return 'The papers will have to speak.';
+    }
+    case 'immAppeal': {
+      if (!c) return '';
+      if (choice === 'appeal') { const g = cases.appealGrounds(c)[0]; return g ? cases.fileAppeal(c, g.id).text : 'There are no grounds left.'; }
+      if (choice === 'refile') { const n = cases.createCase(c.templateId, { clientId: c.clientId, track: c.track, specialty: c.specialty }); return `A new application is open: ${n.title}.`; }
+      return 'You tell the client there is nothing more to do now.';
+    }
+    case 'major': {
+      const o = (L.offers ?? []).find((x) => x.prominent);
+      if (choice === 'take' && o) return accept(o.id, p).text;
+      if (o) L.offers = L.offers.filter((x) => x !== o);
+      return 'You recommend a colleague.';
+    }
+    case 'firmChoice': {
+      if (choice === 'pay') { p.career.salary = Math.round(p.career.salary * 0.9); L.rep.integrity = clamp(L.rep.integrity + 2); return 'The partners take a tenth less. The staff stay.'; }
+      if (choice === 'layoffs') { L.rep.clients = clamp(L.rep.clients - 2); adjustPerformance(2); return 'Six people leave on a Friday.'; }
+      L.rep.recognition = clamp(L.rep.recognition + 2); return 'Talks begin with a larger firm. It will take a year.';
+    }
+    case 'govOffer': {
+      if (choice !== 'accept') return 'You stay where you are.';
+      withdrawAll(p, 'You left to join the Attorney General\'s office.');
+      hire(CAREER_BY_ID.attorney_general, 0, 60, 'appointed');
+      return 'You are a Deputy Attorney General.';
+    }
+    case 'ag': return choice === 'run' ? seek('ag', p).text : 'Not this time.';
     default: return '';
   }
 }

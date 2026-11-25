@@ -95,14 +95,13 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
 
 // 10. Government offices assign cases; a public defender is on a salary with a heavy caseload.
 {
-  lawyer('defender');
-  turn();
+  for (let i = 0; i < 4; i++) { lawyer('defender'); store.state.player.career.performance = 85; turn(); if (store.state.player.career.careerId === 'defender') break; }
   const mine = L().caseIds.map(lc.caseById);
   check(mine.length >= 1 && mine.every((c) => c.assigned && c.fee.model === 'salary') && !(L().offers ?? []).length, `a public defender is assigned clients by the office, on salary (${mine.length})`);
-  lawyer('prosecutor');
-  turn();
+  // A year can end in a layoff (the career engine's own risk): try again with another life if so.
+  for (let i = 0; i < 4; i++) { lawyer('prosecutor'); store.state.player.career.performance = 85; turn(); if (store.state.player.career.careerId === 'prosecutor') break; }
   const pros = L().caseIds.map(lc.caseById);
-  check(pros.length >= 1 && pros.every((c) => c.role === 'prosecution' && !c.clientId), 'a prosecutor is assigned cases for the government');
+  check(pros.length >= 1 && pros.every((c) => c.role === 'prosecution' && !c.clientId), `a prosecutor is assigned cases for the government (${pros.map((c) => `${c.templateId}:${c.role}:${c.clientId}`).join(' ')})`);
   const gc = CAREER_BY_ID.gov_counsel.levels.map((x) => x.title);
   check(gc[0] === 'Staff attorney' && gc.at(-1) === 'Agency general counsel', `government counsel has its own ladder (${gc.join(' → ')})`);
 }

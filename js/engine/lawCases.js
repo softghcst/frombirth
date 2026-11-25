@@ -30,7 +30,7 @@ export const caseById = (id) => LC()[id] ?? null;
 const nameOf = (id) => { const n = store.state.npcs[id]; return n ? `${n.firstName} ${n.lastName}` : id ?? ''; };
 const first = (id) => store.state.npcs[id]?.firstName ?? '';
 const fill = (s, c) => String(s ?? '').replace(/\{(\w+)\}/g, (m, key) => c.vars?.[key] ?? m);
-const note = (c, text) => c.history.push({ m: nowM(), year: store.state.year, text });
+export const note = (c, text) => c.history.push({ m: nowM(), year: store.state.year, text });
 
 /** The roles a lawyer can hold in a case, by the side they are on. */
 const ROLE_FOR = { criminal: { defense: 'defense', prosecution: 'prosecution' }, family: 'petitioner', child: 'childAttorney', immigration: 'applicant', civil: 'plaintiff', transaction: 'counsel' };
