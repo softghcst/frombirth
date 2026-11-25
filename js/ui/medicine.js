@@ -130,7 +130,7 @@ const VIEWS = {
       + card('Open a practice', `${muted(practice.ownershipNote(p.countryId))}${opts.map((o) => btn('open', o.name, { arg: o.id, disabled: !!o.block, sub: o.block })).join('')}`);
   },
   people(p, m) {
-    const ids = [...new Set([m.people.mentorId, ...m.people.supervisorIds, ...m.people.colleagueIds].filter(Boolean))];
+    const ids = [...new Set([m.people.mentorId, ...m.people.supervisorIds, ...m.people.colleagueIds, ...(m.people.traineeIds ?? [])].filter(Boolean))];
     const rows = ids.map((id) => store.state.npcs[id]).filter((n) => n?.alive).map((n) => kv([[`${n.firstName} ${n.lastName}`, `${n.flags.title ?? n.occupation ?? ''}${m.people.rivalIds.includes(n.id) ? ' · rival' : ''}${m.people.friendIds.includes(n.id) ? ' · friend' : ''} · ${Math.round(n.meters.relationship)}%`]]));
     return card('Hospital life', rows.join('') || muted('Nobody yet.'));
   },

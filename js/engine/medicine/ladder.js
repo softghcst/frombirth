@@ -7,7 +7,9 @@
 // the player may say no. Leaving the hospital (quitting, being let go, taking another job) ends
 // the post; another hospital can be applied to from My Medical Career.
 import { clamp } from '../../util.js';
+import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
+import { makeNpc } from '../npcFactory.js';
 import { RANKS, SPECIALTY_BY_ID } from '../../data/medicine.js';
 import { promote, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
@@ -70,6 +72,49 @@ export function answerOffer(accept) {
   return result(true, `You accepted. You are now ${p.career.title.toLowerCase()}.`);
 }
 
+/**
+ * An attending at a teaching hospital supervises residents: real people, met through the work,
+ * whose year goes better or worse with the teaching. Romance with them is ruled out (engine/medicine/drama.js).
+ */
+function teach(p, m) {
+  const h = hospital(m.job.hospitalId);
+  if (!h?.teaching) return;
+  const e = employer(h.id);
+  let mine = (m.people.traineeIds ?? []).map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.life?.job?.employerId === h.id && n.flags.pgy <= 7);
+  // Residents finish and move on; new ones arrive each year.
+  for (const n of mine) n.flags.pgy = (n.flags.pgy ?? 1) + 1;
+  for (const n of mine.filter((x) => x.flags.pgy > 4)) { n.flags.medRole = 'peer'; n.flags.title = 'Former resident'; if (n.life?.job) n.life.job.level = 1; }
+  mine = mine.filter((x) => x.flags.pgy <= 4);
+  while (mine.length < 2) {
+    const n = makeNpc({ role: 'colleague', countryId: e.countryId, age: 26 + Math.floor(rng.next() * 4), relationship: 50 });
+    n.flags.medRole = 'trainee'; n.flags.pgy = 1; n.flags.title = 'Resident you supervise'; n.flags.workedWith = e.name;
+    n.occupation = 'resident doctor';
+    n.life = { edu: { stage: 'done', gpa: 3.5, majorId: 'biology', trade: null, degrees: [], yearsLeft: 0 }, job: { careerId: 'doctor', level: 0, title: 'Resident doctor', salary: 0, years: 0, employerId: e.id },
+      savings: 0, aspiration: null, partnerId: null, together: 0, married: false, kids: 0, history: [] };
+    store.state.npcs[n.id] = n;
+    if (!e.staff.includes(n.id)) e.staff.push(n.id);
+    p.npcIds.push(n.id);
+    mine.push(n);
+  }
+  m.people.traineeIds = mine.map((n) => n.id);
+  for (const n of mine) n.meters.relationship = clamp(n.meters.relationship + (m.skills.communication - 50) / 10);
+  grow('leadership', 1, m); grow('communication', 0.5, m);
+}
+
+/** Complaints and claims from a year ago are decided: dismissed where care met the standard, upheld where it did not. */
+export function claimsYear(p = player(), m = med()) {
+  if (!m) return;
+  for (const c of (m.claims ?? []).filter((x) => x.status === 'open' && x.year < year())) {
+    if (!c.below) { c.status = 'dismissed'; log('A claim brought by a patient\'s family was reviewed and dismissed: the care met the standard.', 'system', 'neutral'); continue; }
+    c.status = 'upheld';
+    m.discipline.push({ year: year(), what: 'A claim about a patient\'s care was upheld.' });
+    const cost = Math.round(p.career.salary * 0.05);
+    p.finance.cash -= cost;
+    log(`A claim about a patient's care was upheld. Malpractice insurance paid most of it; your share was ${cost.toLocaleString('en-US')}, and it goes on your record.`, 'system', 'bad');
+    p.stats.mood = clamp(p.stats.mood - 10);
+  }
+}
+
 /** The yearly review of a post: the rank's years, reputation, and a step up when a seat opens. */
 export function postYear() {
   const p = player();
@@ -82,6 +127,7 @@ export function postYear() {
     return;
   }
   if (m.job.since === year()) return; // taken this year: the first review comes next year
+  teach(p, m);
   const h = hospital(m.job.hospitalId);
   m.experience.years += 1;
   grow('management', 1, m); grow('reasoning', 0.8, m);

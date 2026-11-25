@@ -14,7 +14,7 @@ import { store, player } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
 import { med, reputationOf, migrateMedicine, medicalFamily } from './core.js';
 import { tickTraining } from './training.js';
-import { postYear } from './ladder.js';
+import { postYear, claimsYear } from './ladder.js';
 import { caseload, closeYear } from './cases.js';
 import { practiceYear } from './practice.js';
 import { dramaYear } from './drama.js';
@@ -61,6 +61,7 @@ export function tickMedicine() {
   m = med(p);
   if (!m) return;
   postYear();
+  claimsYear(p, m);
   practiceYear();
   m.reputation = reputationOf(m);
   caseload(m, p); // this year's patients, made now so the year's count is fixed

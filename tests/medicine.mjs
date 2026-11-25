@@ -312,6 +312,27 @@ section('saves: idempotent migration, no duplicate cases, no invented past');
 }
 section('the Match: at home, or nationwide with a move');
 
+// 8c. Teaching residents, and claims after care below the standard.
+{
+  rng.seed(4321);
+  const q = life('us', 40);
+  const mm = core.M(q);
+  strong(mm);
+  mm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+  mm.license = { status: 'full', countryId: 'us' };
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startPost('internal', site.e.id, 'attending');
+  year();
+  const trainees = (mm.people.traineeIds ?? []).map((id) => store.state.npcs[id]);
+  check(trainees.length === 2 && trainees.every((n) => n.flags.medRole === 'trainee'), 'an attending at a teaching hospital supervises residents');
+  check(trainees.every((n) => !drama.romanceAllowed(n, mm)), 'and romance with someone you supervise is ruled out');
+  mm.claims = [{ caseId: 'x', year: store.state.year, status: 'open', below: true }, { caseId: 'y', year: store.state.year, status: 'open', below: false }];
+  const marks = mm.discipline.length;
+  year();
+  check(mm.claims[0].status === 'upheld' && mm.claims[1].status === 'dismissed' && mm.discipline.length === marks + 1, 'a claim is upheld only where care fell below the standard');
+}
+section('teaching residents; claims decided on the care, not the result');
+
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {
   rng.seed(31337);

@@ -287,6 +287,11 @@ function resolve(c, plan, decision, how = 'played') {
   }
   if (plan.refer) notes.push(`Referred to ${SPECIALTY_BY_ID[plan.refer]?.name ?? 'a specialist'} as part of the plan.`);
   c.outcome = { result: res, points, rightDx, complication, how, year: year() };
+  // A poor result after care below the standard may bring a complaint or a claim (decided in a later year, engine/medicine/ladder.js).
+  // A trainee's care is the program's responsibility; a good-faith decision that went badly is not negligence.
+  if (c.role === 'physician' && res === 'poor' && (quality === 'unsafe' || points < 30) && roll(0.3)) {
+    (m.claims ??= []).push({ caseId: c.id, year: year(), status: 'open', below: points < 30 || quality === 'unsafe' });
+  }
   c.status = 'closed';
   // Experience follows judgment, not luck.
   grow('reasoning', points >= 75 ? 2 : points >= 52 ? 1 : -0.5, m);
