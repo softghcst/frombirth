@@ -95,6 +95,29 @@ for (const c of CASES) {
   for (const t of c.needs ?? []) check(!!TEST_BY_ID[t], `case ${c.id}: needs unknown test ${t}`);
   check(!/\b\d+\s?(mg|mcg|ml|units?)\b/i.test(JSON.stringify(c)), `case ${c.id}: names a dose`);
 }
+// Every specialty a case lists can carry out its best plan: by doing it, or by referring to whoever does.
+{
+  rng.seed(1);
+  store.state = createLife({ countryId: 'us' });
+  const q = store.state.player;
+  let stuck = [];
+  for (const c of CASES.filter((x) => x.minYear <= 2020)) for (const sid of c.specialty) {
+    q.medicine = null;
+    const mm = core.M(q);
+    mm.completed = [{ specialtyId: sid, kind: SPECIALTY_BY_ID[sid].kind, from: 2000, to: 2005 }];
+    mm.job = { specialtyId: sid, hospitalId: null, rank: 'attending', since: 2005 };
+    const pt = { id: 'pt_chk', firstName: 'A', lastName: 'B', age: 40, alive: true, flags: {} };
+    store.state.npcs[pt.id] = pt;
+    core.W().cases.chk = { id: 'chk', fixtureId: c.id, patientId: pt.id, specialtyId: sid, role: 'physician', year: 2020, status: 'open', tests: [], notes: [] };
+    const saveYear = store.state.year; store.state.year = 2020;
+    const v = cases.caseView('chk');
+    store.state.year = saveYear;
+    const best = c.plans.filter((x) => x.quality === 'best' && (x.minYear ?? 0) <= 2020 && (x.maxYear ?? 9999) >= 2020).map((x) => x.id);
+    if (!v.plans.some((x) => best.includes(x.id) && !x.block)) stuck.push(`${c.id}/${sid}`);
+  }
+  delete core.W().cases.chk;
+  check(!stuck.length, `every listed specialty can reach a case's best plan (${stuck.slice(0, 6).join(', ')})`);
+}
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
 for (const id of ['med_rotation', 'med_mentor', 'med_rival', 'med_romance', 'med_disclosure', 'med_grateful', 'med_leadership_offer']) check(!!EVENT_BY_ID[id], `scene ${id} registered`);

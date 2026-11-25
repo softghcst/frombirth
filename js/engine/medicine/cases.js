@@ -19,7 +19,7 @@ import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { CASES, CASE_BY_ID } from '../../data/medicineCases.js';
-import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, qualifiesAs } from '../../data/medicine.js';
+import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs } from '../../data/medicine.js';
 import { makeNpc } from '../npcFactory.js';
 import { M, med, W, year, grow, nextId, result, roll, currentSpecialty, qualified } from './core.js';
 import { hospital } from './hospitals.js';
@@ -183,7 +183,11 @@ function plansFor(fx, c) {
     const proc = x.procedure ? PROCEDURE_BY_ID[x.procedure] : null;
     if (proc && proc.minYear > now) block = `${proc.name} is not yet done in ${now}.`;
     else if (proc && c.role === 'student') block = '';
-    else if (proc && c.role === 'physician' && !privileges(m).has(proc.id)) block = `You do not hold privileges for ${proc.name.toLowerCase()}. Refer instead.`;
+    else if (proc && c.role === 'physician' && !privileges(m).has(proc.id)) {
+      // Not this physician's procedure: the right plan is to refer to someone whose it is (the same plan, done by them).
+      const to = SPECIALTIES.find((s) => s.procedures.includes(proc.id) && s.kind !== 'fellowship') ?? SPECIALTIES.find((s) => s.procedures.includes(proc.id));
+      return { ...x, procedure: undefined, refer: x.refer ?? to?.id, label: `${x.label} (referred to ${to?.name ?? 'a specialist'})`, block: '' };
+    }
     return { ...x, block };
   });
 }
