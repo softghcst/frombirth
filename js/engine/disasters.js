@@ -11,6 +11,7 @@
 // year's reckoning comes; and each one is told as it strikes (disastersBetween).
 //
 // state.disasters = { prep: { [eventId]: 'ready' | 'evacuated' | 'stayed' }, told: { [eventId]: year }, warned: { [eventId]: year } }
+import { birthdayOf } from './birthday.js';
 import { store, log } from '../state.js';
 import { clamp, cap, fmtMoney, localMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -123,6 +124,18 @@ function say(state, text, tone) {
  * Yearly, for the year just lived: each disaster that reached the player, what it did to them, and the news of big
  * ones elsewhere. Two disasters a year at most are felt in person; the rest are news.
  */
+/**
+ * The disasters of a year of the player's life: from their birthday to the next (engine/birthday.js), so the months
+ * of two calendar years. Each carries `lm`, the months after the birthday it struck; its `month` stays the month of
+ * the calendar, for telling.
+ */
+export function lifeWeather(countryId, year, state = store.state) {
+  const off = birthdayOf(state.player).m;
+  const tag = (e) => ({ ...e, lm: (e.month - off + 12) % 12 });
+  if (!off) return weatherOf(countryId, year, state).map(tag);
+  return [...weatherOf(countryId, year, state).filter((e) => e.month >= off), ...weatherOf(countryId, year + 1, state).filter((e) => e.month < off)].map(tag);
+}
+
 export function tickDisasters(state = store.state) {
   const p = state.player;
   if (!p.alive) return;
@@ -131,10 +144,10 @@ export function tickDisasters(state = store.state) {
   // The year is reckoned where it was lived: where the player was when it began.
   const place = D.home?.year === year ? { countryId: D.home.countryId, city: D.home.city } : placeNow(state);
   const c = COUNTRIES[place.countryId];
-  const here = weatherOf(place.countryId, year, state);
+  const here = lifeWeather(place.countryId, year, state);
   const reached = here.filter((e) => reaches(e, state, place));
   // At most two are felt in person, the worst; all that reached the player are theirs, not news from elsewhere.
-  const felt = reached.slice().sort((a, b) => b.severity - a.severity).slice(0, 2).sort((a, b) => a.month - b.month);
+  const felt = reached.slice().sort((a, b) => b.severity - a.severity).slice(0, 2).sort((a, b) => a.lm - b.lm);
   let worst = null;
   if (!p.legal?.incarceration) {
     for (const e of felt) {
@@ -154,7 +167,7 @@ export function tickDisasters(state = store.state) {
   let far = null;
   for (const id of Object.keys(COUNTRIES)) {
     if (id === place.countryId) continue;
-    for (const e of weatherOf(id, year, state)) {
+    for (const e of lifeWeather(id, year, state)) {
       if (e.severity < 1) continue;
       const tied = mine.has(id);
       if (e.severity === 2 || tied || seeded(`news/${state.slotId}/${e.id}`).chance(0.2)) {
@@ -260,8 +273,8 @@ export function disastersBetween(state, end, step, ahead = step) {
   const D = ensure(state);
   const year = end === 12 ? state.year - 1 : state.year;
   // As it happened.
-  for (const e of weatherOf(p.countryId, year, state)) {
-    if (e.month < end - step || e.month >= end || D.told[e.id] || !reaches(e, state)) continue;
+  for (const e of lifeWeather(p.countryId, year, state)) {
+    if (e.lm < end - step || e.lm >= end || D.told[e.id] || !reaches(e, state)) continue;
     D.told[e.id] = year;
     if (!routine(state, e, year, placeNow(state))) say(state, strikeText(e), e.severity ? 'bad' : 'neutral');
   }
@@ -269,7 +282,7 @@ export function disastersBetween(state, end, step, ahead = step) {
   if (ahead === 12) return; // year-long turns: no forecasts
   const nextYear = end === 12 ? state.year : year;
   const from = end % 12;
-  const coming = weatherOf(p.countryId, nextYear, state).filter((e) => KINDS[e.kind].forecast && e.severity >= 1 && e.month >= from && e.month < from + ahead && !D.warned[e.id] && reaches(e, state));
+  const coming = lifeWeather(p.countryId, nextYear, state).filter((e) => KINDS[e.kind].forecast && e.severity >= 1 && e.lm >= from && e.lm < from + ahead && !D.warned[e.id] && reaches(e, state));
   const e = coming.sort((a, b) => b.severity - a.severity)[0];
   if (!e) return;
   D.warned[e.id] = nextYear;
@@ -302,7 +315,7 @@ export function feltRecently(kinds, minSeverity = 0, state = store.state, wholeY
   const step = wholeYear ? 12 : [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
   const year = month === 0 ? state.year - 1 : state.year;
   const to = month === 0 ? 12 : month; const from = to - step; // the turn of a year covers its last part only, with shorter turns
-  return weatherOf(p.countryId, year, state).some((e) => kinds.includes(e.kind) && e.severity >= minSeverity && e.month >= from && e.month < to && reaches(e, state));
+  return lifeWeather(p.countryId, year, state).some((e) => kinds.includes(e.kind) && e.severity >= minSeverity && e.lm >= from && e.lm < to && reaches(e, state));
 }
 
 /** The disasters a country has, by name, for the country's description. */

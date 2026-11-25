@@ -48,16 +48,17 @@ export function seasonAt(month, countryId) {
 }
 /**
  * The seasons of a turn: those of the months it covers, the turn ending at `end` (12 for the turn of the year). The
- * first is the one most of the turn was spent in, for headings.
+ * first is the one most of the turn was spent in, for headings. `end` counts months from the start of the player's year
+ * (their birthday); `offset` is the month that year starts in (engine/birthday.js), 0 for a year from January.
  */
-export function turnSeasons(end, step, countryId) {
+export function turnSeasons(end, step, countryId, offset = 0) {
   const count = {};
-  for (let m = end - step; m < end; m++) { const s = seasonAt(m, countryId); count[s] = (count[s] ?? 0) + 1; }
+  for (let m = end - step; m < end; m++) { const s = seasonAt(m + offset, countryId); count[s] = (count[s] ?? 0) + 1; }
   return Object.keys(count).sort((a, b) => count[b] - count[a]);
 }
 /** Whether the turn just played (ending at `end`, `step` months long) took in a month of the year (0 = January). */
-export function turnCovers(end, step, month) {
-  for (let m = end - step; m < end; m++) if (((m % 12) + 12) % 12 === month) return true;
+export function turnCovers(end, step, month, offset = 0) {
+  for (let m = end - step; m < end; m++) if ((((m + offset) % 12) + 12) % 12 === month) return true;
   return false;
 }
 
