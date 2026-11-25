@@ -432,6 +432,7 @@ function specialCareers(p, list) {
     modeling: fromAge(p.age, 14),
     writing: fromAge(p.age, 14) || (fameEng.exists('publishing') ? '' : 'There is no publishing here yet'),
     sports: fromAge(p.age, 4),
+    journalism: fromAge(p.age, 10),
     kpop: fromAge(p.age, 12) || (y < 1996 ? 'K-pop begins in the 1990s' : ''),
     politics: fromAge(p.age, 14),
   };

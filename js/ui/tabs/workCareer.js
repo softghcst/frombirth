@@ -12,6 +12,7 @@ import { openMedicine, medicineOpen } from '../medicine.js';
 import { openInvestigations, investigationsOpen } from '../investigations.js';
 import { openFame } from '../fame.js';
 import { openIdol } from '../kpop.js';
+import { openJournalism } from '../journalism.js';
 import { openAthletics } from '../sports.js';
 import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
@@ -218,6 +219,7 @@ export const careerHandlers = (api) => ({
   'sc:writing': () => openFame(api, null, { career: 'writing' }),
   'sc:sports': () => openAthletics(api),
   'sc:kpop': () => openIdol(api),
+  'sc:journalism': () => openJournalism(api),
   'sc:politics': () => document.getElementById('politics-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),

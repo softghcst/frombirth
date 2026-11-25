@@ -56,6 +56,7 @@ import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
+import { leaveNewsroom } from './journalism.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -216,6 +217,8 @@ export function startApplication(id) {
   if (royalNo) return { kind: 'blocked', text: royalNo };
   if (player().politics && player().politics.tier >= 2) return { kind: 'blocked', text: `Being ${player().politics.title} is a full-time job. You would have to resign first.` };
   { const sc = jobBlockSpecial(career.id); if (sc) return { kind: 'blocked', text: sc }; }
+  // Reporters are hired by a newsroom, as a special career: Work > Special careers > Journalism (engine/journalism.js).
+  if (career.id === 'journalist') return { kind: 'blocked', text: 'Newsrooms hire their own reporters: apply from Special careers, Journalism.' };
   if (unmet(career).length) return { kind: 'blocked', text: unmet(career)[0] };
   const offer = standingOffer(career);
   if (offer) return { kind: 'offer', text: offer.text };
@@ -473,6 +476,7 @@ export function askForRaise() {
 export function endJob(exit) {
   const c = player().career;
   if (c.careerId === 'modeling') releaseSpecial('modeling');
+  if (c.careerId === 'journalist') { releaseSpecial('journalism'); leaveNewsroom(); }
   c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);

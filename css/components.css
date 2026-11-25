@@ -1488,3 +1488,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wq-postcard { position: static; padding: 0; background: none; }
 .wp-postcard-screen.sv-still .wp-postcard { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
+
+/* Journalism: a claim's status in the reporter's notebook (js/ui/journalism.js). */
+.hl-pill.bad { background: var(--bad-soft, rgba(220, 80, 80, 0.15)); color: var(--bad); }
+.jn-claim .kv span:first-child { white-space: normal; }
+.jn-claim small { display: block; margin-top: 4px; line-height: 1.35; }
+.jn-article p { line-height: 1.5; }
