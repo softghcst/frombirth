@@ -15,6 +15,7 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openWeddingPlanner } from '../weddingPlanner.js';
 import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
@@ -139,8 +140,6 @@ async function proposeTo(api, npc) {
 }
 
 async function planWedding(api, npc) {
-  const c = country();
-  const cash = player().finance.cash;
   if (npc.flags.royal) {
     // A royal match is not planned by the couple: the palace decides whether it happens at all.
     const ask = await confirmModal({ title: 'Ask the palace for consent?',
@@ -165,30 +164,9 @@ async function planWedding(api, npc) {
     const go = await confirmModal({ title: 'Leave the royal family?', body: `By the law of your house, a princess who marries outside it gives up her title and her place in the family. If you marry ${npc.firstName}, you will be a private citizen.`, yes: 'I understand', no: 'Not yet' });
     if (!go) return;
   }
-  const wedding = await pickModal({
-    title: 'Plan the wedding',
-    options: love.WEDDINGS.map((w) => {
-      const cost = localMoney(w.cost, c);
-      return { value: w.id, label: w.name, sub: fmtMoney(cost, c), disabled: cash < cost };
-    }),
-  });
-  if (!wedding) return;
-  let prenup = await confirmModal({
-    title: 'Ask for a prenup?',
-    body: `Without one, a divorce splits everything down the middle. Asking will sting ${npc.firstName} a little, and they may refuse.`,
-    yes: 'Ask for a prenup', no: 'No prenup',
-  });
-  if (prenup) {
-    const answer = love.askForPrenup(npc.id);
-    api.changed();
-    await messageModal({ body: answer.text, tone: answer.tone });
-    prenup = answer.ok;
-    if (!prenup) {
-      const goOn = await confirmModal({ title: 'Marry without a prenup?', body: `${npc.firstName} will not sign. You can marry anyway, or put the wedding on hold.`, yes: 'Marry anyway', no: 'Put it on hold' });
-      if (!goOn) return;
-    }
-  }
-  await report(api, love.marry(npc.id, wedding, prenup));
+  // The wedding is planned with a wedding planner, piece by piece, and then it happens (js/ui/weddingPlanner.js).
+  await openWeddingPlanner(api, npc);
+  api.changed();
 }
 
 async function fileForDivorce(api, npc) {

@@ -1366,3 +1366,55 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .nr-art .shop-badge { width: 40px; height: 40px; margin: -5px; display: block; }
 .nr-art .shop-badge-barber .sv-blade-a, .nr-art .shop-badge-barber .sv-blade-b { display: none; }  /* just the pole, at this size */
 .nr-art .sv-blade-a, .nr-art .sv-blade-b { animation: none; }
+
+/* Planning the wedding, and the wedding (js/ui/weddingPlanner.js). It shares the salon's scene layout (.sv-*). */
+.wp-intro { background: radial-gradient(circle at 50% 45%, #FFF8EE 0%, #F8E1C8 55%, #EFCBA8 100%); }
+.wp-intro .sv-logo-name { color: #5A3A1E; }
+.wp-intro .sv-logo-sub { color: #9A6A34; }
+.wp-rings { animation: wp-ring .8s var(--ease) .2s both; transform-origin: 60px 66px; }
+@keyframes wp-ring { from { transform: scale(.6) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.wp-sign { background: #FFFDF8; color: #5A3A1E; border-color: #23140f; }
+.wp-altar { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); width: min(60%, 250px); aspect-ratio: 1; }
+.wp-narration { margin: 4px 6px; color: var(--ink); font-family: var(--serif); font-style: italic; font-size: 1.1rem; line-height: 1.4; text-align: center; animation: sv-bubble .3s var(--ease) both; }
+.wp-arch { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wp-couple { position: absolute; left: 12%; right: 12%; bottom: 0; display: flex; justify-content: center; gap: 2%; transition: gap .5s var(--ease); }
+.wp-person { width: 48%; }
+.wp-person svg { width: 100%; height: auto; display: block; }
+.wp-kiss .wp-couple { gap: 0; }
+.wp-kiss .wp-person:first-child { transform: translateX(8%) rotate(4deg); transition: transform .5s var(--ease); }
+.wp-kiss .wp-person:last-child { transform: translateX(-8%) rotate(-4deg); transition: transform .5s var(--ease); }
+.wp-steps { display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
+.wp-steps i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.wp-steps i.done { background: var(--accent); }
+.wp-steps i.now { background: var(--accent); transform: scale(1.4); }
+.wp-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.wp-tile { position: relative; display: grid; gap: 2px; justify-items: start; text-align: left; padding: 10px 12px; border-radius: 16px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--raised); color: var(--ink); font: inherit; transition: transform .15s var(--ease), border-color .15s; }
+.wp-tile:hover { transform: translateY(-1px); }
+.wp-tile.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent) inset; }
+.wp-tile .wp-ico { font-size: 1.6rem; line-height: 1; }
+.wp-tile strong { font-size: .95rem; line-height: 1.2; }
+.wp-tile small { font-size: .78rem; opacity: .75; line-height: 1.25; }
+.wp-price { font-weight: 700; font-size: .85rem; color: var(--accent-text); margin-top: 2px; }
+.wp-dream { position: absolute; top: 8px; right: 10px; font-style: normal; font-size: .7rem; font-weight: 700; color: #C2456A; }
+.wp-swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.wp-swatch { display: grid; justify-items: center; gap: 4px; padding: 6px; border: 0; background: none; color: var(--ink); font: inherit; font-size: .8rem; cursor: pointer; }
+.wp-swatch span { width: 44px; height: 44px; border-radius: 50%; background: var(--sw); border: 3px solid #23140f; transition: transform .15s var(--ease); }
+.wp-swatch.on span { transform: scale(1.12); box-shadow: 0 0 0 4px var(--accent); }
+.wp-finale { position: absolute; inset: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px 16px;
+  text-align: center; color: #5A3A1E; background: radial-gradient(circle at 50% 40%, #FFFDF8 0%, #FBEBD8 60%, color-mix(in srgb, var(--wp-theme) 55%, #F4D7B8) 100%); }
+.wp-just { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 2.2rem; animation: sv-pop .6s var(--ease) both; }
+.wp-pair { display: flex; align-items: center; gap: 10px; animation: sv-rise .6s var(--ease) .25s both; }
+.wp-frame { width: min(34vw, 140px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; border: 4px solid #23140f; background: #FFFFFF; box-shadow: 0 0 0 6px var(--wp-theme); }
+.wp-frame svg { width: 100%; height: 100%; display: block; }
+.wp-heart { font-size: 2rem; color: #E2557A; animation: wp-beat 1s ease-in-out infinite; }
+@keyframes wp-beat { 50% { transform: scale(1.25); } }
+.wp-names { margin: 0; font-family: var(--serif); font-size: 1.5rem; font-weight: 700; animation: sv-rise .5s var(--ease) .5s both; }
+.wp-after { margin: 0 0 8px; opacity: .8; animation: sv-rise .5s var(--ease) .7s both; }
+.wp-confetti { position: absolute; inset: 0; pointer-events: none; }
+.wp-confetti i { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; border: 1.5px solid rgba(35, 20, 15, .5); animation: wp-fall 2.6s linear infinite; }
+.wp-confetti i:nth-child(3n) { width: 12px; height: 8px; animation-duration: 3.1s; }
+.wp-confetti i:nth-child(4n) { border-radius: 50%; animation-duration: 2.2s; }
+@keyframes wp-fall { to { transform: translateY(110vh) rotate(540deg); } }
+.wp-finale.sv-still *, .wp-finale.sv-still { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .wp-rings, .wp-just, .wp-pair, .wp-names, .wp-after, .wp-heart, .wp-confetti i, .wp-tile { animation: none !important; transition: none !important; } }
