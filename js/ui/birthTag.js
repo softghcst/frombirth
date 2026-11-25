@@ -205,3 +205,45 @@ export function announceMultiples(babies) {
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });
 }
+
+/** The day an adopted child came home: a keepsake card with their face, the date, and who welcomed them. */
+export function adoptionCardHtml(child, parents = []) {
+  const a = child.adoptionInfo;
+  const sign = starSign(child.birthday ?? birthdayFromDate(a.date));
+  const face = a.ageThen < 2 ? swaddleHtml(child)
+    : `<div class="adopt-face">${avatarSvg({ age: a.ageThen, gender: child.gender, appearance: child.appearance, seed: child.id, mood: 80, size: 96 })}</div>`;
+  const names = parents.filter(Boolean).map((x) => x.firstName);
+  const by = names.length ? `${names.join(' & ')} ${parents.find(Boolean)?.lastName ?? child.lastName}` : '';
+  const where = `${a.city ? `${a.city}, ` : ''}${COUNTRIES[a.countryId]?.name ?? ''}`;
+  return `<div class="btag btag-mint adopt-card">
+    <div class="btag-holes" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="btag-card adopt-inner">
+      <div class="announce-word adopt-word">Welcome Home</div>
+      <div class="adopt-main">
+        <div class="adopt-left">${face}<div class="adopt-house" aria-hidden="true">🏡</div></div>
+        <div class="btag-fields">
+          <div class="btag-row"><span class="btag-label">Name</span><span class="btag-ink">${esc(`${child.firstName} ${child.lastName}`)}</span></div>
+          <div class="btag-row"><span class="btag-label">Came Home</span><span class="btag-ink">${esc(longDate(a.date))}</span></div>
+          <div class="btag-row"><span class="btag-label">Age</span><span class="btag-ink">${a.ageThen === 0 ? 'A baby' : esc(String(a.ageThen))}</span></div>
+          <div class="btag-row"><span class="btag-label">Star Sign</span><span class="btag-ink">${sign.symbol} ${esc(sign.name)}</span></div>
+          <div class="btag-row"><span class="btag-label">Caseworker</span><span class="btag-ink">${esc(a.caseworker)}</span></div>
+        </div>
+      </div>
+      <p class="btag-ink adopt-note">“${esc(a.note)}”</p>
+      <div class="btag-stamp" style="--tilt:${a.tilt}deg">${esc(a.stamp)}</div>
+    </div>
+    <div class="btag-foot"><strong>${esc(a.agency)}</strong><span>${esc(where)}</span>${by ? `<small>Adopted by ${esc(by)}</small>` : ''}</div>
+  </div>`;
+}
+
+/** Opens an adoption day card. Resolves when it is closed. */
+export function openAdoptionCard(child, { title, parents, button = 'Close' } = {}) {
+  if (!child?.adoptionInfo) return Promise.resolve();
+  return new Promise((resolve) => {
+    const m = openModal(`
+      ${title ? `<h2 class="pick-title btag-title">${esc(title)}</h2>` : ''}
+      ${adoptionCardHtml(child, parents)}
+      <button class="btn primary" data-ok style="width:100%;margin-top:14px">${esc(button)}</button>`, { tone: 'good', dismissable: true, onDismiss: resolve });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
