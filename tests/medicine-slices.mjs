@@ -194,7 +194,20 @@ section('C: the trauma emergency');
   check(m.fellowshipRace && m.fellowshipRace.rivalId === peer.id, `D. the fellowship place was contested with the rival (${JSON.stringify(m.fellowshipRace ?? null)})`);
   check((peer.memories ?? []).some((x) => /fellowship/.test(x.text)), 'D. and the rival remembers how it went');
   check(mentor.alive && (mentor.memories ?? []).some((x) => /Supervised/.test(x.text)), 'E. the mentor\'s years with the trainee are remembered');
-  check(typeof chief === 'boolean', 'I. chief resident is a selection, never automatic');
+  // I. Chief resident: chosen from the strongest residents, never certain, never for the weakest.
+  const chiefRuns = (skill, seeds) => seeds.map((seed) => {
+    rng.seed(seed);
+    const q = life('us', 28);
+    const cm = core.M(q);
+    for (const k of Object.keys(cm.skills)) cm.skills[k] = skill;
+    q.stats.intellect = skill; q.hidden.discipline = skill;
+    train.startTraining('residency', 'internal', trainingSites('internal', q.countryId, q.city)[0].e.id);
+    for (let i = 0; i < 3 && cm.training; i++) { for (const k of Object.keys(cm.skills)) cm.skills[k] = skill; year(); }
+    return cm.completed.some((c) => c.chief) || !!cm.training?.chief;
+  });
+  const strongChiefs = chiefRuns(95, [1, 2, 3, 4, 5, 6, 7, 8]).filter(Boolean).length;
+  const weakChiefs = chiefRuns(25, [1, 2, 3, 4]).filter(Boolean).length;
+  check(strongChiefs > 0 && strongChiefs < 8 && weakChiefs === 0, `I. chief resident: often the strongest, never certain, never the weakest (${strongChiefs}/8 strong, ${weakChiefs}/4 weak)`);
 }
 section('D, E, I: the fellowship rivalry, the mentor, chief resident');
 
@@ -214,7 +227,12 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   m.people.colleagueIds.push(peer.id);
   check(drama.romanceAllowed(peer, m), 'F. two adult peers may');
   for (let i = 0; i < 6 && peer.role !== 'partner'; i++) { delete peer.flags.medAsked; p.flags.romanceActs = null; drama.medicineChoice('romance:ask', { peer: peer.id }); if (peer.role !== 'partner') year(); }
-  check(peer.role === 'partner' || peer.flags.medAsked, 'F. and the other person answers for themselves');
+  // F. They answer for themselves: someone who is fond of the player says yes far more often than someone who is not.
+  const answers = (rel) => { let yes = 0; for (let i = 0; i < 12; i++) { const n = makeNpc({ role: 'coworker', countryId: 'us', age: 37, relationship: rel }); n.flags.medRole = 'peer'; store.state.npcs[n.id] = n; p.npcIds.push(n.id); drama.medicineChoice('romance:ask', { peer: n.id }); if (n.role === 'partner') { yes++; n.role = 'ex'; } } return yes; };
+  const wasRole = peer.role; peer.role = 'coworker'; // asked while single: someone already in a relationship asks nobody
+  const warm = answers(95); const cool = answers(10);
+  peer.role = wasRole;
+  check(warm > cool, `F. consent is theirs: warm ${warm}/12, cool ${cool}/12`);
   // G. An offer in another city.
   const away = jobs.postings('country', p, m).find((x) => x.away && !x.block);
   if (away) { m.awayOffer = { hospitalId: away.id, city: away.city, year: store.state.year }; const was = p.city; drama.medicineChoice('away:accept'); check(p.city !== was && m.job.hospitalId === away.id, 'G. a transfer across the country is taken'); }
@@ -235,11 +253,7 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   const r0 = m.skills.reasoning; drama.medicineChoice('talk:speak');
   const p0 = m.skills.professionalism; drama.medicineChoice('talk:argue');
   check(m.skills.reasoning > r0 && m.skills.professionalism < p0, 'H. speaking up helps; arguing in front of the team does not');
-  // J. A promotion is a selection: it can go to someone else.
-  m.job.rank = 'senior'; m.job.rankSince = store.state.year - 6;
-  let decided = false;
-  for (let i = 0; i < 15 && !decided; i++) { year(); decided = !!m.offer || m.job?.rank !== 'senior'; }
-  check(decided || m.job?.rank === 'senior', 'J. leadership is applied for and decided, never automatic');
+  if (!m.job) train.startPost('gensurg', trainingSites('gensurg', p.countryId, p.city)[0].e.id, 'attending');
   // K. A patient returns for follow-up, the same person, once.
   const fx = Object.values(CASE_BY_ID).find((x) => x.followUp && x.specialty.includes('gensurg')) ?? CASE_BY_ID.fam_bp_first;
   const pt = makeNpc({ role: 'patient', countryId: 'us', age: 50 }); store.state.npcs[pt.id] = pt;
@@ -373,6 +387,28 @@ section('F, G, H, J, K, L, M: romance, transfer, disagreement, promotion, the pa
   check(practice.retireFromPractice(b.id).text.length > 0, 'retiring from practice hands it on or offers it for sale');
 }
 section('a clinic of one\'s own');
+
+{
+  // J. A leadership seat comes to those with the record for it, by selection; never to those without it.
+  const seat = (lead, seeds) => seeds.map((seed) => {
+    rng.seed(seed);
+    const q = life('us', 50);
+    const lm = core.M(q);
+    for (const k of Object.keys(lm.skills)) lm.skills[k] = 90;
+    lm.skills.leadership = lead;
+    lm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 1995, to: 1998 });
+    lm.license = { status: 'full', countryId: 'us' };
+    train.startPost('internal', trainingSites('internal', q.countryId, q.city)[0].e.id, 'senior');
+    lm.job.since = store.state.year - 15; lm.job.rankSince = store.state.year - 8;
+    let got = false;
+    for (let i = 0; i < 8 && !got; i++) { year(); q.age = 50; for (const k of Object.keys(lm.skills)) lm.skills[k] = k === 'leadership' ? lead : 90; got = !!lm.offer || ['chief', 'director', 'cmo'].includes(lm.job?.rank); }
+    return got;
+  });
+  const leaders = seat(90, [21, 22, 23, 24]).filter(Boolean).length;
+  const others = seat(20, [21, 22]).filter(Boolean).length;
+  check(leaders > 0 && others === 0, `J. a seat is offered to those with the record for it, never without (${leaders}/4, ${others}/2)`);
+}
+section('J: leadership by selection, from the record');
 
 for (const x of ok) console.log(`ok: ${x}`);
 if (problems.length) { console.log(`PROBLEMS (${problems.length}):\n${problems.map((x) => ` - ${x}`).join('\n')}`); process.exit(1); }

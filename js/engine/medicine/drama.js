@@ -19,6 +19,7 @@ import { store, player, log } from '../../state.js';
 import { remember } from '../conditions.js';
 import { askOut, partner, breakUp } from '../romance.js';
 import { recordEvent } from '../chronicle.js';
+import { endJob } from '../career.js';
 import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputationOf } from './core.js';
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
@@ -358,7 +359,8 @@ export function medicineChoice(value, cast = {}) {
         const spec = currentSpecialty(m);
         const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
         if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
-        return `You move to ${o.city} together. You will need to find a post there: My Medical Career, Hospital.`;
+        if (m.job) { m.job = null; endJob('moved with their partner'); }
+        return `You move to ${o.city} together, and leave your post. You will need to find one there: My Medical Career, Find a Post.`;
       }
       if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
       if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }
