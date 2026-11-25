@@ -59,7 +59,12 @@ function workCase(c, quality = 'best') {
   const order = quality === 'best' ? [...rank].reverse() : rank;
   const usable = v.plans.filter((x) => !x.block);
   const plan = order.map((q) => usable.find((x) => fx.plans.find((y) => y.id === x.id).quality === q)).find(Boolean);
-  const r = cases.choosePlan(c.id, plan.id);
+  let r = cases.choosePlan(c.id, plan.id);
+  // The operating room: the careful choice is listed first at every step; the careless one last.
+  for (let i = 0; i < 8 && core.W().cases[c.id].status === 'or'; i++) {
+    const opts = cases.caseView(c.id).or.step.options.filter((o) => o.id !== 'transfer');
+    r = cases.orStep(c.id, (quality === 'best' ? opts[0] : opts[opts.length - 1]).id);
+  }
   if (fx.decision && core.W().cases[c.id].status === 'deciding') return cases.decide(c.id, fx.decision.options.find((o) => o.quality === 'best').id);
   return r;
 }
@@ -240,6 +245,41 @@ section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} 
   check(kids.length > 0 && kids.every((v) => v.family.length === 1 && v.family[0].as === 'parent or guardian'), 'a child patient comes with a parent or guardian');
   const kinIds = Object.values(core.W().patients).flatMap((x) => (x.household ?? []).map((h) => h.id));
   check(kinIds.every((id) => !q.npcIds.includes(id)), 'a patient\'s family is not added to the player\'s people');
+}
+// The operating room: a surgeon's case goes through consent, team, anesthesia, the unexpected and aftercare.
+{
+  const surgery = (choice) => {
+    rng.seed(2468);
+    store.state = createLife({ countryId: 'us' });
+    const q = store.state.player; q.age = 45;
+    const sm = core.M(q);
+    for (const k of Object.keys(sm.skills)) sm.skills[k] = 80;
+    const now = store.state.year;
+    const fx = CASES.find((x) => !x.triage && !x.decision && x.minYear <= now && x.plans.some((y) => y.quality === 'best' && y.procedure && PROCEDURE_BY_ID[y.procedure].major
+      && (SPECIALTY_BY_ID[x.specialty[0]].procedures ?? []).includes(y.procedure) && (y.minYear ?? 0) <= now && (y.maxYear ?? 9999) >= now));
+    sm.completed.push({ specialtyId: fx.specialty[0], kind: 'residency', from: 2000, to: 2005 });
+    sm.job = { specialtyId: fx.specialty[0], hospitalId: null, rank: 'attending', since: 2005 };
+    const pt = { id: 'pt_or', firstName: 'Pat', lastName: 'Case', age: 50, alive: true, flags: {} };
+    store.state.npcs[pt.id] = pt; core.W().patients[pt.id] = { id: pt.id, caseIds: [], bornYear: store.state.year - 50 };
+    const id = 'case_or';
+    core.W().cases[id] = { id, fixtureId: fx.id, patientId: pt.id, specialtyId: fx.specialty[0], role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    sm.caseIds.push(id);
+    cases.setDiagnosis(id, fx.diagnosis);
+    cases.choosePlan(id, fx.plans.find((y) => y.quality === 'best').id);
+    const went = core.W().cases[id].status === 'or';
+    core.W().cases[id].or.complication = true;
+    const steps = [];
+    while (core.W().cases[id].status === 'or') {
+      const v = cases.caseView(id).or;
+      steps.push(v.step.id);
+      cases.orStep(id, v.step.id === 'complication' ? choice : v.step.options[0].id);
+    }
+    return { went, steps, outcome: core.W().cases[id].outcome, integrity: sm.skills.integrity };
+  };
+  const careful = surgery('pause');
+  const rushed = surgery('press');
+  check(careful.went && careful.steps.join() === 'consent,team,anesthesia,complication,after', `an operation goes through the operating room (${careful.steps.join()})`);
+  check(careful.outcome.points > rushed.outcome.points && rushed.integrity < careful.integrity, 'meeting a complication as a team does better than pressing on');
 }
 section('drama and outcomes kept apart; unsafe care is not rewarded');
 

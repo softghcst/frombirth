@@ -170,12 +170,14 @@ async function openCase(id, api) {
       <div class="section-label">Tests</div>${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
       <div class="section-label">Working diagnosis</div>${v.differential.map((d) => btn('dx', d.label, { arg: d.id, disabled: !open, cls: v.dx === d.id ? 'primary' : '' })).join('')}
       ${open ? `<div class="section-label">Plan</div>${v.plans.map((x) => btn('plan', x.label, { arg: x.id, disabled: !!x.block || !v.dx || !!v.triage, sub: x.block || (x.refer ? `Refers to ${x.refer}` : '') })).join('')}` : ''}
+      ${v.or ? `<div class="card"><h3>Operating room: ${esc(v.or.procedure)}</h3>${kv([['Team', v.or.team], ['Setting', v.or.resources], ['Risk for this patient', v.or.risk]])}
+        <p>${esc(v.or.step.text)}</p>${v.or.step.options.map((o) => btn('or', o.label, { arg: o.id })).join('')}</div>` : ''}
       ${v.decision ? `<div class="section-label">Under pressure</div><p>${esc(v.decision.text)}</p>${v.decision.options.map((o) => btn('decide', o.label, { arg: o.id })).join('')}` : ''}
       ${v.outcome ? `<div class="card"><h3>Outcome</h3><p>${esc(v.outcome.text)}</p>${v.notes.map((n) => `<p class="muted">${esc(n)}</p>`).join('')}</div>` : ''}
       ${last && !v.outcome ? `<p class="muted">${esc(last)}</p>` : ''}
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
-  const acts = { test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage };
+  const acts = { or: cases.orStep, test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage };
   root.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return; }
     const b = e.target.closest('[data-act]');
