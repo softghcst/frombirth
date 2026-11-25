@@ -320,7 +320,7 @@ export function medicineChoice(value, cast = {}) {
         const mentor = npc(m.people.mentorId);
         if (mentor?.alive) mentor.meters.relationship = clamp(mentor.meters.relationship + 4);
         grow('professionalism', 1, m);
-        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'The program\'s wellbeing service finds you an hour a week, and a colleague swaps two of your nights.';
+        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'Someone senior in the program makes time for you, and a colleague swaps two of your nights.';
       }
       if (how === 'hours') return changeHours(-10).text;
       if (how === 'leave') return takeLeave('vacation').text;
