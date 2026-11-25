@@ -23,6 +23,7 @@
 // The rules are gameplay configuration (data/travel.js), simplified and
 // unverified. A decision never depends on nationality or anything about who
 // a person is: only on their application and their record.
+import { yearSpan } from './birthday.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry, uid } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
@@ -42,7 +43,8 @@ const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text
 /** Today, inside the year. The year is the world clock's; the day only moves forward, when people travel. */
 export const today = () => {
   const t = store.state.today;
-  return t && t.startsWith(String(store.state.year)) ? t : `${store.state.year}-01-01`;
+  const span = yearSpan();
+  return t && t >= span.start && t <= span.end ? t : span.start;
 };
 export const yearOf = (date) => Number(String(date).slice(0, 4));
 export const addDays = (date, n) => new Date(Date.parse(`${date}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);

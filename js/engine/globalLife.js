@@ -12,6 +12,7 @@
 //
 // It also brings older saves up to date, deriving only what the save already
 // implies and marking it so; nothing is invented.
+import { yearSpan } from './birthday.js';
 import { rng } from '../rng.js';
 import { clamp, theCountry } from '../util.js';
 import { store, player, livingNpcs, log } from '../state.js';
@@ -195,8 +196,8 @@ export function ensureGlobal(state) {
   const p = state.player;
   state.canon ??= { events: [] };
   state.archive ??= { people: {} };
-  state.today ??= `${state.year}-01-01`;
-  if (!state.today.startsWith(String(state.year))) state.today = `${state.year}-01-01`;
+  const span = yearSpan(state);
+  if (!state.today || state.today < span.start || state.today > span.end) state.today = span.start;
   p.archiveId ??= p.id;
   p.travel ??= { trips: [], whereabouts: null, earned: {} };
   p.travel.earned ??= {};

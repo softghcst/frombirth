@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { giveBirthday, birthDate } from './birthday.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
@@ -195,12 +196,15 @@ function createOnce(opts = {}) {
     }
   }
 
+  if (opts.birthday) player.birthday = { m: opts.birthday.m, d: opts.birthday.d }; // chosen (a test, or the creator)
+  giveBirthday(player); // otherwise a day of the year of its own (engine/birthday.js)
+
   // Opening journal
   const an = (job) => `${/^[aeiou]/i.test(job) ? 'an' : 'a'} ${job}`;
   const j = (text, tone = 'neutral') => ({ age: 0, text, kind: 'system', tone });
   const kind = gender === 'male' ? 'a boy' : gender === 'female' ? 'a girl' : 'a baby';
   const journal = [
-    j(`You are born in ${city}, ${c.name}: ${kind} named ${firstName} ${lastName}.`),
+    j(`You are born on ${birthDate(player)} in ${city}, ${c.name}: ${kind} named ${firstName} ${lastName}.`),
     j(`Your mother is ${mother.firstName}, ${an(mother.occupation)}, age ${mother.age}.`),
   ];
   if (father) {

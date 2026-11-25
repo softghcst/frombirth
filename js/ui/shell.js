@@ -1,5 +1,7 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { openBirthTag, nameBabyModal, announceMultiples } from './birthTag.js';
+import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
@@ -50,6 +52,13 @@ function occupationLine(p) {
  * @param {HTMLElement} app
  * @param {{onExit:Function, onDeath:Function, onRestore:(state:object)=>void}} hooks
  */
+/** The date `months` after a birthday: the age's own birthday, or a few months on ("March 14, 2026", "September 14"). */
+function dayOfLife(p, age, months, withYear = true) {
+  const b = birthdayOf(p);
+  const m = b.m + months;
+  return longDate(isoDate(p.birthYear + age + Math.floor(m / 12), m % 12, b.d), withYear);
+}
+
 export function mountGame(app, hooks) {
   watchTitles();
   let activeTab = null;
@@ -153,7 +162,7 @@ export function mountGame(app, hooks) {
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
     syncMeters($('[data-meters]'), [['Mood', p.stats.mood], ['Health', p.stats.health], ['Intellect', p.stats.intellect], ['Charm', p.stats.charm]]);
-    $('[data-dock-age]').textContent = `${ageNow} · ${store.state.year}`;
+    $('[data-dock-age]').textContent = `${ageNow} · ${dateNow().slice(0, 4)}`;
     // Age up: an arrow, the words, and a badge with what comes next (the next age, or the season for shorter turns).
     const turn = nextTurnText();
     const next = turn.sub.replace(/^→\s*/, '');
@@ -202,12 +211,12 @@ export function mountGame(app, hooks) {
         month = 0;
         memories = 0;
         usedArt = new Set();
-        html += `<section class="age-block${i >= fresh ? ' fresh' : ''}"><h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
+        html += `<section class="age-block${i >= fresh ? ' fresh' : ''}"><h2 class="age-head">Age ${age} <small>${esc(dayOfLife(p, age, 0))}</small></h2>`;
       }
       // Turns shorter than a year: each part of the year under its own heading.
       if ((entry.month ?? 0) !== month) {
         month = entry.month ?? 0;
-        if (month) html += `<h3 class="season-head">${month} months <small>${esc(entry.kind === 'season' ? entry.text.replace(/\.$/, '') : '')}</small></h3>`;
+        if (month) html += `<h3 class="season-head">${month} months <small>${esc(dayOfLife(p, age, month, false))}${entry.kind === 'season' ? ` · ${esc(entry.text.replace(/\.$/, ''))}` : ''}</small></h3>`;
       }
       if (entry.kind === 'season') return; // the heading says it
       const enter = i >= fresh ? ` fresh" style="--i:${Math.min(i - fresh, 8)}` : '';
@@ -382,6 +391,19 @@ export function mountGame(app, hooks) {
 
   /** A baby brother or sister was born this turn: a notice with their portrait. */
   async function birthNotice(knownBefore) {
+    // The player's own children: their hospital tag, filled in (ui/birthTag.js).
+    const mine = player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.flags?.birthTag === 'new' && n.birthInfo);
+    // Twins and more are announced first; then each is named, and the tags are written out with their names.
+    await announceMultiples(mine);
+    for (const [i, b] of mine.entries()) { await nameBabyModal(b, { twinOf: i ? mine[0] : null }); persist(); render(); }
+    for (const [i, b] of mine.entries()) {
+      b.flags.birthTag = 'seen';
+      persist();
+      const other = (b.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
+      const twins = mine.length > 1;
+      await openBirthTag(b, { title: twins ? `${['First', 'Second', 'Third', 'Fourth'][i]}: ${b.firstName}` : `Welcome, ${b.firstName}!`,
+        parents: [player(), other], button: i < mine.length - 1 ? 'Next' : `Hello, ${b.firstName}` });
+    }
     const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
       .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
     for (const b of babies) {

@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import { openBirthTag } from '../birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -380,6 +381,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
+    ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
@@ -423,6 +425,7 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
+      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [player(), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
