@@ -125,6 +125,8 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   let won = false;
   for (let i = 0; i < 8 && !won; i++) { won = lp.seek('da').ok; if (!won) L().tried.da -= 48; }
   check(p().finance.cash < cash, 'a campaign costs money');
+  const race = (p().flags.races ?? []).find((r) => r.legal);
+  check(race && typeof race.share === 'number' && race.total > 0 && race.rival, `the race is counted like any election and kept with the player's races (${race?.share}% against ${race?.rival})`);
   check(!won || p().career.level === 3, `elected: the top of the office (${p().career.title})`);
 }
 

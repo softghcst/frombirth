@@ -20,6 +20,37 @@ import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
 import { employer as employerOf } from './employers.js';
+import { duel } from './elections.js';
+import * as world from './polity.js';
+import { VOTERS } from '../data/parties.js';
+
+/**
+ * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
+ * real politician of the world (engine/polity.js), and kept with the player's other races (p.flags.races).
+ * Simplified: one count, not the full campaign trail of engine/campaign.js.
+ */
+function legalElection(p, title, level, s, boost = 0) {
+  const w = world.polity(p.countryId);
+  const mine = world.membership(p.countryId);
+  const fig = w.kind === 'party' || w.kind === 'none' ? null : world.opponentFor(level === 'local' ? 'mayor' : 'region', p.countryId);
+  const theirs = fig ? world.party(w, fig.partyId) : null;
+  const legalRival = Object.values(store.state.npcs).find((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice?.kind === 'prosecutor');
+  const NEUTRAL = { tax: 0, services: 0, housing: 0, order: 1, green: 0, open: 0 };
+  // The year's mood and the campaign itself swing a race either way, as much as anything on paper.
+  const swing = (rng.next() * 2 - 1) * 9;
+  const me = { id: 'me', positions: mine?.positions ?? NEUTRAL, appeal: s * 40 + (p.stats.charm - 50) / 5 + (p.hidden.fame ?? 0) / 10 + boost + swing };
+  const them = { id: 'rival', positions: theirs?.positions ?? NEUTRAL, appeal: fig ? ((fig.t?.charisma ?? 55) - 55) / 8 : 0 };
+  const res = duel(me, them, VOTERS, (n) => (rng.next() * 2 - 1) * n, level === 'local' ? 400000 : 3000000);
+  const share = res.shares.me;
+  const rival = level === 'local' && legalRival ? `${legalRival.firstName} ${legalRival.lastName}` : fig?.name ?? 'your opponent';
+  const rec = { year: store.state.year, countryId: p.countryId, officeId: level === 'local' ? 'district_attorney' : 'attorney_general', title, rival, rivalParty: theirs?.name ?? null, rivalColor: theirs?.color ?? '#777',
+    party: mine?.name ?? null, color: mine?.color ?? '#444', share, won: share > 50, votes: { ...res.votes }, total: res.total, turnout: res.turnout, legal: true };
+  const races = (p.flags.races ??= []);
+  races.push(rec);
+  if (races.length > 15) races.shift();
+  p.counters.polExp = (p.counters.polExp ?? 0) + 1;
+  return rec;
+}
 import { events, visible, archiveIdOf, archived } from './chronicle.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -353,11 +384,11 @@ export function seek(id, p = player()) {
     const cost = elected ? localCost(30000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
-    const chance = clamp(0.25 + s + (elected ? (p.hidden.fame ?? 0) / 400 + (p.stats.charm - 50) / 300 : 0.05), 0.05, 0.8);
+    const chance = clamp(0.25 + s + 0.05, 0.05, 0.8);
     const name = id === 'da' ? prof.titles.prosecutorChief : id === 'chief_defender' ? prof.titles.defenderChief : 'General Counsel';
-    const rivalRan = elected ? Object.values(store.state.npcs).find((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice?.kind === 'prosecutor') : null;
-    const against = rivalRan ? ` against your old rival ${rivalRan.firstName} ${rivalRan.lastName}` : '';
-    if (luck >= chance) {
+    const vote = elected ? legalElection(p, name, 'local', s) : null;
+    const against = vote ? ` against ${vote.rival}, with ${vote.share}% of the vote` : '';
+    if (elected ? !vote.won : luck >= chance) {
       log(elected ? `You ran for ${name}${against} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
       return result(false, elected ? `You ran for ${name}. The voters chose your opponent.` : `Another candidate was appointed ${name}.`, 'bad');
     }
@@ -401,8 +432,9 @@ export function seek(id, p = player()) {
     const cost = elected ? localCost(250000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A statewide campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
-    const chance = clamp(0.12 + s + (elected ? (p.hidden.fame ?? 0) / 300 + (p.stats.charm - 50) / 250 : 0.03), 0.03, 0.6);
-    if (luck >= chance) return result(false, elected ? 'You ran for Attorney General and lost the statewide vote.' : 'The government appointed someone else.', 'bad');
+    const chance = clamp(0.12 + s + 0.03, 0.03, 0.6);
+    const vote = elected ? legalElection(p, 'Attorney General', 'state', s - 0.1) : null;
+    if (elected ? !vote.won : luck >= chance) return result(false, elected ? `You ran for Attorney General against ${vote.rival} and lost the statewide vote, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%.` : 'The government appointed someone else.', 'bad');
     withdrawAll(p, 'You left private practice for public office.');
     hire(CAREER_BY_ID.attorney_general, 1, 65, elected ? 'elected' : 'appointed');
     L.agKind = elected ? 'state' : 'national';
