@@ -88,3 +88,43 @@
 .modal .notice-head strong { font-size: 1.05rem; }
 .modal .btn-stack .btn { width: 100%; }
 .modal .notice-head ~ .scene { text-align: center; font-family: inherit; font-size: 1.02rem; }
+
+/* The hospital tag for a birth (ui/birthTag.js): a pastel card with punched holes, filled in by hand. It is a paper
+   card, so it keeps its own light colors in the dark theme too. */
+.btag { --tag: #cfe9f3; --tag-edge: #8cc6dc; --blanket: #bfe0f0; --blanket-deep: #9ccbe2; --ink: #23324a; --pen: #2546a8;
+  position: relative; background: var(--tag); border-radius: 14px; padding: 26px 12px 10px; margin-top: 6px;
+  box-shadow: 0 2px 0 var(--tag-edge), 0 8px 22px rgba(30, 40, 70, 0.16); color: var(--ink); transform: rotate(-0.6deg); }
+.btag-girl { --tag: #f9dbe6; --tag-edge: #e6a9bf; --blanket: #f6c9d9; --blanket-deep: #eaa6bf; }
+.btag-mint { --tag: #d6f0e4; --tag-edge: #9fd3bb; --blanket: #c4e8d7; --blanket-deep: #9fd3bb; }
+.btag-holes { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 18px; }
+.btag-holes i { width: 12px; height: 12px; border-radius: 50%; background: var(--bg, #2b2233); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.btag-bow { position: absolute; font-size: 1.05rem; }
+.btag-bow.b1 { top: 4px; left: 12px; transform: rotate(-14deg); }
+.btag-bow.b2 { top: 4px; right: 12px; transform: rotate(12deg); }
+.btag-card { background: #fffdf8; border: 2px solid var(--tag-edge); border-radius: 6px; padding: 8px 10px 10px; }
+.btag-main { display: flex; gap: 8px; align-items: flex-start; }
+.btag-weight { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.btag-fields { flex: 1; min-width: 0; }
+.btag-row { display: flex; align-items: baseline; gap: 4px 5px; flex-wrap: wrap; padding: 3px 0; border-bottom: 1px solid rgba(35, 50, 74, 0.22); }
+.btag-row:last-child { border-bottom: 0; }
+.btag-room { justify-content: flex-end; border-bottom: 0; padding-bottom: 0; }
+.btag-label { font: 800 0.6rem/1.2 var(--sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.btag-ink { font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive; font-size: 1.22rem; line-height: 1; color: var(--pen); font-weight: 600; }
+.btag-pick { margin-left: auto; display: inline-flex; gap: 6px; font: 800 0.6rem/1 var(--sans); letter-spacing: 0.06em; }
+.btag-pick span { padding: 2px 4px; border-radius: 999px; opacity: 0.55; }
+.btag-pick span.on { opacity: 1; box-shadow: 0 0 0 1.6px var(--pen); color: var(--pen); transform: rotate(-4deg); }
+.btag-foot { text-align: center; padding: 8px 4px 0; display: grid; gap: 1px; }
+.btag-foot strong { font: 800 0.72rem/1.25 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.btag-foot span { font: 700 0.66rem/1.25 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.btag-foot small { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
+.btag-title { text-align: center; }
+/* The baby, swaddled: a hood behind the face, the blanket folded across the front. */
+.swaddle { position: relative; width: 104px; height: 124px; flex: none; margin-top: 2px; overflow: hidden; border-radius: 0 0 40% 40%; }
+.swaddle svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.swaddle-hood path { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2.5; }
+.swaddle-face { position: absolute; left: 50%; top: 7px; width: 90px; height: 90px; transform: translateX(-50%); overflow: hidden; border-radius: 50% 50% 44% 44%; }
+.swaddle-face svg { position: static; width: 100%; height: 100%; }
+.swaddle-wrap .w1 { fill: var(--blanket-deep); }
+.swaddle-wrap .w2 { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2; }
+.swaddle-wrap .fold { fill: none; stroke: var(--blanket-deep); stroke-width: 2; stroke-linecap: round; }
+@media (max-width: 360px) { .swaddle { width: 78px; height: 92px; } .swaddle-face { width: 66px; height: 66px; } .btag-ink { font-size: 1.08rem; } }

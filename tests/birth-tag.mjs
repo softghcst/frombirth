@@ -1,0 +1,68 @@
+// A baby's hospital tag: the day (during the year just lived), the time, the size (leaning toward the parents' own),
+// the doctor and a hospital of the place; the star sign from the day; twins on the same day, a few minutes apart.
+// Run with: node tests/birth-tag.mjs
+import { store } from '../js/state.js';
+import { createLife } from '../js/engine/characterGen.js';
+import { tickChildren } from '../js/engine/children.js';
+import { inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
+import { yearSpan } from '../js/engine/birthday.js';
+import { rng } from '../js/rng.js';
+
+const problems = [];
+const check = (ok, what) => { if (!ok) problems.push(what); };
+const life = (o = {}) => { for (;;) { store.state = createLife({ countryId: 'us', city: 'Chicago', ...o }); if (!store.state.player.royal) return store.state.player; } };
+
+// Size runs in families: babies of parents born big are bigger, on average, than babies of parents born small.
+const big = [{ id: 'a', birthInfo: { weightOz: 150, lengthIn: 21.5 } }, { id: 'b', birthInfo: { weightOz: 146, lengthIn: 21.25 } }];
+const small = [{ id: 'c', birthInfo: { weightOz: 92, lengthIn: 18.25 } }, { id: 'd', birthInfo: { weightOz: 96, lengthIn: 18.5 } }];
+const avg = (parents, k, twin = false) => { let t = 0; for (let i = 0; i < 400; i++) t += inheritSize(`kid${i}`, 'female', parents, twin)[k]; return t / 400; };
+check(avg(big, 'weightOz') - avg(small, 'weightOz') > 15, `big parents, bigger babies (${avg(big, 'weightOz').toFixed(1)} oz against ${avg(small, 'weightOz').toFixed(1)})`);
+check(avg(big, 'lengthIn') - avg(small, 'lengthIn') > 0.8, 'and longer ones');
+check(avg([], 'weightOz', true) < avg([], 'weightOz') - 12, 'twins are smaller');
+let lo = Infinity; let hi = 0;
+for (let i = 0; i < 2000; i++) { const s = inheritSize(`r${i}`, i % 2 ? 'male' : 'female'); lo = Math.min(lo, s.weightOz); hi = Math.max(hi, s.weightOz); check(s.lengthIn >= 16.5 && s.lengthIn <= 23, 'a length a baby could have'); }
+check(lo >= 64 && hi <= 176 && hi - lo > 40, `weights from ${lo} to ${hi} oz`);
+check(sizeAtBirth({ id: 'same' }).weightOz === sizeAtBirth({ id: 'same' }).weightOz, 'a parent with no recorded size is given the same one every time');
+const boys = avg([], 'weightOz'); let b = 0; for (let i = 0; i < 400; i++) b += inheritSize(`kid${i}`, 'male').weightOz; check(b / 400 > boys, 'boys are a little heavier');
+
+// How it is told: pounds and inches in the US, kilograms and centimeters in France.
+check(sizeWords({ countryId: 'us', weightOz: 120, lengthIn: 19.5 }).weight === '7 lbs 8 oz', 'pounds and ounces in the US');
+check(sizeWords({ countryId: 'fr', weightOz: 120, lengthIn: 19.5 }).weight === '3.40 kg' && sizeWords({ countryId: 'fr', weightOz: 120, lengthIn: 19.5 }).length === '50 cm', 'kilograms and centimeters in France');
+
+// Hospitals sound like the place, and are the same for every child born in one city.
+check(hospitalIn('us', 'Seattle') === hospitalIn('us', 'Seattle'), 'one hospital per city');
+const de = new Set(Array.from({ length: 30 }, (_, i) => hospitalIn('de', `Stadt${i}`)));
+check([...de].every((h) => /Klinikum|Krankenhaus|Frauenklinik|Universitätsklinikum/.test(h)), `German hospitals sound German (${[...de].slice(0, 3)})`);
+const old = makeBirthInfo({ id: 'old', gender: 'female' }, { date: '1910-05-02', countryId: 'uk', city: 'Leeds' });
+check(old.atHome && old.place === 'At home' && /midwife/.test(old.doctor), 'long ago, babies were born at home with a midwife');
+const now = makeBirthInfo({ id: 'now', gender: 'male' }, { date: '2020-05-02', countryId: 'us', city: 'Chicago' });
+check(!now.atHome && /^Dr\. /.test(now.doctor) && /^\d{1,2}:\d{2} (AM|PM)$/.test(now.time) && /^\d{3}$/.test(now.room), `a hospital birth has a doctor, a time and a room (${now.doctor}, ${now.time}, ${now.room})`);
+
+// A child of the player: born on a day of the year just lived, tagged, and the tag shown once.
+for (let k = 0; k < 40; k++) {
+  const p = life();
+  p.age = 30; p.birthYear = store.state.year - 30;
+  const partner = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender !== p.gender) ?? Object.values(store.state.npcs).find((n) => n.role === 'parent');
+  const span = yearSpan();
+  store.state.year += 1; p.age += 1; // as at the birthday that ends the year, when births come
+  p.flags.pregnancy = { otherId: partner.id, dueAge: p.age };
+  const before = new Set(p.npcIds);
+  rng.seed?.(k);
+  tickChildren();
+  const kids = p.npcIds.filter((id) => !before.has(id)).map((id) => store.state.npcs[id]);
+  check(kids.length >= 1 && kids.every((c) => c.birthInfo && c.flags.birthTag === 'new'), 'a newborn has a tag waiting to be shown');
+  for (const c of kids) {
+    check(c.birthInfo.date >= span.start && c.birthInfo.date <= span.end, `born during the year just lived (${c.birthInfo.date}, ${span.start} to ${span.end})`);
+    check(c.birthday.m === Number(c.birthInfo.date.slice(5, 7)) - 1 && c.birthday.d === Number(c.birthInfo.date.slice(8, 10)), 'their birthday is the day on the tag');
+  }
+  if (kids.length === 2) check(kids[0].birthInfo.date === kids[1].birthInfo.date && kids[0].birthInfo.doctor === kids[1].birthInfo.doctor && kids[0].birthInfo.time !== kids[1].birthInfo.time, 'twins: the same day and doctor, minutes apart');
+}
+
+// The player's own tag: made once, and the same when asked again.
+const me = life();
+const t1 = JSON.stringify(playerBirthInfo(me));
+check(t1 === JSON.stringify(playerBirthInfo(me)) && me.birthInfo.date.endsWith(`-${String(me.birthday.m + 1).padStart(2, '0')}-${String(me.birthday.d).padStart(2, '0')}`), 'your own tag is dated on your birthday');
+check(AT_BIRTH.weight === 120, 'the average baby weighs 7 lbs 8 oz');
+
+if (problems.length) { console.log([...new Set(problems)].join('\n')); process.exit(1); }
+console.log('Every baby gets a hospital tag, sized like their family.');

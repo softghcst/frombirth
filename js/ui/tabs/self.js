@@ -1,4 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { openBirthTag } from '../birthTag.js';
+import { playerBirthInfo } from '../../engine/birthTag.js';
 import { noticed } from '../../engine/talentGrowth.js';
 import { faceGenderOf } from '../../avatar/render.js';
 import { TALENTS } from '../../data/talents.js';
@@ -71,6 +73,7 @@ export default {
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn small" data-identity style="margin-top:10px;width:100%">Edit identity</button>
+        <button class="btn small" data-mytag style="margin-top:8px;width:100%">Your birth tag</button>
       </div>
       ${(() => { const here = living.summary(); const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return `<div class="card"><h3>Life in ${esc(theCountry(country().name))}${era.id === 'now' ? '' : ` · ${esc(era.name)}`}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
@@ -99,6 +102,7 @@ export default {
     el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
+    el.querySelector('[data-mytag]').onclick = async () => { const p = player(); playerBirthInfo(p); api.changed?.(); await openBirthTag(p, { title: 'Your Birth Tag' }); };
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
       const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,

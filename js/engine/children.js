@@ -1,6 +1,7 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo } from './birthTag.js';
 import { announce } from './pregnancyChoice.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
@@ -107,12 +108,30 @@ export function newborn(other) {
   return added;
 }
 
+/** A clock time some minutes later: "11:58 PM" and 5 is "12:03 AM". */
+function later(time, minutes) {
+  const [, h, m, ap] = time.match(/(\d+):(\d+) (AM|PM)/);
+  const t = ((Number(h) % 12) + (ap === 'PM' ? 12 : 0)) * 60 + Number(m) + minutes;
+  const hh = Math.floor(t / 60) % 24;
+  return `${hh % 12 || 12}:${String(t % 60).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
+}
+
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
   if (rng.chance(0.025)) babies.push(newborn(other));
+  // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
+  // share the day and the doctor, a few minutes apart, and are each a little smaller.
+  const date = dayInYearJustLived(babies[0].id);
+  playerBirthInfo(p); // the player's own size at birth, kept, so the baby leans toward the same one their tag shows
+  babies.forEach((b, i) => {
+    b.birthInfo = makeBirthInfo(b, { date, countryId: p.countryId, city: p.city, parents: [p, other], twin: babies.length > 1 });
+    if (i) { const first = babies[0].birthInfo; b.birthInfo = { ...b.birthInfo, doctor: first.doctor, place: first.place, room: first.room, atHome: first.atHome, time: later(first.time, 4 + (b.birthInfo.weightOz % 14)) }; }
+    b.birthday = birthdayFromDate(date);
+    b.flags.birthTag = 'new'; // shown when the turn is over (ui/shell.js birthNotice)
+  });
   const kind = (n) => (n.gender === 'male' ? 'boy' : 'girl');
   const text = babies.length === 2
     ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} twins: ${babies[0].firstName} and ${babies[1].firstName}.`

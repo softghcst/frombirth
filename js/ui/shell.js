@@ -1,5 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { openBirthTag } from './birthTag.js';
 import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
@@ -390,6 +391,16 @@ export function mountGame(app, hooks) {
 
   /** A baby brother or sister was born this turn: a notice with their portrait. */
   async function birthNotice(knownBefore) {
+    // The player's own children: their hospital tag, filled in (ui/birthTag.js).
+    const mine = player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.flags?.birthTag === 'new' && n.birthInfo);
+    for (const [i, b] of mine.entries()) {
+      b.flags.birthTag = 'seen';
+      persist();
+      const other = (b.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
+      const twins = mine.length > 1;
+      await openBirthTag(b, { title: twins ? `Twins! ${i ? 'And' : 'Welcome,'} ${b.firstName}` : `Welcome, ${b.firstName}!`,
+        parents: `${player().firstName}${other ? ` & ${other.firstName}` : ''} ${player().lastName}`, button: i < mine.length - 1 ? 'Next' : `Hello, ${b.firstName}` });
+    }
     const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
       .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
     for (const b of babies) {
