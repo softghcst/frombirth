@@ -171,7 +171,12 @@ export const OUTFITS = {
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
   outfits: { female: ['outfit_45_princess_sweetheart', 'outfit_52_princess_starlight'],
-    male: ['outfit_46_prince_epaulettes'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'], monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+    male: ['outfit_46_prince_epaulettes'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'],
+    // A royal child of 7 to 13 (the kid head), drawn on its template: princes and princesses; an empty list is plain children's clothes.
+    // The heir to the throne, at that age, wears their own (kidHeir), whichever of the others they were given.
+    kidHeir: { male: 'outfit_kid_06_heir_jacket', female: 'outfit_kid_12_heir_princess_starry' },
+    kid: { male: ['outfit_kid_01_royal_tunic', 'outfit_kid_02_royal_sailor', 'outfit_kid_03_royal_blazer', 'outfit_kid_04_royal_ceremonial', 'outfit_kid_05_royal_velvet_cape'],
+      female: ['outfit_kid_07_princess_dress', 'outfit_kid_08_princess_sailor', 'outfit_kid_09_princess_pinafore', 'outfit_kid_10_princess_ceremonial', 'outfit_kid_11_princess_capelet'] }, monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.

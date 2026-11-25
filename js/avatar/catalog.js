@@ -288,6 +288,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: OUTFITS.baby.length ? seeded(OUTFITS.baby, seed, 'babyclothes') : null,
+    royalKidClothes: ROYAL.outfits.kid[sex]?.length ? seeded(ROYAL.outfits.kid[sex], seed, 'royalkid') : null,
     royalBabyClothes: ROYAL.outfits.baby.length ? seeded(ROYAL.outfits.baby, seed, 'royalbaby') : null,
     kidClothes: KID_OUTFITS.any.length + KID_OUTFITS[sex].length ? seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes') : null, royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
     // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.

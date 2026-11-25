@@ -11,7 +11,7 @@ import { extname, join, normalize } from 'node:path';
 import { createRequire } from 'node:module';
 
 /** Which head each kind of child's outfit is drawn on, and the middle of that head's neckline (512 frame). */
-const HEADS = { baby: { file: 'heads/toddler.svg', x: 255.5, y: 459 }, kid: { file: 'heads/kid.svg', x: 256.1, y: 437 } };
+const HEADS = { baby: { file: 'heads/toddler.svg', x: 255.5, y: 459 }, kid: { file: 'heads/kid.svg', x: 256.1, y: 456 } };
 const SY = [1, 1.04, 1.08, 1.12]; // a little taller is allowed; it is width that is missing (taller does not cover the sides)
 const BARE = 0.5; // percent of the shoulders that may show (the edge of the outline, in practice)
 const MAX = 1.6;

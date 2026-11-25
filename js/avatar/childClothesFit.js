@@ -2,4 +2,4 @@
 // Per children's outfit: how much wider (sx) and taller (sy) it is worn than drawn, about the middle of its neckline,
 // to cover the shoulders of the head it was drawn on. Applied by js/CharacterAvatar.js.
 export const CHILD_CLOTHES_FIT = {"outfit_baby_01_cream_onesie":{"sx":1.04,"sy":1},"outfit_baby_02_overalls":{"sx":1.38,"sy":1},"outfit_baby_03_dot_bib":{"sx":1.5,"sy":1}};
-export const CHILD_NECKLINE = {"baby":{"x":255.5,"y":459},"kid":{"x":256.1,"y":437}};
+export const CHILD_NECKLINE = {"baby":{"x":255.5,"y":459},"kid":{"x":256.1,"y":456}};

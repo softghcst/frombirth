@@ -176,7 +176,7 @@ export function dressFor(look, ctx = {}) {
     const minor = age < 18;
     const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
     // A royal child (under 14, the kid head) wears children's clothes too (none drawn yet); royal dress begins at 14.
-    const dress = young ? look.royalBabyClothes ?? ROYAL.outfits.baby[0] ?? null : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
+    const dress = young ? look.royalBabyClothes ?? ROYAL.outfits.baby[0] ?? null : stage === 'kid' ? ((rank === 'heir' && ROYAL.outfits.kidHeir?.[gender]) || ((ROYAL.outfits.kid[gender]?.includes(look.royalKidClothes) ? look.royalKidClothes : ROYAL.outfits.kid[gender]?.[0]) ?? look.kidClothes ?? null)) : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
       : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
     // No royal dress drawn for their age (a royal teen, while all of it is grown-up dress): their own clothes.
     out.clothes = dress === undefined ? out.clothes : dress;

@@ -464,7 +464,7 @@ def hue_gap(a, b):
 # What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
 RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color',
             'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
-FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
+FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|heir|royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
 
 
@@ -1447,7 +1447,7 @@ def tags_for(folder, name):
                 t['career'] = k
         if 'baby' in parts:
             t['age'] = 'baby'
-        if re.search(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|ermine|jabot|capelet|armor', name):
+        if re.search(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|ermine|jabot|capelet|armor|heir', name):
             t['royal'] = True
     if folder == 'crowns':
         t['royal'] = True
