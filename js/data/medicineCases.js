@@ -4491,6 +4491,2591 @@ export const CASES = [
       poor: "{patient} is kept out of sports for no reason.",
     },
   }),
+  // ======================================================================================
+  // MORE CASES: PSYCHIATRY, DERMATOLOGY, ANESTHESIOLOGY, RADIOLOGY, PATHOLOGY
+  // ======================================================================================
+  C({
+    id: 'psych_first_psychosis', specialty: ['psychiatry'], ages: [18, 28], minYear: 1960, tier: 'intermediate', household: true,
+    label: 'Hearing voices',
+    intro: "{patient}, {age}, is brought to clinic by a parent who says {patient} has stopped sleeping and talks about being watched.",
+    history: "Over three months {patient} has dropped out of classes, stays in their room, and hears voices commenting on what they do. Has been using cannabis most days. No thoughts of harming anyone, but frightened.",
+    exam: "Guarded and distracted, but polite. Clear about time and place. Physically well.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'A careful history with the parent fills in a slow change over months, with no sudden illness or head injury.' },
+      { test: 'blood_basic', value: 'useful', result: 'Normal results, which helps rule out a medical cause.' },
+      { test: 'screening_tool', value: 'neutral', result: 'A structured interview supports a first episode of psychosis.' },
+      { test: 'mri', value: 'low', result: 'A brain scan with no reason to expect a finding.' },
+    ],
+    differential: [
+      { id: 'psychosis', label: 'A first episode of psychosis' },
+      { id: 'drug', label: 'Effects of drug use alone' },
+      { id: 'medical', label: 'A medical illness affecting the brain' },
+    ],
+    diagnosis: 'psychosis',
+    plans: [
+      { id: 'early_team', label: 'Explain what is happening in plain words, involve {patient} in choosing treatment, link with an early psychosis team, and talk honestly about cannabis', quality: 'best' },
+      { id: 'admit_force', label: 'Admit to hospital against their wishes straight away', quality: 'poor' },
+      { id: 'phase', label: 'Tell the family it is a phase and to wait', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} trusts the team, stays in treatment, and returns to classes part-time within the year.",
+      fair: "{patient} improves but drops in and out of appointments.",
+      poor: "{patient} disengages, and the voices return worse a few months later.",
+    },
+  }),
+  C({
+    id: 'derm_bcc', specialty: ['dermatology'], ages: [55, 85], minYear: 1950,
+    label: 'A pearly spot',
+    intro: "{patient}, {age}, has a small spot on the nose that has bled on and off for a year.",
+    history: "Worked outdoors for decades. Fair skin that burns easily. Not painful, but it never fully heals.",
+    exam: "A small pearly bump with tiny blood vessels on the surface and a crusted center.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'A small sample confirms a slow-growing skin cancer that rarely spreads.' },
+      { test: 'exam_focused', value: 'useful', result: 'A full skin check finds no other worrying spots.' },
+      { test: 'ct', value: 'low', result: 'A scan this kind of skin cancer does not need.' },
+    ],
+    differential: [
+      { id: 'bcc', label: 'A slow-growing skin cancer (basal cell)' },
+      { id: 'melanoma', label: 'Melanoma' },
+      { id: 'pimple', label: 'An inflamed pimple' },
+    ],
+    diagnosis: 'bcc',
+    needs: ['biopsy'],
+    plans: [
+      { id: 'excise', label: 'Explain the result, agree on removal with clear margins, and talk about sun protection and future skin checks', quality: 'best', procedure: 'derm_excision' },
+      { id: 'watch', label: 'Leave it and see what happens', quality: 'poor' },
+      { id: 'cream_only', label: 'Recommend a moisturizer', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s spot is removed completely, the scar is small, and yearly checks stay clear.",
+      fair: "{patient} needs a second small procedure to clear the edges.",
+      poor: "{patient}'s spot keeps growing and needs a larger operation later.",
+    },
+  }),
+  C({
+    id: 'anes_family_reaction', specialty: ['anesthesiology'], ages: [18, 60], minYear: 1970, tier: 'intermediate',
+    label: 'A family warning',
+    intro: "{patient}, {age}, is booked for a knee operation and mentions at the pre-operative clinic that a cousin once had a dangerous reaction to an anesthetic.",
+    history: "The cousin developed a very high temperature and stiff muscles during an operation years ago. {patient} has never had an anesthetic. Otherwise healthy.",
+    exam: "Fit and well. Normal airway, heart and lungs.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'A call to the family confirms the cousin was told it runs in families and to warn relatives.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+      { test: 'echo', value: 'low', result: 'A heart scan that does not address the risk.' },
+    ],
+    differential: [
+      { id: 'inherited', label: 'Possible inherited sensitivity to some anesthetic medicines' },
+      { id: 'allergy', label: 'An ordinary allergy' },
+      { id: 'none', label: 'No relevant risk' },
+    ],
+    diagnosis: 'inherited',
+    plans: [
+      { id: 'safe_plan', label: 'Plan an anesthetic that avoids the trigger medicines, brief the team, prepare the emergency kit, and arrange family testing advice', quality: 'best', procedure: 'anes_care' },
+      { id: 'routine', label: 'Proceed as routine; it was only a cousin', quality: 'unsafe', procedure: 'anes_care' },
+      { id: 'cancel', label: 'Tell {patient} they can never have surgery', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s operation goes smoothly, and the family gets advice about testing.",
+      fair: "{patient}'s operation is delayed a week while the plan is sorted out, then goes well.",
+      poor: "{patient} has a worrying rise in temperature in recovery that needs urgent treatment.",
+    },
+  }),
+  C({
+    id: 'rad_child_appendix', specialty: ['radiology'], ages: [6, 14], minYear: 1980, guardian: true,
+    label: 'An ultrasound for belly pain',
+    intro: "The children's emergency team asks for an ultrasound of {patient}, {age}, who has pain in the lower right belly.",
+    history: "The request says pain since last night, a mild fever and no appetite. The team hopes to avoid a CT scan if possible.",
+    exam: "The ultrasound shows a swollen, tender appendix with a little fluid around it.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'The appendix is clearly seen and is inflamed.' },
+      { test: 'ct', value: 'low', result: 'Would add radiation to a child without changing the answer.' },
+    ],
+    differential: [
+      { id: 'appendicitis', label: 'Appendicitis' },
+      { id: 'glands', label: 'Swollen glands in the belly from a virus' },
+      { id: 'normal', label: 'A normal study' },
+    ],
+    diagnosis: 'appendicitis',
+    plans: [
+      { id: 'call_report', label: 'Report appendicitis clearly, call the team so the surgeons are asked now, and note that no CT is needed', quality: 'best' },
+      { id: 'ct_anyway', label: 'Recommend a CT scan to be sure', quality: 'poor' },
+      { id: 'vague', label: 'Write a vague report and leave the decision to them', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} sees the surgeons within the hour and is home in two days.",
+      fair: "{patient}'s operation happens a few hours later than it could have.",
+      poor: "{patient} waits for an extra scan and the appendix bursts before surgery.",
+    },
+  }),
+  C({
+    id: 'path_cervical_screen', specialty: ['pathology'], ages: [25, 60], minYear: 1950, sex: 'female',
+    label: 'A screening slide',
+    intro: "A routine cervical screening sample from {patient}, {age}, comes to the laboratory.",
+    history: "The form says no symptoms. Last screening was five years ago and normal.",
+    exam: "Under the microscope, a small group of cells look clearly abnormal, of a kind that can become cancer over years if left.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'Extra preparations of the sample and a colleague\'s second look agree on high-grade change.' },
+      { test: 'history_detail', value: 'neutral', result: 'The form adds little beyond the date of the last screen.' },
+      { test: 'blood_special', value: 'low', result: 'No blood test answers this question.' },
+    ],
+    differential: [
+      { id: 'precancer', label: 'High-grade precancerous change' },
+      { id: 'inflammation', label: 'Inflammation only' },
+      { id: 'cancer', label: 'Invasive cancer' },
+    ],
+    diagnosis: 'precancer',
+    plans: [
+      { id: 'report_followup', label: 'Report the finding clearly, recommend prompt referral for a closer look, and make sure the result reaches the clinic', quality: 'best' },
+      { id: 'repeat', label: 'Recommend a repeat screen in five years', quality: 'unsafe' },
+      { id: 'overcall', label: 'Call it cancer to be safe', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} has the area treated in clinic and later screens are normal.",
+      fair: "{patient}'s referral is slow but the change is treated in time.",
+      poor: "{patient}'s result is lost and the change is only found years later.",
+    },
+  }),
+  C({
+    id: 'path_label_mismatch', specialty: ['pathology'], ages: [30, 80], minYear: 1920, sex: 'female', tier: 'intermediate',
+    label: 'The wrong name',
+    intro: "A breast biopsy arrives for {patient}, {age}, but the name on the jar does not match the name on the form.",
+    history: "The tissue shows cancer. The clinic is busy and the surgeon wants the report today.",
+    exam: "The sample is good quality and the diagnosis would be easy to make. The question is whose tissue it is.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'A call to the clinic shows two patients were sampled back to back that morning.' },
+      { test: 'biopsy', value: 'neutral', result: 'The tissue itself cannot tell you whose it is.' },
+    ],
+    differential: [
+      { id: 'mislabel', label: 'A labeling error that must be resolved before reporting' },
+      { id: 'typo', label: 'A harmless typing error' },
+      { id: 'fine', label: 'No problem at all' },
+    ],
+    diagnosis: 'mislabel',
+    plans: [
+      { id: 'hold_resolve', label: 'Hold the report, contact the clinic to confirm identity with both patients\' samples, and file a safety report', quality: 'best' },
+      { id: 'guess', label: 'Report it under the name on the form', quality: 'unsafe' },
+      { id: 'discard', label: 'Throw the sample away and ask for a new one without explanation', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "The mix-up is untangled within a day, and {patient} gets the right result and the right care.",
+      fair: "{patient}'s result is delayed a few days while the samples are checked.",
+      poor: "{patient} is told the wrong result before the error is found.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: OPHTHALMOLOGY, ENT, UROLOGY
+  // ======================================================================================
+  C({
+    id: 'oph_angle_closure', specialty: ['ophthalmology'], ages: [55, 85], minYear: 1975, tier: 'intermediate',
+    label: 'A painful red eye',
+    intro: "{patient}, {age}, has a sudden painful red eye, blurred vision, halos around lights and has been sick.",
+    history: "Started in a dark movie theater last night. Farsighted. Has never had eye trouble before.",
+    exam: "A red eye with a hazy front, a mid-sized pupil that does not react, and an eye that feels hard.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'The eye pressure is very high and the drainage angle is closed.' },
+      { test: 'ct', value: 'low', result: 'A head scan that only delays treatment.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+    ],
+    differential: [
+      { id: 'angle_closure', label: 'Acute closed-angle glaucoma' },
+      { id: 'conjunctivitis', label: 'Pink eye' },
+      { id: 'migraine', label: 'A migraine' },
+    ],
+    diagnosis: 'angle_closure',
+    needs: ['exam_focused'],
+    plans: [
+      { id: 'lower_laser', label: 'Lower the pressure urgently with medicines, then a laser treatment in clinic, and treat the other eye to prevent the same', quality: 'best', procedure: 'office_minor' },
+      { id: 'drops_home', label: 'Give soothing drops and send home', quality: 'unsafe' },
+      { id: 'tomorrow', label: 'Book a routine clinic next week', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s pressure comes down within hours and the vision recovers fully.",
+      fair: "{patient} keeps most of the vision, with some lasting damage at the edges.",
+      poor: "{patient} loses some vision in that eye.",
+    },
+  }),
+  C({
+    id: 'oph_diabetic_eye', specialty: ['ophthalmology'], ages: [40, 75], minYear: 1975,
+    label: 'A diabetic eye check',
+    intro: "{patient}, {age}, comes for a yearly diabetic eye check and says the vision seems fine.",
+    history: "Diabetes for fifteen years. Admits sugar control has been poor and missed the last two eye checks.",
+    exam: "Vision is good. The back of the eye shows new, fragile blood vessels growing near the optic nerve.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'A dilated examination confirms new vessel growth.' },
+      { test: 'blood_basic', value: 'useful', result: 'Sugar control is poor over recent months.' },
+      { test: 'mri', value: 'low', result: 'Not the right test for the eye.' },
+    ],
+    differential: [
+      { id: 'proliferative', label: 'Advanced diabetic eye disease' },
+      { id: 'mild', label: 'Mild diabetic changes only' },
+      { id: 'normal', label: 'A normal eye' },
+    ],
+    diagnosis: 'proliferative',
+    needs: ['exam_focused'],
+    plans: [
+      { id: 'treat_coordinate', label: 'Explain that good vision now does not mean safety, start laser treatment in clinic, and work with the family doctor on sugar control', quality: 'best', procedure: 'office_minor' },
+      { id: 'one_year', label: 'Recheck in a year since vision is fine', quality: 'unsafe' },
+      { id: 'scold', label: 'Lecture {patient} about missed checks and send them away', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s new vessels shrink, sugar control improves, and the vision stays good.",
+      fair: "{patient} needs extra treatments but keeps useful vision.",
+      poor: "{patient} has a bleed inside the eye that blurs the vision for months.",
+    },
+  }),
+  C({
+    id: 'oph_lazy_eye', specialty: ['ophthalmology'], ages: [3, 6], minYear: 1950, guardian: true,
+    label: 'A school vision check',
+    intro: "{patient}, {age}, failed a preschool vision screen in one eye. A parent says {patient} seems to see fine.",
+    history: "No complaints. A grandparent wore a patch as a child.",
+    exam: "One eye sees much less well than the other. The eyes are straight and healthy.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'A careful glasses test shows strong far-sightedness in the weaker eye.' },
+      { test: 'mri', value: 'low', result: 'A scan needing sedation, with no reason for it.' },
+    ],
+    differential: [
+      { id: 'amblyopia', label: 'A lazy eye from an uneven glasses prescription' },
+      { id: 'tumor', label: 'A tumor behind the eye' },
+      { id: 'normal', label: 'A normal result' },
+    ],
+    diagnosis: 'amblyopia',
+    plans: [
+      { id: 'glasses_patch', label: 'Prescribe glasses, explain patching the good eye for part of each day, make it a game, and review every few months', quality: 'best' },
+      { id: 'grow_out', label: 'Say {patient} will grow out of it', quality: 'poor' },
+      { id: 'operate', label: 'Book eye muscle surgery', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s weaker eye catches up within a year, and the patch becomes a pirate game.",
+      fair: "{patient}'s vision improves but not fully because patching was hard to keep up.",
+      poor: "{patient}'s weaker eye stays weak for life.",
+    },
+  }),
+  C({
+    id: 'ent_nosebleed', specialty: ['ent'], ages: [60, 90], minYear: 1950,
+    label: 'A nosebleed that will not stop',
+    intro: "{patient}, {age}, has had a nosebleed for an hour that pinching has not stopped.",
+    history: "High blood pressure. Takes a blood thinner for an irregular heartbeat. Feels a little lightheaded.",
+    exam: "Steady bleeding from the front of one nostril. Pulse a little fast, blood pressure high.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'A bleeding vessel is seen just inside the nostril.' },
+      { test: 'blood_basic', value: 'useful', result: 'Blood count is a little low; the blood thinner is working as expected.' },
+      { test: 'ct', value: 'low', result: 'No reason to scan.' },
+    ],
+    differential: [
+      { id: 'anterior', label: 'A bleed from the front of the nose' },
+      { id: 'tumor', label: 'A tumor in the nose' },
+      { id: 'clotting', label: 'A serious bleeding disorder' },
+    ],
+    diagnosis: 'anterior',
+    plans: [
+      { id: 'seal_pack', label: 'Seal the vessel in the clinic, pack if needed, and talk with the heart doctor about the blood thinner rather than stopping it alone', quality: 'best', procedure: 'office_minor' },
+      { id: 'stop_thinner', label: 'Tell {patient} to stop the blood thinner for good', quality: 'poor' },
+      { id: 'or_now', label: 'Take to the operating room', quality: 'poor', procedure: 'ent_surgery' },
+    ],
+    outcomes: {
+      good: "{patient}'s bleeding stops in clinic and does not come back.",
+      fair: "{patient} has one more small bleed at home that settles with pressure.",
+      poor: "{patient} returns twice with more bleeding.",
+    },
+  }),
+  C({
+    id: 'ent_neck_lump', specialty: ['ent'], ages: [45, 80], minYear: 1980, tier: 'intermediate',
+    label: 'A lump in the neck',
+    intro: "{patient}, {age}, has a painless lump on one side of the neck that has been there for two months.",
+    history: "A long-time smoker who drinks most days. A sore throat on one side and an earache on the same side.",
+    exam: "A firm, fixed lump in the neck. The throat exam shows an irregular area at the base of the tongue.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'A solid lymph node; a needle sample shows cancer cells.' },
+      { test: 'ct', value: 'useful', result: 'Shows the extent of the disease in the throat and neck.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+    ],
+    differential: [
+      { id: 'throat_cancer', label: 'Throat cancer spread to a neck gland' },
+      { id: 'infection', label: 'A swollen gland from infection' },
+      { id: 'cyst', label: 'A harmless cyst' },
+    ],
+    diagnosis: 'throat_cancer',
+    needs: ['ultrasound'],
+    plans: [
+      { id: 'mdt', label: 'Share the result honestly, bring the case to the head and neck cancer team, and support {patient} through the choices, including help to stop smoking', quality: 'best' },
+      { id: 'antibiotics', label: 'Try antibiotics for a month first', quality: 'poor' },
+      { id: 'remove_lump', label: 'Simply cut out the lump this week', quality: 'poor', procedure: 'ent_surgery' },
+    ],
+    outcomes: {
+      good: "{patient} starts treatment within weeks with a plan the whole team agreed.",
+      fair: "{patient}'s treatment begins after some delay.",
+      poor: "{patient}'s cancer grows while time is lost on the wrong treatment.",
+    },
+  }),
+  C({
+    id: 'ent_glue_ear', specialty: ['ent'], ages: [2, 6], minYear: 1970, guardian: true,
+    label: 'Not hearing well',
+    intro: "{patient}, {age}, has seemed not to hear well since a run of colds this winter. A parent asks about ear tubes.",
+    history: "Turns the TV up and says 'what?' a lot. No ear pain now. Speech is on track.",
+    exam: "Dull eardrums with fluid behind them on both sides. Otherwise well.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'A hearing test shows a mild loss on both sides, typical of fluid.' },
+      { test: 'ct', value: 'low', result: 'Radiation a child does not need.' },
+    ],
+    differential: [
+      { id: 'glue_ear', label: 'Fluid behind the eardrums after colds' },
+      { id: 'nerve', label: 'Permanent nerve deafness' },
+      { id: 'wax', label: 'Wax only' },
+    ],
+    diagnosis: 'glue_ear',
+    plans: [
+      { id: 'watch_recheck', label: 'Explain that this usually clears in a few months, give tips for talking with {patient}, and recheck the hearing in three months', quality: 'best' },
+      { id: 'tubes_now', label: 'Book ear tubes this week', quality: 'ok', procedure: 'ent_surgery' },
+      { id: 'dismiss', label: 'Say there is nothing wrong', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s fluid clears by spring and the hearing is back to normal.",
+      fair: "{patient} needs ear tubes later after the fluid stays.",
+      poor: "{patient}'s hearing problem is missed and school starts badly.",
+    },
+  }),
+  C({
+    id: 'uro_testis_lump', specialty: ['urology'], ages: [18, 40], minYear: 1975, sex: 'male', tier: 'intermediate',
+    label: 'A lump he nearly ignored',
+    intro: "{patient}, {age}, found a hard lump on one testicle in the shower a month ago and has been too embarrassed to come in.",
+    history: "Painless. No injury. Hopes to have children one day.",
+    exam: "A firm, painless lump within one testicle.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'A solid growth inside the testicle.' },
+      { test: 'blood_special', value: 'useful', result: 'Tumor markers are raised.' },
+      { test: 'mri', value: 'low', result: 'Adds nothing before the plan.' },
+    ],
+    differential: [
+      { id: 'testis_cancer', label: 'Testicular cancer' },
+      { id: 'cyst', label: 'A harmless cyst' },
+      { id: 'infection', label: 'An infection' },
+    ],
+    diagnosis: 'testis_cancer',
+    needs: ['ultrasound'],
+    plans: [
+      { id: 'consent_op', label: 'Explain honestly that this is very treatable, offer sperm banking, get consent and remove the testicle soon', quality: 'best', procedure: 'uro_surgery' },
+      { id: 'antibiotics', label: 'Try antibiotics and see', quality: 'unsafe' },
+      { id: 'wait', label: 'Recheck in six months', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} is treated early, the outlook is excellent, and he is glad he came in.",
+      fair: "{patient} needs extra treatment after surgery but does well.",
+      poor: "{patient}'s delay means a longer course of treatment.",
+    },
+  }),
+  C({
+    id: 'uro_psa_talk', specialty: ['urology'], ages: [55, 70], minYear: 1990, sex: 'male',
+    label: 'A screening question',
+    intro: "{patient}, {age}, asks whether he should have the prostate blood test because a friend was just diagnosed.",
+    history: "No urinary symptoms. No family history. Has read frightening things online.",
+    exam: "Well. No abnormality found.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'Talking it through shows what {patient} is most worried about and what he values.' },
+      { test: 'blood_special', value: 'neutral', result: 'Can be done after he decides; a raised result leads to more tests.' },
+      { test: 'mri', value: 'low', result: 'No reason for a scan without a test result.' },
+    ],
+    differential: [
+      { id: 'screen_question', label: 'A well man deciding about screening' },
+      { id: 'cancer', label: 'A known prostate cancer' },
+      { id: 'enlarged', label: 'An enlarged prostate causing symptoms' },
+    ],
+    diagnosis: 'screen_question',
+    plans: [
+      { id: 'shared', label: 'Explain the possible benefits and harms of screening in plain numbers, and support whatever he decides', quality: 'best' },
+      { id: 'biopsy', label: 'Book a prostate biopsy to settle it', quality: 'unsafe', procedure: 'uro_surgery' },
+      { id: 'refuse', label: 'Tell him the test is useless', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} makes an informed choice and leaves less frightened.",
+      fair: "{patient} has the test without fully understanding what may follow.",
+      poor: "{patient} is left anxious and confused.",
+    },
+  }),
+  C({
+    id: 'uro_blood_urine', specialty: ['urology'], ages: [55, 85], minYear: 1980, tier: 'intermediate',
+    label: 'Blood in the urine',
+    intro: "{patient}, {age}, saw red urine twice last week. It was painless and has stopped.",
+    history: "Smoked for forty years. Worked in a dye factory when young. No urinary infections.",
+    exam: "Well. Nothing abnormal in the belly.",
+    tests: [
+      { test: 'urine', value: 'useful', result: 'Blood in the urine with no infection.' },
+      { test: 'ct', value: 'useful', result: 'A growth in the bladder wall, with healthy kidneys.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal kidney function.' },
+    ],
+    differential: [
+      { id: 'bladder_tumor', label: 'A bladder tumor' },
+      { id: 'infection', label: 'A urine infection' },
+      { id: 'stone', label: 'A kidney stone' },
+    ],
+    diagnosis: 'bladder_tumor',
+    needs: ['ct'],
+    plans: [
+      { id: 'resect', label: 'Explain the finding, get consent to look inside the bladder and remove the growth, and plan follow-up and help to stop smoking', quality: 'best', procedure: 'uro_surgery' },
+      { id: 'stopped', label: 'Reassure because the bleeding has stopped', quality: 'unsafe' },
+      { id: 'antibiotics', label: 'Treat for an infection', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s tumor is found early and removed, and checkups stay clear.",
+      fair: "{patient} needs repeat procedures over the following years.",
+      poor: "{patient}'s tumor grows deeper before it is treated.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: PAIN MEDICINE, PHYSICAL MEDICINE AND REHABILITATION
+  // ======================================================================================
+  C({
+    id: 'pain_widespread', specialty: ['pain', 'pmr'], ages: [30, 60], minYear: 1990, tier: 'intermediate',
+    label: 'Pain everywhere',
+    intro: "{patient}, {age}, has aching all over the body for two years, poor sleep and constant tiredness.",
+    history: "Many tests elsewhere have all been normal. Has stopped working and walking much. Feels nobody believes the pain is real.",
+    exam: "Tender in many places, with full strength, normal joints and normal reflexes.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'Sleep, mood and activity have all slid together; {patient} feels heard for the first time.' },
+      { test: 'blood_basic', value: 'useful', result: 'Normal results, including thyroid and inflammation markers.' },
+      { test: 'mri', value: 'low', result: 'Another scan, likely to find harmless changes and add worry.' },
+    ],
+    differential: [
+      { id: 'fibromyalgia', label: 'A widespread pain condition of the nervous system' },
+      { id: 'arthritis', label: 'Inflammatory arthritis' },
+      { id: 'imagined', label: 'Pain that is not real' },
+    ],
+    diagnosis: 'fibromyalgia',
+    plans: [
+      { id: 'whole_plan', label: 'Name the condition, explain that the pain is real, and build a plan of graded activity, sleep habits and talking therapy with regular reviews', quality: 'best' },
+      { id: 'injections', label: 'Offer a series of nerve injections at many sites', quality: 'poor' },
+      { id: 'strong_meds', label: 'Start strong pain medicines and see', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} sleeps better, walks daily again and returns to part-time work.",
+      fair: "{patient} has good weeks and bad weeks but feels more in control.",
+      poor: "{patient} feels dismissed and keeps searching for a new test.",
+    },
+  }),
+  C({
+    id: 'pain_cancer_block', specialty: ['pain'], ages: [50, 85], minYear: 1985, tier: 'complex',
+    label: 'Cancer pain',
+    intro: "{patient}, {age}, has advanced pancreatic cancer and severe belly pain that strong pain medicines are not controlling.",
+    history: "The medicines make {patient} too drowsy to talk with family. The main wish is to be comfortable and alert at home.",
+    exam: "Thin, in pain, tender in the upper belly. Clear and able to make decisions.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'What matters most is clear: comfort, alertness and being at home.' },
+      { test: 'ct', value: 'useful', result: 'The tumor is close to the nerves that carry pain from the belly.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Clotting is normal.' },
+    ],
+    differential: [
+      { id: 'nerve_pain', label: 'Pain from the tumor pressing on belly nerves' },
+      { id: 'blockage', label: 'A blocked bowel' },
+      { id: 'addiction', label: 'Drug-seeking' },
+    ],
+    diagnosis: 'nerve_pain',
+    plans: [
+      { id: 'nerve_block', label: 'Discuss the benefits and risks of a nerve block with {patient} and family, get consent, and coordinate with the palliative care team', quality: 'best', procedure: 'pain_procedure' },
+      { id: 'more_meds', label: 'Keep raising the pain medicines', quality: 'ok' },
+      { id: 'suspect', label: 'Refuse to increase anything for fear of addiction', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s pain eases enough to cut back the drowsy medicines and spend clear days at home with family.",
+      fair: "{patient}'s pain improves somewhat, with some drowsiness remaining.",
+      poor: "{patient} stays in pain and too drowsy to enjoy time with family.",
+    },
+  }),
+  C({
+    id: 'pain_medicine_review', specialty: ['pain'], ages: [35, 70], minYear: 1995, tier: 'intermediate',
+    label: 'A long medicine list',
+    intro: "{patient}, {age}, takes strong pain medicines every day for back pain after an injury eight years ago and wants to know why they still hurt.",
+    history: "The dose has been raised many times. Feels foggy, constipated and low. Fell twice this year. Worried about being cut off.",
+    exam: "Slow, guarded movement. No weakness or numbness.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'The medicines no longer help much, and the side effects now shape daily life.' },
+      { test: 'screening_tool', value: 'useful', result: 'A mood questionnaire shows moderate depression.' },
+      { test: 'mri', value: 'low', result: 'Would show the same old changes.' },
+    ],
+    differential: [
+      { id: 'med_harm', label: 'Long-term pain medicines now doing more harm than good' },
+      { id: 'new_injury', label: 'A new spinal injury' },
+      { id: 'faking', label: 'Exaggerating for medicines' },
+    ],
+    diagnosis: 'med_harm',
+    plans: [
+      { id: 'slow_taper', label: 'Agree a slow, shared plan to reduce the medicines, with support for mood, physical therapy and regular check-ins', quality: 'best' },
+      { id: 'stop_now', label: 'Stop the medicines abruptly', quality: 'unsafe' },
+      { id: 'increase', label: 'Raise the dose again', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} is on far less medicine a year later, thinking clearly, with pain no worse than before.",
+      fair: "{patient} reduces partway and holds there.",
+      poor: "{patient} feels abandoned and stops coming.",
+    },
+  }),
+  C({
+    id: 'pain_sciatica_injection', specialty: ['pain'], ages: [30, 65], minYear: 1990,
+    label: 'Leg pain that will not settle',
+    intro: "{patient}, {age}, has had sharp pain down one leg for ten weeks despite physical therapy and simple pain relief.",
+    history: "Cannot sit through a workday. No numbness in the groin and no bladder or bowel trouble.",
+    exam: "Pain on lifting the straight leg. Strength and reflexes are normal.",
+    tests: [
+      { test: 'mri', value: 'useful', result: 'A disc bulge presses on one nerve root, matching the symptoms.' },
+      { test: 'exam_focused', value: 'useful', result: 'No warning signs of nerve damage.' },
+      { test: 'blood_special', value: 'low', result: 'Not relevant.' },
+    ],
+    differential: [
+      { id: 'radicular', label: 'A trapped nerve root from a disc' },
+      { id: 'hip', label: 'Hip arthritis' },
+      { id: 'cauda', label: 'A spinal emergency' },
+    ],
+    diagnosis: 'radicular',
+    needs: ['mri'],
+    plans: [
+      { id: 'targeted', label: 'Explain the options, and with consent offer a targeted injection near the nerve to calm the pain while therapy continues', quality: 'best', procedure: 'pain_procedure' },
+      { id: 'surgery', label: 'Refer for spine surgery straight away', quality: 'ok', refer: 'spine' },
+      { id: 'bed_rest', label: 'Advise bed rest for a month', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s leg pain settles enough to get back to work and therapy.",
+      fair: "{patient} has some relief that fades over months.",
+      poor: "{patient} stiffens up and the pain lingers.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: VASCULAR SURGERY (FELLOWSHIP AND INTEGRATED)
+  // ======================================================================================
+  C({
+    id: 'vasc_carotid', specialty: ['vascular', 'vascular_integrated'], ages: [60, 85], minYear: 2007, tier: 'complex',
+    label: 'A warning stroke',
+    intro: "{patient}, {age}, lost the vision in one eye for five minutes last week, like a curtain coming down.",
+    history: "Smoker with high blood pressure. Vision returned fully. Also had a few minutes of a clumsy hand on the opposite side.",
+    exam: "A whooshing sound over the artery in the neck on the same side. Otherwise normal now.",
+    tests: [
+      { test: 'vascular_doppler', value: 'useful', result: 'A severe narrowing of the neck artery on the side that matches the symptoms.' },
+      { test: 'ct', value: 'useful', result: 'No bleeding in the brain and only a tiny old stroke.' },
+      { test: 'angiogram', value: 'low', result: 'A heart artery test that answers a different question.' },
+    ],
+    differential: [
+      { id: 'carotid', label: 'A warning stroke from a narrowed neck artery' },
+      { id: 'migraine', label: 'A migraine aura' },
+      { id: 'eye', label: 'A problem in the eye itself' },
+    ],
+    diagnosis: 'carotid',
+    needs: ['vascular_doppler'],
+    plans: [
+      { id: 'early_repair', label: 'Explain the risk of a major stroke, start stroke prevention medicines, and with consent clear the artery within two weeks', quality: 'best', procedure: 'vs_repair' },
+      { id: 'meds_only', label: 'Medicines only and review in six months', quality: 'ok' },
+      { id: 'wait_months', label: 'Put on the routine waiting list', quality: 'poor', procedure: 'vs_repair' },
+    ],
+    decision: {
+      text: "Near the end of the operation, the anesthesiologist says the patient's blood pressure is swinging widely.",
+      options: [
+        { id: 'pause', label: 'Pause, agree a target with the anesthesiologist, and finish carefully', quality: 'best' },
+        { id: 'ignore', label: 'Carry on; it is their job', quality: 'poor' },
+        { id: 'rush', label: 'Rush to close', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} has no further warning signs and is back to normal within weeks.",
+      fair: "{patient} has a hoarse voice for a few weeks that recovers.",
+      poor: "{patient} has a small stroke around the time of the operation and needs rehabilitation.",
+    },
+  }),
+  C({
+    id: 'vasc_acute_limb', specialty: ['vascular', 'vascular_integrated'], ages: [60, 90], minYear: 2007, tier: 'high',
+    label: 'A cold, white leg',
+    intro: "{patient}, {age}, woke with a cold, pale, painful leg and cannot feel the toes.",
+    history: "Has an irregular heartbeat and stopped the blood thinner a month ago because of bruising. The leg was normal yesterday.",
+    exam: "The leg is white and cold below the knee, with no pulses and reduced feeling. Movement is still present.",
+    tests: [
+      { test: 'vascular_doppler', value: 'useful', result: 'No flow below the thigh, from a sudden blockage.' },
+      { test: 'ecg', value: 'useful', result: 'The irregular heartbeat, a likely source of a clot.' },
+      { test: 'mri', value: 'unsafe', result: 'A long scan the leg cannot afford to wait for.' },
+    ],
+    differential: [
+      { id: 'embolus', label: 'A clot that has suddenly blocked the leg artery' },
+      { id: 'dvt', label: 'A clot in a leg vein' },
+      { id: 'nerve', label: 'A trapped nerve' },
+    ],
+    diagnosis: 'embolus',
+    plans: [
+      { id: 'urgent_repair', label: 'Start a blood thinner, explain the urgency and risks honestly, get consent, and restore flow in the operating room today', quality: 'best', procedure: 'vs_repair' },
+      { id: 'tomorrow', label: 'Book for the next routine list', quality: 'unsafe', procedure: 'vs_repair' },
+      { id: 'thinner_only', label: 'Give a blood thinner and watch', quality: 'poor' },
+    ],
+    decision: {
+      text: "After flow returns, the calf becomes tight and swollen and the nurse reports rising pain.",
+      options: [
+        { id: 'relieve', label: 'Recognize the swelling pressure, explain to the patient, and relieve it promptly', quality: 'best' },
+        { id: 'more_pain_relief', label: 'Increase pain relief and recheck in the morning', quality: 'unsafe' },
+        { id: 'elevate', label: 'Raise the leg and wait', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient}'s leg is saved and walking returns, with a clear plan to restart the blood thinner safely.",
+      fair: "{patient}'s leg is saved, with some lasting numbness in the foot.",
+      poor: "{patient}'s leg is saved but muscle damage leaves a weak foot and a long recovery.",
+    },
+  }),
+  C({
+    id: 'vasc_varicose', specialty: ['vascular', 'vascular_integrated'], ages: [35, 65], minYear: 2007,
+    label: 'Bulging veins',
+    intro: "{patient}, {age}, wants an operation for bulging leg veins that ache at the end of the day.",
+    history: "Stands all day at work. No skin changes, ulcers or clots. Has never tried compression stockings.",
+    exam: "Visible varicose veins on one calf. Healthy skin and normal pulses.",
+    tests: [
+      { test: 'vascular_doppler', value: 'useful', result: 'Leaky valves in a surface vein, with healthy deep veins.' },
+      { test: 'angiogram', value: 'low', result: 'An invasive artery test with no reason behind it.' },
+    ],
+    differential: [
+      { id: 'varicose', label: 'Simple varicose veins' },
+      { id: 'dvt', label: 'A deep vein clot' },
+      { id: 'arterial', label: 'Narrowed arteries' },
+    ],
+    diagnosis: 'varicose',
+    plans: [
+      { id: 'conservative', label: 'Explain that the veins are not dangerous, try stockings, movement breaks and leg raising, and review if skin changes appear', quality: 'best' },
+      { id: 'operate_now', label: 'Operate this month', quality: 'ok', procedure: 'vs_repair' },
+      { id: 'dismiss', label: 'Tell them it is just cosmetic and send them away', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s aching eases with stockings and breaks at work, and the veins stay trouble-free.",
+      fair: "{patient} finds stockings a nuisance but manages.",
+      poor: "{patient} feels brushed off and seeks treatment elsewhere.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: PLASTIC SURGERY (FELLOWSHIP AND INTEGRATED)
+  // ======================================================================================
+  C({
+    id: 'pl_burn_contracture', specialty: ['plastic', 'plastic_integrated'], ages: [18, 50], minYear: 1990, tier: 'intermediate',
+    label: 'A tight scar',
+    intro: "{patient}, {age}, was burned on the arm as a teenager and the scar now stops the elbow from straightening.",
+    history: "Works as a mechanic and cannot reach into engines. Has done stretching and splints for years without progress.",
+    exam: "A thick, tight band of scar across the inside of the elbow. Healthy skin nearby. Good hand function.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'The joint itself is healthy; the scar is the limit.' },
+      { test: 'xray', value: 'neutral', result: 'Normal elbow joint.' },
+      { test: 'mri', value: 'low', result: 'Adds nothing to the plan.' },
+    ],
+    differential: [
+      { id: 'contracture', label: 'A scar contracture limiting the joint' },
+      { id: 'arthritis', label: 'Elbow arthritis' },
+      { id: 'nerve', label: 'A nerve injury' },
+    ],
+    diagnosis: 'contracture',
+    plans: [
+      { id: 'release_recon', label: 'Talk through realistic goals and recovery, get consent, and release the scar with healthy nearby skin, followed by hand therapy', quality: 'best', procedure: 'pl_reconstruction' },
+      { id: 'more_splints', label: 'More splinting', quality: 'poor' },
+      { id: 'cosmetic', label: 'Offer only a cosmetic scar treatment', quality: 'poor', procedure: 'pl_cosmetic' },
+    ],
+    outcomes: {
+      good: "{patient} straightens the arm almost fully and is back under the hood of a car.",
+      fair: "{patient} gains movement but needs a second, smaller release later.",
+      poor: "{patient}'s scar tightens again because therapy stopped too early.",
+    },
+  }),
+  C({
+    id: 'pl_face_defect', specialty: ['plastic', 'plastic_integrated'], ages: [55, 90], minYear: 1990, tier: 'intermediate',
+    label: 'A gap to close',
+    intro: "{patient}, {age}, has had a skin cancer removed from the cheek, leaving a wound too large to close simply.",
+    history: "The dermatologist confirmed the edges are clear. {patient} is worried about how it will look at a grandchild's wedding in three months.",
+    exam: "A clean wound on the cheek near the lower eyelid. Healthy surrounding skin.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'The pathology report confirms clear margins.' },
+      { test: 'exam_focused', value: 'useful', result: 'Enough loose nearby skin for a local repair that will not pull the eyelid down.' },
+      { test: 'ct', value: 'low', result: 'Not needed.' },
+    ],
+    differential: [
+      { id: 'local_repair', label: 'A wound suited to a local skin repair' },
+      { id: 'residual', label: 'Cancer still left behind' },
+      { id: 'infection', label: 'An infected wound' },
+    ],
+    diagnosis: 'local_repair',
+    needs: ['biopsy'],
+    plans: [
+      { id: 'flap', label: 'Explain the options and scars honestly, get consent, and close it with nearby skin, planned to protect the eyelid', quality: 'best', procedure: 'pl_reconstruction' },
+      { id: 'leave', label: 'Leave it open to heal on its own', quality: 'ok' },
+      { id: 'facelift', label: 'Suggest a facelift at the same time', quality: 'poor', procedure: 'pl_cosmetic' },
+    ],
+    outcomes: {
+      good: "{patient} heals well, the scar fades, and the wedding photos look great.",
+      fair: "{patient}'s scar is a little red for the wedding but settles.",
+      poor: "{patient}'s lower eyelid is slightly pulled down and needs a small revision.",
+    },
+  }),
+  C({
+    id: 'pl_cleft_lip', specialty: ['plastic', 'plastic_integrated'], ages: [0, 1], minYear: 1990, guardian: true, household: true, tier: 'intermediate',
+    label: 'A cleft lip',
+    intro: "{patient}, {age}, was born with a cleft lip. The parents meet the cleft team for the first time.",
+    history: "Feeding was hard at first but is going well with a special bottle. The parents feel guilty and worry about how others will react.",
+    exam: "A cleft of the upper lip on one side, with an intact palate. Otherwise a healthy, growing baby.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'Growing well and healthy enough to plan a repair.' },
+      { test: 'developmental', value: 'neutral', result: 'Development on track.' },
+      { test: 'ct', value: 'low', result: 'Radiation a baby does not need.' },
+    ],
+    differential: [
+      { id: 'cleft', label: 'An isolated cleft lip' },
+      { id: 'syndrome', label: 'Part of a wider syndrome' },
+      { id: 'injury', label: 'A birth injury' },
+    ],
+    diagnosis: 'cleft',
+    plans: [
+      { id: 'team_plan', label: 'Reassure the parents it is no one\'s fault, explain the team plan and timing, get consent for repair at a few months old, and arrange feeding and speech support', quality: 'best', procedure: 'pl_reconstruction' },
+      { id: 'now', label: 'Operate this week to get it done', quality: 'poor', procedure: 'pl_reconstruction' },
+      { id: 'later', label: 'Wait until school age', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s lip repair heals beautifully, and the parents feel part of the team.",
+      fair: "{patient} needs a small touch-up when older.",
+      poor: "{patient}'s repair is delayed by a missed appointment and feeding struggles return.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: GASTROENTEROLOGY
+  // ======================================================================================
+  C({
+    id: 'gi_upper_bleed', specialty: ['gi'], ages: [40, 85], minYear: 1975, tier: 'complex',
+    label: 'Vomiting blood',
+    intro: "{patient}, {age}, has vomited blood twice and passed black stools since yesterday.",
+    history: "Has been taking anti-inflammatory pain pills for a sore knee for weeks. Drinks a little. Feels dizzy standing.",
+    exam: "Pale, pulse fast, blood pressure a little low. Belly soft and slightly tender at the top.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Blood count has fallen; kidney tests show blood in the gut.' },
+      { test: 'endoscopy', value: 'useful', result: 'A bleeding ulcer in the first part of the bowel.' },
+      { test: 'mri', value: 'low', result: 'Too slow and not the right test.' },
+    ],
+    differential: [
+      { id: 'ulcer', label: 'A bleeding ulcer' },
+      { id: 'varices', label: 'Bleeding swollen veins from liver disease' },
+      { id: 'tear', label: 'A small tear from vomiting' },
+    ],
+    diagnosis: 'ulcer',
+    needs: ['endoscopy'],
+    plans: [
+      { id: 'resus_scope', label: 'Stabilize with fluids and blood as needed, then endoscopy within a day to stop the bleeding, and explain why the pain pills must stop', quality: 'best', procedure: 'gi_endoscopy' },
+      { id: 'home', label: 'Send home with stomach medicine', quality: 'unsafe' },
+      { id: 'surgery', label: 'Ask the surgeons to operate first', quality: 'poor', refer: 'gensurg' },
+    ],
+    decision: {
+      text: "During the endoscopy, the bleeding briefly gets heavier and the nurse looks worried.",
+      options: [
+        { id: 'calm', label: 'Say what you see, ask for the backup equipment, and keep the team informed', quality: 'best' },
+        { id: 'abandon', label: 'Stop and send the patient back to the ward', quality: 'poor' },
+        { id: 'silent', label: 'Keep going without telling the team', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient}'s bleeding stops at endoscopy, and the knee is managed without those pills.",
+      fair: "{patient} needs a second endoscopy before the bleeding stops.",
+      poor: "{patient} bleeds again and needs a longer stay.",
+    },
+  }),
+  C({
+    id: 'gi_celiac', specialty: ['gi'], ages: [18, 50], minYear: 1985,
+    label: 'Bloating and tiredness',
+    intro: "{patient}, {age}, has had bloating, loose stools and tiredness for a year.",
+    history: "A sister has a gluten problem. Low iron despite supplements. Has cut out several foods on their own.",
+    exam: "Thin, a little pale. Belly soft and mildly bloated.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'Antibody tests are strongly positive for celiac disease.' },
+      { test: 'endoscopy', value: 'useful', result: 'Small bowel samples confirm the diagnosis.' },
+      { test: 'ct', value: 'low', result: 'Radiation without an answer.' },
+    ],
+    differential: [
+      { id: 'celiac', label: 'Celiac disease' },
+      { id: 'ibs', label: 'Irritable bowel' },
+      { id: 'ibd', label: 'Inflammatory bowel disease' },
+    ],
+    diagnosis: 'celiac',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'confirm_diet', label: 'Confirm with endoscopy before any diet change, then explain the condition, arrange a dietitian and plan follow-up', quality: 'best', procedure: 'gi_endoscopy' },
+      { id: 'diet_now', label: 'Start a strict diet now without confirming', quality: 'ok' },
+      { id: 'stress', label: 'Put it down to stress', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} feels better within months, and the iron recovers.",
+      fair: "{patient} improves but finds the diet hard at first.",
+      poor: "{patient} stays unwell without a clear answer.",
+    },
+  }),
+  C({
+    id: 'gi_colitis', specialty: ['gi'], ages: [18, 40], minYear: 1975, tier: 'intermediate',
+    label: 'Bloody diarrhea',
+    intro: "{patient}, {age}, has had bloody diarrhea six times a day for three weeks.",
+    history: "No travel or sick contacts. Urgency, cramps and waking at night to use the bathroom. Missed a lot of work.",
+    exam: "Tired, mild fever. Belly tender on the left side.",
+    tests: [
+      { test: 'culture', value: 'useful', result: 'No infection in the stool samples.' },
+      { test: 'endoscopy', value: 'useful', result: 'Inflamed lining of the colon; samples confirm ulcerative colitis.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Mild anemia, raised inflammation markers.' },
+    ],
+    differential: [
+      { id: 'uc', label: 'Ulcerative colitis' },
+      { id: 'infection', label: 'A bowel infection' },
+      { id: 'ibs', label: 'Irritable bowel' },
+    ],
+    diagnosis: 'uc',
+    needs: ['endoscopy'],
+    plans: [
+      { id: 'scope_treat', label: 'Confirm with a scope and samples, start treatment to calm the inflammation, and explain the condition and the plan for flares', quality: 'best', procedure: 'gi_endoscopy' },
+      { id: 'antibiotics', label: 'Treat as an infection only', quality: 'poor' },
+      { id: 'colectomy', label: 'Refer for bowel removal now', quality: 'poor', refer: 'colorectal' },
+    ],
+    outcomes: {
+      good: "{patient}'s symptoms settle within weeks and work resumes.",
+      fair: "{patient} improves slowly after a change of treatment.",
+      poor: "{patient} has a severe flare and needs a hospital stay.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: PULMONARY AND CRITICAL CARE, CRITICAL CARE MEDICINE
+  // ======================================================================================
+  C({
+    id: 'icu_goals_meeting', specialty: ['critical_care', 'pulm_cc'], ages: [75, 95], minYear: 1975, tier: 'complex', household: true,
+    label: 'A family meeting',
+    intro: "{patient}, {age}, has been on a breathing machine in intensive care for ten days after a severe pneumonia, and is not improving.",
+    history: "Before this, {patient} had advanced lung disease and was mostly housebound. Once told a daughter, 'never keep me on machines if I cannot get back home.'",
+    exam: "Sedated and on a ventilator, needing high oxygen. Kidneys are starting to fail.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'The family confirms {patient}\'s wishes, and the outpatient notes record them too.' },
+      { test: 'blood_basic', value: 'useful', result: 'Worsening kidney function and oxygen levels.' },
+      { test: 'ct', value: 'low', result: 'A trip to the scanner that would not change the plan.' },
+    ],
+    differential: [
+      { id: 'not_recovering', label: 'A critical illness unlikely to allow recovery to the life they valued' },
+      { id: 'turning', label: 'About to turn the corner' },
+      { id: 'new_infection', label: 'A simple new infection' },
+    ],
+    diagnosis: 'not_recovering',
+    plans: [
+      { id: 'meeting', label: 'Hold a family meeting, share the outlook honestly and kindly, and plan care around what {patient} wanted, with comfort as the priority', quality: 'best' },
+      { id: 'everything', label: 'Keep escalating treatment without discussing it', quality: 'poor', procedure: 'icu_procedure' },
+      { id: 'decide_alone', label: 'Decide alone and inform the family afterward', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s family feels heard, and care follows {patient}'s own wishes with the family gathered close.",
+      fair: "{patient}'s family needs a second meeting before they feel ready, and the care then follows the wishes.",
+      poor: "{patient}'s family feels blindsided and the team loses their trust.",
+    },
+  }),
+  C({
+    id: 'icu_weaning', specialty: ['critical_care', 'pulm_cc'], ages: [40, 80], minYear: 1985, tier: 'intermediate',
+    label: 'Ready to come off?',
+    intro: "{patient}, {age}, has been on a breathing machine for five days after a severe chest infection and is improving.",
+    history: "The infection is responding to treatment. The night nurse says {patient} has been kept deeply asleep because they seemed restless.",
+    exam: "Deeply sedated. Oxygen needs are much lower. Chest X-ray improving.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'With sedation lightened, {patient} wakes, follows commands and breathes well on low support.' },
+      { test: 'xray', value: 'useful', result: 'The pneumonia is clearing.' },
+      { test: 'ct', value: 'low', result: 'A risky trip to the scanner with no question to answer.' },
+    ],
+    differential: [
+      { id: 'ready', label: 'Ready for a breathing trial and likely removal of the tube' },
+      { id: 'not_ready', label: 'Still too sick to try' },
+      { id: 'brain', label: 'A brain injury causing the deep sleep' },
+    ],
+    diagnosis: 'ready',
+    plans: [
+      { id: 'daily_trial', label: 'Lighten sedation each day, run a breathing trial, and remove the tube when it passes, with the physical therapists starting early movement', quality: 'best' },
+      { id: 'keep_asleep', label: 'Keep deeply sedated a few more days to be safe', quality: 'poor' },
+      { id: 'trach_now', label: 'Plan a long-term breathing tube now', quality: 'poor', procedure: 'icu_procedure' },
+    ],
+    outcomes: {
+      good: "{patient} is off the machine the same day and walking in the hall within the week.",
+      fair: "{patient} fails the first trial but succeeds the next day.",
+      poor: "{patient} stays on the machine longer than needed and is weak for weeks.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: NEPHROLOGY
+  // ======================================================================================
+  C({
+    id: 'neph_aki', specialty: ['nephrology', 'internal'], ages: [60, 90], minYear: 1960, tier: 'intermediate',
+    label: 'Kidneys suddenly worse',
+    intro: "{patient}, {age}, is admitted after a week of vomiting and diarrhea, and the blood tests show the kidneys have suddenly slowed down.",
+    history: "Has kept taking a water pill and a blood pressure medicine throughout, plus anti-inflammatory pain pills for a sore back. Drinking very little.",
+    exam: "Dry mouth, low blood pressure on standing, little urine. No swelling.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Kidney function is much worse than last month, with a raised potassium.' },
+      { test: 'urine', value: 'useful', result: 'Concentrated urine with no blood or protein.' },
+      { test: 'ultrasound', value: 'neutral', result: 'Normal-sized kidneys, no blockage.' },
+      { test: 'biopsy', value: 'low', result: 'An invasive test with no reason behind it.' },
+    ],
+    differential: [
+      { id: 'dehydration_aki', label: 'A kidney injury from dehydration and medicines' },
+      { id: 'nephritis', label: 'Inflammation of the kidneys' },
+      { id: 'blockage', label: 'A blocked urinary tract' },
+    ],
+    diagnosis: 'dehydration_aki',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'fluids_pause', label: 'Give fluids, pause the medicines that strain the kidneys, recheck the blood daily, and explain a sick-day plan for the future', quality: 'best' },
+      { id: 'dialysis', label: 'Start dialysis today', quality: 'poor' },
+      { id: 'carry_on', label: 'Carry on all the usual medicines', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s kidneys recover within days, and the sick-day plan goes on the fridge.",
+      fair: "{patient}'s kidneys recover more slowly but get there.",
+      poor: "{patient}'s kidneys are left a little weaker than before.",
+    },
+  }),
+  C({
+    id: 'neph_nephrotic', specialty: ['nephrology'], ages: [20, 60], minYear: 1965, tier: 'intermediate',
+    label: 'Swollen and frothy',
+    intro: "{patient}, {age}, has swollen legs and a puffy face, and the urine has become frothy.",
+    history: "Gained weight quickly over a month. No heart or liver disease. Otherwise feels fairly well.",
+    exam: "Swelling to the knees and around the eyes. Normal heart and lungs.",
+    tests: [
+      { test: 'urine', value: 'useful', result: 'A very large amount of protein in the urine.' },
+      { test: 'blood_basic', value: 'useful', result: 'Low blood protein, high cholesterol, normal kidney function.' },
+      { test: 'biopsy', value: 'useful', result: 'A kidney sample shows the type of filter damage, which guides treatment.' },
+    ],
+    differential: [
+      { id: 'nephrotic', label: 'A condition causing the kidneys to leak protein' },
+      { id: 'heart', label: 'Heart failure' },
+      { id: 'liver', label: 'Liver disease' },
+    ],
+    diagnosis: 'nephrotic',
+    needs: ['urine'],
+    plans: [
+      { id: 'biopsy_plan', label: 'Explain the condition, arrange a kidney biopsy with consent, control the swelling, and plan treatment once the type is known', quality: 'best' },
+      { id: 'water_pill', label: 'Treat the swelling only and review in a year', quality: 'poor' },
+      { id: 'heart_refer', label: 'Refer to cardiology', quality: 'poor', refer: 'cardiology' },
+    ],
+    outcomes: {
+      good: "{patient}'s protein leak comes under control and the swelling goes.",
+      fair: "{patient} needs a second treatment before improving.",
+      poor: "{patient} develops a clot in a leg vein while waiting for a plan.",
+    },
+  }),
+  C({
+    id: 'neph_potassium', specialty: ['nephrology'], ages: [50, 85], minYear: 1960, tier: 'complex',
+    label: 'A dangerous blood result',
+    intro: "The laboratory calls about {patient}, {age}: the potassium level on a routine test is very high.",
+    history: "Known kidney disease. A new blood pressure medicine was started last month. Feels weak.",
+    exam: "Slow pulse. Otherwise comfortable.",
+    tests: [
+      { test: 'ecg', value: 'useful', result: 'Peaked waves on the heart tracing, a sign the potassium is affecting the heart.' },
+      { test: 'blood_basic', value: 'useful', result: 'A repeat sample confirms the high potassium; kidney function has dipped.' },
+      { test: 'echo', value: 'low', result: 'A heart scan that does not help today.' },
+    ],
+    differential: [
+      { id: 'hyperkalemia', label: 'A dangerously high potassium' },
+      { id: 'lab_error', label: 'A laboratory error' },
+      { id: 'heart_attack', label: 'A heart attack' },
+    ],
+    diagnosis: 'hyperkalemia',
+    needs: ['ecg'],
+    plans: [
+      { id: 'urgent', label: 'Bring {patient} in now, protect the heart and lower the potassium with heart monitoring, stop the new medicine, and explain why', quality: 'best' },
+      { id: 'repeat_week', label: 'Repeat the test next week', quality: 'unsafe' },
+      { id: 'diet', label: 'Give a diet sheet only', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s potassium is back to safe levels by evening, and the medicine is switched.",
+      fair: "{patient} needs an overnight stay but is fine.",
+      poor: "{patient} has a frightening irregular heartbeat before treatment starts.",
+    },
+  }),
+  C({
+    id: 'neph_dialysis_planning', specialty: ['nephrology'], ages: [30, 60], minYear: 1975, tier: 'intermediate',
+    label: 'Planning ahead',
+    intro: "{patient}, {age}, has kidney disease from diabetes that is slowly worsening, and will probably need treatment for kidney failure within a year.",
+    history: "Works full time and has two children. Has heard of dialysis but not of the other options. Scared.",
+    exam: "Mild swelling. Healthy veins in both arms.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Kidney function is low and falling steadily.' },
+      { test: 'history_detail', value: 'useful', result: '{patient} wants to keep working and be home for the children in the evenings.' },
+      { test: 'mri', value: 'low', result: 'Not needed.' },
+    ],
+    differential: [
+      { id: 'approaching', label: 'Kidney failure approaching, with time to plan' },
+      { id: 'acute', label: 'A sudden, reversible injury' },
+      { id: 'stable', label: 'Stable disease' },
+    ],
+    diagnosis: 'approaching',
+    plans: [
+      { id: 'all_options', label: 'Explain all the options, including home dialysis and transplant, refer for a transplant evaluation, and plan dialysis access early', quality: 'best', refer: 'transplant' },
+      { id: 'wait_crisis', label: 'Wait until dialysis is needed and decide then', quality: 'poor' },
+      { id: 'clinic_only', label: 'Book clinic dialysis without discussing other options', quality: 'ok' },
+    ],
+    outcomes: {
+      good: "{patient} starts home dialysis at night, keeps working, and is on the transplant list.",
+      fair: "{patient} starts dialysis as planned but finds the schedule hard.",
+      poor: "{patient} starts dialysis in an emergency with a temporary line.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: ENDOCRINOLOGY
+  // ======================================================================================
+  C({
+    id: 'endo_osteoporosis', specialty: ['endocrinology'], ages: [60, 85], minYear: 1990, sex: 'female',
+    label: 'A fracture from a small fall',
+    intro: "{patient}, {age}, broke her wrist tripping on a curb and was sent for a bone health review.",
+    history: "Went through menopause early. Smoked for years. Her mother had a hip fracture. Walks daily.",
+    exam: "Slightly stooped. Height has dropped since her last record.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'A bone density scan shows thin bones; a spine film shows an old silent fracture.' },
+      { test: 'blood_basic', value: 'useful', result: 'Calcium, vitamin D and kidney function are checked before treatment; vitamin D is low.' },
+      { test: 'mri', value: 'low', result: 'Not needed.' },
+    ],
+    differential: [
+      { id: 'osteoporosis', label: 'Osteoporosis' },
+      { id: 'cancer', label: 'Cancer in the bone' },
+      { id: 'bad_luck', label: 'Just bad luck' },
+    ],
+    diagnosis: 'osteoporosis',
+    plans: [
+      { id: 'protect', label: 'Explain the fracture risk, start a medicine to strengthen bone, correct vitamin D, review falls at home, and plan follow-up', quality: 'best' },
+      { id: 'calcium_only', label: 'Calcium tablets only', quality: 'ok' },
+      { id: 'nothing', label: 'Nothing: the wrist has healed', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} has no further fractures over the next years and keeps walking daily.",
+      fair: "{patient} stops the medicine after a while but stays well.",
+      poor: "{patient} breaks a hip the following winter.",
+    },
+  }),
+  C({
+    id: 'endo_calcium', specialty: ['endocrinology'], ages: [45, 80], minYear: 1965,
+    label: 'A high calcium',
+    intro: "{patient}, {age}, had a high calcium found on routine blood tests.",
+    history: "Kidney stones twice in five years. Some tiredness and low mood. No cancer history.",
+    exam: "Well. No lumps in the neck.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'High calcium with a high parathyroid hormone.' },
+      { test: 'ultrasound', value: 'useful', result: 'A small growth by one parathyroid gland.' },
+      { test: 'ct', value: 'low', result: 'A body scan for cancer with no reason to suspect it.' },
+    ],
+    differential: [
+      { id: 'hyperpara', label: 'An overactive parathyroid gland' },
+      { id: 'cancer', label: 'Cancer raising the calcium' },
+      { id: 'supplements', label: 'Too many supplements' },
+    ],
+    diagnosis: 'hyperpara',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'refer_op', label: 'Explain the cause, and since kidney stones have already happened, refer to a surgeon to remove the gland', quality: 'best', refer: 'gensurg' },
+      { id: 'ignore', label: 'Recheck in five years', quality: 'poor' },
+      { id: 'cancer_workup', label: 'Order scans for cancer', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s calcium is normal after surgery, and the energy returns.",
+      fair: "{patient} waits a while for surgery but does well.",
+      poor: "{patient} has another kidney stone while waiting.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: HEMATOLOGY AND ONCOLOGY
+  // ======================================================================================
+  C({
+    id: 'onc_fever_low_counts', specialty: ['heme_onc'], ages: [30, 75], minYear: 1975, tier: 'complex',
+    label: 'A fever during cancer treatment',
+    intro: "{patient}, {age}, calls the oncology line with a fever a week after a cycle of cancer treatment.",
+    history: "Feels shivery and weak. Was told to call with any fever. Wonders if it can wait until morning.",
+    exam: "Feverish, pulse fast, blood pressure normal. A line in the chest looks clean.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Almost no infection-fighting white cells.' },
+      { test: 'culture', value: 'useful', result: 'Blood cultures are taken before treatment starts.' },
+      { test: 'mri', value: 'low', result: 'Delays treatment for no gain.' },
+    ],
+    differential: [
+      { id: 'neutropenic', label: 'A fever with very low white cells' },
+      { id: 'cold', label: 'A simple cold' },
+      { id: 'tumor_fever', label: 'Fever from the cancer itself' },
+    ],
+    diagnosis: 'neutropenic',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'admit_fast', label: 'Bring {patient} in now, take cultures and start strong medicines for infection within the hour, and thank them for calling', quality: 'best' },
+      { id: 'morning', label: 'Advise rest and a call in the morning', quality: 'unsafe' },
+      { id: 'wait_cultures', label: 'Wait for culture results before treating', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s fever settles within two days and the next cycle goes ahead on time.",
+      fair: "{patient} needs a few extra days in the hospital.",
+      poor: "{patient} becomes very unwell and needs intensive care.",
+    },
+  }),
+  C({
+    id: 'heme_sickle_pain', specialty: ['heme_onc'], ages: [16, 35], minYear: 1975, tier: 'intermediate',
+    label: 'A pain crisis',
+    intro: "{patient}, {age}, has sickle cell disease and arrives in severe pain in the back and legs.",
+    history: "Knows these crises well. Says staff in the past treated {patient} as drug-seeking. Has a care plan on file that works.",
+    exam: "In obvious pain. Mild fever. Chest clear, oxygen normal.",
+    tests: [
+      { test: 'history_detail', value: 'useful', result: 'The personal care plan on file sets out what has worked before.' },
+      { test: 'blood_basic', value: 'useful', result: 'Blood count close to usual for {patient}.' },
+      { test: 'xray', value: 'neutral', result: 'Clear chest.' },
+    ],
+    differential: [
+      { id: 'crisis', label: 'A sickle cell pain crisis' },
+      { id: 'seeking', label: 'Drug-seeking' },
+      { id: 'chest', label: 'A sickle chest crisis' },
+    ],
+    diagnosis: 'crisis',
+    plans: [
+      { id: 'prompt_relief', label: 'Believe the pain, give strong pain relief promptly following the care plan, keep {patient} warm and hydrated, and watch the chest closely', quality: 'best' },
+      { id: 'delay', label: 'Wait to see if the pain is real', quality: 'poor' },
+      { id: 'mild_only', label: 'Give only mild pain relief', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s pain is controlled within the hour and {patient} goes home in two days, feeling respected.",
+      fair: "{patient}'s pain takes longer to control but settles.",
+      poor: "{patient} leaves early in pain and returns sicker.",
+    },
+  }),
+  C({
+    id: 'onc_breast_adjuvant', specialty: ['heme_onc'], ages: [35, 75], minYear: 1985, sex: 'female', tier: 'intermediate',
+    label: 'After the operation',
+    intro: "{patient}, {age}, has had an early breast cancer removed and comes to discuss whether more treatment is needed.",
+    history: "Recovered well from surgery. Runs a small business. Heard from friends that cancer treatment is unbearable.",
+    exam: "Healing scar. Well.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'The pathology report shows a small tumor, clear margins, no spread to the glands, and a hormone-sensitive type.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+      { test: 'ct', value: 'low', result: 'Body scans are not recommended for an early cancer like this.' },
+    ],
+    differential: [
+      { id: 'early_hormone', label: 'An early, hormone-sensitive breast cancer' },
+      { id: 'spread', label: 'Cancer that has already spread' },
+      { id: 'cured', label: 'Cured by surgery with nothing more to discuss' },
+    ],
+    diagnosis: 'early_hormone',
+    needs: ['biopsy'],
+    plans: [
+      { id: 'shared', label: 'Explain the benefits and side effects of hormone-blocking treatment in plain numbers, and agree a plan that fits her life', quality: 'best' },
+      { id: 'everything', label: 'Recommend the most intensive treatment to be safe', quality: 'poor' },
+      { id: 'nothing', label: 'Say no more treatment is needed', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} takes the treatment she chose and keeps the business running.",
+      fair: "{patient} struggles with side effects and needs a change of medicine.",
+      poor: "{patient} stops treatment early because no one explained what to expect.",
+    },
+  }),
+  C({
+    id: 'onc_honest_talk', specialty: ['heme_onc'], ages: [45, 85], minYear: 1975, tier: 'complex', household: true,
+    label: 'What happens now?',
+    intro: "{patient}, {age}, has lung cancer that has grown despite two lines of treatment. A grown-up child asks for 'anything else you can try.'",
+    history: "Tired, breathless with stairs, sleeping more. {patient} quietly says they mainly want to be at home and comfortable.",
+    exam: "Thin and tired. Clear-thinking.",
+    tests: [
+      { test: 'ct', value: 'useful', result: 'The cancer has grown in several places.' },
+      { test: 'history_detail', value: 'useful', result: 'Given time and privacy, {patient} is clear about wanting comfort and home.' },
+      { test: 'biopsy', value: 'low', result: 'A new biopsy would not change what is possible.' },
+    ],
+    differential: [
+      { id: 'progressive', label: 'Cancer progressing despite treatment' },
+      { id: 'infection', label: 'A treatable infection explaining the change' },
+      { id: 'stable', label: 'Stable disease' },
+    ],
+    diagnosis: 'progressive',
+    plans: [
+      { id: 'honest', label: 'Speak with {patient} first, then the family, share the situation honestly and gently, and introduce palliative and home care focused on comfort', quality: 'best' },
+      { id: 'more_treatment', label: 'Start a third harsh treatment because the family asked', quality: 'poor' },
+      { id: 'vague', label: 'Stay vague and book a scan in three months', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} spends the following months at home, comfortable, with the family understanding and close.",
+      fair: "{patient}'s family takes time to accept the plan but comes around.",
+      poor: "{patient} spends the following months in and out of the hospital with side effects.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: RHEUMATOLOGY
+  // ======================================================================================
+  C({
+    id: 'rheum_gout', specialty: ['rheumatology', 'internal'], ages: [35, 75], minYear: 1960, sex: 'male',
+    label: 'A red, hot toe',
+    intro: "{patient}, {age}, woke with an agonizingly painful, red, swollen big toe joint. It is the third time this year.",
+    history: "Enjoys beer and red meat. Takes a water pill for blood pressure. No injury.",
+    exam: "The big toe joint is hot, red and too painful to touch. No fever.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'Fluid drawn from the joint shows needle-shaped crystals and no infection.' },
+      { test: 'blood_basic', value: 'useful', result: 'A high uric acid level and normal kidneys.' },
+      { test: 'mri', value: 'low', result: 'A scan that does not change anything.' },
+    ],
+    differential: [
+      { id: 'gout', label: 'Gout' },
+      { id: 'septic', label: 'An infected joint' },
+      { id: 'bunion', label: 'A bunion' },
+    ],
+    diagnosis: 'gout',
+    plans: [
+      { id: 'treat_prevent', label: 'Treat the attack, then talk through diet, alcohol and the water pill, and start a medicine to prevent further attacks', quality: 'best' },
+      { id: 'attack_only', label: 'Treat each attack as it comes', quality: 'ok' },
+      { id: 'operate', label: 'Refer for surgery on the toe', quality: 'poor', refer: 'podiatry' },
+    ],
+    outcomes: {
+      good: "{patient} has no attacks over the next year.",
+      fair: "{patient} has one more attack while the prevention starts working.",
+      poor: "{patient} keeps having attacks that damage the joint.",
+    },
+  }),
+  C({
+    id: 'rheum_gca', specialty: ['rheumatology'], ages: [60, 90], minYear: 1960, tier: 'complex',
+    label: 'A new headache',
+    intro: "{patient}, {age}, has a new headache on one side, pain in the jaw when chewing, and blurred vision in one eye this morning.",
+    history: "Stiff shoulders for a month. Tired and losing weight. Never had headaches before.",
+    exam: "A tender, thickened artery at the temple. Vision slightly reduced in one eye.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Very high inflammation markers.' },
+      { test: 'biopsy', value: 'useful', result: 'A sample of the temple artery confirms inflammation.' },
+      { test: 'mri', value: 'low', result: 'A brain scan that delays treatment.' },
+    ],
+    differential: [
+      { id: 'gca', label: 'Inflamed arteries of the head (giant cell arteritis)' },
+      { id: 'migraine', label: 'A migraine' },
+      { id: 'tumor', label: 'A brain tumor' },
+    ],
+    diagnosis: 'gca',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'treat_today', label: 'Start treatment to calm the inflammation today, arrange the artery biopsy and an eye review, and explain why the hurry matters', quality: 'best' },
+      { id: 'wait_biopsy', label: 'Wait for the biopsy result before treating', quality: 'unsafe' },
+      { id: 'pain_relief', label: 'Simple pain relief and review in a month', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s headache settles within days and the vision is saved.",
+      fair: "{patient} keeps the vision but has a long course of treatment.",
+      poor: "{patient} loses some vision in one eye.",
+    },
+  }),
+  C({
+    id: 'rheum_lupus', specialty: ['rheumatology'], ages: [18, 45], minYear: 1965, sex: 'female', tier: 'intermediate',
+    label: 'Rash, joints and tiredness',
+    intro: "{patient}, {age}, has aching joints, a rash on her cheeks that worsens in the sun, and is exhausted.",
+    history: "Mouth ulcers come and go. Some hair thinning. Hopes to start a family in the next few years.",
+    exam: "A red rash over the cheeks and nose. Mildly swollen finger joints.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'Antibody tests strongly support lupus.' },
+      { test: 'urine', value: 'useful', result: 'A small amount of protein, so the kidneys need watching.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Slightly low white cells.' },
+    ],
+    differential: [
+      { id: 'lupus', label: 'Lupus' },
+      { id: 'ra', label: 'Rheumatoid arthritis' },
+      { id: 'rosacea', label: 'Rosacea' },
+    ],
+    diagnosis: 'lupus',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'plan', label: 'Explain the condition, start treatment to calm the immune system, advise sun protection, check the kidneys regularly, and plan ahead for pregnancy', quality: 'best' },
+      { id: 'creams', label: 'Treat the rash only', quality: 'poor' },
+      { id: 'never_pregnant', label: 'Tell her she can never have children', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s symptoms settle and, years later, she has a well-planned pregnancy.",
+      fair: "{patient} has occasional flares but manages well.",
+      poor: "{patient}'s kidney involvement is missed until it worsens.",
+    },
+  }),
+  C({
+    id: 'rheum_spine_young', specialty: ['rheumatology'], ages: [18, 40], minYear: 1985,
+    label: 'A stiff back in the morning',
+    intro: "{patient}, {age}, has had low back pain for a year that is worst in the morning and better with exercise.",
+    history: "Wakes in the second half of the night with stiffness. An eye became red and painful once last year. A father had a 'stiff spine.'",
+    exam: "Reduced bending of the lower back. Tender over the joints at the base of the spine.",
+    tests: [
+      { test: 'mri', value: 'useful', result: 'Inflammation in the joints at the base of the spine.' },
+      { test: 'blood_special', value: 'useful', result: 'A genetic marker linked to the condition is present.' },
+      { test: 'ct', value: 'low', result: 'Radiation that adds nothing.' },
+    ],
+    differential: [
+      { id: 'axial', label: 'Inflammatory arthritis of the spine' },
+      { id: 'mechanical', label: 'Ordinary back strain' },
+      { id: 'disc', label: 'A slipped disc' },
+    ],
+    diagnosis: 'axial',
+    plans: [
+      { id: 'treat_move', label: 'Explain the condition, start treatment to calm the inflammation, and build a daily exercise and posture plan with a physical therapist', quality: 'best' },
+      { id: 'rest', label: 'Advise rest', quality: 'poor' },
+      { id: 'spine_surgeon', label: 'Refer to a spine surgeon', quality: 'poor', refer: 'spine' },
+    ],
+    outcomes: {
+      good: "{patient}'s mornings get easier and sport becomes part of the week again.",
+      fair: "{patient} improves but has stiff spells.",
+      poor: "{patient}'s spine stiffens over the years.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: INFECTIOUS DISEASE
+  // ======================================================================================
+  C({
+    id: 'id_hiv_new', specialty: ['infectious'], ages: [18, 60], minYear: 1996, tier: 'intermediate',
+    label: 'A positive result',
+    intro: "{patient}, {age}, has come back for the result of a test done during a bout of flu-like illness, and the HIV test is positive.",
+    history: "Scared and asks who will be told. Has a regular partner. Works in a restaurant and worries about losing the job.",
+    exam: "Well. A few swollen glands in the neck.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'The confirmatory test is positive; immune cells are still at a healthy level.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal liver and kidney function.' },
+      { test: 'ct', value: 'low', result: 'No reason to scan.' },
+    ],
+    differential: [
+      { id: 'hiv', label: 'A new HIV infection, caught early' },
+      { id: 'false', label: 'A false positive' },
+      { id: 'flu', label: 'Flu only' },
+    ],
+    diagnosis: 'hiv',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'support', label: 'Give the result privately and calmly, explain that treatment now allows a long, healthy life, start treatment soon, and talk through partner testing and confidentiality', quality: 'best' },
+      { id: 'tell_employer', label: 'Advise telling the employer', quality: 'poor' },
+      { id: 'leaflet', label: 'Hand over a leaflet and book a review in three months', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} starts treatment, the virus becomes undetectable, and the partner is tested and protected.",
+      fair: "{patient} takes some months to start treatment but stays well.",
+      poor: "{patient} is lost to follow-up after the shock of the news.",
+    },
+  }),
+  C({
+    id: 'id_endocarditis', specialty: ['infectious', 'cardiology'], ages: [30, 80], minYear: 1975, tier: 'complex',
+    label: 'A fever that keeps coming back',
+    intro: "{patient}, {age}, has had fevers and night sweats for three weeks, despite two short courses of antibiotics from an urgent care clinic.",
+    history: "Has a known heart murmur. Had dental work a month ago. Lost weight.",
+    exam: "Feverish. A loud heart murmur. Small painful spots on the fingertips.",
+    tests: [
+      { test: 'culture', value: 'useful', result: 'Several blood cultures grow the same bacteria.' },
+      { test: 'echo', value: 'useful', result: 'A growth of infection on a heart valve.' },
+      { test: 'mri', value: 'low', result: 'Not the right test.' },
+    ],
+    differential: [
+      { id: 'endocarditis', label: 'An infection of a heart valve' },
+      { id: 'flu', label: 'A lingering virus' },
+      { id: 'lymphoma', label: 'Lymphoma' },
+    ],
+    diagnosis: 'endocarditis',
+    needs: ['culture'],
+    plans: [
+      { id: 'long_course', label: 'Take cultures first, then give a long course of targeted medicines for infection, and involve the heart surgeons early in case the valve needs repair', quality: 'best' },
+      { id: 'short_course', label: 'Another short course of tablets', quality: 'poor' },
+      { id: 'no_cultures', label: 'Start treatment before taking cultures', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} clears the infection, and the valve holds up well.",
+      fair: "{patient} clears the infection but needs a valve operation months later.",
+      poor: "{patient} has a small stroke from the infection before treatment works.",
+    },
+  }),
+  C({
+    id: 'id_tb', specialty: ['infectious', 'pulm_cc'], ages: [20, 70], minYear: 1955, tier: 'intermediate', household: true,
+    label: 'A cough that will not go',
+    intro: "{patient}, {age}, has had a cough for two months, night sweats and weight loss.",
+    history: "Shares a small apartment with family, including a toddler. Recently arrived from a country where tuberculosis is common.",
+    exam: "Thin. Crackles at the top of one lung.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'A cavity at the top of one lung.' },
+      { test: 'culture', value: 'useful', result: 'Sputum samples show the TB bacteria.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Mild anemia.' },
+    ],
+    differential: [
+      { id: 'tb', label: 'Tuberculosis' },
+      { id: 'cancer', label: 'Lung cancer' },
+      { id: 'pneumonia', label: 'A simple pneumonia' },
+    ],
+    diagnosis: 'tb',
+    needs: ['culture'],
+    plans: [
+      { id: 'treat_trace', label: 'Start a full course of TB treatment, support {patient} to finish it, and work with public health to check the family, especially the toddler', quality: 'best' },
+      { id: 'short', label: 'Give a short course of ordinary antibiotics', quality: 'poor' },
+      { id: 'no_family', label: 'Treat {patient} only and leave the family out', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} completes treatment, and the family is checked and protected.",
+      fair: "{patient} misses some doses but finishes with extra support.",
+      poor: "{patient}'s toddler falls ill with TB months later.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: NEONATOLOGY
+  // ======================================================================================
+  C({
+    id: 'neo_jaundice', specialty: ['neonatology', 'pediatrics'], ages: [0, 0], minYear: 1975, guardian: true, household: true,
+    label: 'A yellow baby',
+    intro: "{patient}, three days old, has turned yellow and is sleepy at feeds. The parents were told newborns often look a bit yellow.",
+    history: "Born at thirty-six weeks. Breastfeeding, but feeds are short and wet diapers are few. The parents have a different blood group from each other.",
+    exam: "Yellow down to the legs. Sleepy but wakes and feeds when stimulated. Normal tone.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'The jaundice level is above the treatment line for age.' },
+      { test: 'blood_special', value: 'useful', result: 'A blood group mismatch is breaking down some red cells.' },
+      { test: 'ultrasound', value: 'low', result: 'A scan that does not answer the question.' },
+    ],
+    differential: [
+      { id: 'jaundice_treat', label: 'Jaundice high enough to need treatment' },
+      { id: 'normal', label: 'Normal newborn jaundice needing nothing' },
+      { id: 'liver', label: 'A liver blockage' },
+    ],
+    diagnosis: 'jaundice_treat',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'lights', label: 'Start light treatment, support feeding with the lactation team, recheck the level regularly, and keep the parents close and informed', quality: 'best' },
+      { id: 'sunlight', label: 'Send home and advise placing the baby by a sunny window', quality: 'unsafe' },
+      { id: 'stop_breast', label: 'Tell the mother to stop breastfeeding', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s jaundice falls within two days and feeding is going well at discharge.",
+      fair: "{patient} needs an extra day of light treatment.",
+      poor: "{patient}'s level climbs further and needs more intensive treatment.",
+    },
+  }),
+  C({
+    id: 'neo_sepsis', specialty: ['neonatology'], ages: [0, 0], minYear: 1975, guardian: true, tier: 'complex',
+    label: 'A quiet baby',
+    intro: "{patient}, two days old, is feeding poorly and the nurse says the baby 'just isn't right.'",
+    history: "The mother had a fever during a long labor and her waters broke a day before delivery.",
+    exam: "Floppy, mottled skin, a fast breathing rate and a temperature that is a little low.",
+    tests: [
+      { test: 'culture', value: 'useful', result: 'Blood cultures are taken before treatment; they later grow bacteria.' },
+      { test: 'blood_basic', value: 'useful', result: 'Raised infection markers and a low blood sugar.' },
+      { test: 'mri', value: 'low', result: 'A long scan for a sick baby who needs treatment now.' },
+    ],
+    differential: [
+      { id: 'sepsis', label: 'A serious newborn infection' },
+      { id: 'cold', label: 'Simply cold' },
+      { id: 'hungry', label: 'A sleepy baby needing more feeds' },
+    ],
+    diagnosis: 'sepsis',
+    needs: ['culture'],
+    plans: [
+      { id: 'treat_now', label: 'Take cultures, start medicines for infection at once, support breathing and sugar in the NICU, and explain everything to the parents', quality: 'best', procedure: 'icu_procedure' },
+      { id: 'observe', label: 'Observe on the postnatal ward overnight', quality: 'unsafe' },
+      { id: 'feed_more', label: 'Increase the feeds and review in the morning', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} perks up within two days and goes home after the course of treatment.",
+      fair: "{patient} needs breathing support for a few days before recovering.",
+      poor: "{patient} becomes very unwell and needs a long NICU stay.",
+    },
+  }),
+  C({
+    id: 'neo_breathing_birth', specialty: ['neonatology'], ages: [0, 0], minYear: 1975, guardian: true, tier: 'complex',
+    label: 'Called to a delivery',
+    intro: "The NICU team is called to a delivery: {patient} is being born at thirty weeks after early labor that could not be stopped.",
+    history: "The mother received medicine before birth to help the baby's lungs mature. The parents are frightened.",
+    exam: "Born pink but working hard to breathe, with grunting and pulling in between the ribs.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'Breathing effort and oxygen levels show the lungs need support.' },
+      { test: 'xray', value: 'useful', result: 'Lungs with the hazy look of immaturity.' },
+      { test: 'ct', value: 'low', result: 'Not appropriate for a newborn in distress.' },
+    ],
+    differential: [
+      { id: 'rds', label: 'Breathing trouble from immature lungs' },
+      { id: 'pneumonia', label: 'Pneumonia' },
+      { id: 'heart', label: 'A heart defect' },
+    ],
+    diagnosis: 'rds',
+    plans: [
+      { id: 'gentle_support', label: 'Give gentle breathing support, keep the baby warm, move to the NICU, and bring the parents in to see and touch the baby as soon as possible', quality: 'best', procedure: 'icu_procedure' },
+      { id: 'no_support', label: 'Wait to see if the breathing improves on its own', quality: 'unsafe' },
+      { id: 'parents_out', label: 'Keep the parents away until the baby is stable', quality: 'poor', procedure: 'icu_procedure' },
+    ],
+    decision: {
+      text: "An hour later, the baby's oxygen levels suddenly drop and one side of the chest moves less.",
+      options: [
+        { id: 'check_call', label: 'Call for senior help, check the equipment, look for an air leak, and keep the team talking', quality: 'best' },
+        { id: 'turn_up', label: 'Just turn up the oxygen and wait', quality: 'poor' },
+        { id: 'leave', label: 'Leave it to the night nurse', quality: 'unsafe' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} grows stronger week by week and goes home before the due date.",
+      fair: "{patient} needs a longer stay on breathing support but does well.",
+      poor: "{patient} has a rocky first month with setbacks before stabilizing.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: PEDIATRIC CARDIOLOGY
+  // ======================================================================================
+  C({
+    id: 'pc_svt', specialty: ['peds_cardiology'], ages: [8, 15], minYear: 1975, guardian: true,
+    label: 'A racing heart',
+    intro: "{patient}, {age}, has had sudden spells where the heart races, lasting a few minutes and then stopping just as suddenly.",
+    history: "Happens a few times a month, sometimes at rest. Never fainted. Plays basketball.",
+    exam: "Normal heart sounds and a normal pulse today.",
+    tests: [
+      { test: 'ecg', value: 'useful', result: 'The resting tracing shows a small extra electrical pathway in the heart.' },
+      { test: 'echo', value: 'useful', result: 'A structurally normal heart.' },
+      { test: 'angiogram', value: 'low', result: 'An invasive test that does not help.' },
+    ],
+    differential: [
+      { id: 'svt', label: 'An extra electrical pathway causing racing spells' },
+      { id: 'anxiety', label: 'Anxiety' },
+      { id: 'structural', label: 'A weak heart muscle' },
+    ],
+    diagnosis: 'svt',
+    needs: ['ecg'],
+    plans: [
+      { id: 'teach_plan', label: 'Explain the extra pathway, teach {patient} simple ways to stop an episode, and discuss a later procedure to cure it if spells continue', quality: 'best' },
+      { id: 'no_sport', label: 'Ban all sport', quality: 'poor' },
+      { id: 'anxiety', label: 'Put it down to nerves', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} learns to stop the spells and keeps playing basketball.",
+      fair: "{patient} has a few emergency visits before choosing a curative procedure.",
+      poor: "{patient} gives up sports for no reason.",
+    },
+  }),
+  C({
+    id: 'pc_kawasaki', specialty: ['peds_cardiology', 'pediatrics'], ages: [1, 5], minYear: 1980, guardian: true, tier: 'intermediate',
+    label: 'Five days of fever',
+    intro: "{patient}, {age}, has had a high fever for five days, red eyes, cracked lips and a rash.",
+    history: "Very irritable. Two different clinics said it was a virus. Hands and feet look puffy.",
+    exam: "Red eyes without discharge, cracked red lips, a swollen gland in the neck, and red swollen hands.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'High inflammation markers and a high platelet count.' },
+      { test: 'echo', value: 'useful', result: 'The heart arteries are slightly widened.' },
+      { test: 'ct', value: 'low', result: 'Radiation a child does not need.' },
+    ],
+    differential: [
+      { id: 'kawasaki', label: 'Kawasaki disease' },
+      { id: 'virus', label: 'A viral illness' },
+      { id: 'scarlet', label: 'Scarlet fever' },
+    ],
+    diagnosis: 'kawasaki',
+    needs: ['echo'],
+    plans: [
+      { id: 'treat_follow', label: 'Admit and start treatment to calm the inflammation and protect the heart arteries, explain it to the family, and plan repeat heart scans', quality: 'best' },
+      { id: 'virus', label: 'Treat as a virus and send home', quality: 'unsafe' },
+      { id: 'antibiotics', label: 'Give antibiotics for scarlet fever', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s fever breaks within a day, and the heart arteries are normal at six weeks.",
+      fair: "{patient} needs a second round of treatment, and the arteries settle.",
+      poor: "{patient} is left with a widened heart artery that needs lifelong follow-up.",
+    },
+  }),
+  C({
+    id: 'pc_athlete_faint', specialty: ['peds_cardiology'], ages: [12, 17], minYear: 1985, guardian: true, tier: 'complex',
+    label: 'Fainted on the field',
+    intro: "{patient}, {age}, fainted during a soccer match while sprinting and came round quickly.",
+    history: "Has felt chest tightness on hard runs. An uncle collapsed suddenly while jogging in his thirties. The coach wants {patient} back for the playoffs.",
+    exam: "A murmur that gets louder on standing.",
+    tests: [
+      { test: 'ecg', value: 'useful', result: 'Signs of a thickened heart muscle.' },
+      { test: 'echo', value: 'useful', result: 'Thickened heart muscle that partly blocks outflow.' },
+      { test: 'eeg', value: 'low', result: 'This was not a seizure.' },
+    ],
+    differential: [
+      { id: 'hcm', label: 'An inherited thick heart muscle condition' },
+      { id: 'faint', label: 'A simple faint' },
+      { id: 'seizure', label: 'A seizure' },
+    ],
+    diagnosis: 'hcm',
+    needs: ['echo'],
+    plans: [
+      { id: 'honest_plan', label: 'Explain the condition honestly to {patient} and the family, pause competitive sport for now, arrange family screening, and plan ongoing care together', quality: 'best' },
+      { id: 'playoffs', label: 'Clear {patient} for the playoffs', quality: 'unsafe' },
+      { id: 'reassure', label: 'Call it a simple faint', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient} finds a new role on the team as an assistant coach, and two relatives are diagnosed early.",
+      fair: "{patient} is upset for months but stays safe.",
+      poor: "{patient} feels cut off from friends and stops coming to follow-up.",
+    },
+  }),
+  C({
+    id: 'pc_small_vsd', specialty: ['peds_cardiology'], ages: [0, 1], minYear: 1975, guardian: true, household: true,
+    label: 'A hole in the heart',
+    intro: "{patient}, {age}, has a loud murmur found at a well-baby check. The parents have looked it up online and are terrified.",
+    history: "Feeding and growing well. No sweating at feeds or fast breathing.",
+    exam: "A loud, harsh murmur. Otherwise a thriving baby.",
+    tests: [
+      { test: 'echo', value: 'useful', result: 'A small hole between the lower heart chambers, with normal pressures.' },
+      { test: 'ecg', value: 'neutral', result: 'Normal.' },
+      { test: 'angiogram', value: 'low', result: 'An invasive test a baby does not need.' },
+    ],
+    differential: [
+      { id: 'small_vsd', label: 'A small hole likely to close on its own' },
+      { id: 'large_vsd', label: 'A large hole needing surgery' },
+      { id: 'innocent', label: 'An innocent murmur' },
+    ],
+    diagnosis: 'small_vsd',
+    needs: ['echo'],
+    plans: [
+      { id: 'explain_watch', label: 'Show the parents a drawing, explain that loud does not mean large, and plan a check-up scan as the baby grows', quality: 'best' },
+      { id: 'surgery', label: 'Refer for heart surgery', quality: 'poor', refer: 'ctsurg' },
+      { id: 'nothing', label: 'Discharge without follow-up', quality: 'ok' },
+    ],
+    outcomes: {
+      good: "{patient}'s hole closes on its own by age two, and the parents relax.",
+      fair: "{patient}'s hole stays small and needs only occasional checks.",
+      poor: "{patient}'s parents stay anxious and keep the baby from normal activity.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: MATERNAL-FETAL MEDICINE
+  // ======================================================================================
+  C({
+    id: 'mfm_twins', specialty: ['mfm'], ages: [20, 42], minYear: 1985, sex: 'female', tier: 'intermediate',
+    label: 'Twins sharing a placenta',
+    intro: "{patient}, {age}, is sixteen weeks pregnant with identical twins who share a placenta.",
+    history: "First pregnancy. Feeling well. Has read that twins sharing a placenta need extra watching but does not know why.",
+    exam: "Bump larger than dates, as expected for twins.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'Both twins are growing evenly with normal fluid around each.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+      { test: 'mri', value: 'low', result: 'Not needed now.' },
+    ],
+    differential: [
+      { id: 'shared_twins', label: 'Healthy twins with a shared placenta needing close watching' },
+      { id: 'imbalance', label: 'A blood flow imbalance between twins' },
+      { id: 'singleton', label: 'A single pregnancy' },
+    ],
+    diagnosis: 'shared_twins',
+    needs: ['ultrasound'],
+    plans: [
+      { id: 'surveillance', label: 'Explain what to watch for, arrange scans every two weeks, and plan the timing of birth together', quality: 'best' },
+      { id: 'routine', label: 'Routine care with the usual scans', quality: 'poor' },
+      { id: 'deliver_early', label: 'Plan a very early delivery now', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s twins grow steadily and arrive healthy at the planned time.",
+      fair: "{patient}'s twins arrive a little early and spend a short time in the NICU.",
+      poor: "{patient}'s twins develop an imbalance that is caught late.",
+    },
+  }),
+  C({
+    id: 'mfm_previa', specialty: ['mfm'], ages: [25, 45], minYear: 1985, sex: 'female', tier: 'complex',
+    label: 'A low placenta',
+    intro: "{patient}, {age}, is thirty-two weeks pregnant and the placenta lies over the opening of the womb. She has had two previous cesarean deliveries.",
+    history: "A small painless bleed last week that stopped. Lives forty minutes from the hospital.",
+    exam: "Comfortable. No bleeding today. Baby active.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'The placenta covers the opening and may be growing into the old scar.' },
+      { test: 'mri', value: 'useful', result: 'Suggests the placenta is attached too deeply in one area.' },
+      { test: 'blood_basic', value: 'useful', result: 'Mild anemia, which is treated before delivery.' },
+    ],
+    differential: [
+      { id: 'accreta', label: 'A low placenta that may be abnormally attached' },
+      { id: 'normal_low', label: 'A low placenta that will move up' },
+      { id: 'abruption', label: 'A placenta separating early' },
+    ],
+    diagnosis: 'accreta',
+    needs: ['ultrasound'],
+    plans: [
+      { id: 'planned', label: 'Plan a scheduled cesarean with a full team and blood ready, explain the risks honestly, including a possible hysterectomy, and agree what to do if she bleeds before then', quality: 'best', procedure: 'ob_cesarean' },
+      { id: 'labor', label: 'Plan a normal labor', quality: 'unsafe' },
+      { id: 'routine_cs', label: 'Book a routine cesarean with the usual team', quality: 'poor', procedure: 'ob_cesarean' },
+    ],
+    decision: {
+      text: "During the planned cesarean, the placenta will not separate and bleeding increases.",
+      options: [
+        { id: 'team_plan', label: 'Follow the agreed plan, call in the extra surgeons, and keep the anesthesiologist informed', quality: 'best' },
+        { id: 'pull', label: 'Keep trying to remove the placenta alone', quality: 'unsafe' },
+        { id: 'quiet', label: 'Say nothing and hope it settles', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} and the baby are safe, and the team's preparation pays off.",
+      fair: "{patient} needs a blood transfusion and a longer stay.",
+      poor: "{patient} loses a lot of blood and needs intensive care.",
+    },
+  }),
+  C({
+    id: 'mfm_preterm_history', specialty: ['mfm'], ages: [20, 42], minYear: 1990, sex: 'female',
+    label: 'After an early birth',
+    intro: "{patient}, {age}, is fourteen weeks pregnant. Her last baby was born very early and spent months in the NICU.",
+    history: "Anxious that it will happen again. No bleeding or pain now.",
+    exam: "Well. Normal early pregnancy.",
+    tests: [
+      { test: 'ultrasound', value: 'useful', result: 'The cervix is a normal length today; a plan for regular checks is made.' },
+      { test: 'urine', value: 'useful', result: 'A silent urine infection, which is treated.' },
+      { test: 'ct', value: 'low', result: 'Radiation in pregnancy with no reason.' },
+    ],
+    differential: [
+      { id: 'high_risk', label: 'A pregnancy at higher risk of preterm birth' },
+      { id: 'low_risk', label: 'A low-risk pregnancy' },
+      { id: 'miscarriage', label: 'A threatened miscarriage' },
+    ],
+    diagnosis: 'high_risk',
+    plans: [
+      { id: 'monitor_support', label: 'Plan regular cervix checks, discuss treatments that lower the risk, treat the infection, and give her a direct number to call', quality: 'best' },
+      { id: 'bed_rest', label: 'Prescribe strict bed rest for the whole pregnancy', quality: 'poor' },
+      { id: 'routine', label: 'Routine care; lightning rarely strikes twice', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} reaches thirty-seven weeks and takes her baby home from the hospital after two days.",
+      fair: "{patient}'s baby comes a few weeks early but needs only a short stay.",
+      poor: "{patient}'s baby comes early again, before the warning signs were caught.",
+    },
+  }),
+  C({
+    id: 'mfm_diabetes_pregnancy', specialty: ['mfm'], ages: [20, 40], minYear: 1985, sex: 'female', tier: 'intermediate',
+    label: 'Diabetes and a pregnancy',
+    intro: "{patient}, {age}, has had type 1 diabetes since childhood and is eight weeks pregnant, unplanned.",
+    history: "Sugar control has been rough lately. Worried she has harmed the baby. Works shifts.",
+    exam: "Well. Early pregnancy.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Sugar control over recent months is above target.' },
+      { test: 'ultrasound', value: 'useful', result: 'A healthy early pregnancy with a heartbeat.' },
+      { test: 'exam_focused', value: 'neutral', result: 'An eye check is booked, since eye disease can worsen in pregnancy.' },
+    ],
+    differential: [
+      { id: 'pregestational', label: 'A pregnancy with pre-existing diabetes needing tight teamwork' },
+      { id: 'gestational', label: 'Diabetes that started in pregnancy' },
+      { id: 'routine', label: 'A routine pregnancy' },
+    ],
+    diagnosis: 'pregestational',
+    plans: [
+      { id: 'joint_clinic', label: 'Reassure without blame, set up a joint clinic with the diabetes team, tighten sugar control step by step, and plan extra scans', quality: 'best' },
+      { id: 'blame', label: 'Explain sternly that she has put the baby at risk', quality: 'poor' },
+      { id: 'routine', label: 'Routine pregnancy care', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s sugars come into range, and she has a healthy baby at term.",
+      fair: "{patient}'s baby is large and needs a short stay for low sugars.",
+      poor: "{patient} drifts from care and the pregnancy has avoidable complications.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: HEART TRANSPLANTATION
+  // ======================================================================================
+  C({
+    id: 'htx_donor_offer', specialty: ['ct_heart_transplant'], ages: [30, 65], minYear: 1985, tier: 'high',
+    label: 'A heart is offered',
+    intro: "At two in the morning, a donor heart is offered for {patient}, {age}, who has waited on the transplant list for eight months.",
+    history: "{patient} is stable at home. The donor heart is from an older donor and would travel a long distance, and its scan shows mild weakness.",
+    exam: "{patient} is well enough to wait for a better match.",
+    tests: [
+      { test: 'echo', value: 'useful', result: 'The donor heart\'s pumping is mildly reduced on a repeat scan.' },
+      { test: 'blood_special', value: 'useful', result: 'A good tissue match for {patient}.' },
+      { test: 'angiogram', value: 'neutral', result: 'The donor\'s heart arteries are mostly clear.' },
+    ],
+    differential: [
+      { id: 'marginal', label: 'A marginal donor heart for a stable recipient' },
+      { id: 'ideal', label: 'An ideal donor heart' },
+      { id: 'unusable', label: 'A heart that cannot be used' },
+    ],
+    diagnosis: 'marginal',
+    plans: [
+      { id: 'team_decline', label: 'Weigh it with the transplant team and decline this heart, since {patient} is stable, and explain the reasoning to {patient} in the morning', quality: 'best' },
+      { id: 'accept_alone', label: 'Accept it without discussing it with the team', quality: 'poor', procedure: 'tx_heart' },
+      { id: 'ignore', label: 'Let the offer time out without a decision', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} receives a well-matched heart six weeks later and recovers well.",
+      fair: "{patient} waits longer than hoped but stays stable.",
+      poor: "{patient} feels left out of the decision and loses trust in the team.",
+    },
+  }),
+  C({
+    id: 'htx_transplant', specialty: ['ct_heart_transplant'], ages: [25, 65], minYear: 1985, tier: 'high', household: true,
+    label: 'Transplant night',
+    intro: "A well-matched donor heart has been accepted for {patient}, {age}, whose heart is failing despite every treatment.",
+    history: "Has been in the hospital for weeks, waiting. The family is frightened and hopeful. {patient} understands the risks and has signed consent.",
+    exam: "Breathless at rest, swollen legs, but ready for surgery.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'A final cross-match confirms compatibility.' },
+      { test: 'echo', value: 'useful', result: 'The donor heart is strong.' },
+      { test: 'mri', value: 'low', result: 'Wastes precious time.' },
+    ],
+    differential: [
+      { id: 'ready', label: 'A suitable recipient ready for transplant' },
+      { id: 'too_sick', label: 'Too sick to survive the operation' },
+      { id: 'mismatch', label: 'An incompatible heart' },
+    ],
+    diagnosis: 'ready',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'transplant', label: 'Coordinate the timing with the retrieval team, brief everyone, speak to the family, and proceed with the transplant', quality: 'best', procedure: 'tx_heart' },
+      { id: 'no_brief', label: 'Proceed without a team briefing to save time', quality: 'poor', procedure: 'tx_heart' },
+      { id: 'delay', label: 'Wait for a morning start', quality: 'poor' },
+    ],
+    decision: {
+      text: "The new heart is slow to beat strongly at first and the anesthesiologist asks how you want to proceed.",
+      options: [
+        { id: 'support_time', label: 'Support the new heart and give it time, talking it through with the team', quality: 'best' },
+        { id: 'rush', label: 'Push to finish quickly', quality: 'poor' },
+        { id: 'blame', label: 'Blame the retrieval team aloud in the room', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} is walking within a week and goes home with a heart that works well.",
+      fair: "{patient} has a slow start and a longer intensive care stay before recovering.",
+      poor: "{patient} has a difficult recovery with an episode of rejection.",
+    },
+  }),
+  C({
+    id: 'htx_rejection', specialty: ['ct_heart_transplant'], ages: [25, 70], minYear: 1985, tier: 'complex',
+    label: 'Tired after transplant',
+    intro: "{patient}, {age}, had a heart transplant eight months ago and has felt tired and breathless for a week.",
+    history: "Admits missing some doses of the anti-rejection medicines while traveling. No fever.",
+    exam: "Mild swelling of the ankles and a faster pulse than usual.",
+    tests: [
+      { test: 'echo', value: 'useful', result: 'The new heart is pumping less well than three months ago.' },
+      { test: 'biopsy', value: 'useful', result: 'A heart muscle sample shows moderate rejection.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Kidney function is stable.' },
+    ],
+    differential: [
+      { id: 'rejection', label: 'Rejection of the transplanted heart' },
+      { id: 'infection', label: 'An infection' },
+      { id: 'deconditioning', label: 'Simply out of shape' },
+    ],
+    diagnosis: 'rejection',
+    needs: ['biopsy'],
+    plans: [
+      { id: 'treat_support', label: 'Admit, treat the rejection with the transplant cardiologists, and talk openly and without blame about what makes the medicines hard to take', quality: 'best' },
+      { id: 'scold', label: 'Warn {patient} sternly and send them home', quality: 'poor' },
+      { id: 'exercise', label: 'Advise more exercise', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient}'s heart recovers fully, and a simpler medicine routine fits travel and work.",
+      fair: "{patient} recovers, with some lasting reduction in the heart's strength.",
+      poor: "{patient} has another episode of rejection months later.",
+    },
+  }),
+  C({
+    id: 'htx_not_yet', specialty: ['ct_heart_transplant'], ages: [30, 60], minYear: 1985, tier: 'complex',
+    label: 'Not on the list yet',
+    intro: "{patient}, {age}, has severe heart failure and asks to be placed on the heart transplant list.",
+    history: "Still smokes and has missed many clinic appointments. Lives alone. Wants to change but has not managed to yet.",
+    exam: "Breathless with modest effort. Otherwise stable.",
+    tests: [
+      { test: 'echo', value: 'useful', result: 'A severely weakened heart.' },
+      { test: 'history_detail', value: 'useful', result: 'The social worker\'s assessment shows little support at home and ongoing smoking.' },
+      { test: 'angiogram', value: 'neutral', result: 'No blockages to treat.' },
+    ],
+    differential: [
+      { id: 'not_yet', label: 'A possible candidate who is not ready yet' },
+      { id: 'ready', label: 'Ready to list now' },
+      { id: 'never', label: 'Never a candidate' },
+    ],
+    diagnosis: 'not_yet',
+    plans: [
+      { id: 'honest_path', label: 'Explain honestly why listing is not safe yet, set clear steps together (stopping smoking, a support person, regular visits), and review in a few months', quality: 'best' },
+      { id: 'list_anyway', label: 'List {patient} now to be kind', quality: 'poor' },
+      { id: 'refuse', label: 'Say no and close the door for good', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} stops smoking, a sibling moves closer to help, and {patient} is listed within the year.",
+      fair: "{patient} makes partial progress and stays under review.",
+      poor: "{patient} feels judged and stops coming to clinic.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: TRAUMA AND PEDIATRIC SURGERY, TRANSPLANT SURGERY
+  // ======================================================================================
+  C({
+    id: 'tr_child_handlebar', specialty: ['peds_surgery', 'trauma'], ages: [7, 14], minYear: 1985, guardian: true, tier: 'intermediate',
+    label: 'A bicycle fall',
+    intro: "{patient}, {age}, went over the handlebars of a bike and has pain in the upper left belly.",
+    history: "No head injury. Wearing a helmet. Pain is worse on breathing in, and the left shoulder hurts too.",
+    exam: "Alert, pulse a little fast but steady, blood pressure normal. A handlebar-shaped bruise on the belly, tender on the left.",
+    tests: [
+      { test: 'ct', value: 'useful', result: 'A torn spleen with some blood around it, no active bleeding seen, and no other injuries.' },
+      { test: 'blood_basic', value: 'useful', result: 'Blood count slightly low and stable on a repeat.' },
+      { test: 'mri', value: 'low', result: 'A long scan with no added value now.' },
+    ],
+    differential: [
+      { id: 'spleen', label: 'A spleen injury in a stable child' },
+      { id: 'bruise', label: 'Just a bruise' },
+      { id: 'bowel', label: 'A bowel injury' },
+    ],
+    diagnosis: 'spleen',
+    needs: ['ct'],
+    plans: [
+      { id: 'observe_close', label: 'Admit for close observation with bed rest and repeat checks, explain the plan and warning signs to the family, and have the operating room ready if needed', quality: 'best' },
+      { id: 'operate', label: 'Remove the spleen today', quality: 'poor' },
+      { id: 'home', label: 'Send home with pain relief', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient}'s spleen heals without surgery, and {patient} is back at school in a week, with no contact sports for a while.",
+      fair: "{patient} needs a blood transfusion but still avoids an operation.",
+      poor: "{patient} needs an urgent operation after bleeding again.",
+    },
+  }),
+  C({
+    id: 'tx_kidney_offer', specialty: ['transplant'], ages: [30, 70], minYear: 1970, tier: 'complex',
+    label: 'A kidney at night',
+    intro: "A deceased-donor kidney becomes available for {patient}, {age}, who has been on dialysis for four years.",
+    history: "{patient} had dialysis yesterday and feels well. Had a cold last week. Has always said yes to a transplant.",
+    exam: "Well. No fever. Fluid balance looks right.",
+    tests: [
+      { test: 'blood_special', value: 'useful', result: 'The final cross-match is compatible.' },
+      { test: 'blood_basic', value: 'useful', result: 'Potassium is safe, so no extra dialysis is needed first.' },
+      { test: 'xray', value: 'neutral', result: 'Clear chest; the cold has passed.' },
+    ],
+    differential: [
+      { id: 'suitable', label: 'A suitable recipient for this kidney' },
+      { id: 'infection', label: 'Too unwell from an infection' },
+      { id: 'mismatch', label: 'An incompatible kidney' },
+    ],
+    diagnosis: 'suitable',
+    needs: ['blood_special'],
+    plans: [
+      { id: 'transplant', label: 'Confirm consent and understanding with {patient}, brief the team, and proceed with the kidney transplant', quality: 'best', procedure: 'tx_kidney' },
+      { id: 'skip_crossmatch', label: 'Start before the cross-match comes back to save time', quality: 'unsafe', procedure: 'tx_kidney' },
+      { id: 'decline', label: 'Decline because of last week\'s cold', quality: 'poor' },
+    ],
+    decision: {
+      text: "When the new kidney's blood supply is connected, it looks pale and slow to turn pink.",
+      options: [
+        { id: 'pause_check', label: 'Pause, check the connections with the team, and give it a few minutes with good blood pressure support', quality: 'best' },
+        { id: 'remove', label: 'Remove the kidney at once', quality: 'poor' },
+        { id: 'close', label: 'Close quickly and hope it recovers', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient}'s new kidney starts working within days, and dialysis ends.",
+      fair: "{patient} needs dialysis for a couple of weeks while the kidney wakes up.",
+      poor: "{patient}'s kidney has an early rejection episode that needs treatment.",
+    },
+  }),
+  C({
+    id: 'tx_liver_failure', specialty: ['transplant'], ages: [18, 55], minYear: 1985, tier: 'high', household: true,
+    label: 'A liver failing fast',
+    intro: "{patient}, {age}, was healthy two weeks ago and now has a failing liver from a viral hepatitis, with growing confusion.",
+    history: "No alcohol or drug use. The family is in shock and asks what can be done.",
+    exam: "Deeply yellow, drowsy and confused. Bruises easily.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Clotting and liver tests are severely abnormal.' },
+      { test: 'ultrasound', value: 'useful', result: 'A shrunken liver with open blood vessels.' },
+      { test: 'biopsy', value: 'unsafe', result: 'A liver sample with this clotting risks serious bleeding.' },
+    ],
+    differential: [
+      { id: 'acute_failure', label: 'Acute liver failure needing urgent transplant listing' },
+      { id: 'alcohol', label: 'Alcohol-related liver disease' },
+      { id: 'blockage', label: 'A blocked bile duct' },
+    ],
+    diagnosis: 'acute_failure',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'urgent_list', label: 'List urgently with the transplant team, support {patient} in intensive care, explain things honestly to the family, and proceed when a liver is found', quality: 'best', procedure: 'tx_liver' },
+      { id: 'wait', label: 'Wait to see if the liver recovers on its own', quality: 'poor' },
+      { id: 'blame', label: 'Assume hidden drinking and decline', quality: 'unsafe' },
+    ],
+    decision: {
+      text: "A liver becomes available, but it is from an older donor with some fat in it.",
+      options: [
+        { id: 'discuss_accept', label: 'Discuss quickly with the team and accept it, given how urgent {patient}\'s situation is', quality: 'best' },
+        { id: 'decline_perfect', label: 'Decline and wait for a perfect liver', quality: 'poor' },
+        { id: 'alone', label: 'Decide alone without telling anyone', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} receives the new liver, wakes up clear-headed, and goes home in weeks.",
+      fair: "{patient} has a slow recovery with a long stay in intensive care.",
+      poor: "{patient} has a complicated recovery and a return to the operating room.",
+    },
+  }),
+  C({
+    id: 'tx_kidney_rising', specialty: ['transplant', 'nephrology'], ages: [25, 70], minYear: 1975, tier: 'intermediate',
+    label: 'A worrying blood test',
+    intro: "{patient}, {age}, had a kidney transplant a year ago, and a routine blood test shows the kidney function has slipped.",
+    history: "Feels well. Recently started a new herbal supplement for energy. No fever or pain.",
+    exam: "Normal blood pressure. The transplanted kidney is not tender.",
+    tests: [
+      { test: 'blood_basic', value: 'useful', result: 'Kidney function is worse than last month, and the anti-rejection medicine level is low.' },
+      { test: 'ultrasound', value: 'useful', result: 'Good blood flow and no blockage.' },
+      { test: 'biopsy', value: 'useful', result: 'Mild rejection, caught early.' },
+    ],
+    differential: [
+      { id: 'rejection', label: 'Early rejection from low medicine levels' },
+      { id: 'blockage', label: 'A blocked tube from the kidney' },
+      { id: 'infection', label: 'A urine infection' },
+    ],
+    diagnosis: 'rejection',
+    needs: ['blood_basic'],
+    plans: [
+      { id: 'treat_explain', label: 'Treat the rejection, explain how the supplement lowers the medicine level, and agree to check any new remedy with the team first', quality: 'best' },
+      { id: 'remove', label: 'Plan to remove the transplanted kidney', quality: 'unsafe' },
+      { id: 'ignore', label: 'Recheck in three months', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s kidney function returns to normal within weeks.",
+      fair: "{patient}'s kidney recovers most of its function.",
+      poor: "{patient}'s kidney is left weaker for good.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: COLON AND RECTAL SURGERY
+  // ======================================================================================
+  C({
+    id: 'cr_diverticulitis', specialty: ['colorectal', 'gensurg'], ages: [40, 80], minYear: 1980,
+    label: 'Pain in the lower left belly',
+    intro: "{patient}, {age}, has had pain in the lower left belly and a fever for two days.",
+    history: "A similar but milder episode last year. Eating and drinking. No bleeding.",
+    exam: "Tender in the lower left belly, without signs of the whole belly being inflamed.",
+    tests: [
+      { test: 'ct', value: 'useful', result: 'Inflamed pouches in the colon with no abscess or hole.' },
+      { test: 'blood_basic', value: 'useful', result: 'Mildly raised infection markers.' },
+      { test: 'endoscopy', value: 'unsafe', result: 'A scope into an inflamed bowel now risks a tear; it is for later.' },
+    ],
+    differential: [
+      { id: 'diverticulitis', label: 'Uncomplicated diverticulitis' },
+      { id: 'cancer', label: 'Bowel cancer' },
+      { id: 'perforation', label: 'A burst bowel' },
+    ],
+    diagnosis: 'diverticulitis',
+    needs: ['ct'],
+    plans: [
+      { id: 'conservative', label: 'Treat without surgery, with rest of the bowel and medicines if needed, explain warning signs, and plan a colonoscopy once it has settled', quality: 'best' },
+      { id: 'resect', label: 'Remove the affected bowel now', quality: 'poor', procedure: 'gs_abdominal' },
+      { id: 'home_nothing', label: 'Send home without a plan', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} settles within days, and the later colonoscopy is clear.",
+      fair: "{patient} has one more mild episode in the following year.",
+      poor: "{patient} returns with an abscess that needs drainage.",
+    },
+  }),
+  C({
+    id: 'cr_hemorrhoids', specialty: ['colorectal'], ages: [30, 70], minYear: 1975,
+    label: 'Bleeding after the bathroom',
+    intro: "{patient}, {age}, has noticed bright red blood on the toilet paper for two months and is embarrassed to talk about it.",
+    history: "Strains with hard stools. No weight loss or change in bowel habit. No family history of bowel cancer.",
+    exam: "An examination, done with consent and a chaperone, shows enlarged hemorrhoids and nothing else.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'Enlarged hemorrhoids that bleed easily, and no other finding.' },
+      { test: 'endoscopy', value: 'neutral', result: 'A short scope confirms nothing else is bleeding.' },
+      { test: 'ct', value: 'low', result: 'Not needed.' },
+    ],
+    differential: [
+      { id: 'hemorrhoids', label: 'Bleeding hemorrhoids' },
+      { id: 'cancer', label: 'Bowel cancer' },
+      { id: 'fissure', label: 'A small tear' },
+    ],
+    diagnosis: 'hemorrhoids',
+    plans: [
+      { id: 'office_band', label: 'Put {patient} at ease, advise fiber and fluids, and offer a simple office treatment if bleeding continues', quality: 'best', procedure: 'office_minor' },
+      { id: 'big_op', label: 'Book an operation under general anesthesia', quality: 'poor', procedure: 'gs_colorectal' },
+      { id: 'no_exam', label: 'Prescribe a cream without examining', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s bleeding stops within weeks, and {patient} is glad to have asked.",
+      fair: "{patient} needs a second office treatment.",
+      poor: "{patient} stays embarrassed and stops coming in.",
+    },
+  }),
+  C({
+    id: 'cr_rectal_cancer', specialty: ['colorectal'], ages: [45, 80], minYear: 1985, tier: 'complex',
+    label: 'A rectal cancer',
+    intro: "{patient}, {age}, has a cancer in the lower rectum found on a colonoscopy, and has come to talk about surgery.",
+    history: "Fit and active. Afraid of having a bag. Wants to know all the options.",
+    exam: "Fit. The tumor can be felt on examination.",
+    tests: [
+      { test: 'mri', value: 'useful', result: 'The tumor is close to the muscle but has not spread through the wall.' },
+      { test: 'ct', value: 'useful', result: 'No spread to the liver or lungs.' },
+      { test: 'biopsy', value: 'neutral', result: 'Confirms the cancer type.' },
+    ],
+    differential: [
+      { id: 'local', label: 'A rectal cancer that has not spread' },
+      { id: 'metastatic', label: 'A cancer that has spread' },
+      { id: 'polyp', label: 'A harmless polyp' },
+    ],
+    diagnosis: 'local',
+    needs: ['mri'],
+    plans: [
+      { id: 'mdt_then_op', label: 'Discuss at the cancer team meeting, offer treatment to shrink it first, then plan surgery with honest talk about a temporary bag and consent', quality: 'best', procedure: 'gs_colorectal' },
+      { id: 'op_now', label: 'Operate next week without the team review', quality: 'ok', procedure: 'gs_colorectal' },
+      { id: 'promise', label: 'Promise there will never be a bag', quality: 'poor', procedure: 'gs_colorectal' },
+    ],
+    decision: {
+      text: "During the operation, the join in the bowel looks a little short of blood supply.",
+      options: [
+        { id: 'protect', label: 'Discuss with the assistant, and protect the join with a temporary bag as {patient} consented to', quality: 'best' },
+        { id: 'hope', label: 'Leave it and hope', quality: 'poor' },
+        { id: 'permanent', label: 'Create a permanent bag without consent', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient} recovers well, the temporary bag is reversed months later, and checkups stay clear.",
+      fair: "{patient} has a slow recovery but the cancer is fully removed.",
+      poor: "{patient} has a leak at the join and a long hospital stay.",
+    },
+  }),
+  C({
+    id: 'cr_colitis_surgery', specialty: ['colorectal'], ages: [20, 50], minYear: 1985, tier: 'complex',
+    label: 'Colitis not responding',
+    intro: "{patient}, {age}, has severe ulcerative colitis that has not improved after five days of strong hospital treatment.",
+    history: "Twelve bloody stools a day. Exhausted. The gastroenterologist asks for a surgical opinion. {patient} dreads the idea of a bag.",
+    exam: "Fast pulse, tender belly, but not rigid.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'The colon is not dangerously swollen.' },
+      { test: 'blood_basic', value: 'useful', result: 'Inflammation markers are still high; low blood protein.' },
+      { test: 'endoscopy', value: 'unsafe', result: 'A full scope in a bowel this inflamed risks a tear.' },
+    ],
+    differential: [
+      { id: 'refractory', label: 'Severe colitis failing medical treatment' },
+      { id: 'infection', label: 'A superimposed infection only' },
+      { id: 'improving', label: 'About to improve' },
+    ],
+    diagnosis: 'refractory',
+    plans: [
+      { id: 'joint_plan', label: 'See {patient} with the gastroenterologist, explain the choices honestly, introduce the stoma nurse, and with consent plan surgery if a final medical option fails', quality: 'best', procedure: 'gs_colorectal' },
+      { id: 'operate_tonight', label: 'Operate tonight without the GI team', quality: 'poor', procedure: 'gs_colorectal' },
+      { id: 'wait_weeks', label: 'Keep the same treatment for another two weeks', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} has surgery at the right time, recovers well, and later has the bag reversed.",
+      fair: "{patient} has a slower recovery but is well by the summer.",
+      poor: "{patient} becomes sicker before surgery and recovery is long.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: SURGICAL ONCOLOGY
+  // ======================================================================================
+  C({
+    id: 'so_sarcoma', specialty: ['surg_onc'], ages: [25, 75], minYear: 1985, tier: 'complex',
+    label: 'A lump in the thigh',
+    intro: "{patient}, {age}, has a lump deep in the thigh, larger than a golf ball and growing over three months.",
+    history: "Painless. Another doctor offered to 'just cut it out' in the office.",
+    exam: "A firm, deep lump that does not move freely.",
+    tests: [
+      { test: 'mri', value: 'useful', result: 'A deep growth within the muscle.' },
+      { test: 'biopsy', value: 'useful', result: 'A needle sample confirms a soft tissue cancer.' },
+      { test: 'ct', value: 'useful', result: 'No spread to the lungs.' },
+    ],
+    differential: [
+      { id: 'sarcoma', label: 'A soft tissue cancer (sarcoma)' },
+      { id: 'lipoma', label: 'A harmless fatty lump' },
+      { id: 'hematoma', label: 'An old bruise' },
+    ],
+    diagnosis: 'sarcoma',
+    needs: ['mri'],
+    plans: [
+      { id: 'planned', label: 'Plan with the sarcoma team, explain the operation and recovery honestly, get consent, and remove it with a cuff of healthy tissue', quality: 'best', procedure: 'so_resection' },
+      { id: 'office_cut', label: 'Shell it out in the office', quality: 'unsafe' },
+      { id: 'watch', label: 'Watch it for six months', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s cancer is removed completely and {patient} is walking normally within weeks.",
+      fair: "{patient} needs extra treatment after surgery but does well.",
+      poor: "{patient}'s wound heals slowly and needs extra care.",
+    },
+  }),
+  C({
+    id: 'so_breast_lump', specialty: ['surg_onc'], ages: [35, 75], minYear: 1985, sex: 'female', tier: 'intermediate',
+    label: 'A breast cancer',
+    intro: "{patient}, {age}, has a small breast cancer found on a screening mammogram, confirmed by biopsy.",
+    history: "Wants to keep her breast if possible. Scared and has many questions.",
+    exam: "A small lump in one breast. No lumps in the armpit.",
+    tests: [
+      { test: 'biopsy', value: 'useful', result: 'An early cancer of a common type.' },
+      { test: 'ultrasound', value: 'useful', result: 'The armpit glands look normal.' },
+      { test: 'ct', value: 'low', result: 'Body scans are not recommended for an early cancer like this.' },
+    ],
+    differential: [
+      { id: 'early', label: 'An early breast cancer suited to breast-conserving surgery' },
+      { id: 'advanced', label: 'Advanced cancer' },
+      { id: 'cyst', label: 'A cyst' },
+    ],
+    diagnosis: 'early',
+    needs: ['biopsy'],
+    plans: [
+      { id: 'conserve', label: 'Explain the options honestly, offer surgery that keeps the breast with a check of the nearest gland, and get consent', quality: 'best', procedure: 'so_resection' },
+      { id: 'mastectomy', label: 'Recommend removing the whole breast without discussing options', quality: 'poor', procedure: 'so_resection' },
+      { id: 'delay', label: 'Wait until she feels ready, with no follow-up booked', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} recovers quickly, keeps her breast, and the cancer is fully removed.",
+      fair: "{patient} needs a second small operation to clear the edges.",
+      poor: "{patient} feels rushed and unhappy with the decision.",
+    },
+  }),
+  C({
+    id: 'so_stomach', specialty: ['surg_onc'], ages: [50, 80], minYear: 1980, tier: 'complex',
+    label: 'A stomach cancer',
+    intro: "{patient}, {age}, has a stomach cancer found after months of indigestion and weight loss.",
+    history: "Lives alone. Eats little. Wants to know if an operation is worth it.",
+    exam: "Thin. No lumps in the belly or neck.",
+    tests: [
+      { test: 'endoscopy', value: 'useful', result: 'A tumor in the lower stomach, confirmed on samples.' },
+      { test: 'ct', value: 'useful', result: 'No spread to the liver or beyond.' },
+      { test: 'blood_basic', value: 'useful', result: 'Mild anemia and low protein from poor eating.' },
+    ],
+    differential: [
+      { id: 'resectable', label: 'A stomach cancer that can be removed' },
+      { id: 'spread', label: 'A cancer that has spread' },
+      { id: 'ulcer', label: 'A simple ulcer' },
+    ],
+    diagnosis: 'resectable',
+    needs: ['ct'],
+    plans: [
+      { id: 'prepare_op', label: 'Plan with the cancer team, improve nutrition first with a dietitian, explain the operation and recovery, and with consent remove the tumor', quality: 'best', procedure: 'so_resection' },
+      { id: 'op_tomorrow', label: 'Operate tomorrow without building up strength', quality: 'ok', procedure: 'so_resection' },
+      { id: 'too_old', label: 'Say {patient} is too old for surgery', quality: 'poor' },
+    ],
+    decision: {
+      text: "During the operation, a small spot is seen on the liver that was not on the scan.",
+      options: [
+        { id: 'sample', label: 'Take a sample for a quick look by pathology and decide with that answer', quality: 'best' },
+        { id: 'ignore', label: 'Ignore it and carry on', quality: 'poor' },
+        { id: 'abandon', label: 'Abandon the operation without checking', quality: 'poor' },
+      ],
+    },
+    outcomes: {
+      good: "{patient}'s spot proves harmless, the cancer is removed, and {patient} eats well again.",
+      fair: "{patient} has a slow recovery with feeding difficulties at first.",
+      poor: "{patient} has a leak after surgery and a long stay.",
+    },
+  }),
+  C({
+    id: 'so_not_operable', specialty: ['surg_onc'], ages: [50, 85], minYear: 1985, tier: 'complex',
+    label: 'When surgery will not help',
+    intro: "{patient}, {age}, has bowel cancer with spread to many places in the liver and lungs, and has been told 'the surgeon will fix it.'",
+    history: "Feels fairly well. The family is hoping for an operation.",
+    exam: "Well. Slightly enlarged liver.",
+    tests: [
+      { test: 'ct', value: 'useful', result: 'Many deposits in both sides of the liver and both lungs.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Mildly abnormal liver tests.' },
+      { test: 'biopsy', value: 'low', result: 'The diagnosis is already confirmed.' },
+    ],
+    differential: [
+      { id: 'widespread', label: 'Widespread cancer that surgery cannot remove' },
+      { id: 'single', label: 'A single deposit suitable for surgery' },
+      { id: 'cysts', label: 'Harmless liver cysts' },
+    ],
+    diagnosis: 'widespread',
+    needs: ['ct'],
+    plans: [
+      { id: 'honest_refer', label: 'Explain honestly and kindly why an operation would not help, and refer to the oncologist for treatment that can, with time for questions', quality: 'best', refer: 'heme_onc' },
+      { id: 'operate', label: 'Operate anyway because the family wants it', quality: 'unsafe', procedure: 'so_resection' },
+      { id: 'vague', label: 'Say you will think about it and send a letter', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} understands the situation and starts treatment that keeps them well for a good while.",
+      fair: "{patient} takes time to accept the news but engages with treatment.",
+      poor: "{patient} feels confused and loses months seeking an operation elsewhere.",
+    },
+  }),
+
+  // ======================================================================================
+  // MORE CASES: ORTHOPEDIC SPORTS MEDICINE, HAND, SPINE, FOOT AND ANKLE
+  // ======================================================================================
+  C({
+    id: 'sports_meniscus_older', specialty: ['ortho_sports'], ages: [45, 65], minYear: 1990,
+    label: 'A torn cartilage?',
+    intro: "{patient}, {age}, has a sore knee for two months and an MRI elsewhere showed a 'tear,' so {patient} wants keyhole surgery.",
+    history: "No injury. Aching on stairs. No locking or giving way. Keen hiker.",
+    exam: "Mild swelling, full range of movement, tender along the inner joint line.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'Early wear-and-tear arthritis in the inner knee.' },
+      { test: 'exam_focused', value: 'useful', result: 'No mechanical locking; the knee is stable.' },
+      { test: 'mri', value: 'neutral', result: 'The old scan already shows a frayed, age-related tear.' },
+    ],
+    differential: [
+      { id: 'degenerative', label: 'An age-related tear with early arthritis' },
+      { id: 'acute_tear', label: 'A fresh tear that locks the knee' },
+      { id: 'infection', label: 'A joint infection' },
+    ],
+    diagnosis: 'degenerative',
+    plans: [
+      { id: 'rehab', label: 'Explain that this kind of tear is common and that surgery does not help it, and build a strengthening plan with a physical therapist', quality: 'best' },
+      { id: 'scope', label: 'Book keyhole surgery as requested', quality: 'poor', procedure: 'or_arthroscopy' },
+      { id: 'rest', label: 'Advise stopping hiking for good', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s knee settles with exercise and the hiking season goes ahead.",
+      fair: "{patient} has occasional flare-ups but manages well.",
+      poor: "{patient}'s knee stiffens from inactivity.",
+    },
+  }),
+  C({
+    id: 'hand_flexor_tendon', specialty: ['hand'], ages: [18, 60], minYear: 1960, tier: 'intermediate',
+    label: 'A cut finger',
+    intro: "{patient}, {age}, cut a finger on a broken glass while washing dishes and cannot bend the fingertip.",
+    history: "Right-handed, works as a guitar teacher. Cut happened last night.",
+    exam: "A small cut over the finger. The fingertip will not bend on its own. Feeling at the tip is reduced on one side.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'The bending tendon and one finger nerve are cut.' },
+      { test: 'xray', value: 'neutral', result: 'No glass left in the finger.' },
+      { test: 'mri', value: 'low', result: 'Delays a repair that the examination has already shown is needed.' },
+    ],
+    differential: [
+      { id: 'tendon_cut', label: 'A cut tendon and finger nerve' },
+      { id: 'bruise', label: 'A painful bruise only' },
+      { id: 'sprain', label: 'A sprained joint' },
+    ],
+    diagnosis: 'tendon_cut',
+    needs: ['exam_focused'],
+    plans: [
+      { id: 'repair', label: 'Explain the injury and the long rehabilitation, get consent, and repair the tendon and nerve within days, with hand therapy arranged', quality: 'best', procedure: 'or_hand' },
+      { id: 'stitches', label: 'Close the skin and send home', quality: 'unsafe' },
+      { id: 'wait_months', label: 'Put on the routine waiting list', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} plays the guitar again after months of careful hand therapy.",
+      fair: "{patient}'s finger bends well but stays a little stiff.",
+      poor: "{patient}'s repair stretches when therapy is skipped, and the finger stays weak.",
+    },
+  }),
+  C({
+    id: 'hand_trigger', specialty: ['hand'], ages: [40, 75], minYear: 1965,
+    label: 'A finger that catches',
+    intro: "{patient}, {age}, has a ring finger that catches and clicks when straightened, worst in the mornings.",
+    history: "Diabetic. Has had it for two months. Has never had any treatment for it.",
+    exam: "A tender nodule at the base of the finger and a catch on straightening.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'Classic signs of a trigger finger.' },
+      { test: 'mri', value: 'low', result: 'Not needed.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Sugar control is fair.' },
+    ],
+    differential: [
+      { id: 'trigger', label: 'A trigger finger' },
+      { id: 'arthritis', label: 'Arthritis of the finger' },
+      { id: 'tumor', label: 'A tumor of the tendon' },
+    ],
+    diagnosis: 'trigger',
+    plans: [
+      { id: 'injection_first', label: 'Explain the condition, offer an injection to calm the swelling first, and keep surgery for if it comes back', quality: 'best' },
+      { id: 'operate', label: 'Operate straight away', quality: 'ok', procedure: 'or_hand' },
+      { id: 'force', label: 'Tell {patient} to force the finger straight', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s finger moves freely after one injection.",
+      fair: "{patient} needs a small operation later when it returns.",
+      poor: "{patient}'s finger gets stuck bent.",
+    },
+  }),
+  C({
+    id: 'hand_scaphoid', specialty: ['hand'], ages: [18, 40], minYear: 1985, tier: 'intermediate',
+    label: 'A wrist fracture that matters',
+    intro: "{patient}, {age}, fell while skateboarding and has pain at the base of the thumb. An earlier clinic called it a sprain.",
+    history: "Right-handed, works as a carpenter. Still painful after two weeks.",
+    exam: "Tender in the hollow at the base of the thumb. Grip is weak.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'A fracture of a small wrist bone, with the pieces slightly apart.' },
+      { test: 'ct', value: 'useful', result: 'Confirms that the pieces have moved.' },
+      { test: 'blood_basic', value: 'low', result: 'Not relevant.' },
+    ],
+    differential: [
+      { id: 'displaced', label: 'A displaced fracture of a small wrist bone' },
+      { id: 'sprain', label: 'A wrist sprain' },
+      { id: 'arthritis', label: 'Arthritis' },
+    ],
+    diagnosis: 'displaced',
+    needs: ['xray'],
+    plans: [
+      { id: 'fix', label: 'Explain why this bone heals poorly when the pieces have moved, get consent, and fix it surgically with follow-up imaging', quality: 'best', procedure: 'or_hand' },
+      { id: 'cast_only', label: 'Put it in a cast and review in three months', quality: 'poor' },
+      { id: 'sprain', label: 'Agree it is a sprain', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient}'s bone heals and {patient} is back to work within three months.",
+      fair: "{patient}'s bone heals slowly with a stiff wrist for a while.",
+      poor: "{patient}'s bone does not heal and needs a second operation.",
+    },
+  }),
+  C({
+    id: 'hand_dupuytren', specialty: ['hand'], ages: [50, 85], minYear: 1960,
+    label: 'Fingers pulling in',
+    intro: "{patient}, {age}, has two fingers that are slowly being pulled down into the palm.",
+    history: "Cannot lay the hand flat on a table or put on gloves. A brother has the same. No pain.",
+    exam: "Thick cords in the palm pulling two fingers into a bent position.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'The hand cannot lie flat; the bend at the knuckle is significant.' },
+      { test: 'xray', value: 'low', result: 'The cords do not show on an X-ray.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+    ],
+    differential: [
+      { id: 'dupuytren', label: 'Thickening of the tissue in the palm (Dupuytren disease)' },
+      { id: 'trigger', label: 'Trigger finger' },
+      { id: 'arthritis', label: 'Arthritis' },
+    ],
+    diagnosis: 'dupuytren',
+    plans: [
+      { id: 'release', label: 'Explain the options and the chance it may come back, get consent, and release the cords with hand therapy after', quality: 'best', procedure: 'or_hand' },
+      { id: 'wait_years', label: 'Wait until the fingers touch the palm', quality: 'poor' },
+      { id: 'stretch', label: 'Advise forcible stretching at home', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient}'s fingers straighten, and the gloves fit again.",
+      fair: "{patient}'s fingers improve but one stays slightly bent.",
+      poor: "{patient}'s cords return within a couple of years.",
+    },
+  }),
+  C({
+    id: 'spine_cauda_equina', specialty: ['spine', 'neurosurg'], ages: [25, 60], minYear: 1985, tier: 'complex',
+    label: 'Back pain with warning signs',
+    intro: "{patient}, {age}, has severe back pain with pain down both legs and new numbness in the saddle area.",
+    history: "Has noticed difficulty passing urine since this morning. Back pain on and off for years.",
+    exam: "Reduced feeling around the bottom and inner thighs, weak ankle movements on both sides.",
+    tests: [
+      { test: 'mri', value: 'useful', result: 'A large disc pressing on the bundle of nerves at the bottom of the spine.' },
+      { test: 'exam_focused', value: 'useful', result: 'The bladder is not emptying fully.' },
+      { test: 'xray', value: 'low', result: 'Cannot show the nerves.' },
+    ],
+    differential: [
+      { id: 'cauda', label: 'Severe compression of the lowest spinal nerves' },
+      { id: 'sciatica', label: 'Ordinary sciatica' },
+      { id: 'uti', label: 'A urinary infection' },
+    ],
+    diagnosis: 'cauda',
+    needs: ['mri'],
+    plans: [
+      { id: 'urgent_op', label: 'Explain the urgency and the risks honestly, get consent, and relieve the pressure on the nerves today', quality: 'best', procedure: 'ns_spine' },
+      { id: 'list', label: 'Book for the next routine list', quality: 'unsafe', procedure: 'ns_spine' },
+      { id: 'physio', label: 'Refer for physical therapy', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient}'s bladder and leg strength recover well over the following months.",
+      fair: "{patient} recovers most function, with some numbness that lingers.",
+      poor: "{patient} is left with lasting bladder problems.",
+    },
+  }),
+  C({
+    id: 'spine_no_fusion', specialty: ['spine'], ages: [35, 65], minYear: 1990,
+    label: 'Asking for a fusion',
+    intro: "{patient}, {age}, has had low back pain for three years and asks for a fusion operation after reading about it.",
+    history: "No leg pain, numbness or weakness. Out of work. Little exercise. Poor sleep and low mood.",
+    exam: "Tender lower back. Normal strength, feeling and reflexes in the legs.",
+    tests: [
+      { test: 'mri', value: 'neutral', result: 'Wear-and-tear changes common at this age, with no nerve squeezed.' },
+      { test: 'screening_tool', value: 'useful', result: 'A questionnaire shows high fear of movement and low mood.' },
+      { test: 'blood_basic', value: 'low', result: 'Not relevant.' },
+    ],
+    differential: [
+      { id: 'chronic_back', label: 'Chronic back pain without a surgical target' },
+      { id: 'instability', label: 'A slipped vertebra needing fusion' },
+      { id: 'tumor', label: 'A spinal tumor' },
+    ],
+    diagnosis: 'chronic_back',
+    plans: [
+      { id: 'honest_rehab', label: 'Explain honestly that a fusion is unlikely to help, and arrange an active rehabilitation program with support for mood and return to work', quality: 'best' },
+      { id: 'fuse', label: 'Offer a fusion as asked', quality: 'poor', procedure: 'ns_spine' },
+      { id: 'dismiss', label: 'Say there is nothing wrong', quality: 'poor' },
+    ],
+    outcomes: {
+      good: "{patient} returns to work gradually and the pain becomes manageable.",
+      fair: "{patient} improves slowly with some bad weeks.",
+      poor: "{patient} feels unheard and finds a surgeon elsewhere.",
+    },
+  }),
+  C({
+    id: 'fa_achilles', specialty: ['foot_ankle'], ages: [30, 60], minYear: 1985,
+    label: 'A pop at the back of the ankle',
+    intro: "{patient}, {age}, felt a pop at the back of the ankle while playing tennis, as if kicked.",
+    history: "Weekend player. Can walk but with a flat-footed limp. Wants to play again next season.",
+    exam: "A gap in the tendon above the heel; squeezing the calf does not move the foot.",
+    tests: [
+      { test: 'exam_focused', value: 'useful', result: 'A complete tear of the Achilles tendon.' },
+      { test: 'ultrasound', value: 'useful', result: 'The tendon ends come together when the foot is pointed down.' },
+      { test: 'ct', value: 'low', result: 'Not helpful for tendons.' },
+    ],
+    differential: [
+      { id: 'achilles', label: 'A torn Achilles tendon' },
+      { id: 'calf', label: 'A calf strain' },
+      { id: 'dvt', label: 'A clot in the leg' },
+    ],
+    diagnosis: 'achilles',
+    needs: ['exam_focused'],
+    plans: [
+      { id: 'shared', label: 'Explain that a boot with a structured rehab plan or an operation can both work well, weigh the trade-offs together, and agree on a boot and close follow-up', quality: 'best' },
+      { id: 'operate', label: 'Recommend surgery without discussing the other option', quality: 'ok', procedure: 'or_foot' },
+      { id: 'walk_off', label: 'Say it is a strain and to walk it off', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient} follows the rehab plan and is back on court the next season.",
+      fair: "{patient}'s recovery is slower but steady.",
+      poor: "{patient}'s tendon heals long and the push-off stays weak.",
+    },
+  }),
+  C({
+    id: 'fa_ankle_fracture', specialty: ['foot_ankle'], ages: [20, 70], minYear: 1960, tier: 'intermediate',
+    label: 'A twisted ankle that is broken',
+    intro: "{patient}, {age}, twisted an ankle stepping off a curb and cannot bear weight.",
+    history: "Smoker. No diabetes. Works on their feet.",
+    exam: "Swollen ankle, tender on both sides. Foot pink with good pulses.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'A fracture on both sides of the ankle; the joint has shifted.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal.' },
+      { test: 'mri', value: 'low', result: 'Not needed.' },
+    ],
+    differential: [
+      { id: 'unstable', label: 'An unstable ankle fracture' },
+      { id: 'sprain', label: 'A bad sprain' },
+      { id: 'stable', label: 'A stable fracture' },
+    ],
+    diagnosis: 'unstable',
+    needs: ['xray'],
+    plans: [
+      { id: 'fix', label: 'Line up the ankle, explain why surgery is needed, get consent, fix it once the swelling allows, and encourage stopping smoking to help healing', quality: 'best', procedure: 'or_foot' },
+      { id: 'cast', label: 'A cast and review in six weeks', quality: 'poor' },
+      { id: 'bandage', label: 'Bandage it as a sprain', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient}'s ankle heals in good position, and {patient} is back at work in three months.",
+      fair: "{patient}'s wound is slow to heal but the bone mends.",
+      poor: "{patient} has a stiff ankle for many months.",
+    },
+  }),
+  C({
+    id: 'fa_charcot', specialty: ['foot_ankle'], ages: [45, 75], minYear: 1985, tier: 'intermediate',
+    label: 'A hot, swollen foot',
+    intro: "{patient}, {age}, has a warm, swollen foot with little pain. A clinic thought it was an infection.",
+    history: "Diabetes for twenty years with numb feet. No wound. No fever. Remembers a small stumble a few weeks ago.",
+    exam: "The foot is warmer than the other, swollen and red, with no break in the skin. Little feeling in both feet.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'Early collapse of bones in the middle of the foot.' },
+      { test: 'mri', value: 'useful', result: 'Bone swelling without infection.' },
+      { test: 'blood_basic', value: 'neutral', result: 'Normal infection markers.' },
+    ],
+    differential: [
+      { id: 'charcot', label: 'A Charcot foot (bones collapsing in a numb foot)' },
+      { id: 'cellulitis', label: 'Skin infection' },
+      { id: 'gout', label: 'Gout' },
+    ],
+    diagnosis: 'charcot',
+    plans: [
+      { id: 'offload', label: 'Explain the condition, take all weight off the foot in a special cast, check it often, and work with the diabetes team', quality: 'best' },
+      { id: 'antibiotics', label: 'Treat for infection and keep walking', quality: 'poor' },
+      { id: 'reconstruct', label: 'Reconstruct the foot now', quality: 'poor', procedure: 'or_foot' },
+    ],
+    outcomes: {
+      good: "{patient}'s foot settles in a good shape and fits a special shoe.",
+      fair: "{patient}'s foot settles with a mild change in shape.",
+      poor: "{patient}'s foot collapses further and an ulcer develops.",
+    },
+  }),
+  C({
+    id: 'fa_ankle_arthritis', specialty: ['foot_ankle'], ages: [50, 80], minYear: 1985, tier: 'intermediate',
+    label: 'A worn-out ankle',
+    intro: "{patient}, {age}, has a painful, stiff ankle years after a bad fracture, and can barely walk a block.",
+    history: "Has tried a brace, special shoes, physical therapy and injections over three years. Wants to walk the dog again.",
+    exam: "A stiff, swollen ankle. Good circulation and skin.",
+    tests: [
+      { test: 'xray', value: 'useful', result: 'Severe arthritis of the ankle joint.' },
+      { test: 'vascular_doppler', value: 'neutral', result: 'Good blood flow for healing.' },
+      { test: 'mri', value: 'low', result: 'The X-ray already answers the question.' },
+    ],
+    differential: [
+      { id: 'end_stage', label: 'End-stage ankle arthritis' },
+      { id: 'tendon', label: 'A tendon problem' },
+      { id: 'gout', label: 'Gout' },
+    ],
+    diagnosis: 'end_stage',
+    needs: ['xray'],
+    plans: [
+      { id: 'reconstruct', label: 'Since other treatments have failed, explain the options honestly, get consent, and reconstruct the ankle', quality: 'best', procedure: 'or_foot' },
+      { id: 'more_injections', label: 'Keep repeating injections', quality: 'poor' },
+      { id: 'amputate', label: 'Suggest amputation', quality: 'unsafe' },
+    ],
+    outcomes: {
+      good: "{patient} is walking the dog around the park within six months.",
+      fair: "{patient} walks better but with some swelling at the end of the day.",
+      poor: "{patient}'s ankle is slow to heal and needs a longer recovery.",
+    },
+  }),
 ];
 
 export const CASE_BY_ID = Object.fromEntries(CASES.map((c) => [c.id, c]));
