@@ -50,6 +50,7 @@ import { arcChoice } from './animalArcs.js';
 import { sportArcChoice } from './sportsArcs.js';
 import { disasterChoice } from './disasters.js';
 import { hoodChoice } from './neighborhoodLife.js';
+import { medicineChoice } from './medicine/drama.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -200,6 +201,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'scandal': ctx.note = scandalChoice(e.value); break;
       case 'justice': ctx.note = justiceScene(e.value, ctx.cast); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
+      case 'medicine': { const said = medicineChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;

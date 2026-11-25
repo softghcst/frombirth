@@ -48,6 +48,7 @@ import { registerEmployer, employer, chronicle } from './employers.js';
 import { career as careerState, canFit, workLaw } from './worklife.js';
 import { licenseFor, licensed, examName } from './adulted.js';
 import { convert } from './currency.js';
+import { practiceBlock } from './medicine/practice.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
@@ -106,7 +107,10 @@ export function figures(type, countryId = player().countryId, city = player().ci
 export function startBlock(type) {
   const p = player();
   const c = careerState();
-  const n = type.needs;
+  // A medical practice opened by a physician with a medical record is gated by their training (engine/medicine/practice.js).
+  const medical = type.id === 'clinic' ? practiceBlock(p) : null;
+  if (medical) return medical;
+  const n = medical === '' ? { ...type.needs, program: undefined, experience: undefined } : type.needs;
   const has = (t) => p.education.degrees.some((d) => d.type === t);
   if (!businessExists(type.id, store.state.year)) return `There is no such business in ${store.state.year}.`;
   if (p.age < Math.max(18, n.minAge ?? 18)) return `You need to be ${Math.max(18, n.minAge ?? 18)}.`;
