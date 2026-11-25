@@ -1501,3 +1501,14 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .journey-trail { stroke-dashoffset: 0; animation: journey-draw var(--journey-secs, 3s) cubic-bezier(.45, 0, .35, 1) both; mask: none; }
 @keyframes journey-draw { from { opacity: 0; } 15% { opacity: .9; } }
 .journey-screen.sv-still, .journey-screen.sv-still * { animation: none !important; }
+
+/* The honeymoon, planned in the wedding planner's last step (honeymoonForm in js/ui/weddingPlanner.js). */
+.wp-hm { margin-top: 10px; padding: 12px; display: grid; gap: 8px; }
+.wp-hm-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wp-hm-field { display: grid; gap: 3px; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.wp-hm-field select { width: 100%; font-weight: 400; color: var(--ink); }
+.wp-hm-label { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.wp-hm .wq-presets { margin: 0; }
+.wp-hm .chip.on { background: var(--accent); color: #FFFFFF; }
+.wp-hm-note { margin: 0; color: var(--bad, #B23A48); font-size: .9rem; }
+.wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }

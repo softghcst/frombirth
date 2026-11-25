@@ -53,7 +53,6 @@ const LIVE = ['confirmed', 'in_progress'];
 
 // ---------- Kinds of trip ----------
 
-const recentlyMarried = (p) => livingNpcs().find((n) => n.role === 'spouse' && p.age - (n.marriedAtAge ?? p.age) <= 1 && !hasEvent(`honeymoon:${n.id}`));
 const kinAbroad = (destId) => livingNpcs().filter((n) => n.role !== 'pet' && n.flags.abroad === destId);
 /** Where someone lives, as a country: abroad if they moved, otherwise the player's own country. */
 const homeOf = (n, p = player()) => (typeof n.flags.abroad === 'string' ? n.flags.abroad : p.countryId);
@@ -75,7 +74,7 @@ const occasionText = (kind, p) => {
 };
 
 /** Why a kind of trip is not open, or '' if it is. Checked against the real state of the life. */
-export function typeBlock(typeId, destId = null, p = player()) {
+export function typeBlock(typeId, destId = null, p = player(), trip = null) {
   const t = TRIP_TYPE_BY_ID[typeId];
   if (!t) return 'There is no such trip.';
   if (t.from && year() < t.from) return 'Not in this period.';
@@ -84,7 +83,8 @@ export function typeBlock(typeId, destId = null, p = player()) {
   switch (t.needs) {
     case 'family': return livingNpcs().some((n) => ['spouse', 'partner', 'child', 'parent', 'sibling'].includes(n.role)) ? '' : 'You need family to take.';
     case 'partner': return livingNpcs().some((n) => ['spouse', 'partner'].includes(n.role)) ? '' : 'You need a partner to take.';
-    case 'newlywed': return recentlyMarried(p) ? '' : 'For a wedding in the last year, and only once.';
+    // One honeymoon, planned with the wedding (the wedding planner's honeymoon step): never on its own, never twice.
+    case 'newlywed': return trip?.honeymoon ? '' : 'Planned with your wedding, and only once.';
     case 'married': return livingNpcs().some((n) => n.role === 'spouse' && p.age - (n.marriedAtAge ?? p.age) >= 1) ? '' : 'For a marriage of at least a year.';
     case 'wedding': case 'funeral':
       return (destId ? occasions(t.needs, destId, p).length : occasions(t.needs, null, p).length) ? '' : occasionText(t.needs, p);
@@ -419,12 +419,17 @@ export function startPlan(typeId = 'vacation', p = player()) {
  * A honeymoon, planned like any trip (where, how, where to stay), with the new spouse already coming: nobody is asked
  * whether they will come on their own honeymoon.
  */
-export function startHoneymoon(spouseId, p = player()) {
+export function startHoneymoon(spouseId, { cruise = false, depart = null } = {}, p = player()) {
   const trip = startPlan('honeymoon', p);
+  trip.honeymoon = true; // planned with the wedding: the one honeymoon (typeBlock 'newlywed')
+  if (depart) { trip.depart = depart; trip.ret = addDays(depart, 7); }
+  if (cruise) updatePlan(trip.id, { type: 'cruise' }, p);
   const n = store.state.npcs[spouseId];
   if (n?.alive) trip.travelers.push({ id: n.id, status: 'accepted', reason: `${n.firstName} is coming. Of course.`, pays: 'organizer' });
   return trip;
 }
+/** Today, for planning a trip that leaves straight away (a honeymoon leaves the day of the wedding). */
+export const todayDate = () => today();
 
 /** Changes a plan still in draft. Unknown keys are ignored. */
 export function updatePlan(id, changes, p = player()) {
@@ -631,7 +636,7 @@ export function problems(trip, p = player()) {
   if (!trip.destination) return trip.type === 'cruise' ? cruiseProblems(trip, goingPeople(trip)) : ['Choose where to go.'];
   if (trip.type !== 'cruise' && trip.destination.countryId === trip.origin.countryId && trip.destination.city === trip.origin.city) out.push('That is where you live. Choose somewhere else.');
   if (trip.type === 'cruise') out.push(...cruiseProblems(trip, goingPeople(trip)));
-  const block = typeBlock(trip.type, trip.destination.countryId, p);
+  const block = typeBlock(trip.type, trip.destination.countryId, p, trip);
   if (block) out.push(`${t.name}: ${block}`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trip.depart) || !/^\d{4}-\d{2}-\d{2}$/.test(trip.ret)) out.push('Choose the dates.');
   else {
@@ -1280,7 +1285,7 @@ function milestones(trip, p, occ = null) {
   if (trip.destination.countryId !== p.countryId) first(`first-abroad:${aid}`, `First trip abroad: ${COUNTRIES[place.countryId].name}`, `Crossed a border for the first time, to ${placeName(place.countryId, place.city)}.`, 3);
   if (!people.length && p.age >= 16) first(`first-solo:${aid}`, 'First trip alone', `To ${placeName(place.countryId, place.city)}.`);
   if (people.some((n) => ['child', 'parent', 'sibling'].includes(n.role)) && leisure) first(`first-family-holiday:${aid}`, 'First family vacation', `With ${list(people.map((n) => n.firstName))}.`);
-  if (trip.type === 'honeymoon') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`honeymoon:${s.id}`, `Honeymoon with ${s.firstName}`, `In ${placeName(place.countryId, place.city)}.`, 3); }
+  if (trip.type === 'honeymoon' || trip.honeymoon) { const s = people.find((n) => n.role === 'spouse'); if (s) first(`honeymoon:${s.id}`, `Honeymoon with ${s.firstName}`, `In ${placeName(place.countryId, place.city)}.`, 3); }
   if (occ && trip.type === 'wedding') first(`wedding-trip:${occ.id}`, `At ${occ.firstName}'s wedding`, `In ${placeName(place.countryId, place.city)}.`, 3);
   if (occ && trip.type === 'funeral') first(`funeral-trip:${occ.id}`, `${occ.firstName}'s funeral`, `In ${placeName(place.countryId, place.city)}. Family came from wherever they were.`, 3);
   if (trip.type === 'anniversary') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`anniversary:${s.id}:${year()}`, `An anniversary in ${place.city ?? COUNTRIES[place.countryId].name}`, `With ${s.firstName}.`); }

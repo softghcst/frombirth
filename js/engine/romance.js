@@ -98,10 +98,11 @@ export const WEDDING_PLAN = {
     { id: 'buffet', name: 'A buffet', icon: '🍲', perGuest: 35, joy: 2, sub: 'Seconds encouraged' },
     { id: 'plated', name: 'A plated dinner', icon: '🍽️', perGuest: 85, joy: 3, sub: 'Three courses, cloth napkins' },
   ],
-  // The honeymoon itself is planned after the wedding in the trip planner (where, how, where to stay): here, only
-  // whether there is one.
+  // The honeymoon: a trip or a cruise, planned in the wedding planner with the travel engine (js/engine/travel.js) and
+  // paid with the wedding (its cost is the trip's, not this list's), or staying home.
   honeymoon: [
-    { id: 'trip', name: 'Plan our honeymoon', icon: '✈️', cost: 0, joy: 4, sub: 'Pick where to go after the wedding: flights, a hotel, or a cruise' },
+    { id: 'trip', name: 'A honeymoon trip', icon: '✈️', cost: 0, joy: 4, sub: 'Anywhere in the world: how you get there, how long, where you stay' },
+    { id: 'cruise', name: 'A honeymoon cruise', icon: '🛳️', cost: 0, joy: 4, sub: 'A line, a sailing, a stateroom for two' },
     { id: 'home', name: 'Home, together', icon: '🛋️', cost: 0, joy: 1, sub: 'A week off and breakfast in bed' },
   ],
 };

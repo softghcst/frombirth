@@ -169,7 +169,10 @@ async function planWedding(api, npc) {
   // in Settings, on one page with a "Just married!" card (js/ui/weddingPlanner.js).
   const r = await openWedding(api, npc);
   api.changed();
-  if (r?.married && (r.honeymoon ?? true)) await planHoneymoon(api, npc); // where to: the trip planner, on a honeymoon
+  // Off on the honeymoon booked with the wedding: the journey, the trip, the postcard (js/ui/globalLife.js goOnTrip).
+  if (r?.honeymoonTrip) { const { goOnTrip } = await import('../globalLife.js'); await goOnTrip(api, r.honeymoonTrip); api.changed(); }
+  // With the scenes turned off, the honeymoon is planned after, in the trip planner.
+  else if (r?.married && r.honeymoon) await planHoneymoon(api, npc, { cruise: r.honeymoon === 'cruise' });
 }
 
 async function fileForDivorce(api, npc) {

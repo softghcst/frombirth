@@ -62,13 +62,26 @@ check(/cry/.test(await page.locator('.sv-bubble p').innerText()), 'and the plann
 check(await page.locator('.sv-reply.primary').isEnabled(), 'a choice made, Next is open');
 const picks = { guests: info.dream.big ? 'big' : 'small', theme: 'lavender', flowers: 'peonies', attire: 'rack', cake: 'tiered', music: 'band', food: 'buffet', honeymoon: 'trip' };
 await page.click('.sv-reply.primary');
-for (const v of Object.values(picks)) {
+for (const [k, v] of Object.entries(picks)) {
   check(!(await page.locator('.sv-reply.primary').isEnabled()), 'Next waits for a choice');
-  await page.click(`[data-pick="${v}"]`); await page.click('.sv-reply.primary');
+  await page.click(`[data-pick="${v}"]`);
+  if (k === 'honeymoon') {
+    // The honeymoon, planned right here: somewhere else in the home country (no passport needed), a week, by whatever goes there.
+    check(await page.locator('.wp-hm select[data-hm="country"]').count() === 1, 'choosing a honeymoon opens its plan: where, how long, how, where to stay');
+    const home = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const { COUNTRIES } = await import('/js/data/countries.js'); const p = store.state.player; return { c: p.countryId, city: COUNTRIES[p.countryId].cities.find((x) => x !== p.city) }; });
+    await page.selectOption('.wp-hm select[data-hm="country"]', home.c);
+    await page.selectOption('.wp-hm select[data-hm="city"]', home.city);
+    await page.click('.wp-hm [data-hm-nights="7"]');
+    const hmText = await page.locator('.wp-hm').innerText();
+    check(/Honeymoon: /.test(hmText) && await page.locator('.sv-reply.primary').isEnabled(), `and prices it, ready to book (${hmText.replace(/\n/g, ' | ').slice(0, 160)})`);
+    check(/with the honeymoon/.test(await page.locator('[data-bill]').innerText()), 'its cost goes on the wedding bill');
+  }
+  await page.click('.sv-reply.primary');
 }
 check(/prenup/.test(await page.locator('.sv-bubble p').innerText()), 'then the prenup is asked about');
 await page.click('.sv-reply:has-text("No prenup")');
 const receipt = await page.locator('.sv-receipt').innerText();
+check(/Honeymoon: /.test(receipt), `the bill has the honeymoon on it (${receipt.slice(0, 200)})`);
 check(/Total/.test(receipt) && /buffet, for/i.test(receipt) && /everything .* dreamed of/.test(await page.locator('.sv-bubble p').innerText()), `the bill lists the plan, and the planner says it is their dream (${receipt.replace(/\n/g, ' | ')})`);
 await page.click('.sv-reply:has-text("Book the wedding")');
 const mid = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const { roleLabel } = await import('/js/engine/relationships.js'); const n = store.state.npcs[id]; return { role: n.role, label: roleLabel(n), cash: store.state.player.finance.cash, wedding: n.flags.wedding }; }, info.id);
@@ -83,9 +96,27 @@ await page.click('.sv-reply:has-text("Listen")');
 await page.click('.sv-reply:has-text("I do")');
 await page.click('.sv-reply:has-text("Kiss")');
 check(await page.locator('.wp-finale .wp-just').innerText() === 'Just married!' && await page.locator('.wp-finale .wp-frame svg').count() === 2, 'the finale: just married, the two of you');
-check(/Plan the honeymoon/i.test(await page.locator('[data-done]').textContent()), 'the finale offers to plan the honeymoon');
+check(/Off on the honeymoon/i.test(await page.locator('[data-done]').textContent()), 'the finale sends them off on the honeymoon');
 await page.click('[data-done]');
 await page.waitForTimeout(100);
+const booked = await page.evaluate(async () => { const travel = await import('/js/engine/travel.js'); const id = window.__wedDone?.honeymoonTrip; const t = id && travel.tripById(id); return { id, status: t?.status, honeymoon: !!t?.honeymoon, listed: travel.tripTypes().find((x) => x.id === 'honeymoon').why }; });
+check(booked.id && booked.status === 'confirmed' && booked.honeymoon, `the honeymoon was booked with the wedding (${JSON.stringify(booked)})`);
+check(!!booked.listed, `and it is never on offer in the trip planner on its own (${booked.listed})`);
+// Off they go: the journey on a map, the honeymoon's moments, home, and a postcard from where they went.
+await page.evaluate(async (id) => { const { goOnTrip } = await import('/js/ui/globalLife.js'); window.__went = goOnTrip({ changed() {} }, id).then((r) => { window.__wentDone = r; }); }, booked.id);
+await page.waitForSelector('.journey-screen', { timeout: 8000 }).catch(() => {});
+check(await page.locator('.journey-screen').count() === 1, 'leaving shows the journey on a map');
+await page.locator('.journey-screen').click().catch(() => {});
+for (let n = 0; n < 12; n++) {
+  await page.waitForTimeout(250);
+  if (await page.locator('.wq-postcard').count()) break;
+  const ch = page.locator('#modal-root .modal .choice-btn:not([disabled])');
+  if (await ch.count()) { await ch.first().click(); continue; }
+  const ok = page.locator('#modal-root .modal [data-ok]');
+  if (await ok.count()) await ok.last().click();
+}
+check(await page.locator('.wq-postcard .wp-pc-front svg').count() === 1, 'home again, a postcard from the honeymoon');
+await page.click('.wq-postcard [data-done]').catch(() => {});
 check(!(await page.locator('.wp-screen').count()) && (await page.evaluate(() => window.__wedDone))?.married === true, 'back to the game, married');
 const rel = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); return store.state.npcs[id].meters.relationship; }, info.id);
 check(rel >= info.rel, 'the day brought them closer');
