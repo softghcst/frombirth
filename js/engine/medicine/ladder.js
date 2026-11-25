@@ -10,6 +10,7 @@ import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
 import { makeNpc } from '../npcFactory.js';
+import { remember } from '../conditions.js';
 import { RANKS, SPECIALTY_BY_ID } from '../../data/medicine.js';
 import { promote, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
@@ -17,6 +18,7 @@ import { M, med, year, grow, note, result, roll, reputationOf, once, specialtyNa
 import { hospital, deptOf, deptHead, workplacesFor, careerFor, levelFor } from './hospitals.js';
 import { retitle, startPost } from './training.js';
 
+const an = (w) => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`;
 const ORDER = ['attending', 'senior', 'director', 'chief', 'chair', 'cmo'];
 /** What each step up asks: years at the rank below, reputation, leadership, and the kind of hospital. */
 const STEPS = {
@@ -44,6 +46,12 @@ function takeRank(p, m, rank) {
   if (ORDER.indexOf(rank) >= ORDER.indexOf(m.topRank ?? 'attending')) { m.topRank = rank; m.topTitle = p.career.title; }
   const e = employer(m.job.hospitalId);
   const h = hospital(e);
+  // The people who were there at the start notice.
+  const mentor = store.state.npcs[m.people.mentorId];
+  if (RANKS[rank].leader && mentor?.alive) {
+    mentor.meters.relationship = clamp(mentor.meters.relationship + 6);
+    log(`${mentor.firstName} ${mentor.lastName}, your mentor from residency, sent a note: "I said you would."`, 'system', 'good');
+  }
   if (['chief', 'chair'].includes(rank)) {
     // The person who held the seat steps aside (retires or moves on); the player takes it.
     const dept = deptOf(m.job.specialtyId);
@@ -55,6 +63,16 @@ function takeRank(p, m, rank) {
   if (rank === 'cmo') h.cmoId = p.id ?? 'player';
   chronicle(e, `${p.firstName} ${p.lastName} became ${p.career.title.toLowerCase()}.`);
   note(`Became ${p.career.title.toLowerCase()} at ${e.name}.`, 'career', { key: `rank:${rank}:${e.id}`, milestone: `${p.career.title} at ${e.name}.`, significance: RANKS[rank].leader ? 2 : 1, log: false });
+}
+
+/** Who else wants a leadership seat: a rival at the same hospital first, then a senior colleague there. */
+function contender(h, m) {
+  const p = player();
+  const here = (n) => n?.alive && n.life?.job?.employerId === h.id;
+  const rival = (m.people.rivalIds ?? []).map((id) => store.state.npcs[id]).find(here);
+  if (rival) return { npc: rival, rival: true, strength: clamp(0.3 + ((rival.meters.intellect ?? 50) - reputationOf(m)) / 150, 0.1, 0.6) };
+  const senior = p.npcIds.map((id) => store.state.npcs[id]).find((n) => here(n) && n.flags.medRole !== 'trainee' && (n.life?.job?.level ?? 0) >= 1);
+  return senior ? { npc: senior, rival: false, strength: 0.25 } : null;
 }
 
 /** Accepts or declines a leadership offer standing this year. */
@@ -122,7 +140,15 @@ export function postYear() {
   if (!m?.job) return;
   if (p.career.employerId !== m.job.hospitalId) {
     const e = employer(m.job.hospitalId);
-    note(`Left ${e?.name ?? 'the hospital'} after ${year() - m.job.since} years.`, 'career', { log: false });
+    if (p.career.retired) {
+      // Retiring: the career as the family will remember it (engine/medicine/core.js physicianSummary).
+      const total = m.experience.years;
+      note(`Retired from medicine after ${total} years${m.topTitle ? `, ${an(m.topTitle.toLowerCase())}` : ''}.`, 'career',
+        { key: 'retired', milestone: `Retired from medicine after ${total} years.`, significance: 2 });
+      const mentor = store.state.npcs[m.people.mentorId];
+      if (mentor?.alive) log(`${mentor.firstName} ${mentor.lastName}, who mentored you as a resident, came to your retirement dinner and gave the shortest speech of the night.`, 'system', 'good');
+      m.stage = 'retired';
+    } else note(`Left ${e?.name ?? 'the hospital'} after ${year() - m.job.since} years.`, 'career', { log: false });
     m.job = null;
     return;
   }
@@ -154,6 +180,16 @@ export function postYear() {
     if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead) continue;
     if (!roll(step.odds + (m.reputation - step.rep) / 200)) continue;
     if (!step.leader) { takeRank(p, m, step.id); log(`You were made ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; }
+    // A leadership seat has other candidates: a rival from residency who works here, or a colleague of long standing.
+    const other = contender(h, m);
+    if (other && roll(other.strength)) {
+      other.npc.flags.title = RANKS[step.id].title;
+      other.npc.occupation = RANKS[step.id].title.toLowerCase();
+      if (other.npc.life?.job) other.npc.life.job.level = Math.max(other.npc.life.job.level ?? 0, 2);
+      remember(other.npc, `medRank:${step.id}`, `Was chosen as ${RANKS[step.id].title.toLowerCase()} over you.`);
+      log(`The post of ${RANKS[step.id].title.toLowerCase()} went to ${other.npc.firstName} ${other.npc.lastName}${other.rival ? ', your old rival from residency' : ''}. Your turn may come.`, 'system', 'neutral');
+      return;
+    }
     m.offer = { rank: step.id, year: year(), hospitalId: h.id };
     store.state.pendingEvents.push({ id: 'med_leadership_offer', cast: { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } } });
     log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from My Medical Career.`, 'system', 'good');

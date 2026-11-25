@@ -328,7 +328,10 @@ export function retitle(p = player(), m = med()) {
   const t = m.training;
   if (t) {
     const s = SPECIALTY_BY_ID[t.specialtyId];
-    c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? 'Intern' : t.chief ? `Chief resident, ${s.name}` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
+    // Before the modern residency system, a doctor in hospital training was a house officer (US, before about 1950).
+    const old = year() < 1950;
+    c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? (old ? 'House officer' : 'Intern') : t.chief ? `Chief resident, ${s.name}`
+      : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
   } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
@@ -505,6 +508,9 @@ export function startPost(specialtyId, hospitalId, rank = 'attending') {
   retitle(p, m);
   if (!m.topRank) { m.topRank = rank; m.topTitle = p.career.title; }
   familyHospital(p, e);
+  // An old rival from residency, already working here: the past follows you in.
+  const rival = (m.people.rivalIds ?? []).map((id) => store.state.npcs[id]).find((n) => n?.alive && n.life?.job?.employerId === hospitalId);
+  if (rival) log(`${rival.firstName} ${rival.lastName}, your rival from residency, works at ${e.name} too. They nod at you across the cafeteria.`, 'system', 'neutral');
   note(`Joined ${e.name} as ${an(p.career.title.toLowerCase())}.`, 'career', { key: `post:${hospitalId}:${year()}`, log: false });
   return m.job;
 }

@@ -336,6 +336,21 @@ section('the Match: at home, or nationwide with a move');
   const marks = mm.discipline.length;
   year();
   check(mm.claims[0].status === 'upheld' && mm.claims[1].status === 'dismissed' && mm.discipline.length === marks + 1, 'a claim is upheld only where care fell below the standard');
+  // A leadership seat can go to someone else; retiring writes the career down.
+  const rival = makeNpc({ role: 'coworker', countryId: q.countryId, age: 41 });
+  rival.life = { edu: { stage: 'done', gpa: 3.5, majorId: 'biology', trade: null, degrees: [], yearsLeft: 0 }, job: { careerId: 'doctor', level: 1, title: 'Physician', salary: 0, years: 5, employerId: q.career.employerId },
+    savings: 0, aspiration: null, partnerId: null, together: 0, married: false, kids: 0, history: [] };
+  rival.meters.intellect = 99; store.state.npcs[rival.id] = rival; q.npcIds.push(rival.id);
+  mm.people.rivalIds = [rival.id];
+  mm.job.rank = 'senior'; mm.job.rankSince = store.state.year - 10;
+  for (const k of Object.keys(mm.skills)) mm.skills[k] = 90;
+  let lost = false;
+  for (let i = 0; i < 12 && !lost && mm.job?.rank === 'senior' && !mm.offer; i++) { year(); lost = /went to .*rival/.test(JSON.stringify(store.state.journal ?? store.state.log ?? '')) || rival.flags.title === 'Medical director'; }
+  check(lost || !!mm.offer || mm.job?.rank !== 'senior', 'a leadership seat is contested, and either goes to someone or is offered');
+  q.age = 66;
+  check(career.retire().ok, 'a physician can retire');
+  year();
+  check(mm.stage === 'retired' && mm.history.some((h) => /Retired from medicine/.test(h.text)), 'retiring from medicine is recorded');
 }
 section('teaching residents; claims decided on the care, not the result');
 
