@@ -485,6 +485,8 @@ def recolour(folder, name, elements):
     # Outlines are never recoloured. In hair and brows the darkest of several tones is the outline, however dark or light it is.
     browns = [c for c in weights if not is_white(c)]
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
+    if folder == 'hair' and re.match(r'hair_(baby|kid)_', name):  # drawn in a mid brown on a child template: its dark tones are the outline
+        candidates = {c: w for c, w in candidates.items() if lum(c) >= INK}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
         candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs

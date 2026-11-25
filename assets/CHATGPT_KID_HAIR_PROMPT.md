@@ -50,8 +50,9 @@ on x = 627):
   x = 929. Wherever the hair covers the head, its outer edge must sit just OUTSIDE the head's dark outline (about 8 to
   20 pixels past it), so no bald outline peeks out at the top or sides. Volume (a puff, bun, curls, spikes) may rise
   above the skull, but not above y = 150, and nothing goes past x = 180 or x = 1074.
-- Bangs and the hairline across the forehead end at y = 590 at the lowest. NEVER cover the eyebrows (y = 598 to 690)
-  or the eyes (y = 712 to 860).
+- MOST IMPORTANT: the EYEBROWS MUST STAY FULLY VISIBLE. Bangs and the hairline across the forehead end at y = 590 at
+  the lowest, ABOVE the eyebrows (the eyebrows are at y = 598 to 690). Short bangs, not long ones. Never cover the
+  eyebrows or the eyes (y = 712 to 860).
 - The ears are at x = 279 to 366 and x = 888 to 974, y = 720 to 888. Hair may cover them or be tucked behind them.
 - Beside the face, hair may come down to about y = 989. Long hair, braids and ponytails hang straight down BEHIND the
   shoulders, never in front of them over the chest.
@@ -66,6 +67,9 @@ STYLE:
   orange, yellow or brown.
 - A child's hairstyle, fun and age-appropriate, matching the cute rounded cartoon style of the head.
 ````
+
+If it draws the bangs over the eyebrows anyway (it often does), ask it to "make the bangs shorter, ending above the
+eyebrows"; straight-cut bangs can also be raised when they are added.
 
 Send the PNG it makes and say its number below (or for girls or boys, and which texture). It is traced into the game's
 format (named `hair_kid_girl_<texture>_NN_...` or `hair_kid_boy_...`) and placed exactly as drawn; then

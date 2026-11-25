@@ -15,8 +15,9 @@ import { createRequire } from 'node:module';
 
 /** Each kind of drawn child's hair: the head it is drawn on, and the file and name it is written to. */
 const KINDS = [
-  { prefix: 'hair_baby_', file: 'heads/toddler.svg', head: 'head_00_toddler', out: 'babyHairFit.js', name: 'BABY_HAIR_FIT', who: 'baby' },
-  { prefix: 'hair_kid_', file: 'heads/kid.svg', head: 'head_00_kid', out: 'kidHairFit.js', name: 'KID_HAIR_FIT', who: 'kid' },
+  { prefix: 'hair_baby_', file: 'heads/toddler.svg', head: 'head_00_toddler', out: 'babyHairFit.js', name: 'BABY_HAIR_FIT', who: 'baby', slack: 0 },
+  // A kid's hair has volume: it may stand up to SLACK past the outline at the sides before that counts against it.
+  { prefix: 'hair_kid_', file: 'heads/kid.svg', head: 'head_00_kid', out: 'kidHairFit.js', name: 'KID_HAIR_FIT', who: 'kid', slack: 14 },
 ];
 const MARGIN = 2.5; // how far outside the head's outline the hair's edge sits (512 units): covers the outline's ink
 
@@ -34,7 +35,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.goto(`http://localhost:${server.address().port}/index.html`);
 for (const kind of KINDS) {
-const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN }) => {
+const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN, SLACK }) => {
   const { PART_BY_ID } = await import('/js/avatarManifest.js');
   const K = 4; const W = 512;
   const spans = async (text) => {
@@ -69,7 +70,7 @@ const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN }) => 
     const headTops = COLS.map((x) => top(head, x));
     // Hair short of the outline (scalp or outline showing, d > 0) counts far more than hair a little past it: a style with
     // a jagged edge is fitted so the dips between its tufts still cover the head, not so its edge is right on average.
-    const gap = (d) => (d > 0 ? 12 * d * d : d * d);
+    const gap = (d) => (d > 0 ? 12 * d * d : Math.max(0, -d - SLACK) ** 2);
     // Scaled by sx across and sy down about (cx, ay), where the hair ends at the ears.
     const ay = hi;
     const err = (sx, sy) => {
@@ -98,7 +99,7 @@ const result = await page.evaluate(async ({ HEAD, HEAD_ID, PREFIX, MARGIN }) => 
     out[id] = { sx: best.sx, sy: best.sy, ay: Math.round(ay * 10) / 10, cx, before: Math.round(Math.sqrt(err(1, 1).e) * 10) / 10, after: Math.round(Math.sqrt(best.e) * 10) / 10 };
   }
   return out;
-}, { HEAD: kind.file, HEAD_ID: kind.head, PREFIX: kind.prefix, MARGIN });
+}, { HEAD: kind.file, HEAD_ID: kind.head, PREFIX: kind.prefix, MARGIN, SLACK: kind.slack });
 
 delete result._head;
 for (const [id, r] of Object.entries(result)) console.log(`${id.padEnd(36)} ${r.sx}x wide, ${r.sy}x tall (edge off the outline by ${r.before} -> ${r.after})`);
