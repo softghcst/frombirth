@@ -857,6 +857,59 @@ section('the Family Archive: the public career and the court record, not the cas
 }
 section('the working life: a priority, support, a partner\'s routine work, task force meetings, transfers and squads, a private agency\'s staff, honors on how the work is done, work after retiring');
 
+// ---------- 17. The local world: real businesses, real neighbors, community meetings, the stand ----------
+{
+  const p = life('us', 34);
+  const LO = await import('../js/engine/investigations/local.js');
+  const E = await import('../js/engine/employers.js');
+  const NB = await import('../js/engine/neighborhood.js');
+  NB.settle(store.state, { quiet: true });
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  // A fraud happens at a real employer of the city, whose own history records it.
+  const fr = W.openCase('fraud', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(fr.id);
+  const emp = fr.file.employerId && E.jobs().employers[fr.file.employerId];
+  check(emp && fr.file.title.includes(emp.name) && emp.city === p.city && emp.history.some((h) => /money missing/.test(h.text)), `a fraud case is at a real employer of the city (${fr.file.title})`);
+  const again = W.openCase('fraud', { ownerId: a.id, truth: 'insider', title: 'Given title' });
+  check(!again.file.employerId, 'a case given its own place keeps it');
+  // Witnesses may be real residents of the city's neighborhoods: the same people, not copies.
+  const residents = new Set(Object.values(NB.hoods().res).map((x) => x.id));
+  let neighbor = null;
+  for (let i = 0; i < 12 && !neighbor; i++) { const c = W.openCase('burglary', { ownerId: a.id, truth: 'insider' }); neighbor = Object.keys(c.file.witnesses).find((id) => residents.has(id)); }
+  check(!Object.keys(NB.hoods().list).length || (neighbor && store.state.npcs[neighbor] && NB.hoods().res[neighbor].f === store.state.npcs[neighbor].firstName), 'a witness can be a real neighbor, with the same name and identity');
+  // A community meeting: once a year per neighborhood; listening builds trust; a tip is a lead, not evidence.
+  const hood = LO.meetingsHere(p)[0];
+  if (hood) {
+    const ev0 = Object.keys(k.J().evidence).length;
+    const m = LO.communityMeeting(hood.id, 'listen');
+    check(m.ok && r.community[hood.id] > 50 && !LO.communityMeeting(hood.id, 'listen').ok, 'a community meeting once a year; listening builds trust');
+    check(Object.keys(k.J().evidence).length === ev0, 'a tip from a meeting is never evidence by itself');
+  }
+  // On the stand: the file is the record; a denial it contradicts is found out.
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Stand Case' });
+  r.caseIds.push(inv.id);
+  for (const it of inv.file.items) inv.evidenceIds.push(it.evidenceId);
+  inv.file.items[0].integrity = 'gap';
+  const jc = k.openCaseFor(inv, inv.file.poi[0]);
+  inv.file.courtCaseId = jc.id;
+  const qs = W.crossQuestions(inv);
+  check(qs.find((q) => q.id === 'custody').weak, 'the defense asks about the custody gap the file shows');
+  const integ = r.rep.integrity;
+  const res = W.crossExamination(inv.id, { custody: 'deny', pressure: 'honest', lab: 'honest', others: 'honest' });
+  check(res.tone === 'bad' && inv.file.cross.caught === 1 && r.rep.integrity < integ, 'denying what the file shows is found out, and costs integrity');
+  check(!W.crossExamination(inv.id, {}).ok, 'evidence is given once');
+  const inv2 = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Honest Case' });
+  r.caseIds.push(inv2.id);
+  for (const it of inv2.file.items) inv2.evidenceIds.push(it.evidenceId);
+  inv2.file.items[0].integrity = 'gap';
+  inv2.file.courtCaseId = k.openCaseFor(inv2, inv2.file.poi[0]).id;
+  const rel = r.rep.reliability;
+  check(W.crossExamination(inv2.id, { custody: 'honest' }).tone === 'good' && r.rep.reliability > rel && !inv2.file.cross.caught, 'owning a weakness on the stand keeps the investigator\'s word good');
+}
+section('the local world: business cases at real employers, real neighbors as witnesses, community meetings, cross-examination against the file');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

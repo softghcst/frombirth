@@ -49,6 +49,9 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Private agency staff | **Playable**: an open matter can be given to a member of the agency's staff, who closes it by its due date with lawful steps only |
 | Honors and high-profile cases | **Playable**: commendations, medals of merit, recognition for clearing an innocent person, investigator of the year, decided on integrity and how the work was done, never on arrest counts; a homicide or corruption case in court adds a little fame (publicity is not reputation) |
 | After retiring | **Playable**: academy instructor, investigative consultant, expert witness (each with yearly pay), and one memoir: from the public record, or telling what case files held (a breach) |
+| The local world | **Playable**: burglary, fraud, cybercrime and arson cases happen at a real employer of the city when one fits (its history records the report); a cyber case names the reporting person's real Digital Life account when they have one; a witness may be a real resident of one of the city's neighborhoods, the same person the player could meet (`local.js`). Places and people are chosen by stable keys |
+| Community meetings | **Playable** for local police: each neighborhood's meeting once a year (listen, present the figures, or defend the department); trust in the police is kept per neighborhood; a tip from a meeting is a lead to check, never evidence |
+| The investigator on the stand | **Playable**: cross-examination on custody, pressure on witnesses, inconclusive laboratory results and other suspects, drawn from the file; a denial the file contradicts is found out, weakens the investigator's evidence at trial and can bring a complaint; owning a weakness keeps their word good |
 | Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
 | Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
 | Forensic psychology outside the courts, police unions, national police reform | **Not built** |
@@ -87,6 +90,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (16 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (17 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

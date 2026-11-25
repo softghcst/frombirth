@@ -21,6 +21,7 @@ import * as X from '../engine/investigations/crossover.js';
 import * as FM from '../engine/investigations/forensicMed.js';
 import * as PO from '../engine/investigations/policing.js';
 import * as WP from '../engine/investigations/workplace.js';
+import * as LO from '../engine/investigations/local.js';
 import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
 
@@ -124,6 +125,11 @@ const VIEWS = {
       const vac = A.vacancies(a, 'detective');
       out += card(r.job.detective ? 'Unit transfers' : 'Detective selection', (no.length ? muted(no[0]) : vac.length ? vac.map((v) => kv([[SPECIALTIES[v.unit].name, SPECIALTIES[v.unit].years ? `Needs ${SPECIALTIES[v.unit].years} years as a detective` : 'Open to qualified officers']])
         + stack(btn('applyDetective', `Apply for ${SPECIALTIES[v.unit].name.toLowerCase()}`, { arg: v.id }))).join('') : muted('No detective seats are open this year.')));
+    }
+    const hoodsHere = LO.meetingsHere(p);
+    if (!['academy'].includes(r.stage) && hoodsHere.length) {
+      out += card('Community meetings', muted('Each neighborhood meets once a year. Listening earns trust; a tip from a meeting is a lead to check, never a fact.')
+        + hoodsHere.map((h) => kv([[h.name, `Trust in the police here: ${r.community?.[h.id] ?? 50} / 100`]]) + stack(btn('meeting', 'Go to the meeting', { arg: h.id }))).join(''));
     }
     return out;
   },
@@ -305,6 +311,7 @@ const CASE_VIEWS = {
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
     if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
     return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
   },
@@ -345,6 +352,16 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'crossExam') {
+      const inv = W.investigation(id);
+      const answers = {};
+      for (const q of W.crossQuestions(inv)) {
+        const a = await pickModal({ title: 'Cross-examination', body: `Defense counsel: ${q.q}`, options: q.options.map(([label, value]) => ({ value, label })) });
+        if (!a) return;
+        answers[q.id] = a;
+      }
+      await say(W.crossExamination(id, answers));
+    }
     else if (act === 'suspend') { if (await confirmModal({ title: 'Set the case aside?', body: 'It stays open, inactive. After three years with nothing new, it becomes a cold case.', yes: 'Set it aside' })) await say(W.suspend(id)); }
     else if (act === 'resolve') {
       const v = V.view(W.investigation(id), 'investigator');
@@ -358,6 +375,13 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  meeting: async (a, x) => {
+    const how = await pickModal({ title: 'The community meeting', body: 'A church hall, folding chairs, a microphone that works some of the time.', options: [
+      { value: 'listen', label: 'Mostly listen, and write it down', sub: 'What worries people here.' },
+      { value: 'present', label: 'Present the year\'s figures', sub: 'Numbers, and a few questions.' },
+      { value: 'defend', label: 'Defend the department on every complaint', sub: 'Nobody gets an inch.' }] });
+    if (how) await x.say(LO.communityMeeting(a, how));
+  },
   prioritize: (a, x) => x.say(WP.prioritize(a)),
   support: (a, x) => x.say(WP.requestSupport(a)),
   delegate: (a, x) => x.say(WP.delegate(a)),
