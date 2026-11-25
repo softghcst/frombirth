@@ -60,8 +60,8 @@ export function tickHair(state = store.state) {
 
 
 /** Prices in base units. A change back to "none" or "natural" is free, apart from a haircut. */
-export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30 };
-const LABELS = { hair: 'Haircut', hairDye: 'Color', glasses: 'New glasses', makeup: 'Make-up', lipColor: 'Lip color',
+export const SALON_PRICES = { hair: 45, hairDye: 110, browStyle: 25, beard: 30, glasses: 180, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30 };
+const LABELS = { hair: 'Haircut', hairDye: 'Color', browStyle: 'Eyebrow shaping', beard: 'Beard grooming', glasses: 'New glasses', makeup: 'Make-up', lipColor: 'Lip color',
   jewelry: 'Jewelry', outfit: 'New clothes', outfitColor: 'Dyeing' };
 const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 /** Children do not pay: whoever looks after them does. */

@@ -88,3 +88,94 @@
 .modal .notice-head strong { font-size: 1.05rem; }
 .modal .btn-stack .btn { width: 100%; }
 .modal .notice-head ~ .scene { text-align: center; font-family: inherit; font-size: 1.02rem; }
+
+/* The hospital tag for a birth (ui/birthTag.js): a pastel card with punched holes, filled in by hand. It is a paper
+   card, so it keeps its own light colors in the dark theme too. */
+.btag { --tag: #cfe9f3; --tag-edge: #8cc6dc; --blanket: #bfe0f0; --blanket-deep: #9ccbe2; --ink: #23324a; --pen: #2546a8;
+  position: relative; background: var(--tag); border-radius: 14px; padding: 26px 12px 10px; margin-top: 6px;
+  box-shadow: 0 2px 0 var(--tag-edge), 0 8px 22px rgba(30, 40, 70, 0.16); color: var(--ink); transform: rotate(-0.6deg); }
+.btag-girl { --tag: #f9dbe6; --tag-edge: #e6a9bf; --blanket: #f6c9d9; --blanket-deep: #eaa6bf; }
+.btag-mint { --tag: #d6f0e4; --tag-edge: #9fd3bb; --blanket: #c4e8d7; --blanket-deep: #9fd3bb; }
+.btag-holes { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 18px; }
+.btag-holes i { width: 12px; height: 12px; border-radius: 50%; background: var(--bg, #2b2233); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.btag-bow { position: absolute; font-size: 1.05rem; }
+.btag-bow.b1 { top: 4px; left: 12px; transform: rotate(-14deg); }
+.btag-bow.b2 { top: 4px; right: 12px; transform: rotate(12deg); }
+.btag-card { background: #fffdf8; border: 2px solid var(--tag-edge); border-radius: 6px; padding: 8px 10px 10px; }
+.btag-main { display: flex; gap: 8px; align-items: flex-start; }
+.btag-weight { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.btag-fields { flex: 1; min-width: 0; }
+.btag-row { display: flex; align-items: baseline; gap: 4px 5px; flex-wrap: wrap; padding: 3px 0; border-bottom: 1px solid rgba(35, 50, 74, 0.22); }
+.btag-row:last-child { border-bottom: 0; }
+.btag-room { justify-content: flex-end; border-bottom: 0; padding-bottom: 0; }
+.btag-label { font: 800 0.6rem/1.2 var(--sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.btag-ink { font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive; font-size: 1.22rem; line-height: 1; color: var(--pen); font-weight: 600; }
+.btag-pick { margin-left: auto; display: inline-flex; gap: 6px; font: 800 0.6rem/1 var(--sans); letter-spacing: 0.06em; }
+.btag-pick span { padding: 2px 4px; border-radius: 999px; opacity: 0.55; }
+.btag-pick span.on { opacity: 1; box-shadow: 0 0 0 1.6px var(--pen); color: var(--pen); transform: rotate(-4deg); }
+.btag-foot { text-align: center; padding: 8px 4px 0; display: grid; gap: 1px; }
+.btag-foot strong { font: 800 0.72rem/1.25 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.btag-foot span { font: 700 0.66rem/1.25 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.btag-foot small { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
+.btag-title { text-align: center; }
+/* The baby, swaddled: wrapped all over in the blanket, a hood around the face, just the face peeking out. */
+.btag-left { display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; align-self: stretch; gap: 6px; flex: none; }
+.swaddle { position: relative; width: 96px; height: 120px; flex: none; }
+.swaddle svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.swaddle-back .body { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2.5; }
+.swaddle-face { position: absolute; left: 50%; top: 14.5%; width: 52%; height: 41.6%; transform: translateX(-50%); overflow: hidden; border-radius: 50%; background: var(--blanket); }
+.swaddle-face svg { position: static; width: 100%; height: 100%; }
+.swaddle-front .rim { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 1.6; }
+.swaddle-front .flap.l { fill: var(--blanket-deep); }
+.swaddle-front .flap.r { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2; }
+.swaddle-front .fold, .swaddle-front .tuck { fill: none; stroke: var(--blanket-deep); stroke-width: 2; stroke-linecap: round; }
+/* Inked footprints and the wristband. */
+.btag-left .ink-feet { display: block; margin-top: -2px; }
+.btag-band { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 10px 5px 6px; border-radius: 999px; background: #fff;
+  border: 1.5px solid var(--tag-edge); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05); font: 800 0.62rem/1 var(--sans); letter-spacing: 0.06em; color: var(--ink); overflow: hidden; }
+.btag-band-snap { width: 12px; height: 12px; border-radius: 50%; background: var(--tag); border: 1.5px solid var(--tag-edge); flex: none; }
+.btag-band-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btag-band-id { opacity: 0.7; white-space: nowrap; }
+.btag-band-bars { height: 12px; width: auto; margin-left: auto; fill: var(--ink); flex: none; }
+/* The back: the nurses' keepsake. */
+.btag-keep { display: grid; gap: 8px; padding: 12px; background: #fffaf1; text-align: center; position: relative; min-height: 250px; }
+.btag-keep-title { font: 800 0.66rem/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; }
+.btag-keep-line { font-size: 1.5rem; }
+.btag-keep-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btag-keep-pair > div, .btag-keep-note { display: grid; gap: 3px; justify-items: center; padding: 6px; border: 1px dashed rgba(35, 50, 74, 0.25); border-radius: 8px; }
+.btag-keep-sign { font-size: 1.15rem; margin-top: 4px; }
+.btag-stamp { justify-self: center; margin: 2px 0; padding: 5px 12px; border: 2.5px solid #c0392b; border-radius: 6px; color: #c0392b; font: 800 0.8rem/1 var(--sans);
+  letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(var(--tilt, -8deg)); opacity: 0.82; box-shadow: inset 0 0 0 2px rgba(192, 57, 43, 0.12); }
+.btag-flip.turned .btag-back { animation: btag-turn 0.35s ease-out; }
+.btag-flip:not(.turned) .btag-front { animation: btag-turn 0.35s ease-out; }
+@keyframes btag-turn { from { transform: rotateY(80deg) rotate(-0.6deg); opacity: 0.4; } to { transform: rotateY(0) rotate(-0.6deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .btag-flip .btag { animation: none !important; } }
+@media (max-width: 360px) { .swaddle { width: 80px; height: 100px; } .btag-ink { font-size: 1.08rem; } }
+/* Naming a newborn (ui/birthTag.js nameBabyModal). */
+.bname { display: grid; gap: 10px; }
+.bname-baby { justify-self: center; padding: 10px 18px 6px; transform: rotate(-1.5deg); }
+.bname-row { display: flex; gap: 8px; align-items: center; }
+.bname-row input { flex: 1; min-width: 0; }
+.bname-lasts { display: grid; gap: 6px; }
+.bname-last { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 12px; font-weight: 600; }
+.bname-last input[type="text"] { flex: 1; min-width: 120px; }
+.bname-preview { text-align: center; margin: 2px 0 0; min-height: 1.6em; }
+.bname-preview .btag-ink { font-size: 1.7rem; color: var(--accent-text); }
+.bname-why { color: var(--bad); font-size: 0.85rem; margin: 0; text-align: center; min-height: 0; }
+.bname-last { cursor: pointer; padding: 9px 12px; }
+.bname-last input[type="radio"] { appearance: auto; -webkit-appearance: radio; width: 18px; height: 18px; min-height: 0; flex: none; margin: 0; padding: 0; box-shadow: none; accent-color: var(--accent); }
+.bname-last input[type="text"] { padding: 6px 10px; min-height: 0; }
+/* Twins, triplets and quadruplets: an announcement on fine paper (ui/birthTag.js announceMultiples). */
+.announce { background: #fdfcf9; color: #24232b; border-radius: 10px; padding: 18px 14px 16px; text-align: center; box-shadow: 0 6px 20px rgba(30, 30, 50, 0.15);
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 3px); }
+.announce-word { font-family: 'Great Vibes', 'Snell Roundhand', cursive; font-size: 3.4rem; line-height: 1; }
+.announce-flourish { width: 70%; height: 12px; margin: -4px auto 6px; display: block; }
+.announce-flourish path { fill: none; stroke: #24232b; stroke-width: 1.1; stroke-linecap: round; }
+.announce-who, .announce-date, .announce-line { font-family: var(--serif); letter-spacing: 0.22em; }
+.announce-who { font-size: 0.82rem; margin-bottom: 14px; }
+.announce-babies { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 14px; }
+.announce-baby { padding: 8px 8px 4px; box-shadow: none; transform: rotate(var(--r, -1deg)); }
+.announce-baby:nth-child(2n) { --r: 1.5deg; }
+.announce-babies .swaddle { width: 72px; height: 90px; }
+.announce-date { font-size: 1.05rem; }
+.announce-line { font-size: 0.72rem; margin-top: 6px; opacity: 0.85; }

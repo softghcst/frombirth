@@ -17,7 +17,7 @@ const check = (c, m) => { if (!c) problems.push(m); else console.log(` ✓ ${m}`
 
 /** A grown-up in New York in the given year, with money. */
 function life(year = 2024, age = 35) {
-  let s; do { s = createLife({ countryId: 'us', city: 'New York', year }); } while (s.player.royal);
+  let s; do { s = createLife({ countryId: 'us', city: 'New York', year, birthday: { m: 0, d: 1 } }); } while (s.player.royal);
   store.state = s;
   const p = s.player;
   p.age = age; p.birthYear = s.year - age; p.finance.cash = 500000; p.flags.livesWithParents = false; p.homeId = 'h1'; p.legal.incarceration = null;

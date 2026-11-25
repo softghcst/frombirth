@@ -38,7 +38,7 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); else ok.push(`(after problems) ${msg}`); };
 const life = (countryId, age = 30, cash = 80000, city) => {
-  do { store.state = createLife({ countryId }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId, birthday: { m: 0, d: 1 } }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year; store.state.year += age;
   if (city) p.city = city;
@@ -88,7 +88,7 @@ let p = life('us', 30, 80000, 'New York');
   const fr = life('fr'); check(docs.entryRule(fr, 'de').kind === 'free_movement', 'French to Germany: free movement');
   const ind = life('in'); check(docs.entryRule(ind, 'uk').kind === 'visa' && docs.entryRule(ind, 'uk').name === 'Standard Visitor visa', 'Indian to the UK: a visitor visa, by its own name');
   store.state = { ...store.state }; // keep going with the American
-  store.state = createLife({ countryId: 'us' });
+  store.state = createLife({ countryId: 'us', birthday: { m: 0, d: 1 } });
   p = life('us', 30, 80000, 'New York');
   docs.applyPassport(p.id, 'us');
   // A passport expiring does not touch citizenship.
@@ -693,7 +693,7 @@ let moved;
 {
   // Scenario P, and the eras: a life born in 1800 travels and settles by what existed then.
   const eraLife = (countryId, year, age, city) => {
-    do { store.state = createLife({ countryId, year }); } while (store.state.player.royal);
+    do { store.state = createLife({ countryId, year, birthday: { m: 0, d: 1 } }); } while (store.state.player.royal);
     const q = store.state.player;
     for (let i = 0; i < age; i++) { q.stats.health = 95; advanceYear(); store.state.pendingEvents = []; q.legal.pending = null; q.alive = true; }
     if (q.countryId !== countryId) { q.countryId = countryId; q.residency = null; q.locations = null; } // the family's own wanderings are not what this tests

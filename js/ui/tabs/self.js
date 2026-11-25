@@ -1,4 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { openBirthTag } from '../birthTag.js';
+import { playerBirthInfo } from '../../engine/birthTag.js';
 import { noticed } from '../../engine/talentGrowth.js';
 import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
@@ -17,7 +19,7 @@ import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
-import { openSalonVisit } from '../salonVisit.js';
+import { openSalonVisit, shopLabel } from '../salonVisit.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
@@ -53,7 +55,7 @@ export default {
           navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
           navRow({ attrs: 'data-health', label: 'My Health' }),
           ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
-          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty Salon' })] : []),
+          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: shopLabel(p) })] : []),
         ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
@@ -69,6 +71,7 @@ export default {
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn small" data-identity style="margin-top:10px;width:100%">Edit identity</button>
+        <button class="btn small" data-mytag style="margin-top:8px;width:100%">Your birth tag</button>
       </div>
       ${(() => { const here = living.summary(); const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return `<div class="card"><h3>Life in ${esc(theCountry(country().name))}${era.id === 'now' ? '' : ` · ${esc(era.name)}`}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
@@ -97,6 +100,7 @@ export default {
     el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
+    el.querySelector('[data-mytag]').onclick = async () => { const p = player(); playerBirthInfo(p); api.changed?.(); await openBirthTag(p, { title: 'Your Birth Tag', parents: p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'parent').slice(0, 2) }); };
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = () => openSalonVisit(api);  // the visit: js/ui/salonVisit.js
     el.querySelector('[data-world]').onclick = () => openWorld({ start: p.countryId, home: p.countryId });

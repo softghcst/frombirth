@@ -39,7 +39,7 @@ await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEac
 const r = await page.evaluate(async () => {
   const { store } = await import('/js/state.js');
   const p = store.state.player;
-  p.countryId = 'uk'; p.city = 'London'; p.age = 30; p.birthYear = store.state.year - 30; p.finance.cash = 500000; p.legal.incarceration = null;
+  p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.countryId = 'uk'; p.city = 'London'; p.age = 30; p.birthYear = store.state.year - 30; p.finance.cash = 500000; p.legal.incarceration = null;
   p.documents = (p.documents ?? []).filter((d) => d.type !== 'passport');
   const travel = await import('/js/engine/travel.js');
   const docs = await import('/js/engine/documents.js');

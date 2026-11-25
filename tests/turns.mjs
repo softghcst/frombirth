@@ -20,7 +20,7 @@ const problems = []; const ok = [];
 const check = (c, m) => { if (!c) problems.push(m); };
 const section = (m, n) => ok.push(problems.length === n ? m : `(failed) ${m}`);
 const S = () => store.state; const P = () => store.state.player;
-const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = createLife({ countryId, city }); if (!P().royal) return P(); } };
+const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = createLife({ countryId, city, birthday: { m: 0, d: 1 } }); if (!P().royal) return P(); } };
 
 // 1. The calendar.
 {

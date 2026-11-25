@@ -37,6 +37,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text
  */
 export const REGULATED = {
   doctor: { profession: 'medicine', name: 'Medicine', body: 'the medical council', language: 70, exam: true },
+  podiatrist: { profession: 'podiatry', name: 'Podiatric medicine', body: 'the podiatry board', language: 65, exam: true },
   dentist: { profession: 'dentistry', name: 'Dentistry', body: 'the dental council', language: 65, exam: true },
   pharmacist: { profession: 'pharmacy', name: 'Pharmacy', body: 'the pharmacy board', language: 65, exam: true },
   nurse: { profession: 'nursing', name: 'Nursing', body: 'the nursing council', language: 60, exam: true },
