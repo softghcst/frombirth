@@ -176,3 +176,27 @@ export function migrateInvestigations(state) {
   state.investigations.v = VERSION;
   return state;
 }
+
+const LEADER_RANKS = ['sergeant', 'lieutenant', 'captain', 'deputy_chief', 'chief', 'detective_sergeant', 'detective_lieutenant', 'supervisory', 'asac', 'sac'];
+/**
+ * Whether one of the two supervises the other at work: the player's supervisor, or someone in the agency the player
+ * leads. Romance is never offered across that line (engine/romance.js asks).
+ */
+export function supervisionBetween(npc, p = player()) {
+  const r = rec(p);
+  if (!r?.job || !npc) return false;
+  if (r.people.supervisorId === npc.id || r.people.ftoId === npc.id && ['field', 'probation'].includes(r.stage)) return true;
+  const mine = r.job.agencyId ?? r.job.officeId;
+  return LEADER_RANKS.includes(r.job.rank) && !!npc.flags?.inv && npc.flags.inv.agencyId === mine && !LEADER_RANKS.includes(npc.flags.inv.rank);
+}
+
+/** A name for anyone a record holds: the player, someone living in the save, or an ancestor in the family's legacy. */
+export function nameOfId(id, state = store.state) {
+  if (!id) return 'someone';
+  if (id === state.player?.id) return 'you';
+  const n = state.npcs?.[id];
+  if (n) return `${n.firstName} ${n.lastName}`;
+  return state.investigations?.legacies?.find((x) => x.id === id)?.name ?? 'someone';
+}
+/** The family's investigators before this life (public career summaries only). */
+export const legacies = (state = store.state) => state.investigations?.legacies ?? [];

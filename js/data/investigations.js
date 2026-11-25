@@ -233,6 +233,101 @@ export const TEMPLATES = {
     hypotheses: ['outsider', 'insider', 'error'], evidence: ['digital', 'financial', 'documents'], months: 9 },
 };
 
+/**
+ * Case packs described as data, built by one shared builder (engine/investigations/casework.js buildPack). Each
+ * has the explanations it weighs (`truth`, weighted), who did it under each (`perp`: 'stranger' or 'insider'; none
+ * means no offense), and its clues: `via` is the step that reaches it, `when` the explanations under which it
+ * exists (omit for all), `text` (or `by` per explanation) what it says, with {owner}, {insider} and {perp} filled in.
+ * Sensitive packs are written without detail, and the person harmed decides how far they take part.
+ */
+export const PACKS = {
+  arson: { hyp: { accident: 'The fire was an accident.' }, name: 'Suspected arson', offenseId: 'arson', specialty: 'arson', complexity: 2, place: 'business', months: 9, title: (p) => `The fire at ${p}`,
+    scene: 'A fire gutted a closed shop overnight. Nobody was hurt.', truth: { set: 0.35, accident: 0.45, insurance: 0.2 }, insider: 'Business partner', perp: { set: 'stranger', insurance: 'insider' },
+    hypotheses: ['set', 'accident', 'insurance'],
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner} says the shop was locked up as usual at six.', source: 'owner', confidence: 0.85 },
+      { via: 'scene', kind: 'fact', by: { set: 'The fire began in two separate places at the back.', accident: 'The fire began at one point, by an old heater.', insurance: 'The fire began in two places, inside, and the stock room had been emptied.' },
+        supports: { set: ['set'], accident: ['accident'], insurance: ['insurance', 'set'] }, against: { set: ['accident'], accident: ['set', 'insurance'], insurance: ['accident'] } },
+      { via: 'specialist', kind: 'fact', by: { set: 'The fire investigator finds an accelerant at both points of origin.', accident: 'The fire investigator finds a wiring fault in the heater, and no accelerant.', insurance: 'The fire investigator finds an accelerant, and no sign anyone forced their way in.' },
+        supports: { set: ['set'], accident: ['accident'], insurance: ['insurance'] }, against: { set: ['accident'], accident: ['set', 'insurance'], insurance: ['accident', 'set'] }, decisive: { accident: true } },
+      { via: 'records', kind: 'fact', needsAuth: { insurance: true }, by: { set: 'A neighbor\'s camera shows someone at the back door at 2 a.m.', accident: 'The heater was the subject of a safety recall two years ago.', insurance: 'The business was insured for twice its value last month, at {insider}\'s request.' },
+        supports: { set: ['set'], accident: ['accident'], insurance: ['insurance'] }, pointsTo: { set: 'perp', insurance: 'insider' }, evKind: { set: 'cctv', insurance: 'financial' } },
+    ],
+    items: [{ label: 'Debris from the points of origin', kind: 'physical', disciplines: ['fire'], pointsTo: 'perp' }],
+    poi: { text: '{insider}, the owner\'s business partner, says they were out of town that night and that the business was doing well.', accurate: ['set', 'accident'] },
+    witness: { saw: { set: 'saw someone in a dark jacket in the alley just before the smoke', accident: 'saw the shop dark and quiet until the smoke', insurance: 'saw a car like {insider}\'s outside the shop late that evening' },
+      supports: { set: ['set'], accident: ['accident'], insurance: ['insurance'] }, pointsTo: { insurance: 'insider' } } },
+  corruption: { places: ['the City Council', 'the Port Authority', 'the Water Board', 'the Transit Agency'], name: 'Public corruption', offenseId: 'bribery', specialty: 'corruption', complexity: 3, place: 'office', months: 12, title: (p) => `Contracts at ${p}`,
+    scene: 'A council contract went to a company whose bid was not the lowest. A clerk reported concerns.', truth: { bribe: 0.45, lawful: 0.55 }, insider: 'Council official', perp: { bribe: 'insider' },
+    hypotheses: ['bribe', 'lawful'],
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner}, a clerk, says the contract decision was rushed and the paperwork incomplete.', source: 'owner', confidence: 0.7, supports: ['bribe'] },
+      { via: 'scene', kind: 'fact', by: { bribe: 'The scoring sheets were changed after the bids were opened.', lawful: 'The scoring sheets give the winner more points for delivery times, as the rules allow.' },
+        supports: { bribe: ['bribe'], lawful: ['lawful'] }, against: { bribe: ['lawful'], lawful: ['bribe'] } },
+      { via: 'records', kind: 'fact', needsAuth: { bribe: true, lawful: true }, by: { bribe: 'Bank records show payments from the winning company to an account in {insider}\'s brother\'s name.', lawful: 'Bank records show nothing passing between the company and anyone at the council.' },
+        supports: { bribe: ['bribe'], lawful: ['lawful'] }, against: { bribe: ['lawful'], lawful: ['bribe'] }, decisive: { lawful: true }, pointsTo: { bribe: 'insider' }, evKind: { bribe: 'financial' } },
+      { via: 'specialist', kind: 'fact', by: { bribe: 'A procurement auditor finds the rules were not followed.', lawful: 'A procurement auditor finds the rules were followed, though the clerk was not told why.' },
+        supports: { bribe: ['bribe'], lawful: ['lawful'] } },
+    ],
+    items: [{ label: 'The contract file and its scoring sheets', kind: 'documents', disciplines: ['documents'], pointsTo: 'perp' }],
+    poi: { text: '{insider}, who chaired the panel, says the decision followed the rules and was recorded properly.', accurate: ['lawful'] },
+    witness: { saw: { bribe: 'saw {insider} meet the winning bidder after hours', lawful: 'saw the panel argue over the scores in the open meeting' }, supports: { bribe: ['bribe'], lawful: ['lawful'] }, pointsTo: { bribe: 'insider' } } },
+  drugs: { hyp: { outsider: 'Someone else is supplying, near the house, not from it.' }, name: 'Drug supply', offenseId: 'drug_supply', specialty: 'organized', federal: 'dea', complexity: 2, place: 'street', months: 9, title: (p) => `The supply line on ${p}`,
+    scene: 'A tip says drugs are being supplied from a house on the street.', truth: { supplier: 0.45, outsider: 0.3, none: 0.25 }, insider: 'Tenant', perp: { supplier: 'insider', outsider: 'stranger' },
+    hypotheses: ['supplier', 'outsider', 'none'],
+    clues: [
+      { via: 'report', kind: 'claim', text: 'An anonymous caller says there is a lot of coming and going at the house.', confidence: 0.5, supports: ['supplier', 'outsider'] },
+      { via: 'scene', kind: 'fact', by: { supplier: 'Surveillance from a public street records short visits, day and night.', outsider: 'Surveillance from a public street records visits to a car parked outside, not the house.', none: 'Surveillance from a public street records nothing out of the ordinary.' },
+        supports: { supplier: ['supplier'], outsider: ['outsider'], none: ['none'] }, against: { none: ['supplier', 'outsider'] } },
+      { via: 'records', kind: 'fact', needsAuth: { supplier: true, outsider: true }, by: { supplier: 'Bank records show cash deposits far beyond {insider}\'s wages.', outsider: 'The car is registered to someone with no tie to the house.', none: 'The tenant\'s finances match their job.' },
+        supports: { supplier: ['supplier'], outsider: ['outsider'], none: ['none'] }, against: { supplier: ['none'], outsider: ['supplier'], none: ['supplier'] }, pointsTo: { supplier: 'insider', outsider: 'perp' }, evKind: { supplier: 'financial', outsider: 'documents' }, decisive: { none: true } },
+    ],
+    items: [{ label: 'A package recovered from a public bin', kind: 'physical', disciplines: ['fingerprints', 'dna'], pointsTo: 'perp' }],
+    poi: { text: '{insider}, the tenant, says their visitors are friends, and asks whether they need a lawyer.', accurate: ['outsider', 'none'] },
+    witness: { saw: { supplier: 'saw people go into the house for a minute and leave', outsider: 'saw people stop at a car outside, not the house', none: 'saw ordinary visitors, a family with children' }, supports: { supplier: ['supplier'], outsider: ['outsider'], none: ['none'] } } },
+  firearms: { hyp: { error: 'It is a records error, not a crime.' }, places: ['Ridgeline Outfitters', 'Northgate Sporting Goods', 'Cedar Creek Firearms'], name: 'Firearms trafficking', offenseId: 'firearms_trafficking', specialty: 'organized', federal: 'atf', complexity: 3, place: 'business', months: 12, title: (p) => `Sales records at ${p}`,
+    scene: 'A licensed dealer\'s records show several guns sold to the same buyer in a short time; one was later recovered in another state.', truth: { straw: 0.45, theft: 0.3, error: 0.25 }, insider: 'Buyer', perp: { straw: 'insider', theft: 'stranger' },
+    hypotheses: ['straw', 'theft', 'error'],
+    clues: [
+      { via: 'report', kind: 'fact', text: 'The dealer\'s records list {insider} as buyer of several of the guns.' },
+      { via: 'scene', kind: 'fact', by: { straw: 'The guns sold to {insider} are not in their home, by their own account.', theft: 'The dealer\'s storeroom lock was replaced last year after a break-in that was never reported.', error: 'The dealer\'s new record system shows duplicate entries for the same sales.' },
+        supports: { straw: ['straw'], theft: ['theft'], error: ['error'] }, against: { error: ['straw'] } },
+      { via: 'records', kind: 'fact', needsAuth: { straw: true }, by: { straw: 'Messages show {insider} was paid to buy the guns for someone else.', theft: 'Serial numbers of the recovered gun match stock never recorded as sold.', error: 'Reconciled, the records show one sale entered four times.' },
+        supports: { straw: ['straw'], theft: ['theft'], error: ['error'] }, against: { straw: ['error'], theft: ['straw'], error: ['straw', 'theft'] }, decisive: { error: true }, pointsTo: { straw: 'insider', theft: 'perp' }, evKind: { straw: 'digital', theft: 'documents' } },
+    ],
+    items: [{ label: 'The recovered firearm', kind: 'physical', disciplines: ['fingerprints', 'dna'], pointsTo: 'perp' }],
+    poi: { text: '{insider} says they bought the guns for themself, and that they were stolen from their car.', accurate: ['error', 'theft'] },
+    witness: { saw: { straw: 'saw {insider} hand a heavy bag to someone in the dealer\'s parking lot', theft: 'heard the dealer\'s alarm go off one night last year', error: 'saw the dealer struggling with the new computer system' }, supports: { straw: ['straw'], theft: ['theft'], error: ['error'] }, pointsTo: { straw: 'insider' } } },
+  family: { hyp: { accident: 'The injury was an accident.', known: 'Someone in the household caused the injury.' }, name: 'A family matter', offenseId: 'assault', specialty: 'family', complexity: 2, place: 'home', months: 6, sensitive: true, title: (p) => `A report from ${p}`,
+    scene: 'A neighbor called the police about a disturbance; an adult in the home has an injury.', truth: { known: 0.6, other: 0.15, accident: 0.25 }, insider: 'Household member', perp: { known: 'insider', other: 'stranger' },
+    hypotheses: ['known', 'other', 'accident'],
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner}, a neighbor, heard shouting and then a crash.', source: 'owner', confidence: 0.8, supports: ['known'] },
+      { via: 'support', kind: 'fact', text: 'An advocate has spoken with the person harmed about safety, support and their choices. Whether to make a statement is theirs to decide.' },
+      { via: 'victim', kind: 'claim', by: { known: 'The person harmed says, in their own time, that {insider} hurt them.', other: 'The person harmed says someone outside the family hurt them.', accident: 'The person harmed says they fell, and nobody hurt them.' },
+        supports: { known: ['known'], other: ['other'], accident: ['accident'] }, pointsTo: { known: 'insider', other: 'perp' }, evKind: { known: 'victim', other: 'victim' }, confidence: 0.85 },
+      { via: 'examiner', kind: 'fact', by: { known: 'A medical report describes injuries consistent with an assault.', other: 'A medical report describes injuries consistent with an assault.', accident: 'A medical report describes injuries consistent with a fall.' },
+        supports: { known: ['known', 'other'], other: ['known', 'other'], accident: ['accident'] }, against: { accident: ['known', 'other'] } },
+    ],
+    items: [],
+    poi: { text: '{insider} says there was an argument, nothing more.', accurate: ['other', 'accident'] },
+    witness: { saw: { known: 'heard {insider}\'s voice raised, then a crash', other: 'saw a stranger leaving the building that evening', accident: 'heard a fall, then someone calling for help' }, supports: { known: ['known'], other: ['other'], accident: ['accident'] }, pointsTo: { known: 'insider' } } },
+  juvenile: { hyp: { accident: 'The weather did it, not a person.' }, name: 'Damage at a school', offenseId: 'criminal_damage', specialty: 'juvenile', complexity: 1, place: 'school', months: 4, juvenile: true, title: (p) => `Damage at ${p} School`,
+    scene: 'Windows at a school were broken over a weekend.', truth: { youth: 0.6, adult: 0.2, accident: 0.2 }, insider: 'Pupil', perp: { youth: 'insider', adult: 'stranger' }, insiderAge: [13, 16],
+    hypotheses: ['youth', 'adult', 'accident'],
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner}, the caretaker, found the windows broken on Monday.', source: 'owner', confidence: 0.9 },
+      { via: 'scene', kind: 'fact', by: { youth: 'Stones lie on the floor inside; footprints are small.', adult: 'The glass was broken with a tool; the footprints are large.', accident: 'Branches from a fallen tree lie against the broken windows.' },
+        supports: { youth: ['youth'], adult: ['adult'], accident: ['accident'] }, against: { accident: ['youth', 'adult'] }, decisive: { accident: true } },
+      { via: 'records', kind: 'fact', by: { youth: 'The school\'s camera shows a group of pupils by the windows on Saturday.', adult: 'The school\'s camera shows an adult by the windows on Saturday night.', accident: 'The weather service recorded a storm on Saturday night.' },
+        supports: { youth: ['youth'], adult: ['adult'], accident: ['accident'] }, pointsTo: { youth: 'insider', adult: 'perp' }, evKind: { youth: 'cctv', adult: 'cctv' } },
+    ],
+    items: [],
+    poi: { text: '{insider}, a pupil, says with a parent present that they were at a friend\'s all weekend.', accurate: ['adult', 'accident'] },
+    witness: { saw: { youth: 'saw teenagers throwing stones at the school', adult: 'saw a man with a bag by the school late at night', accident: 'saw the storm bring a tree down by the school' }, supports: { youth: ['youth'], adult: ['adult'], accident: ['accident'] } } },
+};
+for (const [id, pk] of Object.entries(PACKS)) TEMPLATES[id] = { ...pk, pack: true, evidence: [] };
+
 /** What each hypothesis says, in the file. */
 export const HYPOTHESES = {
   outsider: 'Someone from outside got in without permission.',
@@ -245,6 +340,17 @@ export const HYPOTHESES = {
   accident: 'They have come to harm by accident.',
   harm: 'Someone has harmed them.',
   error: 'It is an error, not a crime: the money was moved, not taken.',
+  set: 'Someone set the fire deliberately.',
+  insurance: 'The fire was set for the insurance money.',
+  bribe: 'The official took money for the decision.',
+  lawful: 'The decision was lawful, if badly explained.',
+  supplier: 'The tenant is supplying drugs from the house.',
+  none: 'Nothing unlawful is happening at the house.',
+  straw: 'The buyer bought the guns for someone who could not.',
+  theft: 'The guns were stolen from the dealer.',
+  other: 'Someone outside the household caused the injury.',
+  youth: 'Young people did the damage.',
+  adult: 'An adult did the damage.',
 };
 
 /** Questions for a witness. None of them is a trick, and none is forceful. */
