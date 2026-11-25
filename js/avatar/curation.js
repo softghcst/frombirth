@@ -157,7 +157,9 @@ export const ELDER_HAIR = { female: [], male: [] };
  */
 export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fringe', 'hair_baby_straight_02_side_swoop', 'hair_baby_straight_03_fuzzy_crop'], wavy: ['hair_baby_wavy_01_wave_on_top', 'hair_baby_wavy_02_tousled', 'hair_baby_wavy_03_side_ripple'], curly: ['hair_baby_curly_01_curl_fringe', 'hair_baby_curly_02_soft_curls', 'hair_baby_curly_03_curl_tuft'], coily: ['hair_baby_coily_01_afro', 'hair_baby_coily_02_tiny_coils', 'hair_baby_coily_03_little_puff'] };
 
-export const KID_OUTFITS = { any: [], female: [], male: [] };
+export const KID_OUTFITS = { any: [],
+  female: ['outfit_kid_16_girl_rainbow_tee', 'outfit_kid_17_girl_striped_top', 'outfit_kid_18_girl_denim_jacket', 'outfit_kid_19_girl_cat_hoodie', 'outfit_kid_20_girl_strawberry_sweatshirt', 'outfit_kid_21_girl_gingham_dress', 'outfit_kid_22_girl_cardigan_dress', 'outfit_kid_23_girl_daisy_top', 'outfit_kid_24_girl_overall_dress', 'outfit_kid_25_girl_party_dress'],
+  male: [] };
 
 export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],

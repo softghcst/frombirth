@@ -1369,7 +1369,9 @@ def process(path, folder, force=False):
     name = os.path.basename(path)[:-4]
     notes = []
     # Solid white backgrounds, and the white "sticker" outline some packs put round a garment.
-    box = bbox_of(elements)
+    # Not on parts drawn on a template (children's clothes, baby hair): their background is already transparent, and a
+    # white garment would be taken for one.
+    box = None if re.match(r'(outfit_(baby|kid)_|hair_baby_)', os.path.basename(path)) else bbox_of(elements)
     if box:
         bw, bh = box[2] - box[0], box[3] - box[1]
         full = lambda e: (lambda b: b and (b[2] - b[0]) >= bw * 0.9 and (b[3] - b[1]) >= bh * 0.9)(bbox_of([e]))
