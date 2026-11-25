@@ -915,6 +915,7 @@ export function tickMusic() {
       if (!p.milestones.some((m) => /tour/i.test(m.text))) milestone(`Toured: ${t.title}.`, 'fame');
     }
   }
+  checkMusicAchievements(p);
   // Bands are people: some fall out, some leave.
   const a = myAct(p);
   if (a?.kind === 'band') {
@@ -927,7 +928,8 @@ export function tickMusic() {
         lines.push(`${n.firstName} ${n.lastName} has left ${a.name}${n.meters.relationship < 30 ? ' after one argument too many' : ' to do something else'}.`);
       }
     }
-    if (members(a).length < 2) { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); lines.push(`${a.name} is finished. The records are still the records.`); }
+    if (members(a).length < 2) { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); lines.push(`${a.name} is finished. The records are still the records.`); releaseSpecial('music'); }
+    else bandFate(a);
   }
   if (a) maybeDealOffer(a);
   // A manager with nothing to manage moves on.
@@ -999,7 +1001,9 @@ export function soloAudition(position, labelId) {
   }
   const sounds = (l.sound ?? []).map((g) => GENRE_BY_ID[g]).filter((g) => g && year() >= g.from);
   const fits = genresIn(year()).filter((g) => (position === 'rapper' ? ['hip_hop', 'trap', 'drill', 'grime'].includes(g.id) : !g.band || g.id === 'pop'));
-  const genre = (sounds.length ? rng.pick(sounds) : rng.weighted(fits.length ? fits : genresIn(year()), (g) => popularIn(g.id, p.countryId))).id;
+  // The label's sound, as it is heard here: a style popular in this country far more often than one from far away.
+  const local = (list) => rng.weighted(list, (g) => (popularIn(g.id, p.countryId) * (g.strong.includes(p.countryId) ? 3 : g.strong.length ? 0.6 : 1)) ** 2);
+  const genre = (sounds.length ? local(sounds) : local(fits.length ? fits : genresIn(year()))).id;
   const t = l.terms ?? LABEL_KINDS[l.tier];
   const c = country();
   const years = rng.int(2, 5);
@@ -1146,3 +1150,89 @@ export function tourNow() {
 
 /** Whether the act has already recorded this year (one record a year). */
 export const recordedThisYear = (a) => Object.values(M().releases).some((r) => r.actId === a?.id && r.made === year());
+
+// ---------- When the band is done with you ----------
+
+/**
+ * Once a year, for a band the player is in: a band that has fallen out with the player may ask them to leave, and
+ * now and then a band breaks up. Either way the player is asked what now (data/events/stories/bandFate.js).
+ */
+function bandFate(a) {
+  const p = player();
+  if (a.kind !== 'band' || a.status !== 'active' || a.npc) return;
+  const me = a.members.find((m) => m.who === 'player' && m.to == null);
+  if (!me) return;
+  const others = members(a).filter((m) => m.who !== 'player' && m.to == null).map((m) => store.state.npcs[m.who]).filter(Boolean);
+  const liking = others.length ? others.reduce((s, n) => s + n.meters.relationship, 0) / others.length : 60;
+  const years = year() - a.formed;
+  const lastFlop = a.releases.map(release).filter((r) => r?.released != null).at(-1);
+  const kicked = liking < 40 && rng.chance(0.3);
+  const split = !kicked && years >= 2 && rng.chance(0.012 + (liking < 45 ? 0.03 : 0) + (lastFlop && lastFlop.critics < 40 ? 0.02 : 0));
+  if (!kicked && !split) return;
+  const drummer = !SOLO_POSITIONS.includes(me.role);
+  me.to = year();
+  musicOf(p).lastBand = { actId: a.id, role: me.role, genre: a.genre, fans: fanTotal(a), countryId: a.countryId };
+  if (kicked) { a.history.push({ year: year(), text: `${p.firstName} was asked to leave.` }); a.npc = true; }
+  else { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); }
+  releaseSpecial('music');
+  log(kicked ? `${a.name} asked you to leave the band.` : `${a.name} split up.`, 'system', 'bad');
+  store.state.pendingEvents.push({ id: `music_${kicked ? 'kicked' : 'disbanded'}${drummer ? '_drummer' : ''}`, cast: { words: { band: a.name, years: String(Math.max(1, years)) } } });
+}
+
+/** The answer to a band's ending (effect type 'music'). @returns {string} a line for the outcome */
+export function musicChoice(value) {
+  const p = player();
+  const last = musicOf(p).lastBand;
+  if (!last) return '';
+  if (value === 'solo') {
+    const r = formAct('solo', { genre: last.genre });
+    if (!r.ok) return r.text;
+    const s = myAct(p);
+    s.instrument = last.role;
+    if (p.flags.stageName) s.name = p.flags.stageName;
+    s.fans = { [last.countryId]: Math.round(last.fans * 0.25) };
+    return 'Some of the old fans come with you.';
+  }
+  if (value === 'look') return 'Bands looking for players are on the Music page: Join a Band.';
+  if (value === 'reunite') {
+    const a = act(last.actId);
+    if (a?.status === 'split' && rng.chance(0.35)) {
+      a.status = 'active';
+      for (const m of a.members) if (m.to === year()) m.to = null;
+      claimSpecial('music');
+      a.history.push({ year: year(), text: 'Talked back together.' });
+      return 'It takes a lot of phone calls, but everyone agrees to give it another go.';
+    }
+    return 'Not everyone picks up. It really is over.';
+  }
+  return '';
+}
+
+// ---------- Music achievements ----------
+
+/** Milestones of a music career, earned from what actually happened. */
+export const MUSIC_ACHIEVEMENTS = [
+  { id: 'gold', name: 'Gold Record', blurb: 'A record certified Gold.', earned: (p) => discography(p).some((r) => certification(r)) },
+  { id: 'platinum', name: 'Platinum Record', blurb: 'A record certified Platinum or better.', earned: (p) => discography(p).some((r) => unitsSold(r) >= 1000000) },
+  { id: 'diamond', name: 'Diamond Record', blurb: 'Ten million copies of one record.', earned: (p) => discography(p).some((r) => unitsSold(r) >= 10000000) },
+  { id: 'number_one', name: 'Number One', blurb: 'A record at the top of the chart.', earned: (p) => discography(p).some((r) => r.chart === 1) },
+  { id: 'virtuoso', name: 'Virtuoso', blurb: 'An instrument (or your voice) practiced as far as it goes.', earned: (p) => Object.values(POSITIONS).some((P) => levelOf(P.skill) >= 100) },
+  { id: 'stadium', name: 'Stadium Filler', blurb: 'A stadium tour.', earned: (p) => musicOf(p).acts.flatMap((id) => act(id)?.tours ?? []).some((t) => tour(t)?.scale === 'stadium') },
+  { id: 'lifer', name: 'Lifer', blurb: 'Studio albums released across more than twenty-five years.', earned: (p) => { const ys = discography(p).filter((r) => r.type === 'album').map((r) => r.released); return ys.length > 1 && Math.max(...ys) - Math.min(...ys) > 25; } },
+  { id: 'still_touring', name: 'Still Touring', blurb: 'On tour at seventy-five or older.', earned: (p) => musicOf(p).acts.flatMap((id) => act(id)?.tours ?? []).some((t) => { const x = tour(t); return x && x.year - p.birthYear >= 75; }) },
+];
+/** The music achievements, each earned or not (and the year it was). */
+export function musicAchievements(p = player()) {
+  const got = p.flags.musicAch ?? {};
+  return MUSIC_ACHIEVEMENTS.map((x) => ({ ...x, year: got[x.id] ?? null }));
+}
+/** Marks any newly earned, as a milestone. Run at the turn of the year. */
+export function checkMusicAchievements(p = player()) {
+  const got = (p.flags.musicAch ??= {});
+  for (const x of MUSIC_ACHIEVEMENTS) {
+    if (got[x.id]) continue;
+    let ok = false;
+    try { ok = !!x.earned(p); } catch { ok = false; }
+    if (ok) { got[x.id] = year(); milestone(`Music: ${x.name}. ${x.blurb}`, 'fame'); }
+  }
+}

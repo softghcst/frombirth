@@ -9,6 +9,7 @@ import * as music from '../js/engine/music.js';
 import * as sc from '../js/engine/specialCareer.js';
 import { CERTIFICATIONS } from '../js/data/fame.js';
 import { subgenresOf } from '../js/data/music.js';
+import { LESSON_BY_ID } from '../js/data/lessons.js';
 
 const problems = [];
 const ok = [];
@@ -85,6 +86,42 @@ const year = () => { advanceYear(); store.state.pendingEvents = []; const p = st
   check(music.popularity(a) > 0 && music.popularity(a) <= 100, 'popularity, 0 to 100');
   void p;
   section('certifications, tours, popularity');
+}
+
+// 4. When the band is done with you: asked what now; going solo carries on.
+{
+  const p = life(24, 95);
+  p.skills = { ...(p.skills ?? {}), guitar: 95 };
+  let a = null;
+  for (let i = 0; i < 20 && !a; i++) { const r = music.findBand('lead_guitar'); if (r.opening) music.auditionForBand(r.opening.id); a = music.myAct(); store.state.music && (music.musicOf().musicActs = { ...music.musicOf().musicActs }); if (!a) { year(); } }
+  if (a) {
+    let asked = null;
+    for (let y = 0; y < 15 && !asked; y++) {
+      for (const m of music.members(a)) if (m.who !== 'player') { const n = store.state.npcs[m.who]; if (n) n.meters.relationship = 34; }
+      advanceYear();
+      asked = store.state.pendingEvents.find((e) => /^music_(kicked|disbanded)/.test(e.id));
+      if (!asked) store.state.pendingEvents = [];
+    }
+    check(asked && !music.myAct() && sc.current() === null, `a band that has fallen out with you asks you to leave, and asks what now (${asked?.id})`);
+    const said = music.musicChoice('solo');
+    check(music.myAct()?.kind === 'solo' && sc.current() === 'music', `going solo carries on (${said})`);
+  } else check(false, 'could not join a band to test with');
+  section('the band asks you to leave: go solo, find another band, or stop');
+}
+
+// 5. Achievements and voice lessons.
+{
+  const p = life();
+  music.formAct('solo');
+  const a = music.myAct();
+  music.record('single');
+  const r = music.release(a.releases[0]);
+  r.released = store.state.year; r.units = { us: 700000 }; r.chart = 1; r.critics = 80;
+  music.checkMusicAchievements(p);
+  const got = music.musicAchievements(p).filter((x) => x.year).map((x) => x.id);
+  check(got.includes('gold') && got.includes('number_one') && !got.includes('platinum') && p.milestones.some((m) => /Music: Gold Record/.test(m.text)), `achievements from what happened (${got})`);
+  check(LESSON_BY_ID.voice.ages[0] === 8, 'voice lessons from eight');
+  section('music achievements, voice lessons from eight');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

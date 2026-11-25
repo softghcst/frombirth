@@ -410,6 +410,7 @@ const VIEWS = {
     const tours = a ? a.tours.map(music.tour).filter(Boolean).reverse() : [];
     return `${pending.length ? `<div class="card"><h3>Coming out</h3><p class="muted" style="margin:0">At the turn of the year: ${pending.map((r) => esc(r.title)).join(', ')}.</p></div>` : ''}
       <div class="section-label">Discography</div>${out.length ? out.map((r) => { const cert = music.certification(r); return row('release', r.id, r.title, `${RELEASE_TYPES[r.type].name}, ${r.released} · ${music.unitsSold(r).toLocaleString('en-US')} sold${r.chart ? ` · chart #${r.chart}` : ''}${cert ? ` · ${cert}` : ''}`, `${r.critics}/100`); }).join('') : '<p class="empty">Nothing out yet.</p>'}
+      <div class="section-label">Achievements</div>${music.musicAchievements(p).map((x) => `<div class="kv"><span>${x.year ? '★ ' : ''}${esc(x.name)}</span><span>${esc(x.year ? `${x.year}` : x.blurb)}</span></div>`).join('')}
       <div class="section-label">Tours</div>${tours.length ? tours.map((t) => row('tourview', t.id, t.title, `${t.year} · ${t.dates.length} dates`, t.net == null ? 'Booked' : money(t.net, COUNTRIES[a.countryId]))).join('') : '<p class="empty">No tours yet. They open as the fans come.</p>'}`;
   },
 
