@@ -18,6 +18,7 @@ import { setDrama, DRAMA, requestSupport } from '../engine/medicine/drama.js';
 import * as research from '../engine/medicine/research.js';
 import * as work from '../engine/worklife.js';
 import * as market from '../engine/employers.js';
+import { openNpc } from './tabs/people.js';
 import { hospitalName, hospital, kindName, deptOf, deptHead } from '../engine/medicine/hospitals.js';
 import { store } from '../state.js';
 
@@ -150,8 +151,9 @@ const VIEWS = {
   },
   people(p, m) {
     const ids = [...new Set([m.people.mentorId, ...m.people.supervisorIds, ...m.people.colleagueIds, ...(m.people.traineeIds ?? [])].filter(Boolean))];
-    const rows = ids.map((id) => store.state.npcs[id]).filter((n) => n?.alive).map((n) => kv([[`${n.firstName} ${n.lastName}`, `${n.flags.title ?? n.occupation ?? ''}${m.people.rivalIds.includes(n.id) ? ' · rival' : ''}${m.people.friendIds.includes(n.id) ? ' · friend' : ''} · ${Math.round(n.meters.relationship)}%`]]));
-    return card('Hospital life', rows.join('') || muted('Nobody yet.'));
+    const rows = ids.map((id) => store.state.npcs[id]).filter((n) => n?.alive).map((n) => btn('person', `${n.firstName} ${n.lastName}`, { arg: n.id,
+      sub: `${n.flags.title ?? n.occupation ?? ''}${m.people.rivalIds.includes(n.id) ? ' · rival' : ''}${m.people.friendIds.includes(n.id) ? ' · friend' : ''}${n.id === m.people.mentorId ? ' · mentor' : ''} · ${Math.round(n.meters.relationship)}%` }));
+    return card('Hospital life', `${rows.join('') || muted('Nobody yet.')}<p class="muted">Open someone to see their profile and what you share.</p>`);
   },
 };
 
@@ -220,6 +222,7 @@ const ACTIONS = {
   post: (id, x) => x.say(ladder.applyForPost(id)),
   open: (id, x) => x.say(practice.openPractice(id)),
   case: async (id, x) => { await openCase(id, x.api); x.refresh(); },
+  person: (id, x) => { const n = store.state.npcs[id]; if (n) openNpc(n, x.api); },
   async apply(_, x) {
     const opts = train.applicationOptions(player(), M()).filter((o) => !o.block);
     const picked = [];

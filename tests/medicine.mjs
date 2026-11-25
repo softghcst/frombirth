@@ -443,6 +443,12 @@ section('teaching residents; claims decided on the care, not the result');
   rm.awayOffer = { hospitalId: there.e.id, city: other, year: store.state.year };
   drama.medicineChoice('away:accept');
   check(q.city === other && rm.job?.hospitalId === there.e.id && !rm.awayOffer, `an offer in ${other} accepted moves the post there`);
+  const integrity0 = rm.skills.integrity;
+  drama.medicineChoice('record:refuse');
+  check(rm.skills.integrity > integrity0, 'refusing to alter a record is integrity');
+  const integrity1 = rm.skills.integrity;
+  drama.medicineChoice('gift:accept');
+  check(rm.skills.integrity < integrity1, 'accepting a gift from industry is a conflict of interest');
 }
 section('research and teaching, wellbeing, and an offer from another city');
 

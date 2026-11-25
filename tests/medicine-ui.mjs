@@ -84,6 +84,19 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Outcome/i.test(await text()), `${label}: the case reaches an outcome`);
   check(!(await overflow()), `${label}: the case does not scroll sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-case.png`, fullPage: false });
+  // Close the case, open a colleague's profile from Hospital Life.
+  await page.locator(`${caseModal} [data-close]`).click();
+  await page.click(`${modal} [data-sec="people"]`);
+  const people = page.locator(`${modal} [data-act="person"]`);
+  check(await people.count() > 0, `${label}: hospital life lists the people you train with`);
+  if (await people.count()) {
+    const before = await page.locator('#modal-root .scrim').count();
+    await people.first().click();
+    await page.waitForTimeout(150);
+    check(await page.locator('#modal-root .scrim').count() > before, `${label}: a colleague opens to their profile`);
+    const all = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().textContent);
+    check(/trained together|Supervised your/i.test(all), `${label}: the profile shows what you share`);
+  }
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();
 }

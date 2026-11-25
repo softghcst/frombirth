@@ -19,6 +19,7 @@ import { employer, chronicle } from '../employers.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily, storyOnce } from './core.js';
 import { recordEvent, archiveIdOf } from '../chronicle.js';
+import { remember } from '../conditions.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
 
 const avg = (...xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -309,7 +310,11 @@ export function startTraining(kind, specialtyId, hospitalId) {
     m.people.supervisorIds = [...new Set([...m.people.supervisorIds, boss.id])];
   }
   const peers = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'coworker' && n.flags.workedWith === e.name);
-  for (const n of peers) { n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6); }
+  for (const n of peers) {
+    n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6);
+    remember(n, `medTrained:${e.id}`, `You trained together at ${e.name}${s ? `, in ${s.name}` : ''}, from ${year()}.`);
+  }
+  if (boss) remember(boss, `medSupervised:${e.id}`, `Supervised your ${kind === 'fellowship' ? 'fellowship' : 'training'} at ${e.name}, from ${year()}.`);
   m.people.colleagueIds = [...new Set([...m.people.colleagueIds, ...peers.map((n) => n.id)])];
   retitle();
   familyHospital(p, e);

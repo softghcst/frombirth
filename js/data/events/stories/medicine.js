@@ -99,6 +99,65 @@ export default [
     ['Skip the keynote and catch up properly', 'You talk until the staff stack the chairs around you.', 'reunion:go', 'good'],
     ['Swap numbers and promise to call', 'You mean it at the time.', 'reunion:later'],
   ]),
+  // The wider catalog of hospital life.
+  scene('med_talked_about', 'Everyone is talking about {peer}: a difficult diagnosis caught at three in the morning, and the chief mentioned it at grand rounds.', [
+    ['Congratulate {peer}, and mean it', '{peer} looks surprised, then pleased.', 'talk:congratulate', 'good'],
+    ['Ask {peer} to show you how they spotted it', 'They walk you through it over coffee. You learn something.', 'talk:learn', 'good'],
+    ['Say nothing, and stew', 'It is not a good look, even in your own head.', 'talk:resent', 'bad'],
+  ]),
+  scene('med_or_disagreement', 'In the operating room, a senior colleague wants to go one way and you think the patient would be safer another. Everyone is waiting.', [
+    ['Say so, calmly, with your reasons', 'They listen. You agree on a plan together, and it is a better one.', 'talk:speak', 'good'],
+    ['Keep quiet and follow their lead', 'It goes fine. You wonder whether it would have.', 'talk:defer'],
+    ['Argue in front of the team', 'You may have been right. Nobody remembers that part.', 'talk:argue', 'bad'],
+  ]),
+  scene('med_attending_choice', '{mentor} has one place for a resident at a national course. Word is the choice was between you and {peer}, and the choice was {chosen}.', [
+    ['Congratulate whoever went', 'Whatever happened, you say the right thing.', 'talk:congratulate', 'good'],
+    ['Ask {mentor} what to work on for next time', '{mentor} gives you three things, frankly. They are fair.', 'talk:ask', 'good'],
+  ]),
+  scene('med_friend_pressure', '{peer} is your closest friend in the program, and you have both applied for the same thing. Neither of you has mentioned it.', [
+    ['Talk about it, out loud', 'You agree that whoever gets it, the other buys dinner. It helps.', 'talk:honest', 'good'],
+    ['Avoid each other until it is decided', 'The silence costs more than either application.', 'talk:distance', 'bad'],
+  ]),
+  scene('med_new_chief', 'Your department has a new chief, from outside, with a list of changes and a habit of asking why things are done the way they are.', [
+    ['Go and introduce yourself', 'They ask good questions. Some of them are about you.', 'talk:welcome', 'good'],
+    ['Keep your head down', 'It is a long year of rumors.', 'talk:defer'],
+  ]),
+  scene('med_work_relationship', 'You and {peer} work in the same department. Hospital policy asks colleagues in a relationship to tell their chief, so neither ever supervises or evaluates the other.', [
+    ['Tell the chief together', 'It is a five-minute conversation.', 'disclose_partner:yes', 'good'],
+    ['Keep it private', 'You keep it private. It is one more thing to keep.', 'disclose_partner:no'],
+  ]),
+  scene('med_colleague_leaving', '{peer} has been offered a post across the country: a real step up. They want to know what you think.', [
+    ['Tell them to take it', 'They do. You miss them, and are proud of them.', 'talk:encourage', 'good'],
+    ['Ask them to stay', 'They think about it for a week.', 'talk:stay'],
+  ]),
+  scene('med_friend_promoted', 'The post you both wanted has gone to {peer}. They find you before you have to find them.', [
+    ['Congratulate them properly', 'They were dreading this conversation. It is easy, because you make it easy.', 'talk:congratulate', 'good'],
+    ['Keep your distance for a while', 'It takes months to get back to where you were.', 'talk:distance', 'bad'],
+  ]),
+  scene('med_mentor_retiring', '{mentor} is retiring after a lifetime at the hospital. The department asks you to say a few words.', [
+    ['Say the few words, and say them well', 'You tell the story of your first night on call. {mentor} pretends not to be moved.', 'talk:farewell', 'good'],
+    ['Let someone more senior speak', 'You stand at the back and clap longest.', 'talk:farewell'],
+  ]),
+  scene('med_family_answers', 'A patient\'s family has asked to meet. The outcome was not what anyone hoped, though the care was sound. They want to understand.', [
+    ['Meet them, and explain honestly and kindly', 'It is the hardest hour of your month. At the end, they shake your hand.', 'talk:family', 'good'],
+    ['Write them a careful letter', 'It answers their questions. It is not the same as being there.', 'talk:letter'],
+  ]),
+  scene('med_research_offer', 'The hospital is starting a research project in your field and needs a physician to join it: years of work, no promises.', [
+    ['Join it', 'You add your name to the protocol.', 'research:join', 'good'],
+    ['Not now', 'You have enough on.', 'research:no'],
+  ]),
+  scene('med_department_divided', 'The department is split over a proposed change to how patients are seen: half think it will help, half think it will not.', [
+    ['Bring both sides together to look at the evidence', 'It takes three meetings. The compromise is better than either plan.', 'talk:mediate', 'good'],
+    ['Pick a side and argue for it', 'Your side wins, narrowly. Some colleagues are cooler toward you.', 'talk:side'],
+  ]),
+  scene('med_industry_gift', 'A company whose products you prescribe invites you to speak at a conference in a beautiful city: flights, a hotel, and a generous fee for a short talk.', [
+    ['Decline: it is a conflict of interest', 'You decline politely.', 'gift:decline', 'good'],
+    ['Accept: everyone goes', 'You accept.', 'gift:accept', 'bad'],
+  ]),
+  scene('med_alter_record', 'After a case went badly, a senior colleague asks you to "tidy up" a note you wrote that night: change a time, leave out a line.', [
+    ['Refuse, and explain why', 'A medical record is what happened, not what we wish had.', 'record:refuse', 'good'],
+    ['Do as they ask', 'You change it.', 'record:alter', 'bad'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

@@ -18,10 +18,13 @@ import { clamp } from '../../util.js';
 import { store, player } from '../../state.js';
 import { remember } from '../conditions.js';
 import { askOut, partner } from '../romance.js';
-import { M, med, year, grow, note, result, roll, once, currentSpecialty } from './core.js';
+import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputationOf } from './core.js';
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
-import { workplacesFor } from './hospitals.js';
+import { doResearch } from './research.js';
+import { employer } from '../employers.js';
+import { SPECIALTY_BY_ID } from '../../data/medicine.js';
+import { workplacesFor, hospital } from './hospitals.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 
@@ -79,6 +82,27 @@ function eligible(p, m) {
   const first = m.completed[0];
   const old = [...m.people.friendIds, ...m.people.colleagueIds].map(npc).find((n) => n?.alive);
   if (first && year() - first.to >= 10 && old) out.push({ id: 'med_reunion', cast: { peer: old.id, words: { hospital: first.hospital ?? 'the hospital' } } });
+  // The wider catalog of hospital life: people, judgment and ethics.
+  const peer = rng.pick(ps.length ? ps : [null]);
+  const friendNow = m.people.friendIds.map(npc).find(alive);
+  const spec = SPECIALTY_BY_ID[currentSpecialty(m)];
+  if (t && peer) out.push({ id: 'med_talked_about', cast: { peer: peer.id } });
+  if (spec?.surgical && (t || m.job)) out.push({ id: 'med_or_disagreement', cast: {} });
+  if (t && sup && peer) out.push({ id: 'med_attending_choice', cast: { mentor: sup.id, peer: peer.id, words: { chosen: roll(clamp(reputationOf(m) / 100, 0.2, 0.8)) ? 'you' : 'them' } } });
+  if (t && friendNow && t.pgy >= 2) out.push({ id: 'med_friend_pressure', cast: { peer: friendNow.id } });
+  if (m.job && roll(0.15)) out.push({ id: 'med_new_chief', cast: {} });
+  const pt = partner();
+  if (pt && (m.job || t) && pt.flags.workedWith && pt.flags.workedWith === employer(m.job?.hospitalId ?? t?.hospitalId)?.name && !pt.flags.medDisclosed) out.push({ id: 'med_work_relationship', cast: { peer: pt.id } });
+  if (friendNow && (m.job || t)) out.push({ id: 'med_colleague_leaving', cast: { peer: friendNow.id } });
+  if (m.job && friendNow) out.push({ id: 'med_friend_promoted', cast: { peer: friendNow.id } });
+  const mentorNow = npc(m.people.mentorId);
+  if (alive(mentorNow) && mentorNow.age >= 63 && !mentorNow.flags.medRetired) out.push({ id: 'med_mentor_retiring', cast: { mentor: mentorNow.id } });
+  const sad = (m.caseIds ?? []).map((id) => store.state.medicine?.cases?.[id]).find((c) => c?.status === 'closed' && c.year >= year() - 1 && c.outcome?.result === 'poor' && c.outcome.points >= 60);
+  if (sad) out.push({ id: 'med_family_answers', cast: {} });
+  if (m.job && hospital(m.job.hospitalId)?.teaching && !(m.research?.projects?.length)) out.push({ id: 'med_research_offer', cast: {} });
+  if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
+  if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
+  if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
   const thanks = (m.grateful ?? []).find((g) => g.year <= year() - 3 && !g.thanked);
   if (thanks) out.push({ id: 'med_grateful', cast: { words: { label: thanks.label.toLowerCase(), key: `${thanks.patientId}` } } });
   return out;
@@ -208,6 +232,37 @@ export function medicineChoice(value, cast = {}) {
     case 'reunion':
       if (how === 'go' && who) { who.meters.relationship = clamp(who.meters.relationship + 12); p.stats.mood = clamp(p.stats.mood + 5); }
       return '';
+    case 'talk': {
+      // The rest of the hospital catalog: 'talk:<what>'. Relationships and skills move by how the player treats people.
+      const by = { congratulate: ['teamwork', 1, 6], resent: ['professionalism', -1, -8], learn: ['reasoning', 1.5, 4], speak: ['reasoning', 1.5, 0], defer: [null, 0, 0],
+        argue: ['professionalism', -2, 0], ask: ['professionalism', 1, 3], honest: ['communication', 1.5, 5], distance: [null, 0, -6], welcome: ['teamwork', 1, 0],
+        encourage: ['integrity', 0.5, 8], stay: [null, 0, -2], farewell: ['communication', 1, 10], mediate: ['leadership', 2, 0], side: ['leadership', 0.5, 0],
+        family: ['communication', 2, 0], letter: ['communication', 0.5, 0] }[how];
+      if (!by) return '';
+      if (by[0]) grow(by[0], by[1], m);
+      if (who && by[2]) who.meters.relationship = clamp(who.meters.relationship + by[2]);
+      if (how === 'farewell' && who) { who.flags.medRetired = true; who.flags.title = 'Mentor (retired)'; }
+      if (how === 'learn' && who) remember(who, 'medTaught', 'Taught you what everyone was talking about.');
+      return '';
+    }
+    case 'disclose_partner':
+      if (who) who.flags.medDisclosed = true;
+      if (how === 'yes') { grow('professionalism', 1, m); return 'The department moves your rotas so neither of you is ever in charge of the other. Nobody makes a fuss.'; }
+      grow('integrity', -1, m);
+      return '';
+    case 'research':
+      if (how === 'join') return doResearch('project').text;
+      return '';
+    case 'gift':
+      if (how === 'decline') { grow('integrity', 1, m); return 'You decline. Your prescribing stays yours.'; }
+      grow('integrity', -3, m);
+      if (roll(0.3)) { m.discipline.push({ year: year(), what: 'Accepted hospitality from a company whose products you prescribe, against hospital policy.' }); return 'A compliance review finds it. It goes on your record.'; }
+      return 'The trip is lovely. You notice, later, how often their name comes to mind.';
+    case 'record':
+      if (how === 'refuse') { grow('integrity', 3, m); grow('professionalism', 1, m); return 'You refuse, and say why. The note stays as it was written; the review is fair.'; }
+      grow('integrity', -6, m);
+      if (roll(0.5)) { m.discipline.push({ year: year(), what: 'Altered a medical record after the fact.' }); return 'The audit trail shows the change. Altering a record is a serious matter, and it is treated as one.'; }
+      return 'Nobody notices. You do.';
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';
