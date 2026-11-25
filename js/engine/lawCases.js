@@ -248,6 +248,7 @@ export function file(c, kind, o = {}) {
   const when = o.at ?? nowM();
   const f = { id: `f${c.filings.length + 1}`, main: true, name: fill(T.motion.name, c), kind, quality: Math.round(quality * 100) / 100, m: when, routine: !!o.routine, ruling: null };
   if (c.supervisorId) f.reviewedBy = c.supervisorId; // a supervisor read it first
+  f.how = store.state.year < 1990 ? 'on paper, by hand at the clerk\'s office' : store.state.year < 2005 ? 'on paper, by post or courier' : 'electronically';
   c.filings.push(f);
   const dl = c.deadlines.find((d) => d.id === 'filing' && d.met == null);
   if (dl) dl.met = when <= dl.due;

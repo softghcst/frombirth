@@ -13,6 +13,7 @@ import { makeNpc } from './npcFactory.js';
 import { recordEvent, archiveIdOf } from './chronicle.js';
 import { systemFor, OFFENSE_BY_ID } from '../data/justice.js';
 import { convictionsOf } from './records.js';
+import { rule } from './rules.js';
 import { COUNTRIES } from '../data/countries.js';
 import { COUNTRY_LAW, LAW_PROFILES, LEGAL_SKILLS, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
 
@@ -70,6 +71,7 @@ export function canon(key, title, text, o = {}) {
 export function entrance(p = player()) {
   const prof = profileFor(p.countryId);
   if (prof.entrance.id === 'none') return null;
+  if (prof.entrance.id === 'lsat' && store.state.year < 1948) return null; // the LSAT was first given in 1948
   const L = lawOf(p);
   const e = L.entrance ?? {};
   const ready = p.age >= 18 && (p.education.degrees.some((d) => d.type === 'university') || (p.education.stage === 'university' && p.education.yearInStage >= 2));
@@ -350,8 +352,39 @@ export function referenceFor(careerId, p = player()) {
 
 // ---------- Graduation and the bar ----------
 
-/** Has a law degree that qualifies them to sit the bar. */
-export const hasLawDegree = (p = player()) => p.education.degrees.some((d) => d.type === 'law');
+/** Has a law degree, or (before 1900, in common-law countries) has read the law with a practicing lawyer. */
+export const hasLawDegree = (p = player()) => p.education.degrees.some((d) => d.type === 'law') || !!p.law?.readLaw?.done;
+
+// ---------- Reading the law (before 1900) ----------
+
+/** Before law schools were the way in, a would-be lawyer read the law in a practicing lawyer's office. */
+export function canReadLaw(p = player()) {
+  const fam = profileFor(p.countryId).family;
+  if (store.state.year >= 1900) return 'Law school is the way in now.';
+  if (!['american', 'jury', 'bench'].includes(fam)) return 'Not the way in here.';
+  if (p.age < 17) return 'From 17.';
+  if (p.law?.readLaw) return p.law.readLaw.done ? 'You have read the law.' : 'You are reading the law now.';
+  return '';
+}
+/** Starts two years in a lawyer's office: copying, reading and watching. */
+export function startReadingLaw(p = player()) {
+  const why = canReadLaw(p);
+  if (why) return result(false, why, 'neutral');
+  const L = lawOf(p);
+  const mentor = keepPerson(p, 'readLawMentor', 'mentor', 'Practicing lawyer', rng.int(40, 66));
+  L.readLaw = { start: nowM(), until: nowM() + 24, mentorId: mentor.id, done: false };
+  canon(`law:readLaw:${aid()}`, 'Began reading the law', `In the office of ${mentor.firstName} ${mentor.lastName}.`, { sig: 2 });
+  return result(true, `You start reading the law in the office of ${mentor.firstName} ${mentor.lastName}: two years of copying, reading and watching.`, 'good');
+}
+function progressReading(p) {
+  const R = p.law?.readLaw;
+  if (!R || R.done || nowM() < R.until) return;
+  R.done = nowM();
+  gain(p, { research: 8, writing: 6, procedure: 6, drafting: 5, counseling: 4 });
+  log(`You have read the law for two years. ${store.state.npcs[R.mentorId]?.firstName ?? 'Your mentor'} says you are ready to be examined for the bar.`, 'system', 'good');
+}
+/** The bar exam by the era: an oral examination before a committee of the bar, before 1900. */
+export const barExamName = (p = player()) => (store.state.year < 1900 && ['american', 'jury', 'bench'].includes(profileFor(p.countryId).family) ? 'oral examination before a committee of the bar' : profileFor(p.countryId).exam);
 export const admitted = (p = player()) => !!lawOf(p).bar.admitted;
 
 /** Where the player stands with the bar. */
@@ -360,13 +393,14 @@ export function barStatus(p = player()) {
   const B = L.bar;
   const prof = profileFor(p.countryId);
   if (B.admitted) return { stage: 'admitted', text: `Admitted ${B.admitted.year}, ${B.admitted.where}.`, prof };
+  if (B.fitness === 'barred') return { stage: 'barred', text: `Women cannot yet be admitted to practice in ${COUNTRY_NAME(p.countryId)}. Your exam result stands for when they can.`, prof };
   if (B.training && !B.training.done) return { stage: 'training', text: `In ${B.training.name}: ${Math.max(0, B.training.until - nowM())} months to go before ${prof.admission}.`, prof };
   if (!hasLawDegree(p)) return { stage: 'none', text: 'Taken after a law degree.', prof };
   const last = B.attempts.at(-1);
   const wait = last ? Math.max(0, 6 - (nowM() - last.m)) : 0;
   if (B.fitness === 'deferred' && nowM() - (B.fitnessM ?? 0) < 24) return { stage: 'fitness', text: `The ${prof.fitness} put your admission off. You can ask again in ${24 - (nowM() - B.fitnessM)} months.`, prof };
   return { stage: wait ? 'waiting' : 'open', wait, attempts: B.attempts.length, passedExam: B.attempts.some((a) => a.passed), prepared: !!B.prep && (!last || B.prep.m > last.m), prof,
-    text: wait ? `The next sitting is in ${wait} months.` : `You can sit the ${prof.exam}.` };
+    text: wait ? `The next sitting is in ${wait} months.` : `You can sit the ${barExamName(p)}.` };
 }
 /** Preparation for the next sitting: a course (paid) or study alone. */
 export function prepareBar(kind = 'self', p = player()) {
@@ -388,7 +422,7 @@ export function barExam(p = player()) {
   const L = lawOf(p);
   const seed = L.bar.attempts.length;
   const subjects = BAR_SUBJECTS.map((id, i) => BAR_SUBJECTS[(i + seed * 3) % BAR_SUBJECTS.length]).slice(0, 4);
-  return { name: s.prof.exam, questions: subjects.map((id) => { const c = COURSE_BY_ID[id]; return { course: id, courseName: c.name, ...c.exam[seed % c.exam.length] }; }) };
+  return { name: barExamName(p), questions: subjects.map((id) => { const c = COURSE_BY_ID[id]; return { course: id, courseName: c.name, ...c.exam[seed % c.exam.length] }; }) };
 }
 /**
  * Sits the bar exam. Points from the answers, from what the player knows and from preparation; a pass needs
@@ -404,7 +438,7 @@ export function takeBar(answers = [], p = player()) {
   const right = ex.questions.filter((qq, i) => answers[i] === qq.right).length / ex.questions.length;
   const prep = L.bar.prep && L.bar.prep.m > (L.bar.attempts.at(-1)?.m ?? -1) ? L.bar.prep.edge : -0.04;
   const know = avg(L, ['research', 'analysis', 'interpretation', 'procedure', 'evidence']) / 100;
-  const gpa = (p.education.degrees.filter((d) => d.type === 'law').at(-1)?.gpa ?? 3) - 3;
+  const gpa = (p.education.degrees.filter((d) => d.type === 'law').at(-1)?.gpa ?? 3) - 3; // reading the law: an even 3.0
   const score = clamp(right * 0.38 + know * 0.3 + gpa * 0.1 + 0.27 + prep + Math.min(0.06, L.bar.attempts.length * 0.02) + (rng.next() - 0.5) * 0.16, 0, 1);
   const passed = score >= BAR_PASS;
   L.bar.attempts.push({ m: nowM(), year: store.state.year, score: Math.round(score * 100), passed });
@@ -418,6 +452,11 @@ export function takeBar(answers = [], p = player()) {
 /** Character and fitness: an honest record is enough; serious recent convictions put admission off. */
 function fitness(p, examName) {
   const L = lawOf(p);
+  // Historical Eras: in many countries women could study law long before they could be admitted (data/history.js).
+  if ((p.flags?.trueGender ?? p.gender) === 'female' && !rule('womenInLaw', p.countryId)) {
+    L.bar.fitness = 'barred'; L.bar.fitnessM = nowM();
+    return result(false, `You passed the ${examName}, but in ${COUNTRY_NAME(p.countryId)} in ${store.state.year} women cannot yet be admitted to practice law. You can work in the law in other ways until that changes.`, 'bad');
+  }
   const recent = convictionsOf(p).filter((r) => (r.year ?? 0) >= store.state.year - 10 && (OFFENSE_BY_ID[r.crimeId]?.severity ?? 1) >= 3);
   const prof = profileFor(p.countryId);
   if (recent.length) {
@@ -466,7 +505,10 @@ export function graduated(p = player()) {
  */
 /** Training after the exam ends when its months are done, and admission follows. Run every turn (engine/lawPractice.js). */
 export function progressBar(p = player()) {
+  progressReading(p);
   const B = p.law?.bar;
+  // When the law changes, a woman who passed the exam and was barred is admitted.
+  if (B?.fitness === 'barred' && !B.admitted && rule('womenInLaw', p.countryId)) { B.fitness = 'cleared'; return admit(p, barExamName(p)); }
   if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam);
   return null;
 }

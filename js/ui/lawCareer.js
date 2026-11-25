@@ -83,10 +83,13 @@ function education() {
   if (S?.done || ls.hasLawDegree(p)) {
     const b = ls.barStatus(p);
     const att = L.bar.attempts;
-    parts.push(card(`The ${prof.exam}`, `${kv('Status', b.stage === 'admitted' ? 'Admitted' : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
+    parts.push(card(`The ${ls.barExamName(p)}`, `${kv('Status', b.stage === 'admitted' ? 'Admitted' : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
       ${b.stage === 'admitted' || b.stage === 'training' ? '' : `<div class="btn-stack">${!b.prepared ? `${btn('Take a Bar Course', 'data-law="prepCourse"')}${btn('Study on Your Own', 'data-law="prepSelf"')}` : ''}${b.stage === 'open' ? btn(`Sit the ${prof.exam}`, 'data-law="bar"', 'primary') : ''}</div>`}
       <p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`));
   }
+  const rl = ls.canReadLaw(p);
+  if (!rl || p.law?.readLaw) parts.push(card('Reading the law', p.law?.readLaw ? kv('Status', p.law.readLaw.done ? 'Done: you may be examined for the bar' : `In ${nameOf(p.law.readLaw.mentorId)}'s office, ${Math.max(0, p.law.readLaw.until - ls.nowM())} months to go`)
+    : `<p class="muted">Before law schools were the way in, lawyers learned in a practicing lawyer's office.</p>${btn('Read the Law', 'data-law="readLaw"', 'primary')}`));
   if (!parts.length) parts.push(`<p class="muted">${esc(p.education.degrees.some((d) => d.type === 'university') ? 'Apply to law school from Plan What Comes Next.' : 'Law school comes after a first degree.')}</p>`);
   const note = prof.depth === 'full' ? '' : `<p class="muted">${esc(prof.name)}: ${esc(prof.note ?? 'a simplified model of how lawyers qualify here.')}</p>`;
   return parts.join('') + note;
@@ -230,6 +233,7 @@ async function courtroom(c) {
 
 async function schoolAction(id) {
   if (id === 'prepEntrance') return say(ls.prepEntrance());
+  if (id === 'readLaw') return say(ls.startReadingLaw());
   if (id === 'sitEntrance') return say(ls.sitEntrance());
   if (id === 'prepCourse') return say(ls.prepareBar('course'));
   if (id === 'prepSelf') return say(ls.prepareBar('self'));

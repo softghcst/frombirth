@@ -119,6 +119,33 @@ rng.seed(20261125);
   check(ls.admitted() && /solicitor/.test(ls.lawOf().bar.admitted.body), `after the training, admission as a solicitor (${ls.lawOf().bar.admitted?.body})`);
 }
 
+// Historical eras: no LSAT before 1948; reading the law before 1900; women barred until the law changed.
+{
+  const { syncWorld } = await import('../js/engine/history.js');
+  const setYear = (y) => { store.state.year = y; syncWorld(y); }; // the world's laws and money follow the year, as the game does
+  const p = graduate();
+  setYear(1930);
+  check(!ls.entrance(), 'no LSAT before 1948');
+  setYear(1880); p.age = 20; p.education.degrees = [];
+  check(!ls.canReadLaw() && ls.startReadingLaw().ok && !ls.hasLawDegree(), 'in 1880 a young man reads the law in a lawyer\'s office');
+  for (let i = 0; i < 3; i++) turn();
+  check(ls.hasLawDegree() && /oral examination/.test(ls.barExamName()), `after two years he may be examined for the bar: an ${ls.barExamName()}`);
+  const w = graduate({ countryId: 'uk' });
+  w.gender = 'female'; if (w.flags) delete w.flags.trueGender;
+  setYear(1910);
+  w.education.degrees.push({ type: 'law', majorId: 'history', gpa: 3.7, age: 25 });
+  let r = null;
+  for (let i = 0; i < 4; i++) { const e = ls.barExam(); if (e) { r = ls.takeBar(e.questions.map((q) => q.right)); if (r.ok || /women/.test(r.text)) break; } turn(); }
+  check(r && !r.ok && /women cannot yet be admitted/.test(r.text) && ls.barStatus().stage === 'barred', 'in England before 1919 a woman who passes cannot be admitted');
+  setYear(1920);
+  ls.progressBar();
+  check(ls.barStatus().stage === 'training' || ls.admitted(), 'once the law changes, her result stands and she goes on to admission');
+  const c = (() => { lc.createCase('contract_dispute'); return lc.LC()[`lc_${(store.state.justice.lawSeq)}`]; })();
+  lc.file(c, 'strong');
+  check(/clerk/.test(c.filings[0].how), `in ${store.state.year} a filing is ${c.filings[0].how}`);
+  setYear(2026);
+}
+
 // 12. Older saves: a lawyer already working is not sent back to law school, and no cases are invented.
 {
   const p = graduate();
