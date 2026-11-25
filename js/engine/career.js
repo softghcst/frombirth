@@ -134,7 +134,9 @@ export function unmet(career, o = {}) {
   if (r.program && !hasDegree(r.program)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
       cosmetology: 'Needs a hair and makeup license.' }[r.program] ?? `Needs you to have finished ${PROGRAMS[r.program].label.toLowerCase()}.`);
-  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched) {
+  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched
+    // A law graduate in practical training (articling, qualifying work, the Referendariat) may join a firm as a trainee.
+    && !(career.id === 'lawyer' && p.law?.bar?.training && !p.law.bar.training.done)) {
     // The degree is not the right to practice.
     out.push(`Needs you to pass the ${examName(licenseFor(r.program))}.`);
   }

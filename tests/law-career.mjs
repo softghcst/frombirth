@@ -241,6 +241,36 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(lp.takeLeave().ok && c.due === due + 1 && !lp.takeLeave().ok, 'leave moves the deadlines back, once a year');
 }
 
+// Your own firm: a fee strategy and malpractice cover. A trainee works, but only under supervision.
+{
+  const { start } = await import('../js/engine/business.js');
+  lawyer('lawyer');
+  p().career.experience.lawyer = 6;
+  career.quitCareer();
+  start('law_firm', 'Ellis Law');
+  check(lp.setFeeStrategy('premium').ok && L().fees === 'premium', 'your own firm sets its fees');
+  const c = lc.createCase('contract_dispute', { track: 'own', fee: 'flat' });
+  lc.close(c, { kind: 'judgment', text: 'Judgment.', favorable: 1, trial: true });
+  check(c.fee.amount === Math.round(lc.LC()[c.id].fee.amount) && c.fee.amount > 0, `premium fees are charged (${c.fee.amount})`);
+  const firm = lp.ownFirm();
+  const lost = lc.createCase('injury', { track: 'own', fee: 'hourly' });
+  lost.deadlines.push({ id: 'proc:x', proc: 'x', label: 'A filing', due: 0, met: false });
+  lc.close(lost, { kind: 'judgment_against', text: 'Lost.', favorable: -0.5, trial: true });
+  store.state.pendingEvents = []; turn();
+  check(lost.claimChecked && store.state.journal.some((e) => /sued your firm/.test(e.text)), 'a case lost through a missed deadline brings a malpractice claim, paid by an uninsured firm');
+  check(lp.setMalpractice(true).ok && L().malpractice, 'and the firm can insure against it');
+  // A trainee in England during qualifying work.
+  const uk = lawyer('lawyer', { countryId: 'uk' });
+  career.quitCareer();
+  uk.flags.licenses = []; L().bar.admitted = null; L().bar.training = { from: ls.nowM(), until: ls.nowM() + 24, name: 'qualifying work experience' };
+  check(!career.unmet(CAREER_BY_ID.lawyer).some((x) => /exam|pass/i.test(x)), 'a trainee in qualifying work can be hired by a firm');
+  career.hire(CAREER_BY_ID.lawyer, 0, 60, 'test');
+  check(!lp.mayPractice(), 'and works cases');
+  L().window = null; L().offers = [];
+  const offs = lp.offers();
+  check(offs.length && offs.every((o) => o.second), 'but always as second chair, under a supervisor');
+}
+
 // 15. Retirement keeps the record; a descendant sees the career, not the clients' secrets.
 {
   lawyer('lawyer');

@@ -78,7 +78,11 @@ rng.seed(20261125);
   const wrong = ex.questions.map((q) => (q.right + 1) % q.options.length);
   const r1 = ls.takeBar(wrong);
   check(!r1.ok && L.bar.attempts.length === 1 && !ls.admitted(), 'the bar can be failed');
-  check(!ls.barExam() && ls.barStatus().stage === 'waiting', 'and the next sitting is six months away');
+  // With year-long turns the year's second sitting is open in the same turn; after it, the next is months away.
+  const second = ls.barExam();
+  check(!!second, 'the year\'s second sitting is open, even within one long turn');
+  ls.takeBar(second.questions.map((q) => (q.right + 1) % q.options.length));
+  check(!ls.barExam() && ls.barStatus().stage === 'waiting', 'after two sittings in twelve months, the next is months away');
   turn();
   check(ls.prepareBar('course').ok, 'a bar course is paid for');
   let passed = false;

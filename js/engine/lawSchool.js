@@ -402,7 +402,11 @@ export function barStatus(p = player()) {
   if (B.training && !B.training.done) return { stage: 'training', text: `In ${B.training.name}: ${Math.max(0, B.training.until - nowM())} months to go before ${prof.admission}.`, prof };
   if (!hasLawDegree(p)) return { stage: 'none', text: 'Taken after a law degree.', prof };
   const last = B.attempts.at(-1);
-  const wait = last ? Math.max(0, 6 - (nowM() - last.m)) : 0;
+  // The exam sits twice a year. However long a turn is, the year's two sittings are open: someone living a year in one
+  // turn may sit the second sitting in the same turn, never a third in twelve months.
+  const yearSittings = B.attempts.filter((a) => a.m > nowM() - 12).length;
+  const step = store.state.settings?.step ?? 12;
+  const wait = !last ? 0 : yearSittings >= 2 ? Math.max(1, 12 - (nowM() - B.attempts.filter((a) => a.m > nowM() - 12)[0].m)) : step === 12 ? 0 : Math.max(0, 6 - (nowM() - last.m));
   if (B.fitness === 'deferred' && nowM() - (B.fitnessM ?? 0) < 24) return { stage: 'fitness', text: `The ${prof.fitness} put your admission off. You can ask again in ${24 - (nowM() - B.fitnessM)} months.`, prof };
   return { stage: wait ? 'waiting' : 'open', wait, attempts: B.attempts.length, passedExam: B.attempts.some((a) => a.passed), prepared: !!B.prep && (!last || B.prep.m > last.m), prof,
     text: wait ? `The next sitting is in ${wait} months.` : `You can sit the ${barExamName(p)}.` };

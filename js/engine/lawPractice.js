@@ -77,8 +77,10 @@ export function legalYears(p = player()) {
   return [...LEGAL].reduce((s, id) => s + (ex[id] ?? 0), 0);
 }
 /** Licensed, not suspended or disbarred, and able to take a client's case. */
+export const inTraining = (p = player()) => !!p.law?.bar?.training && !p.law.bar.training.done && !p.law.bar.admitted;
 export function mayPractice(p = player()) {
   const L = lawOf(p);
+  if (inTraining(p) && LEGAL.has(p.career?.careerId)) return ''; // a trainee works, always under supervision
   if (!admitted(p)) return 'You are not admitted to practice. A law degree alone does not allow it.';
   if (L.bar.disbarred) return 'You were disbarred.';
   if ((L.suspendedUntil ?? 0) > nowM()) return 'You are suspended from practice.';
@@ -156,16 +158,16 @@ function openWindow(p, w) {
     }
     return;
   }
-  const n = t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) : 2;
+  const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) : 2);
   const taken = new Set((L.offers ?? []).map((o) => o.templateId));
   for (let i = 0; i < n; i++) {
-    const second = t === 'lawyer' && rng.chance(0.3) && cap < 5;
+    const second = inTraining(p) || (t === 'lawyer' && rng.chance(0.3) && cap < 5);
     let tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
     for (let k = 0; k < 4 && taken.has(tid); k++) tid = pickTemplate(L.specialty, second ? cap + 1 : cap); // different cases, not the same one twice
     if (!tid || taken.has(tid)) continue;
     taken.add(tid);
     const T = CASE_TEMPLATES[tid];
-    L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
+    L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: inTraining(p) || T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
       summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? 'some')).replace(/(^|[.!?]\s+)([a-z])/g, (x, a, b) => a + b.toUpperCase()) });
   }
   // A former client may come back with something new: the same person, their history with the player intact.
@@ -173,7 +175,7 @@ function openWindow(p, w) {
   if (former.length && rng.chance(0.35)) {
     const back = rng.pick(former);
     const tid = pickTemplate(L.specialty, cap) ?? 'contract_dispute';
-    L.offers.push({ id: `of${w}_back`, window: w, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: feeFor(CASE_TEMPLATES[tid].level), kind: CASE_TEMPLATES[tid].kind, clientId: back.id, returning: true,
+    L.offers.push({ id: `of${w}_back`, window: w, second: inTraining(p), templateId: tid, level: CASE_TEMPLATES[tid].level, fee: feeFor(CASE_TEMPLATES[tid].level), kind: CASE_TEMPLATES[tid].kind, clientId: back.id, returning: true,
       summary: `${back.firstName} ${back.lastName}, whose case you handled in ${store.state.npcs[back.id].flags.lastCaseYear ?? 'the past'}, is back with a new matter.` });
   }
   // A prominent client, only for an experienced lawyer whose name is known in the right field. Not a reward for wins.
@@ -193,6 +195,7 @@ export function offers(p = player()) { refreshOpportunities(p); return lawOf(p).
 function openCase(p, templateId, o = {}) {
   const L = lawOf(p);
   const t = trackOf(p);
+  if (inTraining(p)) o = { ...o, second: true }; // a trainee is always second chair
   const sup = o.second ? supervisor(p) : null;
   // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
   if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
@@ -485,6 +488,7 @@ export function tickLaw(o = {}) {
   cases.progressCases(p);
   if (trackOf(p)) refreshOpportunities(p);
   storyBeats(p);
+  firmYear(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
@@ -935,6 +939,43 @@ export function rule(caseId, ruling, p = player()) {
   if (reversed) adjustPerformance(-3);
   if (ruling === 'improper') { L.rep.integrity = clamp(L.rep.integrity - 6); return result(false, 'Wealth is not the test: the child\'s interests are. The appeal court will say so.', 'bad'); }
   return result(right, right ? 'Your ruling follows the evidence and the law.' : reversed ? 'The appeal court reverses you: the evidence did not support the ruling.' : 'Your ruling stands, though it was a close thing.', right ? 'good' : 'neutral');
+}
+
+// ---------- Your own firm's choices ----------
+
+export const FEE_STRATEGIES = {
+  standard: { name: 'Standard fees', k: 1, offers: 0, note: 'The going rate.' },
+  premium: { name: 'Premium fees', k: 1.5, offers: -1, note: 'Fewer clients, who pay more and expect more.' },
+  accessible: { name: 'Accessible fees', k: 0.7, offers: 1, note: 'More clients, who pay less: many could not afford a lawyer otherwise.' },
+};
+/** Sets your own firm's fees. */
+export function setFeeStrategy(id, p = player()) {
+  if (!ownFirm(p)) return result(false, 'Only for your own practice.', 'neutral');
+  if (!FEE_STRATEGIES[id]) return result(false, 'There is no such strategy.', 'neutral');
+  lawOf(p).fees = id;
+  return result(true, `${FEE_STRATEGIES[id].name}: ${FEE_STRATEGIES[id].note}`, 'neutral');
+}
+/** Malpractice cover for your own firm: a yearly premium from the firm's books, and claims paid if it comes to that. */
+export function setMalpractice(on, p = player()) {
+  if (!ownFirm(p)) return result(false, 'Only for your own practice.', 'neutral');
+  lawOf(p).malpractice = !!on;
+  return result(true, on ? 'Your firm is insured against malpractice claims.' : 'Your firm carries no malpractice cover.', 'neutral');
+}
+/** The year's premium, and claims from clients whose cases were lost through a missed deadline. Once a year. */
+function firmYear(p) {
+  const b = ownFirm(p);
+  const L = lawOf(p);
+  if (!b || L.firmYear === store.state.year) return;
+  L.firmYear = store.state.year;
+  if (L.malpractice) b.cash -= localCost(3000, country());
+  for (const c of L.caseIds.map(cases.caseById).filter((x) => x?.done && x.track === 'own' && !x.claimChecked)) {
+    c.claimChecked = true;
+    if (!(c.outcome?.favorable < 0 && c.deadlines.some((d) => d.met === false))) continue;
+    const amount = localCost(25000, country());
+    if (L.malpractice) { log(`${c.vars.client} claimed against your firm over ${c.title}. Your insurer paid.`, 'system', 'neutral'); }
+    else { b.cash -= amount; log(`${c.vars.client} sued your firm over a missed deadline in ${c.title}. With no malpractice cover, the firm paid ${fmtMoney(amount, country())}.`, 'system', 'bad'); }
+    L.rep.clients = clamp(L.rep.clients - 3);
+  }
 }
 
 // ---------- The office and the court ----------

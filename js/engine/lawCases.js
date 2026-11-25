@@ -758,7 +758,8 @@ export function close(c, out, lines = []) {
     c.fee.paid = true;
     if (c.fee.model !== 'salary') {
       const c0 = COUNTRIES[c.countryId];
-      const base = localCost([0, 1500, 4000, 9000, 22000, 60000][c.level], c0);
+      const strategy = { premium: 1.5, accessible: 0.7 }[L.fees] ?? 1; // your own firm's fee strategy
+      const base = Math.round(localCost([0, 1500, 4000, 9000, 22000, 60000][c.level], c0) * (c.track === 'own' ? strategy : 1));
       const amount = c.fee.model === 'contingency' ? Math.round((out.amount ?? 0) * (contingencyRule(c.templateId, c.countryId).share ?? 0)) : base;
       c.fee.amount = amount;
       if (amount > 0 && L.firm?.own) { L.firm.revenue = (L.firm.revenue ?? 0) + amount; }

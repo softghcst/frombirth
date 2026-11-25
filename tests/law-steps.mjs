@@ -75,4 +75,21 @@ const all = (base) => [3, 6, 12].map((s) => ({ step: s, ...year(base, s) }));
   check(Math.abs(seen[0] - seen[1]) <= 2 && seen[0] <= 8, `as many offers in a year of three-month turns as in one turn (${seen.join(' vs ')})`);
 }
 
+// The bar sits twice a year, whatever the turn length: two chances in a year, never more.
+{
+  const sittings = [3, 12].map((step) => {
+    rng.seed(15);
+    const p = graduate({ step });
+    p.education.degrees.push({ type: 'law', majorId: 'history', gpa: 2.2, age: 25 });
+    p.stats.intellect = 30;
+    let n = 0;
+    for (let t = 0; t < 12 / step; t++) {
+      for (let k = 0; k < 3; k++) { const e = ls.barExam(); if (!e || ls.admitted()) break; ls.takeBar(e.questions.map(() => -1)); n++; }
+      store.state.pendingEvents = []; advanceTurn();
+    }
+    return n;
+  });
+  check(sittings[0] === 2 && sittings[1] === 2, `two bar sittings in a year, in three-month turns or one year-long turn (${sittings.join(' vs ')})`);
+}
+
 finish('Three-, six- and twelve-month years agree.');

@@ -162,7 +162,11 @@ function office() {
   const t = lp.trackOf(p);
   if (t === 'own') {
     const f = lp.firmView(p);
-    return card(f.name, `${kv('Founded', String(f.founded))}${kv('Staff', String(f.staff))}${kv('Firm cash', fmtMoney(f.cash, country()))}<p class="muted">Hiring, pricing and the books are run from the business, in Holdings.</p>`);
+    const L = p.law ?? {};
+    return card(f.name, `${kv('Founded', String(f.founded))}${kv('Staff', String(f.staff))}${kv('Firm cash', fmtMoney(f.cash, country()))}
+      ${kv('Fees', lp.FEE_STRATEGIES[L.fees ?? 'standard'].name)}${kv('Malpractice cover', L.malpractice ? 'Insured' : 'None')}
+      <div class="btn-row">${btn('Set Fees', 'data-firm="fees"')}${btn(L.malpractice ? 'Drop Malpractice Cover' : 'Insure Against Malpractice', 'data-firm="insure"')}</div>
+      <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`);
   }
   const duties = lp.leaderDuties(p);
   const lead = duties.length ? card('Your duties this half-year', duties.map((d) => row(`data-duty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')) : '';
@@ -384,6 +388,12 @@ export function openLawCareer(api, start = {}) {
       if (a != null) await say(lp.rule(c.id, a));
       return changed();
     }
+    if (t.dataset.firm === 'fees') {
+      const a = await pickModal({ title: 'Your fees', body: 'What you charge decides who comes to you.', options: Object.entries(lp.FEE_STRATEGIES).map(([id, x]) => ({ value: id, label: x.name, sub: x.note })) });
+      if (a) await say(lp.setFeeStrategy(a));
+      return changed();
+    }
+    if (t.dataset.firm === 'insure') { await say(lp.setMalpractice(!player().law?.malpractice)); return changed(); }
     if (t.dataset.load) { await say(t.dataset.load === 'support' ? lp.askSupport() : lp.takeLeave()); return changed(); }
     if (t.dataset.sact) { await schoolAct(t.dataset.sact); return changed(); }
     if (t.dataset.law) { await schoolAction(t.dataset.law); return changed(); }
