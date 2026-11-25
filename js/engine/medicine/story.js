@@ -67,7 +67,7 @@ export function storyYear(p = player(), m = med(p)) {
     const cast = when(p, m);
     if (!cast) continue;
     m.scenes.storyYear = year();
-    storyOnce(id, cast, m);
+    storyOnce(id, cast, m, { must: false, weight: 1.3 });
     return id;
   }
   return null;

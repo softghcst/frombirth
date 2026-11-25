@@ -32,6 +32,7 @@ import { openBusinesses, managerOf } from './business.js';
 import { openBranchAbroad } from './businessAbroad.js';
 import { stamp as stampVisit } from './emigration.js';
 import { localMoney, fmtMoney } from '../util.js';
+import { storyBeat } from './storyDirector.js';
 
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
 /** Yearly chance an arc begins once its conditions hold. Gameplay pacing. */
@@ -143,7 +144,7 @@ function ventureFor(p) {
 
 // ---------- Sending the scenes ----------
 
-const send = (id, cast) => store.state.pendingEvents.push({ id, cast });
+const send = (id, cast) => storyBeat(id, cast, { source: 'abroad', weight: 1.2 });
 
 /** Yearly: at most one arc begins, and only from what is really so. */
 export function tickAbroadArcs(p = player(), force = null) {

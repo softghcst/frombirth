@@ -21,6 +21,7 @@ import { clamp } from '../../util.js';
 import { store, player, log, milestone } from '../../state.js';
 import { recordEvent } from '../chronicle.js';
 import { SKILLS, SPECIALTY_BY_ID, qualifiesAs } from '../../data/medicine.js';
+import { storyBeat } from '../storyDirector.js';
 
 export const VERSION = 1;
 export const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -163,6 +164,8 @@ export function migrateMedicine(state) {
       }
     } finally { store.state = save; }
   }
+  // A medical drama setting chosen before there was one for the whole life becomes the life's own.
+  if (p.medicine?.drama && p.medicine.drama !== 'balanced' && !state.settings?.drama) (state.settings ??= {}).drama = p.medicine.drama;
   if (p.medicine) p.medicine.v = VERSION;
   state.medicine.v = VERSION;
   return state;
@@ -218,9 +221,10 @@ export function ancestorAt(hospitalId, state = store.state) {
  * A story beat of the medical career, told once in a life (the medical school interview, Match Day,
  * the first night on call). Queued by the engine at the moment it is true; never repeated.
  */
-export function storyOnce(id, cast = {}, m = M()) {
+export function storyOnce(id, cast = {}, m = M(), o = {}) {
   if (m.scenes[`story:${id}`] || (id === 'med_school_interview' && player().flags.medInterviewed)) return false;
   m.scenes[`story:${id}`] = year();
-  store.state.pendingEvents.push({ id, cast });
+  // A once-in-a-life moment (Match Day, the first night on call) always plays; the Story Director's yearly beats are paced.
+  storyBeat(id, cast, { source: 'medicine', must: o.must ?? true, weight: o.weight ?? 1 });
   return true;
 }

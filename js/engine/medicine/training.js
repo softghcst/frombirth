@@ -22,6 +22,7 @@ import { M, med, year, grow, note, once, result, roll, specialtyName, qualified,
 import { recordEvent, archiveIdOf } from '../chronicle.js';
 import { remember } from '../conditions.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
+import { storyBeat } from '../storyDirector.js';
 
 const avg = (...xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const an = (w) => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`;
@@ -145,7 +146,7 @@ function schoolYear(p, m, y) {
     const done = list.map((r) => rotate(p, m, r));
     const best = done.filter((d) => d.grade === 'Honors').map((d) => d.rot.name);
     log(`${year() < 1950 ? 'Clinical clerkships' : 'Clinical rotations'} this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
-    store.state.pendingEvents.push({ id: 'med_rotation', cast: { words: { rotation: done[0].rot.name, shows: done[0].rot.shows } } });
+    storyBeat('med_rotation', { words: { rotation: done[0].rot.name, shows: done[0].rot.shows } }, { source: 'medicine' });
   }
   const exams = dpm ? [{ id: 'apmle1', name: 'the first podiatric board exam', year: 2 }, { id: 'apmle2', name: 'the second podiatric board exam', year: 4 }] : j.exams;
   for (const ex of exams) {
@@ -436,7 +437,7 @@ export function trainingYear() {
   } else t.probation = 0;
   licenseCheck(p, m, t);
   // Chief resident: chosen in the last year from the strongest residents, never certain.
-  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(0.25 + (score - 60) / 80 + m.skills.leadership / 400)) {
+  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(Math.min(0.7, 0.25 + (score - 60) / 80 + m.skills.leadership / 400))) {
     t.chief = true;
     log(`The faculty chose you as chief resident for your final year in ${s.name}.`, 'system', 'good');
     note(`Chosen as chief resident in ${s.name}.`, 'career', { key: `chief:${t.specialtyId}`, milestone: `Chief resident, ${s.name}.`, log: false });
