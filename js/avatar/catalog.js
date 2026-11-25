@@ -43,7 +43,7 @@ export const MARKS = [
 ];
 const MARK_FILES = new Set(MARKS.map((m) => m.file));
 
-const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
+const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|^outfit_kid_|heir|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
 export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
 export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
 export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: withdrawn, so babies and toddlers are bald
@@ -56,6 +56,7 @@ export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy)
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = {
   textured_crop: 'textured_pixie_cut',
+  bowl_cut: 'textured_french_crop',
   // The girls' pack, withdrawn.
   '90s_flipped_ponytail': 'half_up_half_down_waves', short_bubble_pigtails: 'space_buns', y2k_spiky_updo_bun: 'messy_top_bun',
   collarbone_butterfly_cut: 'layered_feathered_midi', dutch_halo_braid: 'messy_top_bun', half_up_fountain_bob: 'half_up_half_down_waves',
@@ -72,6 +73,10 @@ export const CATALOG = {
   hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
   outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: [],
+  // Shaped brows from the salon or barber, worn over the brows a person was born with (any of the brows).
+  browStyle: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows),
+  // Beards, from the barbershop: any facial_hair artwork in the manifest (none at the moment).
+  beard: AVATAR_MANIFEST.facial_hair ? parts('facial_hair') : [],
   // A baby's and a child's own look, chosen in the editor's Baby and Child views (null: picked for them from the seed).
   babyHair: BABY_HAIR, babyOutfit: parts('clothes', (p) => OUTFITS.baby.includes(p.id)),
   kidHair: [...HAIR_STYLES, ...FITTED_STYLES].filter((h) => kidsMayWear(h.id)),
@@ -94,7 +99,7 @@ export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Ma
 /** Born with: one id each, except marks, which is a list of ids. */
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
-export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat', 'babyHair', 'babyOutfit', 'kidHair', 'kidOutfit'];
+export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat', 'browStyle', 'beard', 'babyHair', 'babyOutfit', 'kidHair', 'kidOutfit'];
 /** The proportions of someone's face. */
 export const shownTweaks = (a) => ({ ...a.inherited.tweaks });
 
@@ -247,6 +252,8 @@ export function normalize(a, seed = 'x') {
   // Facial hair has been taken out of the game: a beard or mustache in an old save is dropped.
   style.makeup = has('makeup', st.makeup) ? st.makeup : (v2 && OLD_MAKEUP[st.makeup]) || null;
   style.lipColor = has('lipColor', st.lipColor) ? st.lipColor : null;
+  style.browStyle = has('browStyle', st.browStyle) ? st.browStyle : null;  // shaped at the salon; null: their own
+  style.beard = has('beard', st.beard) ? st.beard : null;
   style.jewelry = Array.isArray(st.jewelry) ? st.jewelry.filter((id) => has('jewelry', id)) : [];
   const wardrobe = CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id));  // empty while there are no clothes: then nobody wears any
   style.outfit = has('outfit', st.outfit) ? st.outfit : wardrobe.length ? seeded(wardrobe, seed, 'outfit').id : null;
@@ -299,7 +306,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
-    tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
+    tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: st.browStyle ?? g.brows, nose: g.nose, lips, beard: st.beard ?? null,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: st.babyHair ?? (babyHair.length ? seeded(babyHair, seed, 'babyhair') : null),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
