@@ -22,10 +22,11 @@ import { graduationDay } from './schoollife.js';
 import { leftSchoolTeam } from './sports.js';
 import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
 import * as campus from './campus.js';
+import * as lawSchool from './lawSchool.js';
 import * as adult from './adulted.js';
 import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
-import { jurisdiction } from '../data/medicine.js';
+import { jurisdiction, ERA } from '../data/medicine.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
@@ -319,6 +320,13 @@ function leaveSchool(how = 'completed') {
   }
 }
 
+/** Law school ends when its last term is graded, on whatever turn that falls (engine/lawPractice.js tickLaw). */
+export function finishLawSchool() {
+  const p = player();
+  const e = p.education;
+  if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.termsFor(p)) graduate();
+}
+
 function graduate() {
   const p = player();
   const e = p.education;
@@ -361,6 +369,7 @@ function graduate() {
         : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, ${sch.degreeMark(e.gpa)}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
   if (prog?.license === 'teaching') log(`Schools will hire a graduate without it, but they prefer the ${adult.examName(prog.license)}, which you can now sit.`);
+  else if (prog?.license === 'law') lawSchool.graduated(p); // law school's own record closes, and the bar opens (engine/lawSchool.js)
   else if (prog?.license) log(`The degree is not yet the right to practice: for that there is the ${adult.examName(prog.license)}, which you can now sit.`);
   if (e.stage === 'equivalency') { e.droppedOut = false; e.expelled = false; log('Everything that asks for a school-leaving qualification is open to you now.'); }
   if (e.stage === 'doctorate') { e.degrees[e.degrees.length - 1].thesis = e.thesis.topic; p.flags.doctor = true; delete e.thesis; }
@@ -449,6 +458,7 @@ export function tickEducation() {
   e.yearInStage += 1;
   const g = yearGpa(p);
   e.gpa = round2(e.gpa === 0 ? g : e.gpa * 0.6 + g * 0.4);
+  if (e.stage === 'law') { lawSchool.progressSchool(p); const lg = lawSchool.lawGpa(p); if (lg != null) e.gpa = lg; } // graded term by term (engine/lawSchool.js)
   p.stats.intellect = clamp(p.stats.intellect + rng.int(0, 2) + (p.flags.tutorAge === p.age - 1 ? 2 : 0));
 
   // What you gained from the company you keep and your course.
@@ -490,7 +500,9 @@ export function tickEducation() {
     return;
   }
   // A degree is finished when its credits are earned; other courses, when their years are served.
-  if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
+  // Law school ends when its terms are done (engine/lawSchool.js), counted in months, not New Years passed.
+  if (e.stage === 'law') { if (lawSchool.termsDone(p) >= lawSchool.termsFor(p)) return graduate(); }
+  else if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
   if (e.gpa < 1.2) {
     log(`Your grades collapsed and ${stageLabel(e.stage).toLowerCase()} asked you to leave.`, 'system', 'bad');
     p.stats.mood = clamp(p.stats.mood - 12);
@@ -750,12 +762,15 @@ export function programOptions() {
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
     else if (prog.minYear && store.state.year < prog.minYear) reason = `There is no such school in ${store.state.year}.`;
     else if (prog.id === 'podiatric' && !jurisdiction(p.countryId).dpm) reason = 'The game models the podiatric (DPM) route in the United States only.';
+    // Historical Eras: before about 1870 almost no medical school took women (data/medicine.js ERA).
+    else if (['medical', 'podiatric'].includes(prog.id) && (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenInMedicine) reason = `Almost no medical school admits women in ${store.state.year}.`;
     else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
     else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
     else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
     else if (prog.id === 'community' && held('university')) reason = 'You already have a university degree.';
     else if (base && base.gpa < prog.minGpa) reason = `Needs a GPA of ${prog.minGpa.toFixed(1)} (yours: ${base.gpa.toFixed(2)}).`;
     else if (prog.science && !MAJOR_BY_ID[bachelor.majorId]?.tracks.includes('medical')) reason = 'Needs a science or health degree.';
+    else if (prog.id === 'law' && lawSchool.applyBlock(p)) reason = lawSchool.applyBlock(p);
     else if (acts().applied[prog.id]) reason = 'You already applied this year.';
     const transfer = prog.id === 'university' && isTransfer();
     return { id: prog.id, label: transfer ? 'University (transfer)' : prog.label,
@@ -803,11 +818,13 @@ export function admissionChance(progId, subjectId) {
   const pm = p.medicine?.premed;
   const calling = p.flags.medCalling && ['medical', 'podiatric'].includes(progId) ? 0.04 : 0;
   const premed = calling + (pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0);
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
+  // Until about 1920 many schools took few women, or none (data/medicine.js ERA): fewer places, not less ability.
+  const barrier = (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenWidelyAdmitted ? 0.55 : 1;
+  if (progId === 'medical') return clamp((0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed) * barrier, 0.03, 0.95);
   if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
   if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMS[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);
-  return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2, 0.05, 0.95);
+  return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2 + lawSchool.entranceEdge(p), 0.05, 0.95); // the LSAT, where there is one
 }
 
 /** Rolls the scholarship a school would offer, if any. aid scales the odds. */
@@ -969,6 +986,7 @@ export function enroll(progId, subjectId, funding, living = {}, school = null) {
   }
   if (progId === 'university' || progId === 'community') campus.start(transfer);
   if (progId === 'doctorate') adult.startThesis();
+  if (progId === 'law') lawSchool.school(p); // law school's own record starts the day you enroll (engine/lawSchool.js)
   chargeTuition();
   // Someone studying alongside a job goes on living where they live.
   if (e.partTime) { e.housing = 'own'; e.roommateId = null; if (e.credits != null) e.load = 'part'; log('You will study in the evenings and keep your job.'); }

@@ -71,6 +71,9 @@ export const SPECIALTIES = [
   F('peds_cardiology', 'Pediatric Cardiology', 'pediatric cardiologist', ['pediatrics'], 3, { play: 'panel', dept: 'pediatrics', compete: 0.5 }),
   F('critical_care', 'Critical Care Medicine', 'intensivist', ['anesthesiology', 'emergency', 'internal'], 1, { play: 'acute', dept: 'icu', compete: 0.4, procedures: ['icu_procedure'] }),
   F('pain', 'Pain Medicine', 'pain specialist', ['anesthesiology', 'pmr', 'neurology', 'psychiatry'], 1, { play: 'panel', dept: 'anesthesiology', compete: 0.5, procedures: ['pain_procedure'] }),
+  // Forensic fellowships: the work is for death investigations and the courts (engine/investigations/forensicMed.js).
+  F('forensic_path', 'Forensic Pathology', 'forensic pathologist', ['pathology'], 1, { play: 'reading', dept: 'pathology', compete: 0.3, forensic: 'examiner' }),
+  F('forensic_psych', 'Forensic Psychiatry', 'forensic psychiatrist', ['psychiatry'], 1, { play: 'panel', dept: 'psychiatry', compete: 0.35, forensic: 'evaluator' }),
   F('mfm', 'Maternal-Fetal Medicine', 'maternal-fetal medicine specialist', ['obgyn'], 3, { play: 'panel', dept: 'obgyn', compete: 0.5 }),
   // Surgical fellowships
   F('ctsurg', 'Cardiothoracic Surgery', 'cardiothoracic surgeon', ['gensurg'], 2, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6,
@@ -220,6 +223,9 @@ export const RANKS = {
   chief_resident: { title: 'Chief resident', level: 0 },
   fellow: { title: 'Fellow', level: 0 },
   attending: { title: 'Attending physician', level: 1 },
+  experienced: { title: 'Experienced attending', level: 1 },
+  vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
+  ceo: { title: 'Hospital chief executive', level: 3, leader: true },
   senior: { title: 'Senior attending', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
@@ -255,6 +261,7 @@ export const ERA = {
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
+  womenWidelyAdmitted: 1920, // by about here most medical schools take women, if often in small numbers
 };
 
 /**

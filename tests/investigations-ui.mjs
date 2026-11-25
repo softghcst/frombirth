@@ -31,10 +31,10 @@ async function openHub(page) {
   await page.click('.tab-btn[data-tab="work"]');
   // The entry is a row on the Work tab, inside whichever section holds the job's own actions: open it if it is folded.
   const entry = page.locator('[data-act="investigations"]').first();
-  for (const t of await page.locator('.sec-row').all()) {
-    if (await entry.isVisible()) break;
-    await t.click(); await page.waitForTimeout(80);
-    if (!(await entry.isVisible()) && await page.locator('[data-panel-close]').count()) { await page.locator('[data-panel-close]').first().click(); await page.waitForTimeout(80); }
+  // It lives in the Work tab's Special careers section.
+  if (!(await entry.isVisible())) {
+    const special = page.locator('.sec-row', { hasText: /Special careers/i }).first();
+    if (await special.count()) { await special.click(); await page.waitForTimeout(120); }
   }
   await entry.click();
   await page.waitForSelector('[data-inv]');
@@ -62,6 +62,7 @@ async function run(viewport) {
   await openHub(page);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
   check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
+  check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Departments' }).first().click();
   await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
   await dismissMessages(page);
@@ -127,6 +128,27 @@ async function run(viewport) {
   await page.waitForSelector('.tab-btn[data-tab="work"]');
   const after = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const f = store.state.justice.investigations[id]?.file; return { partner: store.state.player.investigator.people.partnerId, asked: f ? Object.values(f.witnesses).map((x) => x.asked.length).join() : null, log: f?.log.length }; }, invId);
   check(after.partner === before.partner && after.asked === before.asked && after.log === before.log, `${w}px: after reloading, the partner and the case file are as they were`);
+  // A forensic pathologist's referrals, and the Public Safety page, on the same screen.
+  await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const medCore = await import('/js/engine/medicine/core.js');
+    const FM = await import('/js/engine/investigations/forensicMed.js');
+    const p = store.state.player;
+    const m = medCore.M(p);
+    m.completed = [{ specialtyId: 'pathology' }, { specialtyId: 'forensic_path' }]; m.license = { status: 'full', countryId: 'us' }; m.training = null; m.stage = 'practice';
+    FM.forensicYear(p);
+    p.investigator.stats.years = 9;
+  });
+  await openHub(page);
+  await dismissMessages(page);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Death Investigations' }).first().click();
+  check(/Cause of death and manner of death are different findings/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a forensic pathologist sees their referrals, cause and manner kept apart`);
+  await page.locator('[data-inv] [data-act="death"]').first().click();
+  await dismissMessages(page);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
+  check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
+  check(await fits(page), `${w}px: the new pages fit the screen`);
+  await closeHub(page);
   await page.close();
 }
 

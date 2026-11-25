@@ -1267,6 +1267,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .gl-bill .gl-more[open] > .kv { padding-left: 10px; font-size: 0.85rem; }
 .gl-pair { display: grid; gap: 4px; }
 
+/* My Legal Career (ui/lawCareer.js) */
+.law-tabs { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.law-tabs .av-chip { flex: none; }
+.law-row { width: 100%; }
+.law-ev { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.law-ev:last-child { border-bottom: 0; }
+.law-ev small { color: var(--muted); }
+.law-acts { margin: 10px 0 14px; }
+.law-back { margin-bottom: 8px; }
+.law-offer p { margin: 4px 0 8px; }
 /* ---------- The beauty salon visit (js/ui/salonVisit.js) ---------- */
 .salon-screen { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: flex; justify-content: center;
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }

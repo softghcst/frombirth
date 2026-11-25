@@ -37,6 +37,7 @@ import { heirHealth, legacySummary } from './health/index.js';
 import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
+import { legacySummary as investigatorLegacy } from './investigations/index.js';
 import { physicianSummary } from './medicine/core.js';
 import { handOver as handOverSports } from './sportsLife.js';
 import { rate as fxRate } from './currency.js';
@@ -289,6 +290,12 @@ export function continueAs(npcId) {
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
   // The city's hospitals keep what they are; a physician's patient files are confidential and are not inherited.
+  // The agencies, offices, laboratories and the cases they keep go on; an investigator's public career joins the family's legacy.
+  // A descendant inherits no powers and no access to case files: only what was public (engine/investigations/index.js legacySummary).
+  if (old.investigations || op.investigator) {
+    const was = investigatorLegacy(op);
+    next.investigations = { ...(old.investigations ?? {}), legacies: [...(old.investigations?.legacies ?? []), ...(was ? [{ ...was, id: op.id, died: old.year }] : [])] };
+  }
   if (old.medicine) next.medicine = { v: old.medicine.v, seq: old.medicine.seq ?? 0, hospitals: old.medicine.hospitals ?? {}, programs: old.medicine.programs ?? {}, schools: old.medicine.schools ?? {}, patients: {}, cases: {}, episodes: {} };
   giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
   next.today = yearSpan(next).start;

@@ -65,6 +65,7 @@ export function hospitalsIn(countryId = player().countryId, city = player().city
     add(`${city} Public Health Service`, 'public_health', 'medium');
     if (kind === 'capital') add(`${city} Government Hospital`, 'government', 'large');
     if (kind === 'capital' || kind === 'largest') { add(`${city} Heart Institute`, 'heart', 'large'); add(`${city} Orthopedic Hospital`, 'bone', 'medium'); }
+    else add(`${city} Rural Health Center`, 'rural', 'small'); // the country around a smaller city is served by a rural facility
   }
   return list.map((e) => ({ e, h: hospital(e) }));
 }
@@ -99,7 +100,7 @@ export function careerFor(specialtyId) {
   const s = SPECIALTY_BY_ID[specialtyId];
   if (!s) return CAREER_BY_ID.doctor;
   if (s.profession === 'podiatry') return CAREER_BY_ID.podiatrist;
-  if (specialtyId === 'psychiatry') return CAREER_BY_ID.psychiatry;
+  if (specialtyId === 'psychiatry' || specialtyId === 'forensic_psych') return CAREER_BY_ID.psychiatry;
   if (s.surgical && s.id !== 'obgyn' && s.id !== 'ophthalmology') return CAREER_BY_ID.surgery;
   return CAREER_BY_ID.doctor;
 }

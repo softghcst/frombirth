@@ -27,18 +27,39 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Detective selection | **Playable**: a vacancy, an assessment, a real rival applicant, a panel decision; transfers between units |
 | Burglary | **Playable** (the Ashford Street case is a burglary template) |
 | Robbery, homicide, missing persons, financial fraud, cybercrime | **Playable** as case templates with their own clues and explanations; cybercrime needs the web to exist |
-| Organized crime, special victims, family, juvenile, corruption, arson, major crimes | **Registry only**: units exist; their cases draw on the general templates |
+| Arson, public corruption, drug supply, firearms trafficking, domestic and family, juvenile | **Playable** as case packs described in data (`PACKS`); family cases offer support first and let the person harmed decide whether to give an account |
+| Organized crime, special victims, major crimes | **Playable** through the packs above (drugs and firearms; family; robbery, homicide, arson) |
 | Cold cases | **Playable**: inactive for three years becomes cold; reopening when a laboratory method that was not used becomes available; history kept |
 | Professional standards | **Playable** in a basic form: complaints about the player decided by someone else; complaints the player investigates, with conflict checks |
 | Promotions and leadership | **Playable**: police, detective and federal ladders; each needs years, standing, a vacancy and beats a rival; chief and SAC are appointed |
 | FBI | **Playable**: eligibility (simplified), four dated stages, selection, academy, a field office, a partner and supervisor, federal cases |
-| DEA, ATF | **Playable** to the same depth as the FBI, with their own eligibility, academies and offices; their cases use the same templates (no drug or firearms case packs yet) |
+| DEA, ATF | **Playable** to the same depth as the FBI, each with its own case types: the DEA drug supply, the ATF firearms and arson; the FBI fraud, cybercrime, corruption, robbery and homicide |
 | Task forces | **Partial**: a US robbery or fraud case may gain a federal partner, as one shared case |
 | Private investigation | **Playable**: license by exam, an agency on the business engine, clients who come or not by price and reputation, lawful steps only, fees paid once |
 | Forensic scientist (crossover) | **Partial**: requests from real cases on the bench; the report joins the same case file |
-| Journalist (crossover) | **Partial**: the public record of cases in court |
-| Medical examiner | **Partial**: homicide files carry an examiner's findings, with cause and manner kept apart; a player physician cannot issue them |
-| Forensic psychology, wrongful-conviction units, politics of policing | **Not built** |
+| Medical examiner | **Playable** for a physician who completes the Forensic Pathology fellowship (after pathology): death referrals from real investigations; cause and manner of death found separately; toxicology takes time; findings the evidence does not support are refused; the signed report is the examiner's finding in the same case file |
+| Forensic psychiatry | **Playable** for a physician who completes the Forensic Psychiatry fellowship (after psychiatry): competency evaluations ordered by a court in a real case; the role and the limits of confidentiality come first; a firm opinion needs a structured assessment; the court decides |
+| Policing and accountability | **Playable**: department budgets read from the country's police policy and the mayor's safety budget, with effects on laboratory time, caseload hours and training; a chief's yearly priority; a civilian oversight board proposed by a mayor or council member and voted on, with arguments on both sides; elected sheriffs |
+| Journalism | **Playable**: stories on cases in the public record, from the court record, willing sources, requests for comment and verification; case files refused; an unverified error needs a correction; a verified story about a conviction draws public attention, which decides nothing |
+| Conviction review | **Playable**: a conviction with kept evidence that can be tested anew can be reviewed; a result pointing elsewhere goes to the appeal court as new evidence, which decides; the first verdict stays on the record |
+| Romance at work | **Playable** within rules: never across supervision (either way); partners who are together must declare it and are given new working partners |
+| The next generation | **Playable**: an ancestor's public career is in My Investigations → Family Legacy; their cases stay in the records under their name and may come back to a descendant who investigates |
+| Forensic psychology outside the courts, police unions, national police reform | **Not built** |
+
+## Studying for the work
+
+Work → Special careers → Law Enforcement & Investigations. The overview's **Ways in** card sets out each route.
+
+- Police work is open from high school (21 or older) through the academy; a degree is not required to start. A degree adds to the
+  entrance assessment and academy readiness; relevant majors (criminal justice, criminology, psychology, political science, forensic science,
+  communications) add more.
+- Detective selection favors relevant degrees, and units favor their own (accounting or finance for fraud, cybersecurity or computer science
+  for cybercrime, forensic science for homicide, psychology for special victims).
+- Captain, deputy chief, chief, detective lieutenant and federal leadership ask for a bachelor's degree; a degree finished part-time while
+  serving counts from then on.
+- Federal agencies require a degree and value varied backgrounds (accounting, technology, law, languages, science, criminal justice).
+- A relevant degree gives a one-time head start in the skills it teaches, and shortens a private investigator's license by a year.
+- New majors: Criminology, Forensic Science (from 1975), Cybersecurity (from 2000), Accounting.
 
 ## Rules the engine keeps
 

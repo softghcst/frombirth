@@ -17,7 +17,9 @@ import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { remember } from '../conditions.js';
-import { askOut, partner } from '../romance.js';
+import { askOut, partner, breakUp } from '../romance.js';
+import { recordEvent } from '../chronicle.js';
+import { endJob } from '../career.js';
 import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputationOf } from './core.js';
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
@@ -49,6 +51,11 @@ export function romanceAllowed(n, m = med()) {
   if (!n || n.age < 18 || p.age < 18) return false;
   if (n.flags.patient || n.flags.medRole === 'supervisor' || m?.people.supervisorIds.includes(n.id)) return false;
   if (n.flags.medRole === 'trainee') return false; // someone the player supervises
+  // A department head and someone in their department; an employer and someone who works for them.
+  const h = m?.job ? hospital(m.job.hospitalId) : null;
+  if (h && Object.values(h.heads).includes(n.id) && n.life?.job?.employerId === m.job.hospitalId) return false;
+  if (h && ['chief', 'chair', 'cmo', 'ceo', 'director'].includes(m.job.rank) && n.life?.job?.employerId === m.job.hospitalId) return false;
+  if (n.flags.employeeOf && (player().businesses ?? []).some((b) => b.id === n.flags.employeeOf)) return false;
   if (['spouse', 'partner', 'parent', 'child', 'sibling'].includes(n.role)) return false;
   return !partner();
 }
@@ -116,6 +123,19 @@ function eligible(p, m) {
   if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
   if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
   if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
+  // Relationships at work, and their consequences years later.
+  const hereNow = m.job?.hospitalId ?? t?.hospitalId;
+  const ex = p.npcIds.map(npc).find((n) => n?.alive && n.role === 'ex' && n.life?.job?.employerId === hereNow);
+  if (ex) out.push({ id: 'med_former_partner', cast: { peer: ex.id } });
+  if (pt && pt.life?.job?.employerId === hereNow && (p.career.stress ?? 0) >= 60) out.push({ id: 'med_couple_schedules', cast: { peer: pt.id } });
+  const struggling = ps.find((n) => !n.flags.medHelpedYear && (n.flags.medStruggling || roll(0.2)));
+  if (struggling) out.push({ id: 'med_colleague_struggling', cast: { peer: struggling.id } });
+  const back = [...m.people.friendIds, ...m.people.colleagueIds].map(npc).find((n) => n?.alive && n.flags.medLeftYear && year() - n.flags.medLeftYear >= 5 && n.life?.job && hereNow);
+  if (back) out.push({ id: 'med_friend_returns', cast: { peer: back.id } });
+  const senior = [...m.people.supervisorIds].map(npc).find((n) => n?.alive && n.life?.job?.employerId === hereNow && n.age >= p.age + 8);
+  if (senior && roll(0.08)) out.push({ id: 'med_boundary', cast: { mentor: senior.id } });
+  const fellOut = m.people.supervisorIds.map(npc).find((n) => n?.alive && (n.memories ?? []).some((x) => x.key === 'medDisagreed') && !n.flags.medReconciled && m.experience.years >= 6);
+  if (fellOut) out.push({ id: 'med_reconcile', cast: { mentor: fellOut.id } });
   const thanks = (m.grateful ?? []).find((g) => g.year <= year() - 3 && !g.thanked);
   if (thanks) out.push({ id: 'med_grateful', cast: { words: { label: thanks.label.toLowerCase(), key: `${thanks.patientId}` } } });
   return out;
@@ -175,7 +195,12 @@ export function hospitalYear() {
     } else {
       const pool = staffOf(e).filter((n) => n.alive && n.id !== head.id && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) && (n.life.job.level ?? 0) >= 1);
       const next = pool.sort((a, b) => (b.meters.intellect ?? 0) - (a.meters.intellect ?? 0))[0] ?? null;
-      if (next) { h.heads[dept] = next.id; next.flags.title = `Chief of ${DEPARTMENTS[dept]}`; next.life.job.level = 3; } else delete h.heads[dept];
+      if (next) {
+        h.heads[dept] = next.id; next.flags.title = `Chief of ${DEPARTMENTS[dept]}`; next.life.job.level = 3;
+        // What happened between them before matters now (the actual memory, never an invented one).
+        if ((next.memories ?? []).some((x) => x.key === 'medHelped')) log(`${next.firstName} ${next.lastName}, the new chief, has not forgotten that you helped them through a hard year. Their door is open to you.`, 'system', 'good');
+        else if (m.people.rivalIds.includes(next.id)) log(`${next.firstName} ${next.lastName}, your old rival, is your new chief. You are polite to each other.`, 'system', 'neutral');
+      } else delete h.heads[dept];
       chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}${next ? `; ${next.firstName} ${next.lastName} succeeds them` : ''}.`);
       log(`${head.firstName} ${head.lastName} retired as chief of your department${next ? `. ${next.firstName} ${next.lastName} was chosen to succeed them` : ''}.`, 'system', 'neutral');
     }
@@ -192,6 +217,7 @@ export function hospitalYear() {
     e.staff = e.staff.filter((x) => x !== n.id);
     other.e.staff.push(n.id);
     n.flags.workedWith = other.e.name;
+    n.flags.medLeftYear = year();
     chronicle(e, `${n.firstName} ${n.lastName} left for ${other.e.name}.`);
     log(`${n.firstName} ${n.lastName} has taken a post at ${other.e.name}, in ${city}. The farewell drinks run late.`, 'system', 'neutral');
   }
@@ -333,7 +359,8 @@ export function medicineChoice(value, cast = {}) {
         const spec = currentSpecialty(m);
         const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
         if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
-        return `You move to ${o.city} together. You will need to find a post there: My Medical Career, Hospital.`;
+        if (m.job) { m.job = null; endJob('moved with their partner'); }
+        return `You move to ${o.city} together, and leave your post. You will need to find one there: My Medical Career, Find a Post.`;
       }
       if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
       if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }
@@ -353,6 +380,7 @@ export function medicineChoice(value, cast = {}) {
       if (who && by[2]) who.meters.relationship = clamp(who.meters.relationship + by[2]);
       if (how === 'farewell' && who) { who.flags.medRetired = true; who.flags.title = 'Mentor (retired)'; }
       if (how === 'learn' && who) remember(who, 'medTaught', 'Taught you what everyone was talking about.');
+      if (how === 'argue') { const sup = npc(m.people.supervisorIds[0]); if (sup?.alive) remember(sup, 'medDisagreed', `Disagreed with you, sharply, in front of the team (${year()}).`); }
       return '';
     }
     case 'disclose_partner':
@@ -384,6 +412,42 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'teach') return doResearch('teach').text;
       if (how === 'expand') { const b = practices(m).find((x) => x.sites === 1); return b ? biz.expand(b).text : ''; }
       return '';
+    case 'boundary': {
+      // A senior colleague's unwanted attention. Setting a boundary or reporting it never costs the player anything;
+      // there is no option to trade it for a career favor, because there is no such thing.
+      if (!who) return '';
+      who.flags.medBoundary = year();
+      if (how === 'report') {
+        who.flags.disciplined = (who.flags.disciplined ?? 0) + 1;
+        who.meters.relationship = clamp(who.meters.relationship - 20);
+        (store.state.medicine.reports ??= []).push({ npcId: who.id, year: year(), by: 'player' });
+        return 'The hospital takes it seriously. A formal process begins, and you are kept out of their supervision from now on.';
+      }
+      who.meters.relationship = clamp(who.meters.relationship - 8);
+      return 'You say it plainly. They step back, and it does not happen again.';
+    }
+    case 'help': {
+      if (!who) return '';
+      who.flags.medHelpedYear = year();
+      if (how === 'yes') {
+        who.meters.relationship = clamp(who.meters.relationship + 15);
+        remember(who, 'medHelped', `You helped them through a hard year at ${employer(m.job?.hospitalId ?? m.training?.hospitalId)?.name ?? 'the hospital'} (${year()}).`);
+        recordEvent({ key: `med:helped:${who.id}`, kind: 'medical_relationship', text: `Helped ${who.firstName} ${who.lastName} through a hard year.`, privacy: 'private', people: [who.id] });
+        (m.people.allyIds ??= []).push(who.id);
+        grow('teamwork', 1.5, m);
+      }
+      return '';
+    }
+    case 'exColleague':
+      if (how === 'civil' && who) { who.meters.relationship = clamp(who.meters.relationship + 6); grow('professionalism', 1, m); }
+      if (how === 'distance' && who) who.meters.relationship = clamp(who.meters.relationship - 4);
+      return '';
+    case 'schedules':
+      if (how === 'talk' && who) { who.meters.relationship = clamp(who.meters.relationship + 8); p.career.stress = clamp((p.career.stress ?? 50) - 6); }
+      return '';
+    case 'reconcile':
+      if (who) { who.flags.medReconciled = true; if (how === 'yes') { who.meters.relationship = clamp(who.meters.relationship + 15); remember(who, 'medReconciled', `Made peace with you, years after a disagreement (${year()}).`); } }
+      return '';
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';
@@ -391,3 +455,56 @@ export function medicineChoice(value, cast = {}) {
   }
 }
 
+
+// ---------- Colleagues: what the player can do with the people of hospital life ----------
+
+/** The actions open with a colleague, by who they are to the player. */
+export function colleagueActions(npcId) {
+  const m = med();
+  const n = npc(npcId);
+  if (!m || !alive(n)) return [];
+  const done = (k) => m.acted.year === year() && !!m.acted[`col:${npcId}:${k}`];
+  const out = [
+    { id: 'time', label: 'Spend time together' },
+    { id: 'career', label: 'Discuss your careers' },
+    { id: 'gift', label: 'Give a small gift' },
+  ];
+  if (m.people.rivalIds.includes(npcId)) out.push({ id: 'reconcile', label: 'Try to make peace' });
+  if (n.role === 'partner' || n.role === 'spouse') out.push({ id: 'talk', label: 'Discuss the relationship' }, { id: 'end', label: 'End the relationship' });
+  else if (romanceAllowed(n, m) && n.meters.relationship >= 60) out.push({ id: 'date', label: 'Ask them on a date' });
+  if (n.role === 'ex' || n.flags.medBoundary || n.meters.relationship < 30) out.push({ id: 'boundaries', label: 'Set boundaries' });
+  return out.map((x) => ({ ...x, done: done(x.id) }));
+}
+
+/** Does one of them, once a year with each person. */
+export function withColleague(npcId, action) {
+  const p = player();
+  const m = M();
+  const n = npc(npcId);
+  if (!alive(n)) return result(false, 'They are not someone you work with.', 'neutral');
+  const o = colleagueActions(npcId).find((x) => x.id === action);
+  if (!o) return result(false, 'That is not something you can do with them now.', 'neutral');
+  if (!once(`col:${npcId}:${action}`, m)) return result(false, 'Not again this year.', 'neutral');
+  const bump = (d) => { n.meters.relationship = clamp(n.meters.relationship + d); };
+  switch (action) {
+    case 'time': bump(6); p.stats.mood = clamp(p.stats.mood + 2); return result(true, `You and ${n.firstName} get dinner after a long shift. You talk about everything except work.`);
+    case 'career': bump(4); grow('leadership', 0.5, m); return result(true, `${n.firstName} is honest about where they want to go, and asks the same of you. You both leave with something to think about.`);
+    case 'gift': bump(3); return result(true, `A small thing, for no reason: ${n.firstName} is pleased. (A gift is kindness; it buys nothing, and nobody here would sell anything for one.)`);
+    case 'reconcile': {
+      if (!roll(clamp((n.meters.relationship + 30) / 100, 0.2, 0.85))) { bump(2); return result(false, `${n.firstName} listens, and is not ready. Perhaps another year.`); }
+      m.people.rivalIds = m.people.rivalIds.filter((x) => x !== npcId);
+      if (n.flags.title === 'Rival') n.flags.title = 'Colleague';
+      bump(12); remember(n, 'medReconciled', `Made peace with you after years of rivalry (${year()}).`);
+      return result(true, `You and ${n.firstName} agree that the rivalry has run its course. It is a relief to both of you.`);
+    }
+    case 'date': {
+      if (!romanceAllowed(n, m)) return result(false, 'It would not be right: one of you has power over the other here.', 'neutral');
+      const r = askOut(npcId);
+      return r;
+    }
+    case 'talk': bump(5); p.career.stress = clamp((p.career.stress ?? 50) - 4); return result(true, `You talk about schedules, nights on call, and what each of you needs. It helps.`);
+    case 'end': return breakUp(npcId);
+    case 'boundaries': n.flags.medBoundary = year(); return result(true, `You tell ${n.firstName}, plainly and calmly, where the line is. They hear it.`, 'neutral');
+    default: return result(false, 'Nothing happens.', 'neutral');
+  }
+}

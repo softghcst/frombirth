@@ -48,7 +48,7 @@ import { registerEmployer, employer, chronicle } from './employers.js';
 import { career as careerState, canFit, workLaw } from './worklife.js';
 import { licenseFor, licensed, examName } from './adulted.js';
 import { convert } from './currency.js';
-import { practiceBlock } from './medicine/practice.js';
+import { practiceBlock, practiceCosts, practiceDemand } from './medicine/practice.js';
 import { agencyBlock } from './investigations/private.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -62,10 +62,10 @@ const fromOwner = (b, amount) => (b.countryId === player().countryId ? amount : 
 export function businesses(p = player()) { p.businesses ??= []; return p.businesses; }
 export const openBusinesses = (p = player()) => businesses(p).filter((b) => b.status === 'open');
 export const business = (id) => businesses().find((b) => b.id === id) ?? null;
-const typeOf = (b) => BUSINESS_BY_ID[b.typeId];
+export const typeOf = (b) => BUSINESS_BY_ID[b.typeId];
 const placeOf = (b) => COUNTRIES[b.countryId];
 const acts = (b) => { const p = player(); if (b.acts?.age !== p.age) b.acts = { age: p.age, done: {} }; return b.acts.done; };
-const note = (b, text) => { b.history.push({ year: store.state.year, text }); if (b.history.length > 30) b.history.shift(); chronicle(employer(b.employerId), text); };
+export const note = (b, text) => { b.history.push({ year: store.state.year, text }); if (b.history.length > 30) b.history.shift(); chronicle(employer(b.employerId), text); };
 
 /** The tax rates on business profit where a business is based. */
 export function profitTaxOf(countryId) {
@@ -229,17 +229,17 @@ function employ(b, n, wageK) {
   if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
   ensureLife(n);
   // A physician's practice is staffed like one: nurses, a practice manager, a medical assistant, and in time an associate physician.
-  const role = b.medical ? CLINIC_ROLES[b.staff.length % CLINIC_ROLES.length] : null;
+  const role = b.nextRole ?? (b.medical ? CLINIC_ROLES[b.staff.length % CLINIC_ROLES.length] : null);
   const car = CAREER_BY_ID[role?.career ?? t.track];
   const lv = role?.level ?? 0;
   const f = figures(t, b.countryId, b.city);
   if (n.life) {
-    n.life.job = { careerId: car.id, level: lv, title: car.levels[lv].title, salary: Math.round(f.wage * wageK), years: 0, employerId: e.id };
+    n.life.job = { careerId: car.id, level: lv, title: role?.title ?? car.levels[lv].title, salary: Math.round(f.wage * wageK), years: 0, employerId: e.id };
     n.life.edu.stage = 'done';
     n.life.edu.yearsLeft = 0;
   }
-  n.occupation = car.levels[lv].title.toLowerCase();
-  if (n.role === 'colleague') n.flags.title = role ? `${car.levels[lv].title} at ${b.name}` : `Works for you at ${b.name}`;
+  n.occupation = (role?.title ?? car.levels[lv].title).toLowerCase();
+  if (n.role === 'colleague') n.flags.title = role ? `${role.title ?? car.levels[lv].title} at ${b.name}` : `Works for you at ${b.name}`;
   n.flags.employeeOf = b.id;
   if (b.countryId !== p.countryId) n.flags.abroad = b.countryId; // they live where the business is
   n.flags.workedWith = b.name;
@@ -629,14 +629,15 @@ function runYear(b) {
   const price = PRICING[b.pricing];
   const priceFit = b.pricing === 'premium' ? clamp(price.demand + (b.reputation - 55) / 120 + (b.quality - 50) / 200, 0.4, 1.1) : price.demand;
   const rivals = Math.pow(0.8, b.rivals ?? 0);
-  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * (t.celebrity ? starPull(p) : 1) * rng.around(1, 0.15);
+  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * (t.celebrity ? starPull(p) : 1) * practiceDemand(b) * rng.around(1, 0.15);
   const sold = Math.max(0, Math.min(heads, demand));
 
   const revenue = Math.round(sold * f.perHead * price.k * (0.9 + b.quality / 500));
   const wages = staff.reduce((s, x) => s + x.wage, 0) + b.others * f.wage;
   const rent = f.rent * b.sites * (t.remote ? 0.5 : 1);
   const supplies = Math.round(revenue * t.cogs);
-  const overhead = Math.round(revenue * 0.06);
+  // A medical practice also carries malpractice insurance, compliance and equipment upkeep (engine/medicine/practice.js).
+  const overhead = Math.round(revenue * 0.06) + practiceCosts(b, revenue);
   const interest = Math.round(b.debt * BUSINESS_LOAN.rate);
   const profit = revenue - wages - rent - supplies - overhead - interest;
   const principal = b.debt > 0 ? Math.min(b.debt, Math.round(b.debt / Math.max(1, b.debtYears))) : 0;
