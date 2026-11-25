@@ -57,6 +57,16 @@
   background: linear-gradient(var(--paper) 72%, transparent);
 }
 .modal-backrow[hidden] { display: none; }
+/* A page of its own (openModal full): the whole screen, the content in a readable column, Back in a solid bar on top. */
+.scrim.scrim-full { padding: 0; align-items: stretch; background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.modal.modal-full { max-width: none; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none;
+  padding: 0 16px calc(24px + var(--safe-bottom)); }
+.modal.modal-full > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+.modal.modal-full > .modal-backrow { max-width: none; top: 0; margin: 0 -16px 14px; padding: calc(10px + var(--safe-top)) 16px 10px;
+  align-items: center; gap: 12px; background: var(--paper); border-bottom: 1px solid var(--line-soft); }
+.modal.modal-full [data-back]:not(.modal-back) { display: none; } /* the bar's Back steps back through the page's own levels */
+.modal-bartitle { font-family: var(--serif, inherit); font-size: 1.15rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .modal-back {
   display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 14px 0 10px;
   border-radius: 999px; font-weight: 700; font-size: 0.9rem; color: var(--accent-text);

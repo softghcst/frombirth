@@ -223,6 +223,18 @@ section('small jobs: by age and law, paid once, two a year, not a career');
 }
 section('three months at a time: a year\'s pocket money once a year');
 
+{
+  store.state = createLife({ countryId: 'us' });
+  const p = store.state.player;
+  p.age = 6; p.traits = ['musical']; p.talents.music = 30; p.talents.sports = 0;
+  const first = kid.childActivities().filter((a) => !a.done)[0];
+  check(['singing', 'musicclass'].includes(first?.id) && first.suits === 2, `a musical child sees music first, starred (${first?.id})`);
+  p.traits = ['athletic']; p.talents.music = 0; p.talents.sports = 40;
+  const sporty = kid.childActivities().filter((a) => !a.done)[0];
+  check(['tumbling', 'swim', 'playground', 'dance', 'stagedance'].includes(sporty?.id), `an athletic child sees moving about first (${sporty?.id})`);
+}
+section('things to do follow who the child is');
+
 if (problems.length) {
   console.log(`${problems.length} problem(s):`);
   for (const p of [...new Set(problems)]) console.log(' ✗', p);

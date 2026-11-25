@@ -818,6 +818,18 @@ section("family members' care: their own clinicians, sessions attended, medicine
   section('few at once: a believable handful from birth, nothing named until a doctor finds it, a check-up suggested');
 }
 
+// ---------- A child's doctor ----------
+{
+  const med = await import('../js/engine/medical.js');
+  do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+  const p = store.state.player;
+  p.age = 3; p.finance.cash = 0;
+  check(!med.therapy().ok && /from age 5/.test(med.therapy().text), 'no therapist for a three-year-old');
+  const r = med.checkUp();
+  check(r.ok && p.finance.cash === 0 && /parents/i.test(r.text), `a small child's check-up is paid by the parents (${r.text})`);
+  section("a child's doctor: only what fits their age, and the parents pay");
+}
+
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }
 console.log('\nThe health engine checks out.');

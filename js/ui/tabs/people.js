@@ -309,8 +309,9 @@ function grouped(actions) {
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    const open = shown++ < 1;
-    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
+    shown++;
+    // Each group is a plain heading with its buttons under it: nothing to unfold on a page of its own.
+    return `<section class="action-group"><div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></section>`;
   }).join('');
 }
 
@@ -423,7 +424,7 @@ export function openNpc(npc, api, back, o = {}) {
     ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
-    </div>`, { dismissable: true, onDismiss: () => back?.() });
+    </div>`, { dismissable: true, full: true, title: `${npc.firstName}${isPet ? '' : ` ${npc.lastName}`}`, onDismiss: () => back?.() });
 
   modal.el.addEventListener('click', async (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return back?.(); }
