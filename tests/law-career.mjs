@@ -316,4 +316,12 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(lp.overview().skills.some((x) => x.name === 'Trial Advocacy') && L().skills.courtroom === before, 'the names change; what was learned stays');
 }
 
+// Four reputation bars to follow, not six.
+{
+  lawyer('lawyer');
+  L().rep.clients = 80; L().rep.reliability = 40;
+  const rep = lp.overview().rep;
+  check(rep.length === 4 && rep.find((r) => r.id === 'trust').v === 60, `reputation is shown as four bars (${rep.map((r) => r.name).join(', ')})`);
+}
+
 finish('A legal career holds together.');

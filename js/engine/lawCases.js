@@ -299,6 +299,30 @@ const canNegotiate = (c) => !c.done && !c.negotiation.accepted && (template(c).s
 
 const skillIn = (ids) => { const L = lawOf(player()); const g = [...new Set(ids.map(skillId))]; return g.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / g.length; };
 
+/**
+ * The routine steps of a case, done in one go: meeting the client, going through the evidence, and the procedural
+ * filings that are due, done properly. The choices that matter (research, the main filing, deals, court, ethics) stay
+ * with the player.
+ */
+export function routine(c) {
+  if (c.done) return result(false, 'This case is closed.', 'neutral');
+  const lines = [];
+  if (c.clientId && !c.tasks.interview) { interview(c); lines.push(c.kind === 'child' ? `Met ${first(c.clientId)}.` : 'Interviewed the client.'); }
+  if (!c.tasks.review) { review(c); lines.push('Went through the evidence.'); }
+  for (const pf of proceduralDue(c)) { fileProcedure(c, pf.id, 'strong'); lines.push(`Filed: ${pf.name}.`); }
+  if (!lines.length) return result(false, 'Nothing routine is waiting on this case.', 'neutral');
+  return result(true, lines.join(' '), 'good', { lines });
+}
+/** Every open case's routine steps at once. */
+export function routineAll() {
+  const done = [];
+  for (const c of lawOf(player()).caseIds.map(caseById).filter((x) => x && !x.done)) { const r = routine(c); if (r.ok) done.push(c.title); }
+  return done.length ? result(true, `Routine work done on ${done.length === 1 ? done[0] : `${done.length} cases`}. What is left needs your judgment.`, 'good', { cases: done })
+    : result(false, 'Nothing routine is waiting.', 'neutral');
+}
+/** Whether a case has routine steps waiting. */
+export const hasRoutine = (c) => !c.done && ((c.clientId && !c.tasks.interview) || !c.tasks.review || proceduralDue(c).length > 0);
+
 /** Interviewing the client: their account (not necessarily the whole truth), and what they want. */
 export function interview(c) {
   if (c.tasks.interview) return result(false, 'You have met them.', 'neutral');

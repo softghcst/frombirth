@@ -152,6 +152,13 @@ export const REPUTATION = [
   { id: 'integrity', name: 'Integrity' }, { id: 'clients', name: 'Client trust' }, { id: 'advocacy', name: 'Advocacy' },
   { id: 'preparation', name: 'Preparation' }, { id: 'reliability', name: 'Reliability' }, { id: 'recognition', name: 'Recognition' },
 ];
+/** What the player sees: four bars, each the average of the parts of a reputation it gathers. */
+export const REPUTATION_SHOWN = [
+  { id: 'integrity', name: 'Integrity', parts: ['integrity'] },
+  { id: 'trust', name: 'Client Trust', parts: ['clients', 'reliability'] },
+  { id: 'skill', name: 'Name in Court', parts: ['advocacy', 'preparation'] },
+  { id: 'recognition', name: 'Recognition', parts: ['recognition'] },
+];
 
 // ---------- Law school ----------
 

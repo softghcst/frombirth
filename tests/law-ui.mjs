@@ -131,9 +131,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await shot('offers');
   await hub().locator('[data-accept]').first().click(); await ok();
   const page1 = await hub().innerText();
-  check(/Interview the client/i.test(page1) && /Evidence/.test(page1) && /Judge/.test(page1) && / v\. /.test(page1), `${label}: the case file opens, with its client, judge and evidence (${page1.replace(/\n/g, ' ').slice(0, 200)})`);
-  await hub().locator('[data-cact="interview"]').click(); await ok();
-  await hub().locator('[data-cact="review"]').click(); await ok();
+  check(/Handle the Routine Steps/i.test(page1) && /Evidence/.test(page1) && /Judge/.test(page1) && / v\. /.test(page1), `${label}: the case file opens, with its client, judge and evidence (${page1.replace(/\n/g, ' ').slice(0, 200)})`);
+  check(await hub().locator('[data-cact="interview"]').count() === 0, `${label}: the routine steps are one button, not three`);
+  await hub().locator('[data-cact="routine"]').click(); await ok();
+  check(/Interviewed the client|Met /.test(await hub().innerText()) || await hub().locator('[data-cact="routine"]').count() === 0, `${label}: the routine steps are done in one go`);
   check(await hub().locator('.law-ev .fit-bars').count() >= 1, `${label}: reviewed evidence shows how reliable it is`);
   const rightR = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); return lc.researchQuestion(lc.caseById(L.caseIds.at(-1))).right; });
   await hub().locator('[data-cact="research"]').click();

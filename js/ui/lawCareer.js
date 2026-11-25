@@ -113,6 +113,7 @@ function myCases() {
   const clientRows = clients(true);
   return `${needs}${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
     ${lp.trackOf() ? fitBar('Workload', Math.min(100, w.points / w.capacity * 70)) : ''}
+    ${open.some(lc.hasRoutine) ? `<div class="btn-row">${btn('Handle Routine Work on All Cases', 'data-routineall', 'primary')}</div>` : ''}
     ${lp.trackOf() ? `<div class="btn-row law-load">${btn('Ask for Support', 'data-load="support"')}${btn('Take Leave', 'data-load="leave"')}</div>` : ''}
     ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}
     ${clientRows ? `<div class="section-label">Clients</div>${clientRows}` : ''}`;
@@ -213,7 +214,7 @@ function casePage(c) {
       ${c.judgeId ? `<button type="button" class="tree-row" data-npcperson="${c.judgeId}"><strong>${esc(nameOf(c.judgeId))}</strong><small>Judge</small></button>` : ''}
       ${c.otherCounselId ? `<button type="button" class="tree-row" data-npcperson="${c.otherCounselId}"><strong>${esc(nameOf(c.otherCounselId))}</strong><small>Opposing counsel</small></button>` : ''}
       ${c.supervisorId ? `<button type="button" class="tree-row" data-npcperson="${c.supervisorId}"><strong>${esc(nameOf(c.supervisorId))}</strong><small>${c.clinic ? 'Clinic supervisor' : 'Supervising attorney'}</small></button>` : ''}`)}
-    ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${acts.map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
+    ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${lc.hasRoutine(c) ? btn('Handle the Routine Steps', 'data-cact="routine"', 'primary') : ''}${acts.filter((a) => !lc.hasRoutine(c) || !['interview', 'review'].includes(a.id) && !a.id.startsWith('proc:')).map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
     ${(() => { const laws = caseLaws(c); return card('The law', laws.length ? laws.map(({ law }) => `<div class="law-ev"><strong>${esc(law.name)}</strong><small>${esc(law.summary)}${law.note ? ` ${esc(law.note)}` : ''}</small></div>`).join('')
       : '<p class="muted">Pathways does not list this country\'s laws for this kind of case: the rules here are simplified.</p>'); })()}
     ${card('Evidence', ev || '<p class="muted">No evidence in this file.</p>')}
@@ -228,6 +229,7 @@ function casePage(c) {
 // ---------- Interactions ----------
 
 async function caseAction(c, id) {
+  if (id === 'routine') return say(lc.routine(c));
   if (id === 'interview') return say(lc.interview(c));
   if (id === 'delegate') return say(lp.delegate(c.id));
   if (id === 'review') return say(lc.review(c));
@@ -389,6 +391,7 @@ export function openLawCareer(api, start = {}) {
       await say(lp.seek(t.dataset.seek)); return changed();
     }
     if (t.hasAttribute('data-campopen')) { openCampaign({ changed }); return undefined; }
+    if (t.hasAttribute('data-routineall')) { await say(lc.routineAll()); return changed(); }
     if (t.dataset.cact) { const c = lc.caseById(caseId); if (c) await caseAction(c, t.dataset.cact); return changed(); }
     if (t.dataset.duty) {
       const d = lp.leaderDuties().find((x) => x.id === t.dataset.duty);

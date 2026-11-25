@@ -11,7 +11,7 @@ import { rng } from '../rng.js';
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION, skillsFor } from '../data/law.js';
+import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION, REPUTATION_SHOWN, skillsFor } from '../data/law.js';
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
@@ -1090,6 +1090,6 @@ export function overview(p = player()) {
   const t = trackOf(p);
   return { track: t, trackName: t === 'own' ? 'Your own practice' : TRACKS[t]?.name ?? null, title: p.career?.careerId && LEGAL.has(p.career.careerId) ? p.career.title : t === 'own' ? 'Principal' : null,
     specialty: SPECIALTY_BY_ID[fitSpecialty(p)] ?? null, years: legalYears(p), stats: stats(p), skills: skillsFor(L.specialty, trackOf(p) ?? (p.education.enrolled && p.education.stage === 'law' ? 'student' : null)).map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
-    rep: REPUTATION.map((r) => ({ ...r, v: Math.round(L.rep[r.id] ?? 0) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
+    rep: REPUTATION_SHOWN.map((r) => ({ id: r.id, name: r.name, v: Math.round(r.parts.reduce((t, k) => t + (L.rep[k] ?? 0), 0) / r.parts.length) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
     admitted: admitted(p), legacy: L.legacy ?? null, discipline: L.discipline ?? [], why: mayPractice(p) };
 }

@@ -317,4 +317,17 @@ const npc = (id) => store.state.npcs[id];
   check(SPECIALTIES.filter((s) => !s.playable).every((s) => !s.cases.length), 'specialties without cases are not called playable');
 }
 
+// One button for the routine steps; the choices that matter stay with the player.
+{
+  lawyer('lawyer');
+  const c = lc.createCase('divorce');
+  check(lc.hasRoutine(c), 'a new case has routine steps waiting');
+  const r = lc.routine(c);
+  check(r.ok && c.tasks.interview && c.tasks.review && !lc.hasRoutine(c), `the routine steps are done in one go (${r.text})`);
+  check(!c.research && !c.filings.some((f) => f.main), 'research and the main filing are left to the player');
+  const c2 = lc.createCase('contract_dispute');
+  const all = lc.routineAll();
+  check(all.ok && c2.tasks.review, 'every open case at once');
+}
+
 finish('The legal case engine holds.');
