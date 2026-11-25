@@ -837,6 +837,16 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
   check(dressFor(resolveLook(randomAppearance(undefined, 'male'), 'rk', 'male'), { age: 9, gender: 'male' }).clothes !== 'outfit_kid_01_royal_tunic', 'a boy who is not royal does not wear the prince\'s tunic');
 }
 
+// Noble children of 7 to 13 wear the plainer royal kids' outfits, never one with a crown, sash or ermine.
+{
+  const princely = ['outfit_kid_02_royal_sailor', 'outfit_kid_04_royal_ceremonial', 'outfit_kid_05_royal_velvet_cape', 'outfit_kid_06_heir_jacket',
+    'outfit_kid_07_princess_dress', 'outfit_kid_09_princess_pinafore', 'outfit_kid_10_princess_ceremonial', 'outfit_kid_11_princess_capelet', 'outfit_kid_12_heir_princess_starry'];
+  for (const g of ['male', 'female']) for (const s of ['n1', 'n2', 'n3', 'n4', 'n5']) for (const age of [7, 10, 13]) {
+    const c = dressFor(resolveLook(randomAppearance(undefined, g), s, g), { age, gender: g, royal: { rank: 'noble', title: 'earl' } }).clothes;
+    check(CUR.ROYAL.outfits.nobleKid[g].includes(c) && !princely.includes(c), `a noble ${g === 'male' ? 'boy' : 'girl'} of ${age} wears ${c}`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

@@ -258,6 +258,9 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_10_princess_ceremonial", "file": "avatars/clothes/outfit_kid_10_princess_ceremonial.svg", "label": "Kid princess ceremonial", "tags": {"royal": true}},
     {"id": "outfit_kid_11_princess_capelet", "file": "avatars/clothes/outfit_kid_11_princess_capelet.svg", "label": "Kid princess capelet", "tags": {"royal": true}},
     {"id": "outfit_kid_12_heir_princess_starry", "file": "avatars/clothes/outfit_kid_12_heir_princess_starry.svg", "label": "Kid heir princess starry", "tags": {"royal": true}},
+    {"id": "outfit_kid_13_noble_velvet_dress", "file": "avatars/clothes/outfit_kid_13_noble_velvet_dress.svg", "label": "Kid noble velvet dress", "tags": {"royal": true}},
+    {"id": "outfit_kid_14_noble_ribbon_waistcoat", "file": "avatars/clothes/outfit_kid_14_noble_ribbon_waistcoat.svg", "label": "Kid noble ribbon waistcoat", "tags": {"royal": true}},
+    {"id": "outfit_kid_15_noble_riding_jacket", "file": "avatars/clothes/outfit_kid_15_noble_riding_jacket.svg", "label": "Kid noble riding jacket", "tags": {"royal": true}},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
