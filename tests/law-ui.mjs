@@ -164,6 +164,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
+  await hub().getByText(/Outcome/).first().waitFor({ timeout: 10000 }).catch(() => {}); // the case page redraws after the verdict, however busy the machine
   check(/Outcome/.test(await hub().innerText()), `${label}: the case shows its outcome`);
   await hub().locator('[data-back]').click();
   await hub().locator('[data-tab="history"]').click();

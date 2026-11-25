@@ -6,6 +6,7 @@
 import { avatarSvg, faceGenderOf } from '../avatar/render.js';
 import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
+import { venueScene, cakeArt, bandArt, postcardFront } from './weddingScenery.js';
 import { player, country } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
@@ -23,67 +24,6 @@ const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
   <path d="M71 30l-6-8h12z" fill="#BFE6FF" stroke="#23140f" stroke-width="2.5" stroke-linejoin="round"/>
   <g fill="#FFFFFF" stroke="#23140f" stroke-width="2" stroke-linejoin="round"><path d="M28 32l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M95 36l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z"/></g>
 </svg>`;
-
-/**
- * Each venue as a room or a view, drawn like the salon's and the barbershop's (bold outlines, flat colors): a wall or a
- * sky with a pattern, a floor, and a few things at either side, leaving the middle to the couple and the arch.
- * `wall` is a <pattern> body (28 x 28 unless `size` says otherwise), `floor` the floor's color, `left`/`right` the props.
- */
-const INK = 'stroke="#23140f" stroke-width="3" stroke-linejoin="round"';
-const VENUES = {
-  courthouse: { wall: '<rect width="28" height="28" fill="#EDE6DA"/><rect width="28" height="2" fill="#E0D6C6"/>', floor: '#B9A98F',
-    left: `<g ${INK}><rect x="18" y="40" width="34" height="170" fill="#F7F3EC"/><rect x="12" y="30" width="46" height="12" rx="2" fill="#E6DED2"/><rect x="12" y="206" width="46" height="12" rx="2" fill="#E6DED2"/></g><path d="M28 50v150M42 50v150" stroke="#D9CFBF" stroke-width="3"/>`,
-    right: `<g ${INK}><path d="M336 30v120" fill="none"/><path d="M338 34h42v28h-42z" fill="#5C7FB8"/><rect x="318" y="150" width="40" height="56" rx="4" fill="#8A5A3B"/><path d="M322 162h32M322 176h32M322 190h32" stroke-width="2"/></g>` },
-  backyard: { wall: '<rect width="28" height="28" fill="#BFE3F5"/>', floor: '#8CC77D',
-    left: `<g ${INK}><path d="M0 222V168h80v54" fill="#F4EFE6"/><path d="M16 168v54M32 168v54M48 168v54M64 168v54" fill="none" stroke-width="2"/><circle cx="34" cy="96" r="30" fill="#7DB86E"/><path d="M34 126v42" stroke-width="6" stroke="#8A5A3B"/></g>`,
-    right: `<g ${INK}><path d="M320 222V168h80v54" fill="#F4EFE6"/><path d="M336 168v54M352 168v54M368 168v54M384 168v54" fill="none" stroke-width="2"/></g><path d="M300 40 Q340 66 400 44" fill="none" stroke="#23140f" stroke-width="2"/>${[316, 340, 364, 388].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}<path d="M0 40 Q40 64 100 44" fill="none" stroke="#23140f" stroke-width="2"/>${[14, 40, 66, 90].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}` },
-  chapel: { wall: '<rect width="28" height="28" fill="#F6E9DA"/><rect width="14" height="28" fill="#F1E1CE"/>', floor: '#B98E6A',
-    left: `<g ${INK}><path d="M18 170V80a26 26 0 0 1 52 0v90z" fill="#7FB5E0"/><path d="M44 54v116M18 110h52" stroke-width="2.5" fill="none"/><path d="M30 88l-6 14h12zM58 132l-6 14h12z" fill="#F28CA8" stroke-width="2"/></g>`,
-    right: `<g ${INK}><path d="M330 170V80a26 26 0 0 1 52 0v90z" fill="#F7D774"/><path d="M356 54v116M330 110h52" stroke-width="2.5" fill="none"/><path d="M342 132l-6 14h12zM370 88l-6 14h12z" fill="#7FB5E0" stroke-width="2"/></g>` },
-  beach: { wall: '<rect width="28" height="28" fill="#FFD3A8"/>', floor: '#F3D9A4',
-    left: `<g ${INK}><path d="M46 222c4-50 2-90-8-126" fill="none" stroke-width="7" stroke="#8A5A3B"/><path d="M38 98c-30-8-40 6-44 14 18-8 30-8 44-14zM38 98c26-14 44-8 52 4-20-4-34-4-52-4zM38 98c-10-22 0-36 10-42-2 16-6 28-10 42z" fill="#6DBB7B"/></g>`,
-    right: `<circle cx="350" cy="140" r="34" fill="#FFB65C" stroke="#23140f" stroke-width="3"/><rect x="290" y="160" width="110" height="62" fill="#5FB4D9"/><path d="M290 160h110" stroke="#23140f" stroke-width="3"/><path d="M300 178h30M344 190h40M306 204h24" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>` },
-  garden: { wall: '<rect width="28" height="28" fill="#CDEBF7"/><circle cx="14" cy="14" r="2" fill="#E6F6FC"/>', floor: '#9ACB86',
-    left: `<g ${INK}><rect x="4" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[22, 150], [50, 142], [70, 168], [30, 186], [60, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#F28CA8', '#FFFFFF', '#FFD36E'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}`,
-    right: `<g ${INK}><rect x="312" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[330, 150], [358, 142], [378, 168], [338, 186], [368, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#FFD36E', '#F28CA8', '#FFFFFF'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}` },
-  vineyard: { wall: '<rect width="28" height="28" fill="#FFE2B0"/>', floor: '#B8A26A',
-    left: `<path d="M0 170 Q50 140 100 160 V222 H0z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M6 182h80M10 198h84" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><circle cx="40" cy="70" r="22" fill="#FFD36E" stroke="#23140f" stroke-width="3"/>`,
-    right: `<path d="M300 160 Q350 140 400 166 V222 H300z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M310 182h84M306 198h88" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><g ${INK}><path d="M346 110v40" fill="none" stroke-width="4" stroke="#8A5A3B"/>${[[340, 112], [352, 112], [346, 122], [340, 132], [352, 132], [346, 142]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#8E5BB5" stroke-width="2"/>`).join('')}</g>` },
-  ballroom: { wall: '<rect width="28" height="28" fill="#5A3A6E"/><path d="M14 4l6 10-6 10-6-10z" fill="#6B4882"/>', floor: '#C9A26B',
-    left: `<g ${INK}><rect x="20" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="14" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="14" y="206" width="50" height="12" rx="3" fill="#F7D774"/></g>`,
-    right: `<g ${INK}><rect x="342" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="336" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="336" y="206" width="50" height="12" rx="3" fill="#F7D774"/><path d="M300 0v20" fill="none"/><path d="M282 20h36l-8 16h-20z" fill="#F7D774"/></g>${[290, 300, 310].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}<g ${INK}><path d="M100 0v20" fill="none"/><path d="M82 20h36l-8 16h-20z" fill="#F7D774"/></g>${[90, 100, 110].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}` },
-  castle: { wall: '<rect width="28" height="28" fill="#C9C3D6"/><path d="M0 13h28M14 0v13M0 27h28M7 13v14M21 13v14" stroke="#B4ADC4" stroke-width="2"/>', floor: '#8E7A6A',
-    left: `<g ${INK}><path d="M22 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M44 62v108M22 110h44" stroke-width="2.5" fill="none"/><path d="M74 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>`,
-    right: `<g ${INK}><path d="M334 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M356 62v108M334 110h44" stroke-width="2.5" fill="none"/><path d="M302 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>` },
-};
-
-/** The backdrop for a venue: its wall or sky, its floor and a runner down the aisle, its things at either side. */
-function backdrop(venue) {
-  const v = VENUES[venue] ?? VENUES.garden;
-  return `<svg class="sv-room" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs><pattern id="wp-wall-${venue}" width="28" height="28" patternUnits="userSpaceOnUse">${v.wall}</pattern></defs>
-    <rect width="400" height="300" fill="url(#wp-wall-${venue})"/>
-    <rect y="222" width="400" height="78" fill="${v.floor}"/><path d="M0 222h400" stroke="#23140f" stroke-width="3"/>
-    <path d="M0 262h400M0 284h400" stroke="#23140f" stroke-width="2" opacity=".12"/>
-    <path d="M168 300 L186 222 L214 222 L232 300z" fill="#FFFFFF" opacity=".8" stroke="#23140f" stroke-width="2"/>
-    ${v.left}${v.right}</svg>`;
-}
-
-/**
- * The garland over the couple: a curve of flowers in the theme's color (and white), fuller for grander flowers. Wild
- * flowers are little and few, roses more, peonies and orchids big and many.
- */
-function garland(hex, flowers) {
-  const n = flowers === 'peonies' ? 15 : flowers === 'roses' ? 11 : 8;
-  const r = flowers === 'peonies' ? 11 : flowers === 'roses' ? 9 : 7;
-  const blooms = Array.from({ length: n }, (_, i) => {
-    const t = Math.PI * (0.08 + 0.84 * (i / (n - 1)));
-    const x = 150 - 136 * Math.cos(t); const y = 150 - 128 * Math.sin(t);
-    const fill = i % 3 === 1 ? '#FFFFFF' : hex;
-    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="${r}" fill="${fill}" stroke="#23140f" stroke-width="2.5"/><circle r="${(r / 3).toFixed(1)}" fill="#FFD36E" stroke="#23140f" stroke-width="1.5"/></g>`;
-  }).join('');
-  return `<svg class="wp-garland" viewBox="0 0 300 170" aria-hidden="true"><path d="M24 128 A136 128 0 0 1 276 128" fill="none" stroke="#6DBB7B" stroke-width="6" stroke-linecap="round"/>${blooms}</svg>`;
-}
 
 /**
  * Opens the planner for an engagement to `npc`. Resolves when the scene closes: { married: true } after the wedding,
@@ -118,18 +58,24 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const chosen = (k) => plan[k] ?? love.WEDDING_PLAN[k][0].id;
     const themeHex = () => love.WEDDING_PLAN.theme.find((t) => t.id === chosen('theme')).hex;
     const filled = () => Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)]));
+    /** "at the castle", "on the beach", "at city hall": where, for the banner. */
+    const venueAt = () => { const v = love.WEDDING_PLAN.venue.find((o) => o.id === plan.venue); return /^On /.test(v.name) ? v.name.toLowerCase() : `at ${v.name.replace(/^A /, 'a ').replace(/^An /, 'an ').replace(/^City hall/, 'city hall')}`; };
     const totals = () => love.planTotals(filled(), npc, c);
 
     /**
      * The stage: the venue behind, and in front the couple up close, in two round frames side by side (as close as
-     * the salon's mirror), under a garland of the flowers and colors chosen. At the kiss the frames meet, with a heart.
+     * the salon's mirror); the venue's flowers and décor take the colors and flowers chosen. At the kiss the frames meet,
+     * with a heart.
      */
     const closeUp = { viewBox: '86 120 340 340' };
     const stage = ({ kiss = false } = {}) => `
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
-        ${backdrop(chosen('venue'))}
+        ${venueScene(chosen('venue'), themeHex(), chosen('flowers'))}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
-        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${garland(themeHex(), chosen('flowers'))}
+        <div class="wp-banner" style="--wp-theme:${themeHex()}"><span>${esc(p.firstName)} ♥ ${esc(npc.firstName)}${plan.venue ? `<small>${esc(venueAt())}</small>` : ''}</span></div>
+        ${plan.cake ? `<div class="wp-side wp-cake" title="${esc(love.WEDDING_PLAN.cake.find((o) => o.id === plan.cake).name)}">${cakeArt(plan.cake, themeHex())}</div>` : ''}
+        ${plan.music ? `<div class="wp-side wp-band" title="${esc(love.WEDDING_PLAN.music.find((o) => o.id === plan.music).name)}">${bandArt(plan.music)}</div>` : ''}
+        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">
           <div class="wp-couple"><div class="wp-person">${youFace(90, closeUp)}</div><div class="wp-person">${themFace(90, closeUp)}</div>
           ${kiss ? '<span class="wp-kiss-heart" aria-hidden="true">♥</span>' : ''}</div></div>
         <button type="button" class="sv-leave" data-leave aria-label="Stop planning">×</button>
@@ -270,6 +216,16 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
         <p class="wp-names">${esc(p.firstName)} &amp; ${esc(npc.firstName)}</p>
         <p class="wp-after">${esc(honey.id === 'home' ? 'And then home, together.' : `Next stop: ${honey.name.toLowerCase()}.`)}</p>
         <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
+      root.querySelector('[data-done]').onclick = () => postcard();
+      root.querySelector('[data-done]').focus?.();
+    }
+
+    /** After the honeymoon (if they went anywhere): the postcard home, then back to the game. */
+    function postcard() {
+      const card = love.sendPostcard(npc.id, chosen('honeymoon'));
+      if (!card) { close(); return; }
+      api?.changed?.();
+      root.innerHTML = postcardHtml(card, chosen('honeymoon'), themeHex(), reduced);
       root.querySelector('[data-done]').onclick = close;
       root.querySelector('[data-done]').focus?.();
     }
@@ -379,6 +335,12 @@ export function openQuickWedding(api, npc) {
       api?.changed?.();
       if (!res.ok) { await messageModal({ body: res.text, tone: 'neutral' }); resolve({}); return; }
       await justMarried(p, npc, plan);
+      const card = love.sendPostcard(npc.id, plan.honeymoon);
+      if (card) {
+        api?.changed?.();
+        const hex = love.WEDDING_PLAN.theme.find((t) => t.id === plan.theme)?.hex ?? '#F6B8C8';
+        await new Promise((done) => { const pm = openModal(postcardHtml(card, plan.honeymoon, hex, true, 'wq-postcard'), { tone: 'good' }); pm.el.querySelector('[data-done]').onclick = () => { pm.close(); done(); }; });
+      }
       resolve({ married: true });
     };
   });
@@ -404,4 +366,15 @@ function justMarried(p, npc, plan) {
 /** Planning the wedding: as scenes, or on one page if they are turned off in Settings. */
 export function openWedding(api, npc) {
   return weddingScenesOn() ? openWeddingPlanner(api, npc) : openQuickWedding(api, npc);
+}
+
+/**
+ * The honeymoon postcard: a cartoon of where they went, "Greetings from…" across it, stamped. Shown after the wedding,
+ * in the scene or (with the scenes off) as a card.
+ */
+function postcardHtml(card, honeymoon, hex, still = false, extra = '') {
+  return `<div class="wp-postcard-screen ${extra}${still ? ' sv-still' : ''}">
+    <p class="wp-pc-eyebrow">A postcard from the honeymoon</p>
+    <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(honeymoon, card.place, hex)}</div></div>
+    <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
 }
