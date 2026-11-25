@@ -101,6 +101,9 @@ async function run(viewport) {
   await dismissMessages(page);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Active Cases' }).first().click();
   check((await page.locator('[data-inv]').innerText()).includes('The Ashford Street Burglary'), `${w}px: the case is in Active Cases`);
+  check(await page.locator('[data-inv] [data-act="support"]').count() >= 1, `${w}px: a case can ask for support from the caseload page`);
+  await page.locator('[data-inv] [data-act="support"]').first().click();
+  await dismissMessages(page);
   await page.locator('[data-inv] [data-act="openCase"]').first().click();
   await page.waitForSelector('[data-case]');
   const tabs = await page.locator('[data-case] [data-tab]').allInnerTexts();

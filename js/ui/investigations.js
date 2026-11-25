@@ -20,6 +20,8 @@ import * as O from '../engine/investigations/oversight.js';
 import * as X from '../engine/investigations/crossover.js';
 import * as FM from '../engine/investigations/forensicMed.js';
 import * as PO from '../engine/investigations/policing.js';
+import * as WP from '../engine/investigations/workplace.js';
+import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
 
 export { investigationsOpen };
@@ -138,7 +140,20 @@ const VIEWS = {
   cases(p, r) {
     const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && ((!inv.file.outcome && W.caseStatus(inv) !== 'cold') || inv.file.review?.status === 'open'));
     if (!list.length) return muted('No active cases. New cases are assigned as the year turns, within a manageable caseload.');
-    return list.map((inv) => { const v = V.view(inv, 'investigator'); return card(v.title, kv([['Kind', v.kind], ['Status', v.status], ['Agency', v.agency], ['Opened', v.opened], ['Hours left this year', String(W.workLeft(inv))]]) + stack(btn('openCase', 'Open the case file', { arg: inv.id }))); }).join('');
+    const many = WP.openCases(p).length >= 2;
+    const caseload = card('Your caseload', muted('Set one case as this year\'s priority, ask your supervisor for help on a heavy one, or hand the routine work to your partner. Judgment calls stay with you.'));
+    return caseload + list.map((inv) => {
+      const v = V.view(inv, 'investigator');
+      const live = WP.openCases(p).includes(inv);
+      const pri = r.priority?.year === store.state.year && r.priority.invId === inv.id;
+      const tf = inv.file.taskForceId && store.state.investigations.taskForces[inv.file.taskForceId];
+      return card(v.title, kv([['Kind', v.kind], ['Status', v.status], ['Agency', v.agency], ['Opened', v.opened], ['Hours left this year', String(W.workLeft(inv))], ...(pri ? [['This year', 'The priority']] : []), ...(tf ? [['Task force', tf.status === 'active' ? 'Active' : 'Ended']] : [])])
+        + stack(btn('openCase', 'Open the case file', { arg: inv.id })
+          + (live && many && !pri ? btn('prioritize', 'Make it the priority', { arg: inv.id }) : '')
+          + (live ? btn('support', 'Ask for support', { arg: inv.id }) : '')
+          + (live && r.people.partnerId ? btn('delegate', 'Hand the routine work to your partner', { arg: inv.id }) : '')
+          + (live && tf?.status === 'active' ? btn('tfMeet', 'Task force meeting', { arg: inv.id }) : '')));
+    }).join('');
   },
   archive(p, r) {
     const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && (inv.file.outcome || W.caseStatus(inv) === 'cold'));
@@ -174,6 +189,11 @@ const VIEWS = {
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
+      + (r.family === 'federal' && r.job?.officeId && !r.retired ? card('Moves within the agency', kv([['Field office', A.office(r.job.officeId)?.name ?? '—'], ['Squad', WP.SQUADS[r.job.agencyKind]?.find(([id]) => id === r.job.squad)?.[1] ?? 'General'],
+        ...(r.move ? [['Last request', `${r.move.kind === 'office' ? `Transfer to ${r.move.target}` : 'A squad place'}: ${r.move.status === 'pending' ? `answer by ${dateWords(r.move.due)}` : r.move.status}`]] : [])])
+        + stack(btn('transfer', 'Ask for a transfer to another field office') + btn('squad', 'Apply for a squad'))) : '')
+      + (r.retired ? card('After retiring', muted('Experience is worth something after the badge is handed in.') + WP.secondOptions(p).map((x) => kv([[x.name, x.block || x.text]]) + (x.block ? '' : stack(btn('second', x.id === 'memoir' ? 'Write it' : 'Take it up', { arg: x.id })))).join('')) : '')
       + card('Career history', r.history.slice().reverse().slice(0, 20).map((h) => kv([[String(h.year), h.text]])).join('') || muted('Nothing yet.'));
   },
   private(p, r) {
@@ -194,7 +214,9 @@ const VIEWS = {
     }
     for (const q of PI.inquiries(p).filter((x) => x.status === 'open')) {
       out += card(`${PI_SERVICES[q.service].name} for ${nm(q.clientId)}`, kv([['Fee', fmtMoney(q.fee, country())], ['Done', q.steps.join(', ') || 'nothing yet'], ['Findings', q.findings.join(' ') || 'none yet']])
-        + stack(Object.entries(PI.PI_STEPS).map(([id, d]) => btn('piStep', d.label, { arg: `${q.id}|${id}`, cls: d.restricted ? 'danger' : '' })).join('') + btn('piDone', 'Deliver the findings and close', { arg: q.id })));
+        + (q.assignedTo ? muted(`${nm(q.assignedTo)} is working it, and will report by ${dateWords(q.assignedDue)}.`)
+          : stack(Object.entries(PI.PI_STEPS).map(([id, d]) => btn('piStep', d.label, { arg: `${q.id}|${id}`, cls: d.restricted ? 'danger' : '' })).join('') + btn('piDone', 'Deliver the findings and close', { arg: q.id })
+            + (biz.business(q.businessId) && biz.staffOf(biz.business(q.businessId)).length ? btn('piAssign', 'Give it to a member of staff', { arg: q.id }) : ''))));
     }
     return out;
   },
@@ -336,6 +358,39 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  prioritize: (a, x) => x.say(WP.prioritize(a)),
+  support: (a, x) => x.say(WP.requestSupport(a)),
+  delegate: (a, x) => x.say(WP.delegate(a)),
+  tfMeet: async (a, x) => {
+    const how = await pickModal({ title: 'The task force meets', body: 'Two agencies, one case. How does your side work with theirs?', options: [
+      { value: 'share', label: 'Put everything on the table', sub: 'Leads and records shared both ways; the work divided.' },
+      { value: 'deconflict', label: 'Agree who does what', sub: 'Nobody interviews the same person twice.' },
+      { value: 'hold', label: 'Keep your best leads to yourselves', sub: 'Credit stays with the department, if it works.' }] });
+    if (how) await x.say(WP.taskForceMeeting(a, how));
+  },
+  transfer: async (a, x) => {
+    const here = A.office(rec().job.officeId)?.city;
+    const city = await pickModal({ title: 'Ask for a transfer', body: 'The agency decides on its needs and your record. It takes about six months.', options: A.federalCities().filter((c) => c !== here).map((c) => ({ value: c, label: c })) });
+    if (city) await x.say(WP.requestMove('office', city));
+  },
+  squad: async (a, x) => {
+    const r = rec();
+    const sq = await pickModal({ title: 'Apply for a squad', body: 'Squads take agents whose background suits the work.', options: (WP.SQUADS[r.job.agencyKind] ?? []).filter(([id]) => id !== r.job.squad).map(([id, label]) => ({ value: id, label })) });
+    if (sq) await x.say(WP.requestMove('squad', sq));
+  },
+  second: async (a, x) => {
+    if (a !== 'memoir') return x.say(WP.takeSecond(a));
+    const how = await pickModal({ title: 'Your memoir', body: 'What goes in it?', options: [
+      { value: 'public', label: 'The work, from the public record', sub: 'What happened in court, and what the job was like. People in the cases stay private.' },
+      { value: 'files', label: 'What was in the case files', sub: 'Statements and details people gave in trust. It would sell.' }] });
+    if (how) await x.say(WP.takeSecond('memoir', how));
+  },
+  piAssign: async (a, x) => {
+    const q = store.state.investigations.inquiries[a];
+    const staff = biz.staffOf(biz.business(q.businessId));
+    const who = await pickModal({ title: 'Give it to staff', body: 'They work it with lawful steps only, by its due date. How well depends on them.', options: staff.map((s) => ({ value: s.id, label: `${s.npc.firstName} ${s.npc.lastName}` })) });
+    if (who) await x.say(WP.assignInquiry(a, who));
+  },
   prep: (a, x) => x.say(C.prepare(a)),
   applyPolice: (a, x) => x.say(C.applyPolice(a)),
   acceptAcademy: (a, x) => x.say(C.acceptAcademy(a)),

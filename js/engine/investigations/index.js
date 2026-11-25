@@ -27,6 +27,7 @@ import { dramaYear, peopleYear, formTaskForce } from './drama.js';
 import { benchYear, pressYear } from './crossover.js';
 import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
+import { settleWorkplace, workplaceYear } from './workplace.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -56,7 +57,7 @@ export function settle(p = player()) {
   const ac = settleAcademy(p);
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
-  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints());
+  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
   return out;
 }
 
@@ -98,6 +99,7 @@ export function tickInvestigations() {
   }
   // A licensed assistant investigator takes the full title (the 'pi' track's second rung).
   if (p.career.careerId === 'pi' && p.career.level === 0 && licensed(p)) { promote(); p.career.title = 'Private investigator'; }
+  for (const line of workplaceYear(p)) log(line, 'system', 'good');
   peopleYear(p);
   dramaYear(p);
 }

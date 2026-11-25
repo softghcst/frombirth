@@ -330,7 +330,10 @@ export function workLeft(inv) {
   const f = inv.file;
   const used = f.work[year()] ?? 0;
   const cap = Math.max(3, 6 + Math.round(skillAvg(['management', 'planning']) / 25) + hoursBonus(inv.agencyId));
-  return Math.max(0, cap - used);
+  // Extra hours this year: support approved, a partner's routine work, a task force; and this year's priority (workplace.js).
+  const r = rec();
+  const pri = r?.priority?.year === year() && r.caseIds.includes(inv.id) ? (r.priority.invId === inv.id ? 2 : -1) : 0;
+  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri - used);
 }
 const spend = (f) => { f.work[year()] = (f.work[year()] ?? 0) + 1; };
 

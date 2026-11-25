@@ -34,7 +34,7 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Promotions and leadership | **Playable**: police, detective and federal ladders; each needs years, standing, a vacancy and beats a rival; chief and SAC are appointed |
 | FBI | **Playable**: eligibility (simplified), four dated stages, selection, academy, a field office, a partner and supervisor, federal cases |
 | DEA, ATF | **Playable** to the same depth as the FBI, each with its own case types: the DEA drug supply, the ATF firearms and arson; the FBI fraud, cybercrime, corruption, robbery and homicide |
-| Task forces | **Partial**: a US robbery or fraud case may gain a federal partner, as one shared case |
+| Task forces | **Playable**: a US robbery or fraud case may gain a federal partner, as one shared case; a yearly task force meeting (share everything, agree who does what, or hold leads back; holding back year after year ends it) |
 | Private investigation | **Playable**: license by exam, an agency on the business engine, clients who come or not by price and reputation, lawful steps only, fees paid once |
 | Forensic scientist (crossover) | **Partial**: requests from real cases on the bench; the report joins the same case file |
 | Medical examiner | **Playable** for a physician who completes the Forensic Pathology fellowship (after pathology): death referrals from real investigations; cause and manner of death found separately; toxicology takes time; findings the evidence does not support are refused; the signed report is the examiner's finding in the same case file |
@@ -44,6 +44,11 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Conviction review | **Playable**: a conviction with kept evidence that can be tested anew can be reviewed; a result pointing elsewhere goes to the appeal court as new evidence, which decides; the first verdict stays on the record |
 | Romance at work | **Playable** within rules: never across supervision (either way); partners who are together must declare it and are given new working partners |
 | The next generation | **Playable**: an ancestor's public career is in My Investigations → Family Legacy; their cases stay in the records under their name and may come back to a descendant who investigates |
+| Caseload | **Playable**: one case a year can be the priority (more hours on it, fewer on the rest); support can be asked for once a year and the supervisor decides; a partner can take a case's routine steps, never its judgment calls (`workplace.js`) |
+| Moves within an agency | **Playable** for federal agents: a transfer to another field office after some years, or a squad place (FBI white-collar, cyber, corruption, violent crime; DEA enforcement and diversion; ATF firearms and arson), each decided after six months on the record. Police units were already playable through detective selection |
+| Private agency staff | **Playable**: an open matter can be given to a member of the agency's staff, who closes it by its due date with lawful steps only |
+| Honors and high-profile cases | **Playable**: commendations, medals of merit, recognition for clearing an innocent person, investigator of the year, decided on integrity and how the work was done, never on arrest counts; a homicide or corruption case in court adds a little fame (publicity is not reputation) |
+| After retiring | **Playable**: academy instructor, investigative consultant, expert witness (each with yearly pay), and one memoir: from the public record, or telling what case files held (a breach) |
 | Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
 | Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
 | Forensic psychology outside the courts, police unions, national police reform | **Not built** |
@@ -82,6 +87,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (15 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (16 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.
