@@ -49,6 +49,7 @@ import { career as careerState, canFit, workLaw } from './worklife.js';
 import { licenseFor, licensed, examName } from './adulted.js';
 import { convert } from './currency.js';
 import { practiceBlock } from './medicine/practice.js';
+import { agencyBlock } from './investigations/private.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
@@ -110,6 +111,8 @@ export function startBlock(type) {
   // A medical practice opened by a physician with a medical record is gated by their training (engine/medicine/practice.js).
   const medical = type.id === 'clinic' ? practiceBlock(p) : null;
   if (medical) return medical;
+  // An investigation agency needs a private investigator's license where the player lives (engine/investigations/private.js).
+  if (type.id === 'investigations') { const pi = agencyBlock(p); if (pi) return pi; }
   const n = medical === '' ? { ...type.needs, program: undefined, experience: undefined } : type.needs;
   const has = (t) => p.education.degrees.some((d) => d.type === t);
   if (!businessExists(type.id, store.state.year)) return `There is no such business in ${store.state.year}.`;

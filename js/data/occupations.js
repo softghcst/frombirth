@@ -206,6 +206,14 @@ export const TRACKS = [
     L(['Corrections officer', 36, 46, 3], ['Senior corrections officer', 48, 60, 4], ['Corrections supervisor', 62, 80, 5], ['Prison governor', 90, 130, 0])),
   T('detective', 'Detective work', 'law', { branchOnly: true, from: [{ career: 'police', level: 1 }], schedule: 'irregular', stress: 3, values: ['excitement', 'service'] },
     L(['Detective', 66, 82, 4], ['Detective sergeant', 84, 102, 5], ['Detective inspector', 105, 130, 0])),
+  // Federal criminal investigators (the US): each agency its own track, hired and trained through its own process
+  // (engine/investigations), never by promotion from a police department. Pay is gameplay configuration.
+  T('fbi_agent', 'FBI special agent', 'law', { req: { ...uni(), ...ADULT, cleanRecord: true }, schedule: 'irregular', stress: 3, values: ['service', 'excitement'], outside: false, countries: ['us'], aliases: ['Special agent'] },
+    L(['Special agent', 74, 92, 5], ['Senior special agent', 95, 125, 4], ['Supervisory special agent', 128, 160, 4], ['Special agent in charge', 165, 200, 0])),
+  T('dea_agent', 'DEA special agent', 'law', { req: { ...uni(), ...ADULT, cleanRecord: true }, schedule: 'irregular', stress: 3, values: ['service', 'excitement'], outside: false, countries: ['us'] },
+    L(['Special agent', 70, 88, 5], ['Senior special agent', 92, 120, 4], ['Supervisory special agent', 124, 155, 4], ['Special agent in charge', 160, 195, 0])),
+  T('atf_agent', 'ATF special agent', 'law', { req: { ...uni(), ...ADULT, cleanRecord: true }, schedule: 'irregular', stress: 3, values: ['service', 'excitement'], outside: false, countries: ['us'] },
+    L(['Special agent', 70, 88, 5], ['Senior special agent', 92, 120, 4], ['Supervisory special agent', 124, 155, 4], ['Special agent in charge', 160, 195, 0])),
   T('forensics', 'Forensic science', 'law', { req: uni('chemistry', 'biology', 'criminal_justice'), schedule: 'on_call', stress: 2, values: ['craft', 'service'], aliases: ['Forensic investigator'] },
     L(['Crime scene technician', 42, 54, 2], ['Forensic investigator', 58, 76, 4], ['Senior forensic scientist', 80, 104, 5], ['Head of forensics', 108, 140, 0])),
   T('pi', 'Private investigation', 'novelty', { req: { ...ADULT, cleanRecord: true }, schedule: 'irregular', values: ['autonomy', 'excitement'], aliases: ['Private investigator'] },

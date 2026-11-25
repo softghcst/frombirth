@@ -123,6 +123,7 @@ function careersFor(npc) {
     if (careerBlock(c, npc, worldYear(), (id) => lawRule(id, typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId))) return false;
     if (c.category === 'performing') return false;
     if (c.branchOnly || r.experience || r.programs || c.agesOut) return false; // reached from inside a career, not hired into cold
+    if (c.countries && !c.countries.includes(typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId)) return false; // a national agency (the FBI) exists in one country only
     if (r.altOnly && !rng.chance(0.15)) return false; // needs a certificate few people have
     if (c.type === 'military' && !rng.chance(0.08)) return false;
     if (r.program && !has(r.program)) return false;
