@@ -8,7 +8,15 @@ import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
-import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
+import { SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
+// Five skills to follow on screen, not sixteen: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Detective Work', ['observation', 'reasoning', 'evidence', 'timeline', 'planning']],
+  ['Interviews & Reports', ['interviewing', 'writing']],
+  ['Law & Ethics', ['law', 'ethics']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership', 'interagency']],
+  ['Specialist Skills', ['financial', 'digital', 'forensic']],
+];
 import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
@@ -154,7 +162,7 @@ const VIEWS = {
       ['Cases completed', String(st.completed)], ['Referred to a prosecutor', String(st.referred)], ['Charged', String(st.charged)], ['Charges declined', String(st.declined)], ['Convictions', String(st.convicted)],
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
-      + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
+      + card('Skills', SKILL_GROUPS.map(([name, ids]) => meterHtml(name, Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
       + card('Career history', r.history.slice().reverse().slice(0, 20).map((h) => kv([[String(h.year), h.text]])).join('') || muted('Nothing yet.'));
   },

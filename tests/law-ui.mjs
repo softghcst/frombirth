@@ -146,7 +146,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await engine(async () => { const { advanceTurn } = await import('/js/engine/turns.js'); const { store } = await import('/js/state.js'); const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(L.caseIds.at(-1)); for (let i = 0; i < 12 && !c.awaiting && !c.done; i++) { store.state.pendingEvents = []; advanceTurn(); } store.notify(); });
   await rowBtn.click(); await hub().waitFor(); await hub().locator('[data-tab="cases"]').click();
   const lastId = await engine(async () => (await import('/js/engine/lawSchool.js')).lawOf().caseIds.at(-1));
-  await hub().locator(`[data-case="${lastId}"]`).click();
+  check(/needs you/i.test(await hub().innerText()) && /in court:/i.test(await hub().innerText()), `${label}: one docket page puts the day in court at the top, under Needs You`);
+  check(await hub().locator('[data-tab="filings"], [data-tab="court"], [data-tab="clients"]').count() === 0, `${label}: no separate tabs for filings, the courtroom and clients`);
+  await hub().locator(`[data-case="${lastId}"]`).first().click();
   const court = hub().locator('[data-cact="court"]');
   check(await court.count() === 1, `${label}: the case reaches court and waits for the lawyer`);
   await court.click(); await ok();

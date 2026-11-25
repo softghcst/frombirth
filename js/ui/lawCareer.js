@@ -32,7 +32,6 @@ function tabs() {
   const out = [['overview', 'Overview'], ['education', 'Education & Licensing']];
   const anyCases = (L?.caseIds ?? []).length > 0;
   if (anyCases || t) out.push(['cases', 'My Cases']);
-  if (anyCases) out.push(['clients', 'Clients'], ['filings', 'Filings & Deadlines'], ['court', 'Courtroom']);
   if (t && !lp.mayPractice(p) && !['prosecutor', 'defender', 'gov_counsel'].includes(t)) out.push(['new', 'New Cases']);
   if (t) out.push(['progress', 'Career Progress'], ['office', t === 'own' ? 'Your Firm' : 'Office']);
   if ((L?.history ?? []).length || ls.admitted(p)) out.push(['history', 'Career History']);
@@ -107,38 +106,34 @@ function myCases() {
   const closed = all.filter((c) => c.done).reverse().slice(0, 12);
   const line = (c) => row(`data-case="${c.id}"`, c.title, `${lc.roleName(c)} · ${COMPLEXITY[c.level]} · ${c.done ? c.outcome?.text ?? 'Closed' : lc.STAGE_NAME[lc.stageOf(c)] ?? ''}${c.awaiting && !c.done ? ' · needs you' : ''}`);
   const w = lc.workload();
-  return `${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
+  // One page for the docket: what needs you now (hearings, then filings due), the open cases, the closed ones, the clients.
+  const court = open.filter((c) => c.awaiting && c.awaiting.since <= ls.nowM());
+  const due = filingRows().filter((r) => r.due - ls.nowM() <= 3);
+  const needs = court.length || due.length ? `<div class="section-label">Needs you</div>${court.map((c) => row(`data-case="${c.id}"`, `In court: ${c.title}`, `${lc.forumName(c)}${c.jury ? ' · jury' : ''}`)).join('')}${due.map(filingRow).join('')}` : '';
+  const clientRows = clients(true);
+  return `${needs}${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
     ${lp.trackOf() ? fitBar('Workload', Math.min(100, w.points / w.capacity * 70)) : ''}
     ${lp.trackOf() ? `<div class="btn-row law-load">${btn('Ask for Support', 'data-load="support"')}${btn('Take Leave', 'data-load="leave"')}</div>` : ''}
-    ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}`;
+    ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}
+    ${clientRows ? `<div class="section-label">Clients</div>${clientRows}` : ''}`;
 }
 
 /** Everyone the player has represented, and where their case stands. */
-function clients() {
+function clients(quiet = false) {
   const all = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c?.clientId);
   const seen = new Map();
   for (const c of all) { const x = seen.get(c.clientId) ?? { id: c.clientId, cases: [] }; x.cases.push(c); seen.set(c.clientId, x); }
-  if (!seen.size) return '<p class="empty">No clients yet. A prosecutor and agency counsel act for the government, not for clients.</p>';
+  if (!seen.size) return quiet ? '' : '<p class="empty">No clients yet. A prosecutor and agency counsel act for the government, not for clients.</p>';
   return [...seen.values()].map((x) => `<button type="button" class="tree-row" data-npcperson="${x.id}"><strong>${esc(nameOf(x.id))}</strong><small>${esc(x.cases.map((c) => `${c.title}: ${c.done ? c.outcome?.kind ?? 'closed' : lc.STAGE_NAME[lc.stageOf(c)] ?? ''}`).join(' · '))}</small></button>`).join('');
 }
 
 /** Every filing still to make, across all open cases, soonest first. */
-function filingsPage() {
-  const rows = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done)
+function filingRows() {
+  return ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done)
     .flatMap((c) => [...lc.proceduralDue(c).map((pf) => ({ c, name: pf.name, due: pf.deadline.due })), ...(c.deadlines.filter((d) => d.id === 'filing' && d.met == null).map((d) => ({ c, name: d.label, due: d.due })))])
     .sort((a, b) => a.due - b.due);
-  if (!rows.length) return '<p class="empty">Nothing due.</p>';
-  return rows.map((r) => row(`data-case="${r.c.id}"`, r.name, `${r.c.title} · ${r.due - ls.nowM() > 0 ? `due in ${r.due - ls.nowM()} month${r.due - ls.nowM() === 1 ? '' : 's'}` : 'due now'}`)).join('');
 }
-
-/** Days in court waiting for the player, and the ones coming. */
-function courtPage() {
-  const open = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done);
-  const now = open.filter((c) => c.awaiting && c.awaiting.since <= ls.nowM());
-  const later = open.filter((c) => c.awaiting && c.awaiting.since > ls.nowM());
-  return `${now.length ? `<div class="section-label">Waiting for you</div>${now.map((c) => row(`data-case="${c.id}"`, c.title, `${lc.forumName(c)}${c.jury ? ' · jury' : ''}`)).join('')}` : '<p class="empty">No hearing is waiting for you.</p>'}
-    ${later.length ? `<div class="section-label">Set for later</div>${later.map((c) => row(`data-case="${c.id}"`, c.title, `Retrial in ${c.awaiting.since - ls.nowM()} months`)).join('')}` : ''}`;
-}
+const filingRow = (r) => row(`data-case="${r.c.id}"`, r.name, `${r.c.title} · ${r.due - ls.nowM() > 0 ? `due in ${r.due - ls.nowM()} month${r.due - ls.nowM() === 1 ? '' : 's'}` : 'due now'}`);
 
 function newCases() {
   const list = lp.offers();
@@ -368,7 +363,7 @@ export function openLawCareer(api, start = {}) {
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
       : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2>
         <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-        <div class="law-page">${{ overview, education, cases: myCases, clients, filings: filingsPage, court: courtPage, new: newCases, progress, office, history }[tab]()}</div>`;
+        <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
   const changed = () => { api.changed?.(); draw(); };
   m.el.addEventListener('click', async (e) => {

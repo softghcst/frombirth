@@ -6,7 +6,15 @@
 // Patient cases are confidential: they are shown here only, to the physician.
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, jurisdiction } from '../data/medicine.js';
+import { SPECIALTY_BY_ID, RANKS, DEPARTMENTS, jurisdiction } from '../data/medicine.js';
+// Five skills to follow on screen, not nine: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Clinical Judgment', ['reasoning', 'research']],
+  ['Hands-On Skill', ['technical']],
+  ['Bedside Manner', ['communication']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership']],
+  ['Professionalism', ['professionalism', 'integrity']],
+];
 import { openModal, messageModal, pickModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { med, M, currentSpecialty, specialtyName, qualified, reputationOf } from '../engine/medicine/core.js';
@@ -83,7 +91,7 @@ const VIEWS = {
       ['Completed training', m.completed.map((c) => `${specialtyName(c.specialtyId)} (${c.from}–${c.to})`).join(', ') || 'None yet'],
       ['Reputation', `${reputationOf(m)} (from how you practice, never from survival counts)`],
       ['Jurisdiction', `${p.countryId === 'us' ? 'United States, modeled in detail' : 'Simplified profile: the broad shape, not the rules'}`],
-    ])) + card('Skills', Object.entries(SKILLS).map(([k, label]) => meterHtml(label, m.skills[k], true)).join(''))
+    ])) + card('Skills', SKILL_GROUPS.map(([name, ids]) => meterHtml(name, Math.round(ids.reduce((t, k) => t + (m.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + card('Career history', m.history.length ? `<ul>${m.history.slice(-12).reverse().map((h) => `<li>${esc(String(h.year))}: ${esc(h.text)}</li>`).join('')}</ul>` : muted('Nothing yet.'))
       + card('Hospital drama', `<p class="muted">How often the people of hospital life bring you scenes. It never changes how patients fare.</p>${Object.keys(DRAMA).map((l) => btn('drama', l[0].toUpperCase() + l.slice(1), { arg: l, cls: m.drama === l ? 'primary' : '' })).join('')}`);
   },

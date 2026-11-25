@@ -333,6 +333,8 @@ export function medicineChoice(value, cast = {}) {
         const spec = currentSpecialty(m);
         const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
         if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
+        // The move ended the old post (engine/cities.js relocate): the medical record says so now, not next year.
+        if (m.job && !p.career.careerId) m.job = null;
         return `You move to ${o.city} together. You will need to find a post there: My Medical Career, Hospital.`;
       }
       if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
