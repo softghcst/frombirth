@@ -64,7 +64,7 @@ export const COUNTRY_LAW = {
   ca: { name: 'Canada', degree: 'Juris Doctor (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'lsat', name: 'LSAT', required: true },
     exam: 'provincial bar admission exams', training: 10, trainingName: 'articling', admission: 'call to the bar of the province' },
   uk: { name: 'England and Wales', degree: 'law degree (or a degree and a conversion course)', exam: 'Solicitors Qualifying Examination (SQE)', training: 24,
-    trainingName: 'qualifying work experience', admission: 'admission as a solicitor', note: 'Barristers qualify differently: the Bar course and a pupillage. Pathways plays the solicitor route.' },
+    trainingName: 'qualifying work experience', admission: 'admission as a solicitor', note: 'Barristers qualify differently: the Bar course and a pupillage. Pathways plays the solicitors\' route.' },
   au: { name: 'Australia', degree: 'law degree (LLB or JD)', exam: 'Practical Legal Training assessment', training: 6, trainingName: 'Practical Legal Training', admission: 'admission by the Supreme Court of the state' },
   jp: { name: 'Japan', degree: 'law school degree', degreeYears: 3, afterBachelor: true, exam: 'national bar examination', training: 12, trainingName: 'the Legal Training and Research Institute', admission: 'registration with the bar association' },
   kr: { name: 'South Korea', degree: 'law school degree (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'leet', name: 'LEET', required: true }, exam: 'bar examination', training: 6, trainingName: 'practical training', admission: 'registration with the Korean Bar Association' },
@@ -75,6 +75,23 @@ export const COUNTRY_LAW = {
   ph: { name: 'the Philippines', degree: 'Juris Doctor (J.D.)', degreeYears: 4, afterBachelor: true, exam: 'bar examinations of the Supreme Court', training: 0, admission: 'admission to the bar and signing of the Roll of Attorneys' },
   ng: { name: 'Nigeria', degree: 'LL.B.', exam: 'Nigerian Law School Bar Final examination', training: 12, trainingName: 'the Nigerian Law School', admission: 'call to the bar' },
 };
+
+/**
+ * Contingency fees (a share of what the client recovers), by country. Never in criminal, family or child matters,
+ * anywhere (in the US, ABA Model Rule 1.5(d)). cap: the largest share allowed or usual; byKind for case-specific caps.
+ * Countries not listed are treated as not allowing them: Pathways does not model their rules.
+ */
+export const CONTINGENCY = {
+  us: { allowed: true, cap: 0.33, note: 'Usual in civil claims, never in criminal or family matters.' },
+  uk: { allowed: true, cap: 0.5, byTemplate: { injury: 0.25, dismissal: 0.35 }, note: 'Damages-based agreements, capped: 25% in personal injury, 35% in employment.' },
+  ca: { allowed: true, cap: 0.33, note: 'Allowed in civil claims, regulated by each province.' },
+  jp: { allowed: true, cap: 0.3, note: 'Success fees are common.' },
+  au: { allowed: false, note: 'A share of the damages is not allowed; a "no win, no fee" uplift is.' },
+  fr: { allowed: false, note: 'A pure share of the result (pacte de quota litis) is not allowed.' },
+  de: { allowed: false, note: 'Generally not allowed.' },
+  in: { allowed: false, note: 'Not allowed by the Bar Council\'s rules.' },
+};
+export const NO_CONTINGENCY_KINDS = ['criminal', 'family', 'child'];
 
 // ---------- Skills ----------
 

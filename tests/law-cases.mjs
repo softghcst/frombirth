@@ -172,6 +172,21 @@ const npc = (id) => store.state.npcs[id];
   check(lc.forumName(lc.createCase('tax_appeal')) === 'Tax tribunal', 'a tax appeal goes to the tax tribunal');
 }
 
+// ---------- Contingency fees follow the law of the country and the kind of case ----------
+{
+  const model = (country, tid, fee = 'contingency') => { lawyer('lawyer', { countryId: country }); return lc.createCase(tid, { fee }); };
+  const us = model('us', 'injury');
+  check(us.fee.model === 'contingency' && lc.contingencyRule('injury', 'us').share === 0.33, 'in the US a personal injury claim can be taken for a third of the award');
+  check(lc.contingencyRule('injury', 'uk').share === 0.25 && lc.contingencyRule('dismissal', 'uk').share === 0.35, 'in England the share is capped: 25% for injury, 35% for employment');
+  check(model('au', 'injury').fee.model === 'hourly' && model('in', 'injury').fee.model === 'hourly', 'in Australia and India a share of the damages is not allowed: billed by the hour');
+  check(model('us', 'divorce').fee.model === 'hourly' && !lc.contingencyRule('burglary', 'us').allowed, 'never in a divorce or a criminal case');
+  check(model('mx', 'injury').fee.model === 'hourly' && /Not modeled/.test(lc.contingencyRule('injury', 'mx').why), 'where the rules are not modeled, the game does not assume them');
+  lawyer('lawyer', { countryId: 'us' });
+  const win = lc.createCase('injury', { fee: 'contingency' });
+  lc.close(win, { kind: 'judgment', text: 'Judgment.', favorable: 1, trial: true, amount: 90000 });
+  check(win.fee.amount === Math.round(90000 * 0.33), `the fee is the lawful share of the award, once (${win.fee.amount})`);
+}
+
 // ---------- Specialties are honest ----------
 {
   const playable = SPECIALTIES.filter((s) => s.playable);

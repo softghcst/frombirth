@@ -68,7 +68,8 @@ section('the past: only clubs that existed then');
   check((p.talents.singing ?? 0) > singing, `a year in a choir is singing practice (${singing} → ${p.talents.singing})`);
   check(p.finance.cash < before, 'dues are paid each year');
   check(cl.memberships().every((m) => m.years === 1), 'each membership is a year old');
-  for (let i = 0; i < 4; i++) year();
+  // Friendships come by chance, year by year: give it up to ten years of membership.
+  for (let i = 0; i < 9 && cl.memberships().flatMap((m) => m.friends).length < 2; i++) year();
   const friends = cl.memberships().flatMap((m) => m.friends);
   check(friends.length >= 2 && friends.every((id) => store.state.npcs[id]?.role === 'friend' && p.npcIds.includes(id)), `friends are made at the clubs (${friends.length})`);
   check(cl.leave('chess').ok && !cl.memberships().some((m) => m.id === 'chess') && cl.clubsOf().past.some((x) => x.id === 'chess' && x.why === 'left'), 'leaving is kept on the record');

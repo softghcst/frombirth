@@ -13,7 +13,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS } from '../data/law.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 
@@ -67,7 +67,7 @@ export function createCase(templateId, o = {}) {
     jury: !!T.jury && (T.kind === 'criminal' ? prof.juries.criminal : T.kind === 'civil' ? prof.juries.civil : false), forum: T.forum,
     vars: {}, parties: {}, evidence: [], witnesses: [], filings: [], deadlines: [], hearings: [], tasks: {}, research: null,
     negotiation: { offers: [], accepted: null }, court: null, awaiting: null, outcome: null, appeal: null, errors: [], ethics: null,
-    fee: { model: o.fee ?? (role === 'prosecution' || role === 'agency' || o.assigned || o.clinic ? 'salary' : (SPECIALTY_BY_ID[o.specialty]?.fees ?? ['flat'])[0]), paid: false, amount: 0 },
+    fee: { model: role === 'prosecution' || role === 'agency' || o.assigned || o.clinic ? 'salary' : feeModelFor(templateId, countryId, o.fee ?? (SPECIALTY_BY_ID[o.specialty]?.fees ?? ['flat'])[0]), paid: false, amount: 0 },
     history: [], confidential: true, done: false };
   // The people in it.
   const bench = k.bench(countryId);
@@ -146,6 +146,23 @@ export function createCase(templateId, o = {}) {
   LC()[id] = c;
   lawOf(p).caseIds.push(id);
   return c;
+}
+
+// ---------- Fees ----------
+
+/** Whether a contingency fee is allowed for this kind of case here, and the share. */
+export function contingencyRule(templateId, countryId) {
+  const T = CASE_TEMPLATES[templateId];
+  const r = CONTINGENCY[countryId];
+  if (NO_CONTINGENCY_KINDS.includes(T.kind)) return { allowed: false, why: 'Never allowed in criminal, family or child matters.' };
+  if (!r) return { allowed: false, why: 'Not modeled for this country: billed by the hour instead.' };
+  if (!r.allowed) return { allowed: false, why: r.note };
+  return { allowed: true, share: r.byTemplate?.[templateId] ?? r.cap, why: r.note };
+}
+/** The fee arrangement a case can have: a contingency fee only where it is lawful, otherwise hourly. */
+export function feeModelFor(templateId, countryId, wanted) {
+  if (wanted !== 'contingency') return wanted;
+  return contingencyRule(templateId, countryId).allowed ? 'contingency' : 'hourly';
 }
 
 // ---------- Reading a case ----------
@@ -548,7 +565,7 @@ export function close(c, out, lines = []) {
     if (c.fee.model !== 'salary') {
       const c0 = COUNTRIES[c.countryId];
       const base = localCost([0, 1500, 4000, 9000, 22000, 60000][c.level], c0);
-      const amount = c.fee.model === 'contingency' ? Math.round((out.amount ?? 0) * 0.3) : base;
+      const amount = c.fee.model === 'contingency' ? Math.round((out.amount ?? 0) * (contingencyRule(c.templateId, c.countryId).share ?? 0)) : base;
       c.fee.amount = amount;
       if (amount > 0 && L.firm?.own) { L.firm.revenue = (L.firm.revenue ?? 0) + amount; }
       else if (amount > 0) { L.billed = (L.billed ?? 0) + amount; }
