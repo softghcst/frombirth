@@ -143,7 +143,7 @@ export function dressFor(look, ctx = {}) {
     // A baby has a baby's hair; from 3, a child's hairstyle (a grown-up's waits until 14, as for a kid).
     out.hair = stage === 'baby' ? look.babyHair ?? null : look.kidHairChosen || (out.hair && !kidsMayWear(out.hair)) ? look.kidHair ?? null : out.hair;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
-    out.jewelry = []; out.glasses = null; out.hat = null;
+    out.jewelry = []; out.glasses = null; out.hat = null; out.beard = null;
     out.eyebrows = BABY_BROWS;
     // A baby (under 3): a binky in place of the mouth, blue for a boy and pink for a girl (--binkie-color).
     if (stage === 'baby') { out.pacifier = PACIFIER.id; out.lips = null; }
@@ -156,6 +156,7 @@ export function dressFor(look, ctx = {}) {
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     // Children's clothes until 14, when the kid head ends: never a grown-up's outfit (resolveLook's kidClothes).
     out.clothes = look.kidClothes ?? null;
+    out.beard = null;
   } else if (age < MAKEUP_AGE) {
     // A teenager has a grown-up's face but wears no make-up until MAKEUP_AGE: only their own marks show.
     out.makeup = [...(look.marks ?? [])];
@@ -318,7 +319,7 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
     eyes: feature(T.anchor.eyes, eyeS), eyebrows: move(256, T.anchor.eyebrows, fit.cx, at(T.anchor.eyebrows) - browLift, browS),
     nose: move(256, T.anchor.nose, fit.cx, at(T.anchor.nose) + nf.drop, noseS * nf.k), lips: move(256, T.anchor.lips, fit.cx, at(T.anchor.lips) + mf.dy, mouthS * mf.k),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes, eyeS),
-    glasses: feature(T.anchor.eyes, wr * young.k),
+    glasses: feature(T.anchor.eyes, wr * young.k), beard: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
     // On the adult heads, which share one neck and shoulders, clothes sit on that body (collar, bodyX); otherwise under the chin.
@@ -483,6 +484,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     // A baby's, toddler's or child's brows: one soft pair, lifted, set as wide as their eyes.
     youngFace ? pair(d.eyebrows, f.browsL, f.browsR) : use(d.eyebrows, f.eyebrows),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
+    // A beard sits under the mouth, so a full one does not swallow it.
+    d.beard && (ctx.age ?? 25) >= 16 ? use(d.beard, f.beard) : '',
     d.pacifier ? use(d.pacifier, f.lips) : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),  // a baby's binky, blue or pink, in place of the mouth
     clothesLayer(d.clothes, d.head, ASDRAWN.test(d.clothes ?? '') ? childFit(d.clothes) : snapped(d.clothes, f.clothes, d.head)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
@@ -532,6 +535,6 @@ export function filesFor(look, ctx = {}) {
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
   const neckFit = d.clothes && FITTED_CLOTHES[d.clothes]?.includes(headName(d.head)) ? `${AVATAR_BASE}clothes_fit/${d.clothes}__${headName(d.head)}.svg` : null;
   return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(neckFit ? [neckFit] : []),
-    ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.pacifier, neckFit ? null : d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
+    ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.beard, d.lips, d.pacifier, neckFit ? null : d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
       .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
 }

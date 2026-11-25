@@ -129,13 +129,13 @@ export function openSalonVisit(api, { intro = true } = {}) {
   const say = barber ? {
     hello: `What's good, ${p.firstName}? Welcome to ${name}. Grab a chair. What are we doing today?`,
     cut: 'Fresh cut coming up. What are we going for?', color: 'Thinking about some color? Let\'s see it.',
-    face: 'A little touch-up? Pick a look.', extras: 'Gotta finish the look. Try some on.', clothes: 'Got a few fits on the rack. See anything you like?',
+    brows: 'Let me clean up those brows. How do you want them?', beard: 'Let\'s sort out the beard. What are we going for?', extras: 'Gotta finish the look. Try some on.', clothes: 'Got a few fits on the rack. See anything you like?',
     good: ['Clean. Anything else?', 'That\'s sharp. What else can I do?', 'Looking good. Anything else today?'],
     undo: 'All good. Anything else?', bill: 'All done. Here\'s the total.', paid: 'Looking sharp!', bye: 'No worries, come back anytime!',
   } : {
     hello: `Hi ${p.firstName}, welcome to ${name}! Have a seat. What are we doing today?`,
     cut: 'Ooh, a fresh cut! What are you feeling?', color: 'Let\'s play with color!',
-    face: 'A little glam? Pick a look and I\'ll work my magic.', extras: 'Accessories make the look. Try some on!', clothes: 'Our boutique corner has a few new pieces. See anything you like?',
+    brows: 'Brows frame the whole face! Which shape are you feeling?', face: 'A little glam? Pick a look and I\'ll work my magic.', extras: 'Accessories make the look. Try some on!', clothes: 'Our boutique corner has a few new pieces. See anything you like?',
     good: ['Gorgeous! Anything else?', 'That suits you. What else can I do?', 'Perfect. Anything else today?'],
     undo: 'No problem! Anything else?', bill: 'All done! Here\'s your total.', paid: 'Look at you!', bye: 'No problem, come back anytime!',
   };
@@ -147,7 +147,10 @@ export function openSalonVisit(api, { intro = true } = {}) {
     { id: 'cut', label: 'Haircut', keys: ['hair'], line: say.cut },
     { id: 'texture', label: 'Hair treatment', keys: ['treatment', 'hair'], line: `Your natural hair is ${natural}. Want it to wear a different texture for a while?`, when: () => p.age >= salon.TREATMENT_MIN_AGE },
     { id: 'color', label: 'Hair color', keys: ['hairDye'], line: say.color },
-    { id: 'face', label: 'Makeup', keys: ['makeup', 'lipColor'], line: say.face, when: () => p.age >= MAKEUP_AGE },
+    { id: 'brows', label: 'Eyebrows', keys: ['browStyle'], line: say.brows, when: () => p.age >= 12 },
+    // Make-up at the salon; at the barber's, beard grooming in its place.
+    barber ? { id: 'beard', label: 'Beard grooming', keys: ['beard'], line: CATALOG.beard.length ? say.beard : 'Smooth and sharp. A clean shave it is.', when: () => p.age >= 16 }
+      : { id: 'face', label: 'Makeup', keys: ['makeup', 'lipColor'], line: say.face, when: () => p.age >= MAKEUP_AGE },
     { id: 'extras', label: 'Glasses & jewelry', keys: ['glasses', 'jewelry'], line: say.extras },
     { id: 'clothes', label: 'Clothes', keys: ['outfit', 'outfitColor'], line: say.clothes, when: () => CATALOG.outfit.length > 0 },
   ].filter((s) => !s.when || s.when());

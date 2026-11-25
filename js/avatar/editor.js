@@ -17,7 +17,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '
 
 // Zoomed views for option thumbnails, in the 512 frame.
 const ZOOM = { eyes: '146 214 220 160', brows: '146 196 220 140', nose: '196 290 120 110', lips: '186 336 140 100', glasses: '126 214 260 170',
-  makeup: '126 206 260 230', marks: '126 206 260 230', jewelry: '70 220 372 330', outfit: '20 360 472 220', hat: '40 -10 432 380' };
+  makeup: '126 206 260 230', marks: '126 206 260 230', jewelry: '70 220 372 330', outfit: '20 360 472 220', hat: '40 -10 432 380', browStyle: '146 196 220 140', beard: '136 316 240 190' };
 
 // kind: 'thumb' draws a small portrait for each option; 'swatch' a color dot; 'chip' a word.
 // half: which half of the appearance the key lives in. none: the control has a "none" option.
@@ -42,6 +42,9 @@ const CONTROLS = {
   glasses: { label: 'Glasses', half: 'style', kind: 'thumb', none: 'None' },
   jewelry: { label: 'Jewelry', half: 'style', kind: 'thumb', multi: true, minAge: 8 },
   makeup: { label: 'Make-up', half: 'style', kind: 'thumb', none: 'None', minAge: MAKEUP_AGE },
+  // At the salon or barber's: brows shaped (worn over the ones born with), and a beard.
+  browStyle: { label: 'Eyebrow shape', half: 'style', kind: 'thumb', none: 'Natural', minAge: 12 },
+  beard: { label: 'Beard', half: 'style', kind: 'thumb', none: 'Clean shaven', minAge: 16 },
   // Seen in the Baby and Child views: what they wear then (resolveLook picks one from the seed until it is chosen).
   babyHair: { label: 'Baby hair', half: 'style', kind: 'thumb', young: true },
   babyOutfit: { label: 'Baby outfit', half: 'style', kind: 'thumb', young: true },
@@ -137,6 +140,7 @@ export function mountAppearanceEditor(el, o = {}) {
     if (key === 'eyes') list = list.filter((x) => eyesFor(x.id, o.gender) === x.id);  // a man's eyes have no lashes
     // The bushy brows of old age are an old man's.
     if (key === 'brows' && o.gender === 'female') list = list.filter((x) => x.id !== ELDER_BROWS);
+    if (key === 'browStyle') list = list.filter((x) => x.id !== ELDER_BROWS);  // nobody asks for an old man's brows
     return list;
   };
 

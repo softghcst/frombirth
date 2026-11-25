@@ -89,14 +89,28 @@ const shops = await page.evaluate(async () => {
   openSalonVisit({ changed() {} }, { intro: false });
   out.barberClass = !!document.querySelector('.salon-screen.sv-barber'); out.bulbs = document.querySelectorAll('.sv-bulbs i').length;
   out.hello = document.querySelector('.sv-bubble')?.textContent;
+  out.barberReplies = [...document.querySelectorAll('.sv-reply')].map((x) => x.textContent);
   document.querySelector('[data-leave]').click();
   p.gender = 'female'; openSalonVisit({ changed() {} }, { intro: false });
+  out.salonReplies = [...document.querySelectorAll('.sv-reply')].map((x) => x.textContent);
   out.salonBulbs = document.querySelectorAll('.sv-bulbs i').length; out.salonClass = !!document.querySelector('.sv-barber');
   document.querySelector('[data-leave]').click();
   return out;
 });
 check(shops.transWoman === 'salon' && shops.transMan === 'barber', `the shop follows the gender lived as (${JSON.stringify(shops)})`);
 check(shops.sub === 'Barbershop' && shops.barberClass && !shops.bulbs && /Grab a chair/.test(shops.hello), 'a man\'s visit is to the barbershop');
+check(shops.barberReplies.includes('Beard grooming') && shops.barberReplies.includes('Eyebrows') && !shops.barberReplies.includes('Makeup'), `the barber offers beard grooming and eyebrows, not makeup (${shops.barberReplies})`);
+check(shops.salonReplies.includes('Makeup') && shops.salonReplies.includes('Eyebrows') && !shops.salonReplies.includes('Beard grooming'), `the salon offers makeup and eyebrows (${shops.salonReplies})`);
+// Shaped brows are worn over the ones born with, paid for, and kept.
+const brows = await page.evaluate(async () => {
+  const { store } = await import('/js/state.js'); const { normalize, resolveLook, CATALOG } = await import('/js/avatar/catalog.js'); const salon = await import('/js/engine/salon.js');
+  const p = store.state.player; p.appearance = normalize(p.appearance, p.id);
+  const born = p.appearance.inherited.brows; const shape = CATALOG.browStyle.find((b) => b.id !== born).id;
+  const next = JSON.parse(JSON.stringify(p.appearance)); next.style.browStyle = shape;
+  const q = salon.salonQuote(next); const r = salon.applySalon(next);
+  return { line: q.lines.map((l) => l.label).join(), ok: r.ok, born: p.appearance.inherited.brows === born, worn: resolveLook(p.appearance, p.id, p.gender).eyebrows === shape, shape };
+});
+check(/Eyebrow shaping/.test(brows.line) && brows.ok && brows.born && brows.worn, `shaped brows are bought and worn, the natural ones kept (${JSON.stringify(brows)})`);
 check(shops.salonBulbs > 0 && !shops.salonClass, 'a woman\'s is to the beauty salon, bulbs round the mirror');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();

@@ -55,12 +55,12 @@ def part_id(folder, stem):
     return HEAD_IDS.get(stem, stem) if folder == 'heads' else stem
 MANIFEST = os.path.join(ROOT, 'js', 'avatarManifest.js')
 FOLDERS = ['heads', 'eyes', 'eyebrows', 'noses', 'lips', 'hair', 'clothes', 'crowns', 'hats', 'glasses', 'jewelry',
-           'makeup', 'aging', 'emotions', 'pacifiers', 'baby_eyes']
+           'makeup', 'aging', 'emotions', 'pacifiers', 'baby_eyes', 'facial_hair']
 
 # ---------- 1. Unpacking and sorting ----------
 
 PREFIXES = [  # longest first
-    ('pacifier', 'pacifiers'), ('baby_eyes', 'baby_eyes'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
+    ('facial_hair', 'facial_hair'), ('beard', 'facial_hair'), ('pacifier', 'pacifiers'), ('baby_eyes', 'baby_eyes'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
     ('glasses', 'glasses'), ('outfit', 'clothes'), ('makeup', 'makeup'), ('eyebrow', 'eyebrows'), ('brows', 'eyebrows'),
     ('crown', 'crowns'), ('aging', 'aging'), ('head', 'heads'), ('face', 'heads'), ('hair', 'hair'), ('eyes', 'eyes'),
     ('nose', 'noses'), ('lips', 'lips'), ('hat', 'hats'),
@@ -90,8 +90,6 @@ EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05
 
 def folder_for(name):
     if name in EXCLUDED or name.startswith('hat'):  # hats are withdrawn: only crowns and tiaras are worn on the head
-        return None
-    if name.startswith('facial_hair'):  # facial hair has been taken out of the game
         return None
     for prefix, folder in PREFIXES:
         if name.startswith(prefix):
