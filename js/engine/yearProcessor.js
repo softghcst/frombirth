@@ -2,6 +2,7 @@
 // systems run, then the death check, then this year's scenarios are queued.
 import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
+import { tickHair } from './salon.js';
 import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
 import { tickCare } from './animalCare.js';
@@ -74,6 +75,7 @@ import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
+import { tickMedicine } from './medicine/index.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 
@@ -107,6 +109,7 @@ export const YEARLY = [
   ['npcLives', tickLives],
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
+  ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)
   ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
@@ -157,6 +160,7 @@ export const YEARLY = [
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['hair', () => tickHair(store.state)], // a hair treatment grown out; hairstyles kept in the texture each person's hair shows (engine/salon.js)
   ['talents', () => tickTalents()], // talents come on with the years; a gift shows itself (engine/talentGrowth.js)
   ['military', tickMilitary], // contracts, national service (engine/military.js)
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)

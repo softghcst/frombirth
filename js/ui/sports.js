@@ -109,7 +109,6 @@ function sportsSection() {
 function training() {
   const active = sp.activeSports();
   if (!active.length) return empty('You are not playing anything right now.');
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
   return `
     ${active.map((e) => {
     const sport = sportOf(e.id);
@@ -120,7 +119,7 @@ function training() {
       ${kv('Private coach', e.privateCoachId ? `<a href="#" data-coach="${e.privateCoachId}">${esc(sp.coachOf(e.privateCoachId).name)}</a>` : 'None')}
       ${e.mentorId ? kv('Mentor', `<a href="#" data-person="${e.mentorId}">${esc(store.state.npcs[e.mentorId]?.firstName ?? '')}</a>`) : ''}
       ${kv('Fatigue', e.fatigue >= 70 ? 'Worn out' : e.fatigue >= 45 ? 'Tired' : 'Fresh')}
-      <div class="btn-stack" style="margin-top:8px"><button class="btn" data-plan="${e.id}">Change the plan</button><button class="btn" data-extra="${e.id}" ${left > 0 ? '' : 'disabled'}>Extra session</button>
+      <div class="btn-stack" style="margin-top:8px"><button class="btn" data-plan="${e.id}">Change the plan</button><button class="btn" data-extra="${e.id}" ${sp.extraLeft(e.id) > 0 ? "" : "disabled"}>Extra session</button>
         ${e.contractId ? '' : e.privateCoachId ? `<button class="btn" data-dropcoach="${e.id}">Stop the private coaching</button>` : `<button class="btn" data-hirecoach="${e.id}">Hire a private coach</button>`}</div>
     </div>`;
   }).join('')}`;
@@ -527,7 +526,7 @@ function sportDesk(step) {
   const s = sport.kind === 'team' ? latestSeason(e) : null;
   const table = s ? sp.standings(s) : null;
   const mine = table?.find((x) => x.teamId === s.playerTeamId);
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const left = sp.extraLeft(e.id);
   const ov = sp.overall(e);
   const rows = [];
   if (sport.kind === 'team') rows.push(navRow({ attrs: `data-league="${e.id}"`, label: 'League', sub: s ? `${s.name}: the standings` : 'The table, once your first season is played', ico: 'trophy' }));
@@ -557,7 +556,7 @@ function sportDesk(step) {
 function practiceScreen(step) {
   const e = sp.entryOf(step.params.sportId);
   const sport = sportOf(step.params.sportId);
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const left = sp.extraLeft(step.params.sportId);
   const lowest = sport.skills.slice().sort((a, b) => (e.skills[a[0]] ?? 0) - (e.skills[b[0]] ?? 0))[0][0];
   const focus = step.ui.focus ?? lowest;
   return { title: 'Practice', sub: `Work on your ${sport.name.toLowerCase()} skills`, body: `

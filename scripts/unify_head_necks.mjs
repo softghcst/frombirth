@@ -207,8 +207,8 @@ await browser.close();
 //
 // Above SEAM the head is its original drawing, exactly: every measurement taken there (the face, the ears, the
 // outline the hair is fitted to) stays what it was. Below it, the traced drawing. Each path is cut along the
-// line y = SEAM, curves split exactly where they cross it, and the two halves joined into one path, so nothing
-// shows where they meet. SEAM is below every row the manifest profiles (PROFILE_ROWS ends at 402) and above
+// line y = SEAM, curves split exactly where they cross it, and the two halves stitched into one path whose
+// outlines run straight on across the line (join), so nothing shows where they meet. SEAM is below every row the manifest profiles (PROFILE_ROWS ends at 402) and above
 // every jaw.
 const SEAM = 404;
 
@@ -244,29 +244,72 @@ function crossings(s, Y) {
     : (() => { const disc = b * b - 4 * a * c; if (disc < 0) return []; const r = Math.sqrt(disc); return [(-b - r) / (2 * a), (-b + r) / (2 * a)]; })();
   return roots.filter((t) => t > 1e-9 && t < 1 - 1e-9).sort((x, y) => x - y);
 }
-/** The part of a path on one side of y = Y (above: y < Y), each piece closed along the line. */
-function clip(d, Y, above) {
+/**
+ * The part of a path on one side of y = Y (above: y < Y). Subpaths wholly on that side come back as they are
+ * (`loops`); a subpath that crosses the line comes back as the runs of it on that side (`runs`), each starting and
+ * ending on the line, so they can be joined to the runs of the other half.
+ */
+function cut(d, Y, above) {
   const inside = (y) => (above ? y < Y : y > Y);
-  const fmt = (p) => `${Math.round(p[0] * 100) / 100} ${Math.round(p[1] * 100) / 100}`;
-  let out = '';
+  const mid = (p) => (p.length === 2 ? lerp(p[0], p[1], 0.5) : lerp(lerp(p[0], p[1], 0.5), lerp(p[1], p[2], 0.5), 0.5));
+  const loops = [], runs = [];
   for (const segs of parse(d)) {
-    let s = '', open = false;
+    const pieces = [];
     for (const seg of segs) {
       // split at each crossing, in order along the segment (t is rescaled to what is left of it)
-      let rest = seg, done = 0; const pieces = [];
+      let rest = seg, done = 0;
       for (const t of crossings(seg, Y)) { const [a, b] = split(rest, (t - done) / (1 - done)); pieces.push(a); rest = b; done = t; }
       pieces.push(rest);
-      for (const p of pieces) {
-        const mid = p.length === 2 ? lerp(p[0], p[1], 0.5) : lerp(lerp(p[0], p[1], 0.5), lerp(p[1], p[2], 0.5), 0.5);
-        if (!inside(mid[1])) continue;
-        // a straight run along the line from wherever the outline left this side
-        s += open ? `L${fmt(p[0])}` : `M${fmt(p[0])}`;
-        open = true;
-        s += p.length === 2 ? `L${fmt(p[1])}` : `Q${fmt(p[1])} ${fmt(p[2])}`;
-      }
     }
-    if (open) out += s + 'Z';
+    const ins = pieces.map((p) => inside(mid(p)[1]));
+    if (ins.every(Boolean)) { loops.push(pieces); continue; }
+    if (!ins.some(Boolean)) continue;
+    // start where the outline comes back across the line, and collect each run on this side
+    const n = pieces.length, i0 = ins.findIndex((v, i) => v && !ins[(i + n - 1) % n]);
+    let run = [];
+    for (let k = 0; k < n; k++) {
+      const i = (i0 + k) % n;
+      if (ins[i]) run.push(pieces[i]);
+      else if (run.length) { runs.push(run); run = []; }
+    }
+    if (run.length) runs.push(run);
   }
+  return { loops, runs };
+}
+const reverse = (run) => run.slice().reverse().map((s) => s.slice().reverse());
+const first = (run) => run[0][0], last = (run) => run[run.length - 1][run[run.length - 1].length - 1];
+/**
+ * The half above the line joined to the half below it, as one path whose outlines run straight on across the line.
+ * Each run that ends on the line is followed by the run of the other half that starts nearest to it (turned round
+ * if need be), so a shape cut by the line comes out as one closed outline, with no edge along the line: two pieces
+ * meeting edge to edge show a hairline in some browsers (Safari) even within one path.
+ */
+function join(aboveD, belowD, Y = SEAM) {
+  const A = cut(aboveD, Y, true), B = cut(belowD, Y, false);
+  const fmt = (p) => `${Math.round(p[0] * 100) / 100} ${Math.round(p[1] * 100) / 100}`;
+  const draw = (segs, move) => (move ? `M${fmt(segs[0][0])}` : `L${fmt(segs[0][0])}`) + segs.map((s) => (s.length === 2 ? `L${fmt(s[1])}` : `Q${fmt(s[1])} ${fmt(s[2])}`)).join('');
+  let out = [...A.loops, ...B.loops].map((l) => draw(l, true) + 'Z').join('');
+  const pools = [A.runs.slice(), B.runs.slice()];
+  const NEAR = 4; // how far apart (frame units) the two halves' crossings of the line may be and still be joined
+  while (pools[0].length) {
+    const start = pools[0].shift();
+    let s = draw(start, true), end = last(start), side = 1, ok = true;
+    for (;;) {
+      // the nearest run end on the other side, or (on the first side) the start of this outline, which closes it
+      let best = null, bestD = Infinity;
+      pools[side].forEach((run, i) => {
+        for (const [p, flip] of [[first(run), false], [last(run), true]]) { const dd = Math.hypot(p[0] - end[0], p[1] - end[1]); if (dd < bestD) { bestD = dd; best = { i, flip }; } }
+      });
+      const home = side === 0 ? Math.hypot(first(start)[0] - end[0], first(start)[1] - end[1]) : Infinity;
+      if (home <= bestD) break;
+      if (!best || bestD > NEAR) { ok = false; break; }
+      const run = pools[side].splice(best.i, 1)[0], r = best.flip ? reverse(run) : run;
+      s += draw(r, false); end = last(r); side = 1 - side;
+    }
+    out += s + 'Z';
+    if (!ok) console.warn('warning: an outline crossing the seam had no partner on the other side; closed along the line');
+  }
+  for (const run of pools[1]) { out += draw(run, true) + 'Z'; console.warn('warning: a run below the seam had no partner above it; closed along the line'); }
   return out;
 }
 const paths = (svg) => {
@@ -277,7 +320,6 @@ const paths = (svg) => {
 for (const [name, r] of Object.entries(results)) {
   r.chin = chins[name];
   const orig = paths(read(name));
-  const join = (above, below) => clip(above, SEAM, true) + clip(below, SEAM, false);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1" ${MARK}${r.chin.face ? ` data-face-chin="${r.chin.face}"` : ''} data-outline-chin="${r.chin.outline}">`
     + `<g id="art"><path style="fill:${OUTLINE}" fill-rule="evenodd" d="${join(orig.outline, r.sil)}"/>`
     + `<path id="skin" style="fill:var(--skin-color,${SKIN})" fill-rule="evenodd" d="${join(orig.skin, r.skin)}"/></g></svg>`;

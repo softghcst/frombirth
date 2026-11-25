@@ -279,6 +279,8 @@ export const hasCollegeSport = (sport, countryId = player().countryId) => sport.
 
 // ---------- Taking up and giving up a sport ----------
 
+/** Two sports at most, so each gets real attention (and real progress). */
+export const MAX_SPORTS = 2;
 export function takeUp(sportId, state = store.state) {
   const p = state.player;
   const ok = canPlay(sportId, p, state);
@@ -287,7 +289,7 @@ export function takeUp(sportId, state = store.state) {
   const sport = sportOf(sportId);
   let e = a.sports[sportId];
   if (e?.status === 'active') return result(false, `You already play ${sport.name.toLowerCase()}.`, 'neutral');
-  if (activeSports(p.id, state).length >= 3) return result(false, 'You already play three sports. Give one up first.', 'neutral');
+  if (activeSports(p.id, state).length >= MAX_SPORTS) return result(false, `You already play ${MAX_SPORTS === 2 ? 'two' : MAX_SPORTS} sports. Give one up first: there is only so much of you to go round.`, 'neutral');
   if (e) fillEntry(state, p, e);
   if (e) {
     // Back after a break: remembered, so the comeback can be told when the first season back is played.
@@ -390,7 +392,7 @@ export function trainFitness(focus, state = store.state) {
   const d = Math.max(1, Math.round(6 * ageFactor(p.age) * room));
   f[focus] = Math.min(95, f[focus] + d);
   p.stats.health = clamp(p.stats.health + 1);
-  for (const e of activeSports(p.id, state)) e.fatigue = clamp(e.fatigue + 4);
+  for (const e of activeSports(p.id, state)) e.fatigue = clamp(e.fatigue + 2);
   const name = FITNESS.find((x) => x[0] === focus)[1].toLowerCase();
   const text = { strength: 'Weights, squats and a sore morning after. You are stronger for it.', cardio: 'Intervals until your lungs burn. Your stamina is better for it.',
     flexibility: 'Stretching and mobility work. You move more freely.', balance: 'Single-leg drills and core work. You are steadier on your feet.' }[focus];
@@ -435,7 +437,7 @@ function trainYear(state, p, a, e) {
   const cq = (coach ? 0.7 + coach.quality / 200 : 0.65) + (own && club ? 0.05 : 0) + (e.mentorId ? 0.05 : 0);
   const disc = 0.8 + val(p, 'hidden.discipline') / 250;
   const injured = a.injuries.some((x) => x.sportId === e.id && x.status === 'out');
-  const base = 5.5 * hoursFactor(e.plan.hours) * ageFactor(p.age) * cq * disc * plan.k * (injured ? 0.35 : 1) * (0.6 + a.motivation / 160);
+  const base = 6.3 * hoursFactor(e.plan.hours) * ageFactor(p.age) * cq * disc * plan.k * (injured ? 0.35 : 1) * (0.6 + a.motivation / 160);
   const r = seeded(`train/${a.id}/${e.id}/${state.year}`);
   const moved = {};
   for (const [k] of sport.skills) {
@@ -459,10 +461,23 @@ function trainYear(state, p, a, e) {
 }
 
 /**
- * An extra session between years: a few hours on one skill. Three a year at most, and each one adds to how tired
- * the player is. There is no way to click past the limit.
+ * Extra sessions between years, on one skill of one sport. Each sport has its own: putting work into one never uses up
+ * another's. How many depends on how tired the player is, not on a count: each session adds to fatigue, and once
+ * they are worn out (FATIGUE_LIMIT) the rest has to wait. Fresh legs, more sessions; up to EXTRA_PER_YEAR in a sport.
+ * Near the top of a skill, a young player's hard work still pushes what their body allows up a little.
  */
-export const EXTRA_PER_YEAR = 3;
+export const EXTRA_PER_YEAR = 8;
+export const FATIGUE_LIMIT = 80;
+const EXTRA_FATIGUE = 7;
+/** Extra sessions left this year in this sport, for showing. */
+export function extraLeft(sportId, state = store.state) {
+  const S = ensure(state);
+  const e = entryOf(sportId, state.player.id, state);
+  if (!e) return 0;
+  const used = S.acts.year === state.year ? (S.acts.extraBy?.[sportId] ?? 0) : 0;
+  const byFatigue = Math.max(0, Math.ceil((FATIGUE_LIMIT - e.fatigue) / EXTRA_FATIGUE));
+  return Math.max(0, Math.min(EXTRA_PER_YEAR - used, byFatigue));
+}
 export function extraSession(sportId, skill, state = store.state) {
   const S = ensure(state);
   const p = state.player;
@@ -470,15 +485,25 @@ export function extraSession(sportId, skill, state = store.state) {
   if (!e || e.status !== 'active') return result(false, 'You do not play that.', 'neutral');
   if (!e.skills[skill] && e.skills[skill] !== 0) return result(false, 'That is not part of this sport.', 'neutral');
   if (S.acts.year !== state.year) S.acts = { year: state.year, extra: 0 };
-  if (S.acts.extra >= EXTRA_PER_YEAR) return result(false, `You have put in ${EXTRA_PER_YEAR} extra sessions this year already. The rest has to wait for next year.`, 'neutral');
   if (myAthlete(state).injuries.some((x) => x.sportId === sportId && x.status === 'out')) return result(false, 'Not while you are injured. Follow the rehab plan.', 'neutral');
-  S.acts.extra += 1;
+  if (!extraLeft(sportId, state)) {
+    return result(false, e.fatigue >= FATIGUE_LIMIT - EXTRA_FATIGUE ? 'You are worn out. Rest now: more work this year would only get you hurt.' : `You have put in ${EXTRA_PER_YEAR} extra sessions this year already. The rest has to wait for next year.`, 'neutral');
+  }
+  S.acts.extraBy ??= {};
+  S.acts.extraBy[sportId] = (S.acts.extraBy[sportId] ?? 0) + 1;
+  S.acts.extra = (S.acts.extra ?? 0) + 1;
   const room = Math.max(0, e.ceiling[skill] - e.skills[skill]) / Math.max(1, e.ceiling[skill]);
-  const d = Math.round(3 * ageFactor(p.age) * room * 10) / 10;
+  let raised = false;
+  // At the top of what they can do, a young player's work still moves the top a little.
+  if (room < 0.15 && p.age < 30 && e.ceiling[skill] < 99) { e.ceiling[skill] = Math.min(99, Math.round((e.ceiling[skill] + 0.8) * 10) / 10); raised = true; }
+  const room2 = Math.max(0, e.ceiling[skill] - e.skills[skill]) / Math.max(1, e.ceiling[skill]);
+  const d = Math.round(Math.max(raised ? 0.4 : 0, 4 * ageFactor(p.age) * room2) * 10) / 10;
   e.skills[skill] = Math.min(e.ceiling[skill], Math.round((e.skills[skill] + d) * 10) / 10);
-  e.fatigue = clamp(e.fatigue + 8);
+  e.fatigue = clamp(e.fatigue + EXTRA_FATIGUE);
   const name = sportOf(sportId).skills.find((x) => x[0] === skill)[1].toLowerCase();
-  const text = d >= 0.5 ? `You put in an extra session on your ${name}. It is coming along.` : `You put in an extra session on your ${name}. There is not much more to get from it: you are near what your body allows.`;
+  const text = d >= 0.5 ? `You put in an extra session on your ${name}. It is coming along.`
+    : raised ? `You put in an extra session on your ${name}. You are close to the top of it now: every bit is hard won, but it still moves.`
+      : `You put in an extra session on your ${name}. There is not much more to get from it: you are near what your body allows.`;
   log(text);
   return result(true, text, 'neutral');
 }

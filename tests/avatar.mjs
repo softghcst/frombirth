@@ -34,6 +34,21 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
     const svg = readFileSync(file, 'utf8');
     check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
     if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
+    if (folder === 'heads') {
+      // No straight edge runs across a head: two pieces of a path meeting edge to edge show as a hairline across the
+      // face in Safari (scripts/unify_head_necks.mjs stitches the head to the shared neck so they never do).
+      for (const d of [...svg.matchAll(/ d="([^"]*)"/g)].map((m) => m[1])) {
+        const pts = [...d.matchAll(/([MLQZ])([^MLQZ]*)/g)].map(([, c, a]) => [c, a.trim().split(/[ ,]+/).filter(Boolean).map(Number)]);
+        let pos = null, start = null, longest = 0;
+        for (const [c, a] of pts) {
+          const p = c === 'Z' ? start : a.length ? a.slice(-2) : null;
+          if (c === 'M') { pos = start = p; continue; }
+          if (p && pos && Math.abs(p[1] - pos[1]) < 0.01 && pos[1] > 180 && pos[1] < 500) longest = Math.max(longest, Math.abs(p[0] - pos[0]));
+          pos = p;
+        }
+        check(longest < 40, `${p.file} has a straight edge ${longest.toFixed(0)} long across the head (a seam)`); // a square jaw is flat for about 20
+      }
+    }
     check(!/<rect[^>]*fill="#fff/i.test(svg), `${p.file} still has a white background`);
   }
 }
@@ -114,11 +129,12 @@ for (const [label, saved] of Object.entries(cases)) {
 }
 const fromV2 = normalize(v2, 'x');
 check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_12_sculpted'
-  && fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
-// Facial hair has been taken out of the game: a beard in an old save is dropped, and no one is drawn with one.
+  && !fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or marks (its glasses go: they are being redrawn)');
+// The old facial hair is gone: a beard in an old save is dropped, and no one is drawn with one. Beards come back only
+// as new artwork (assets/avatars/facial_hair/), chosen at the barbershop (style.beard).
 check(!('facialHair' in fromV2.style) && !('facialHair' in normalize({ v: 3, inherited: {}, style: { facialHair: 'facial_hair_04_bushy_full_beard' } }, 'y').style), 'an old save still has facial hair');
-check(!CATALOG.facialHair && !STYLE_KEYS.includes('facialHair') && !AVATAR_MANIFEST.facial_hair, 'facial hair can still be chosen');
-for (let i = 0; i < 200; i++) check(!('facialHair' in randomAppearance(0.5, 'male').style), 'a new man is given facial hair');
+check(!CATALOG.facialHair && !STYLE_KEYS.includes('facialHair') && CATALOG.beard.length === (AVATAR_MANIFEST.facial_hair ?? []).length, 'the old facial hair can still be chosen');
+for (let i = 0; i < 200; i++) { const st = randomAppearance(0.5, 'male').style; check(!('facialHair' in st) && !st.beard, 'a new man is given facial hair'); }
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
@@ -188,7 +204,7 @@ const [, , COLS] = T.profile.cols;
 for (const h of AVATAR_MANIFEST.hair) check(h.edge && h.edge.L.length === ROWS && h.edge.R.length === ROWS && h.edge.T.length === COLS && h.edge.O.length === COLS && Number.isFinite(h.edge.top), `${h.id} is not measured`);
 for (const h of AVATAR_MANIFEST.heads) check(h.edge && h.edge.L.length === ROWS && h.edge.T.length === COLS, `${h.id} is not measured`);
 // Styles drawn with a lock or a sweep that hangs clear of the head on purpose: the gap beside it is the style.
-const LOOSE = ['hair_boy_long_11', 'hair_girl_long_04'];
+const LOOSE = []; // (the two that did, hair_boy_long_11 and hair_girl_long_04, have been taken out of the game)
 let worstGap = 0;
 for (const h of hairs) {
   for (const head of grown) {
@@ -210,7 +226,7 @@ for (const h of hairs) {
   }
 }
 // A short style and a tall one, on every head: placed, and placed the same way each time.
-for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_updo_07']) {
+for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_updo_02']) {
   for (const head of grown) {
     const f = hairFit(id, head.id);
     const hairline = Math.min(...PART_BY_ID[id].edge.T.slice(13, 20).filter((v) => v != null));
@@ -219,13 +235,20 @@ for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_u
   }
 }
 check(hairFit('hair_boy_updo_15_headband_puff', 'head_12_sculpted').squash < 1 && hairFit('hair_boy_short_07', 'head_12_sculpted').squash === 1, 'only a tall style is flattened to fit the picture');
-// The two repaired files, and the stray marks, stay repaired.
-for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
-check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
+// (The two repaired files and the arch styles checked here, hair_boy_medium_11, hair_girl_long_11 and hair_boy_medium_03,
+// have been taken out of the game.)
 // A baby's tuft is left where it was put.
 for (const h of tufts) for (const head of ['head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
 // The reference faces: hair that already sat well is left very nearly as drawn.
-const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_13', 'head_17_dimple_oval'] };
+// (asel, zhi and yoselin wore styles since taken out of the game: these are the ones they are given in their place.)
+const REFERENCES = { asel: ['hair_updo_02', 'head_15_cherubic'], zhi: ['hair_boy_updo_05_loc_bun', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_medium_09', 'head_17_dimple_oval'] };
+// Hairstyles taken out of the game: a save that wore one is given a kept style, for the same gender.
+for (const [from, to] of Object.entries(CUR.WITHDRAWN.hair)) {
+  const now = CATALOG.hair.find((h) => h.id === to), was = /girl|^hair_updo/.test(from) ? 'female' : /boy/.test(from) ? 'male' : null;
+  check(!!now && !CUR.WITHDRAWN.hair[to], `${from} is replaced by ${to}, which is not in the game`);
+  check(!now || !was || !now.tags?.gender || now.tags.gender === was, `${from} (${was}) is replaced by ${to}, a style for the other gender`);
+  check(normalize({ v: 3, style: { hair: from } }, 'x').style.hair === to, `a save with ${from} is not given ${to}`);
+}
 for (const [who, [hair, head]] of Object.entries(REFERENCES)) {
   check(!!PART_BY_ID[hair], `${who}: the reference hairstyle ${hair} is not in the game`);
   const f = hairFit(hair, head);
@@ -247,7 +270,7 @@ for (const id of ['head_00_toddler', 'head_00_kid']) check(frameFor(id) === FRAM
 check(share(PART_BY_ID.head_00_toddler, FRAME) > share(PART_BY_ID.head_00_kid, FRAME), 'a toddler\'s head should be bigger in the picture than a child\'s');
 // Hair height does not move or resize the face: the same head has the same picture whatever is on it.
 const framed = (hair, age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair } }, seed: 'frame', age }).match(/viewBox="([^"]+)"/)[1];
-check(framed('hair_boy_short_07', 30) === framed('hair_updo_07', 30) && framed('bald', 30) === framed('hair_updo_07', 30), 'the picture changes with the hairstyle');
+check(framed('hair_boy_short_07', 30) === framed('hair_updo_02', 30) && framed('bald', 30) === framed('hair_updo_02', 30), 'the picture changes with the hairstyle');
 check(framed('hair_boy_short_07', 3) === `${FRAME.x} ${FRAME.y} ${FRAME.size} ${FRAME.size}` && framed('hair_boy_short_07', 9) === framed('hair_boy_short_07', 3), 'a child\'s picture is not the plain one');
 // One person is drawn the same on every screen: screens differ only in the size they show it at.
 {
@@ -372,12 +395,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 
 // 12. Layers: lines of age kept on the face, front hair cut at the chin; an old beard is not drawn.
 {
-  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style
+  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_06', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style
   const svg = characterAvatarSvg(look, { age: 70, gender: 'male' });
   check(!/facial_hair/.test(svg), 'a beard from an old save is drawn');
   check(/<g clip-path="url\(#pw-face-\d+\)"><use href="[^"]*aging/.test(svg), 'lines of age are not kept to the face');
   const cut = Number(svg.match(/<clipPath id="pw-front-\d+"><rect x="-400" y="-2000" width="1312" height="(\d+)"/)[1]) - 2000;
-  const f = hairFit('hair_girl_long_04', 'head_13_athletic');
+  const f = hairFit('hair_girl_long_06', 'head_13_athletic');
   check(Math.abs(f.ty + f.sy * (cut - T.face.top) - (PART_BY_ID.head_13_athletic.fit.chin - 2)) <= 1.5, 'hair in front of the face does not end at the chin');
 }
 
@@ -511,7 +534,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[DEPTH.espresso]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
   for (const id of ['lips_17', 'lips_18', 'lips_20', 'lips_21', 'lips_5']) check(!readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('--lip-upper'), `the expression ${id} has been parted`);
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
-  check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');
+  const { lipShade } = await import('../js/avatar/catalog.js');
+  check(red === lipShade(CATALOG.lipColor[0].id, 3), 'lipstick chosen by a man is not worn, in the shade for his skin');
+  // Every lipstick has a shade for every skin, deeper on deeper skin, and a nude is never paler than the skin it is on.
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255); };
+  for (const c of CATALOG.lipColor) check(lum(lipShade(c.id, 0)) >= lum(lipShade(c.id, 16)), `${c.id} is not deeper on deeper skin`);
+  for (const t of SKIN_TONES) check(lum(lipShade('nude', t.depth)) < lum(t.hex), `nude is paler than ${t.id} skin: it would look ashy`);
   check(resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'female', { child: true }).colors.lip !== CATALOG.lipColor[0].hex, 'a child wears lipstick');
   const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_4' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
@@ -862,6 +890,22 @@ const { KID_HAIR_FIT: KID_FIT } = await import('../js/avatar/kidHairFit.js');
     const c = dressFor(resolveLook(randomAppearance(undefined, g), s, g), { age, gender: g, royal: { rank: 'noble', title: 'earl' } }).clothes;
     check(CUR.ROYAL.outfits.nobleKid[g].includes(c) && !princely.includes(c), `a noble ${g === 'male' ? 'boy' : 'girl'} of ${age} wears ${c}`);
   }
+}
+
+// What someone looks like as a baby and as a child can be chosen in the editor's Baby and Child views: kept in the save,
+// worn at that age, and only then.
+{
+  const base = randomAppearance(undefined, 'female');
+  const babyHair = CATALOG.babyHair.find((h) => h.id !== resolveLook(base, 'bk', 'female').babyHair)?.id;
+  const kidHair = CATALOG.kidHair.find((h) => h.id !== base.style.hair)?.id;
+  const babyOutfit = CATALOG.babyOutfit.at(-1)?.id;
+  const a = normalize({ ...base, style: { ...base.style, babyHair, kidHair, babyOutfit } }, 'bk');
+  check(a.style.babyHair === babyHair && a.style.kidHair === kidHair && a.style.babyOutfit === babyOutfit, 'a baby\'s or child\'s chosen look is not kept in the save');
+  const look = resolveLook(a, 'bk', 'female');
+  if (babyHair) check(dressFor(look, { age: 1, gender: 'female' }).hair === babyHair, 'the chosen baby hair is not worn as a baby');
+  if (babyOutfit) check(dressFor(look, { age: 1, gender: 'female' }).clothes === babyOutfit, 'the chosen baby outfit is not worn as a baby');
+  if (kidHair) check(dressFor(look, { age: 9, gender: 'female' }).hair === kidHair && dressFor(look, { age: 30, gender: 'female' }).hair !== kidHair || base.style.hair === kidHair, 'the chosen child\'s hairstyle is not worn as a child only');
+  check(normalize({ ...base, style: { ...base.style, babyHair: 'nonsense' } }, 'bk').style.babyHair === null, 'an unknown baby hairstyle is kept');
 }
 
 if (problems.length) {

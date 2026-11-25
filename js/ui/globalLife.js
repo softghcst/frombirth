@@ -140,7 +140,7 @@ export function openExplore(api, start = {}) {
   if (NAV.slot !== store.state.slotId) { NAV.slot = store.state.slotId; NAV.stack = []; NAV.ui = {}; }
   if (start.view) NAV.stack = [{ view: start.view, params: start.params ?? {}, scroll: 0 }];
   if (!NAV.stack.length) NAV.stack = [{ view: travel.whereabouts().away ? 'trips' : 'discover', params: {}, scroll: 0 }];
-  const modal = openModal('<div data-gl></div>', { dismissable: true });
+  const modal = openModal('<div data-gl></div>', { dismissable: true, full: true, title: 'Explore the World' });
   modal.el.classList.add('world-modal', 'gl-modal');
   const root = modal.el.querySelector('[data-gl]');
   const top = () => NAV.stack[NAV.stack.length - 1];
@@ -160,7 +160,7 @@ export function openExplore(api, start = {}) {
     root.innerHTML = `
       <div class="gl-head">
         ${isRoot ? '' : btn('← Back', 'data-back', 'small')}
-        <h2 style="margin:6px 0 0">${v.view === 'story' ? 'Our Global Story' : 'Explore the World'}</h2>
+        ${v.view === 'story' ? '<h2 style="margin:6px 0 0">Our Global Story</h2>' : ''}
         <p class="muted" style="margin:0">${v.view === 'story' ? 'How the family has lived across places and generations.' : ''}</p>
         <p class="gl-where">${where.away ? `✈ Away: ${esc(where.name)}. Home is still ${esc(placeName(p.countryId, p.city, store.state.year))}.` : `At home in ${esc(placeName(p.countryId, p.city, store.state.year))} · ${esc(docs.today())}`}</p>
         ${(() => { const era = getEra(store.state.year); if (era.id === 'now') return ''; const papers = { open: 'No passports or visas are asked for, and anyone may go and settle where they like.', controls: 'Passports are required, and most borders want a visa.', modern: 'Passports and visas as in the modern world, by the rules of the time.' }[docs.eraOf().id]; return `<p class="muted gl-era">${esc(era.name)} (${esc(era.short)}). ${esc(papers)} Travel is by what exists in ${store.state.year}.</p>`; })()}
@@ -232,9 +232,9 @@ export function openExplore(api, start = {}) {
       return `
         <div class="card gl-step"><h3>1 · Kind of trip</h3>
           <select data-planfield="type" aria-label="Kind of trip">${types.map((t) => `<option value="${t.id}" ${t.id === trip.type ? 'selected' : ''} ${t.why ? 'disabled' : ''}>${esc(t.group)}: ${esc(t.name)}${t.why ? ` (${esc(t.why)})` : ''}</option>`).join('')}</select></div>
-        ${cruise ? cruiseStep(trip) : `<div class="card gl-step"><h3>2 · From and to</h3>\${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
-          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>\${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => \`<option value="\${c.id}" \${dest?.countryId === c.id ? 'selected' : ''}>\${c.flag} \${esc(c.name)}</option>\`).join('')}</select></label>
-          \${dest ? \`<label class="field">City <select data-planfield="city">\${COUNTRIES[dest.countryId].cities.map((c) => \`<option \${c === dest.city ? 'selected' : ''}>\${esc(c)}</option>\`).join('')}</select></label>\` : ''}</div>`}
+        ${cruise ? cruiseStep(trip) : `<div class="card gl-step"><h3>2 · From and to</h3>${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
+          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest?.countryId === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select></label>
+          ${dest ? `<label class="field">City <select data-planfield="city">${COUNTRIES[dest.countryId].cities.map((c) => `<option ${c === dest.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>` : ''}</div>`}
         <div class="card gl-step"><h3>3 · Dates</h3>
           <div class="gl-dates"><label class="field">Leave <input type="date" data-planfield="depart" value="${esc(trip.depart)}" min="${docs.today()}" max="${y + 1}-12-31"></label>
           ${cruise ? '' : `<label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label>`}</div>
@@ -256,7 +256,7 @@ export function openExplore(api, start = {}) {
             ${x.mayApply && x.needs && x.needs !== 'passport' ? btn(`Apply: ${x.rule.name}`, `data-applyentry="${x.id}"`, 'small') : ''}</div>`).join('') : '<p class="muted">No border to cross.</p>'}
           <p class="muted">A visitor may not work.</p></div>
         ${cruise ? stateroomStep(trip) : m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
-        ${cruise ? onboardStep(trip) : `<div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">\${acts.map((a) => chip(\`\${a.name}\${a.liked ? ' ★' : ''}\`, trip.activities.includes(a.id), \`data-act="\${a.id}"\`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>`}
+        ${cruise ? onboardStep(trip) : `<div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>`}
         <div class="card gl-step"><h3>9 · Paying</h3>
           <select data-planfield="payment" aria-label="Who pays">${travel.paymentOptions().map((o) => `<option value="${o.id}" ${payHow === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
           ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>${travel.canAskFamilyAgain(trip) ? btn(`Ask ${kinWho} again`, `data-askfamily="${trip.id}"`, 'small') : ''}` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}

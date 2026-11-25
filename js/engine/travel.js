@@ -14,9 +14,9 @@
 //
 // Time. The world clock moves a year at a time (yearProcessor). Inside a
 // year, state.today only moves forward, when a journey takes someone
-// somewhere and back; it returns to 1 January when the year turns. A trip
-// booked for this year and not taken by the year's end is taken as planned,
-// in that year, before the year turns. Nobody ages on a trip.
+// somewhere and back; it returns to the player's birthday when the year turns (engine/birthday.js: a year of a
+// life runs from one birthday to the next). A trip booked for this year and not taken by the year's end is taken
+// as planned, in that year, before the year turns. Nobody ages on a trip.
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry, uid } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -27,6 +27,7 @@ import { SKILL_BY_ID } from '../data/skills.js';
 import { TRIP_SCENES, TRIP_SCENE_BY_ID } from '../data/tripScenes.js';
 import { CRUISE_LINES, CRUISE_LINE_BY_ID, ITINERARIES, ITINERARY_BY_ID, STATEROOMS, STATEROOM_BY_ID, VIEWS, VIEW_BY_ID, DECKS, DECK_BY_ID, OCCUPANCY, EXTRAS, EXTRA_BY_ID, CRUISE_FEES, CRUISE_MEMORIES, REGION_NAMES, PORT_COUNTRY } from '../data/cruises.js';
 import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
+import { yearOfDate, yearSpan } from './birthday.js';
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
 import { languagesOf, speaks } from './languages.js';
@@ -625,8 +626,8 @@ export function problems(trip, p = player()) {
   else {
     if (trip.depart < today()) out.push(`That date has passed. It is ${today()} now.`);
     if (trip.ret <= trip.depart) out.push('The return must come after the departure.');
-    if (yearOf(trip.depart) > year() + 1) out.push('Trips can be planned for this year or next.');
-    if (yearOf(trip.ret) !== yearOf(trip.depart)) out.push('A trip must end in the year it starts: the new year begins at home.');
+    if (yearOfDate(trip.depart) > year() + 1) out.push('Trips can be planned for this year or next.');
+    if (yearOfDate(trip.ret) !== yearOfDate(trip.depart)) out.push('A trip must be over before your birthday: each new year of your life begins at home.');
     const days = daysBetween(trip.depart, trip.ret);
     if (t.maxDays && days > t.maxDays) out.push(`${t.name}: at most ${t.maxDays} days.`);
     if (t.minDays && days < t.minDays) out.push(`${t.name}: at least ${t.minDays} days.`);
@@ -895,7 +896,7 @@ export function cancel(tripId, p = player()) {
 export function depart(tripId, p = player()) {
   const trip = tripById(tripId, p);
   if (!trip || trip.status !== 'confirmed') return result(false, 'That trip is not ready to begin.', 'neutral');
-  if (yearOf(trip.depart) !== year()) return result(false, `This trip leaves in ${yearOf(trip.depart)}.`, 'neutral');
+  if (yearOfDate(trip.depart) !== year()) return result(false, `This trip leaves after your next birthday, in ${yearOf(trip.depart)}.`, 'neutral');
   if (travelState(p).whereabouts) return result(false, 'You are already away.', 'neutral');
   if (p.legal.incarceration) return result(false, 'You are in prison.', 'neutral');
   if (trip.depart < today()) return disrupt(trip, 'The date had already passed.', p);
@@ -1297,7 +1298,7 @@ function milestones(trip, p, occ = null) {
 export function recordQuickTrip(o, p = player()) {
   const from = home(p);
   const depart = today();
-  const ret = yearOf(addDays(depart, o.nights)) === year() ? addDays(depart, o.nights) : `${year()}-12-31`;
+  const ret = yearOfDate(addDays(depart, o.nights)) === year() ? addDays(depart, o.nights) : yearSpan().end;
   const type = o.purpose === 'scouting' ? 'scouting' : o.purpose === 'family' ? 'visiting' : 'vacation';
   const trip = { id: uid('trip'), type, status: 'completed', createdYear: year(), organizerId: p.id, origin: from,
     destination: { countryId: o.countryId, city: o.city ?? (o.countryId === p.countryId ? null : capitalCity(o.countryId)) }, depart, ret,
@@ -1326,7 +1327,7 @@ export function closeYear(p = player()) {
   const t = travelState(p);
   const out = [];
   for (const trip of t.trips.filter((x) => x.status === 'in_progress')) out.push(comeHome(trip.id, p).text);
-  for (const trip of t.trips.filter((x) => x.status === 'confirmed' && yearOf(x.depart) <= year()).sort((a, b) => a.depart.localeCompare(b.depart))) {
+  for (const trip of t.trips.filter((x) => x.status === 'confirmed' && yearOfDate(x.depart) <= year()).sort((a, b) => a.depart.localeCompare(b.depart))) {
     if (trip.depart < today()) { out.push(disrupt(trip, 'Something else was happening on those days.', p).text); continue; }
     const r = depart(trip.id, p);
     out.push(r.text);
@@ -1368,8 +1369,8 @@ export function compactHistory(p = player()) {
   for (const person of [p, ...Object.values(store.state.npcs).filter((n) => n.stays?.length)]) if (person.stays?.length) person.stays = person.stays.filter((x) => x.to >= cutoff);
 }
 
-/** After the year turns: the calendar starts again on 1 January. */
-export function openYear() { store.state.today = `${store.state.year}-01-01`; }
+/** After the year turns, on the player's birthday: the calendar starts again from that day. */
+export function openYear() { store.state.today = yearSpan().start; }
 
 // ---------- Views ----------
 

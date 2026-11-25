@@ -21,7 +21,7 @@ const problems = []; const ok = [];
 const check = (c, m) => { if (!c) problems.push(m); };
 const section = (m, n) => ok.push(problems.length === n ? m : `(failed) ${m}`);
 const S = () => store.state; const P = () => store.state.player;
-const life = (countryId, city) => { for (;;) { store.state = createLife({ countryId, city }); if (!P().royal) return P(); } };
+const life = (countryId, city) => { for (;;) { store.state = createLife({ countryId, city, birthday: { m: 0, d: 1 } }); if (!P().royal) return P(); } };
 
 // 1. What can strike where.
 {
@@ -126,7 +126,10 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   check(!!target, 'setup: a big disaster in the Philippines');
   if (target) {
     const cousin = makeNpc({ role: 'relative', countryId: 'ph', age: 30, relationship: 50 }); cousin.flags.abroad = 'ph'; // room to grow closer
-    S().npcs[cousin.id] = cousin; p.npcIds.push(cousin.id);
+    S().npcs[cousin.id] = cousin;
+    // The cousin is the only person the player knows: a life can begin with someone abroad already, somewhere a
+    // disaster strikes the same year, and then the scene can be about them instead.
+    p.npcIds = [cousin.id];
     S().year = target.y + 1; S().pendingEvents = [];
     dis.tickDisasters();
     const news = (S().world?.news ?? []).filter((x) => x.kind === 'disaster' && x.placeId === 'ph');

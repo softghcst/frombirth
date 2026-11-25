@@ -3,25 +3,6 @@
   "baseHead": "athletic",
   "hairstyles": [
     {
-      "id": "bowl_cut",
-      "name": "Bowl Cut",
-      "clipToHead": false,
-      "kids": false,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ],
-      "gender": "male",
-      "minAge": 13
-    },
-    {
       "id": "center_part_waves",
       "name": "Center Part Waves",
       "clipToHead": false,
@@ -1075,44 +1056,8 @@
       ]
     },
     {
-      "id": "hair_boy_updo_12_twist_pineapple",
-      "name": "Up, twist pineapple",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "updo",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
       "id": "hair_girl_short_12",
       "name": "Short, style 12",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
-      "id": "hair_girl_short_16",
-      "name": "Short, style 16",
       "clipToHead": false,
       "kids": false,
       "legacy": true,
@@ -1165,44 +1110,8 @@
       ]
     },
     {
-      "id": "hair_boy_medium_10",
-      "name": "Medium, style 26",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "medium",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
       "id": "hair_boy_short_12",
       "name": "Short, style 28",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
-      "id": "hair_girl_short_09",
-      "name": "Short, style 9",
       "clipToHead": false,
       "kids": false,
       "legacy": true,
@@ -1239,24 +1148,6 @@
     {
       "id": "hair_boy_short_15",
       "name": "Short, style 31",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
-      "id": "hair_boy_short_16",
-      "name": "Short, style 32",
       "clipToHead": false,
       "kids": false,
       "legacy": true,
@@ -1599,24 +1490,6 @@
     {
       "id": "hair_girl_short_11",
       "name": "Short, style 11",
-      "clipToHead": false,
-      "kids": false,
-      "legacy": true,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
-      "id": "hair_girl_short_15",
-      "name": "Short, style 15",
       "clipToHead": false,
       "kids": false,
       "legacy": true,

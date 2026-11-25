@@ -86,8 +86,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (await row.count()) {
     await page.evaluate(() => document.querySelector('[data-npc]').click()); await page.waitForTimeout(300);
     check(await page.locator('#modal-root .modal-back').count() === 1 && await inView(page), `${label}: a person's profile has a Back button in view`);
-    const groups = await page.evaluate(() => ({ all: document.querySelectorAll('#modal-root details.action-group').length, open: document.querySelectorAll('#modal-root details.action-group[open]').length }));
-    check(groups.all >= 2 && groups.open === 1, `${label}: a profile's actions are in groups, one open (${groups.all} groups, ${groups.open} open)`);
+    const groups = await page.evaluate(() => ({ all: document.querySelectorAll('#modal-root .action-group').length, full: !!document.querySelector('#modal-root .modal-full'), folded: document.querySelectorAll('#modal-root details.action-group').length }));
+    check(groups.all >= 2 && groups.full && !groups.folded, `${label}: a profile is a page of its own, its actions under headings, nothing folded (${JSON.stringify(groups)})`);
     await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); m.scrollTop = m.scrollHeight; });
     await page.waitForTimeout(120);
     check(await inView(page), `${label}: and still in view at the bottom of their profile`);
