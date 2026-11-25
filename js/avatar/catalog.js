@@ -72,6 +72,10 @@ export const CATALOG = {
   hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
   outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: [],
+  // A baby's and a child's own look, chosen in the editor's Baby and Child views (null: picked for them from the seed).
+  babyHair: BABY_HAIR, babyOutfit: parts('clothes', (p) => OUTFITS.baby.includes(p.id)),
+  kidHair: [...HAIR_STYLES, ...FITTED_STYLES].filter((h) => kidsMayWear(h.id)),
+  kidOutfit: parts('clothes', (p) => [...KID_OUTFITS.any, ...KID_OUTFITS.female, ...KID_OUTFITS.male].includes(p.id)),
 };
 
 /**
@@ -90,7 +94,7 @@ export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Ma
 /** Born with: one id each, except marks, which is a list of ids. */
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
-export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat'];
+export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat', 'babyHair', 'babyOutfit', 'kidHair', 'kidOutfit'];
 /** The proportions of someone's face. */
 export const shownTweaks = (a) => ({ ...a.inherited.tweaks });
 
@@ -237,6 +241,8 @@ export function normalize(a, seed = 'x') {
   style.outfit = has('outfit', st.outfit) ? st.outfit : wardrobe.length ? seeded(wardrobe, seed, 'outfit').id : null;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
+  // What they wear as a baby and as a child, if chosen (otherwise picked for them in resolveLook).
+  for (const k of ['babyHair', 'babyOutfit', 'kidHair', 'kidOutfit']) style[k] = has(k, st[k]) ? st[k] : null;
   if (st.keepHair) style.keepHair = true;  // hair chosen at the salon in old age: kept, not drawn as an elder's style
   // Earlier saves kept surgery separately; it is simply the person's face now.
   if (st.tweaks) inherited.tweaks = cleanTweaks(st.tweaks);
@@ -280,18 +286,19 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
-    hair: st.hair === 'bald' ? null : st.hair, babyHair: babyHair.length ? seeded(babyHair, seed, 'babyhair') : null,
+    hair: st.hair === 'bald' ? null : st.hair, babyHair: st.babyHair ?? (babyHair.length ? seeded(babyHair, seed, 'babyhair') : null),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
     // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
-    kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? ((own) => seeded(own.length ? own : stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id)(stylesFor(g.hairTexture).filter((s) => hairSuitsGender(s, sex))) : null,
+    kidHairChosen: !!st.kidHair,
+    kidHair: st.kidHair ? st.kidHair : st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? ((own) => seeded(own.length ? own : stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id)(stylesFor(g.hairTexture).filter((s) => hairSuitsGender(s, sex))) : null,
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
-    babyClothes: OUTFITS.baby.length ? seeded(OUTFITS.baby, seed, 'babyclothes') : null,
+    babyClothes: st.babyOutfit ?? (OUTFITS.baby.length ? seeded(OUTFITS.baby, seed, 'babyclothes') : null),
     nobleKidClothes: ROYAL.outfits.nobleKid[sex]?.length ? seeded(ROYAL.outfits.nobleKid[sex], seed, 'noblekid') : null,
     royalKidClothes: ROYAL.outfits.kid[sex]?.length ? seeded(ROYAL.outfits.kid[sex], seed, 'royalkid') : null,
     royalBabyClothes: ROYAL.outfits.baby.length ? seeded(ROYAL.outfits.baby, seed, 'royalbaby') : null,
-    kidClothes: KID_OUTFITS.any.length + KID_OUTFITS[sex].length ? seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes') : null, royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
+    kidClothes: st.kidOutfit ? st.kidOutfit : KID_OUTFITS.any.length + KID_OUTFITS[sex].length ? seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes') : null, royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
     // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.
     royalOutfitYoung: seeded(ROYAL.outfits[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'royal'),
     monarchOutfitYoung: seeded(ROYAL.outfits.monarch[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'monarch'), nobleOutfit: ROYAL.outfits.noble[sex] ? seeded(ROYAL.outfits.noble[sex], seed, 'noble') : null,

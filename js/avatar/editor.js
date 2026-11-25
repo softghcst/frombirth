@@ -3,12 +3,12 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender, resolveLook } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
-import { ELDER_BROWS, ELDER_HAIR_AGE } from './curation.js';
-import { elderHair } from '../CharacterAvatar.js';
+import { ELDER_BROWS, ELDER_HAIR_AGE, BABY_HAIR_BY_TEXTURE } from './curation.js';
+import { elderHair, ageStage } from '../CharacterAvatar.js';
 import { kidsMayWear } from './fittedHair.js';
 import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import { icon } from '../ui/kit.js';
@@ -42,7 +42,23 @@ const CONTROLS = {
   glasses: { label: 'Glasses', half: 'style', kind: 'thumb', none: 'None' },
   jewelry: { label: 'Jewelry', half: 'style', kind: 'thumb', multi: true, minAge: 8 },
   makeup: { label: 'Make-up', half: 'style', kind: 'thumb', none: 'None', minAge: MAKEUP_AGE },
+  // Seen in the Baby and Child views: what they wear then (resolveLook picks one from the seed until it is chosen).
+  babyHair: { label: 'Baby hair', half: 'style', kind: 'thumb', young: true },
+  babyOutfit: { label: 'Baby outfit', half: 'style', kind: 'thumb', young: true },
+  kidHair: { label: 'Hairstyle as a child', half: 'style', kind: 'thumb', filter: true, young: true },
+  kidOutfit: { label: 'Outfit as a child', half: 'style', kind: 'thumb', young: true },
 };
+
+/**
+ * What the editor offers for each stage of life it can show. A baby and a child have their own head and eyes (the
+ * face shape and eyes chosen are a grown-up's), a baby a binky for a mouth and no glasses, jewelry or make-up; so in
+ * the Baby and Child views those are not offered, and the hair and outfit rows are the baby's or the child's own.
+ */
+const STAGES = {
+  baby: { swap: { hair: 'babyHair', outfit: 'babyOutfit' }, drop: ['head', 'eyes', 'brows', 'lips', 'lipColor', 'hairDye', 'glasses', 'jewelry', 'makeup'], tweaks: ['noseSize'] },
+  kid: { swap: { hair: 'kidHair', outfit: 'kidOutfit' }, drop: ['head', 'eyes', 'lipColor', 'makeup'], tweaks: ['noseSize', 'lipSize'] },
+};
+const stageOf = (years) => { const s = ageStage(years); return s === 'baby' || s === 'toddler' ? 'baby' : s === 'kid' ? 'kid' : 'adult'; };
 
 const TABS = [
   { id: 'face', name: 'Face', keys: ['head', 'skin', 'marks'] },
@@ -70,14 +86,23 @@ export function mountAppearanceEditor(el, o = {}) {
   let a = cloneAppearance(normalize(o.appearance, seed));
   let preview = 'now';
   let hairFilter = 'suits';
-  const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0)
-    && (CATALOG.outfit.length || !['outfit', 'outfitColor'].includes(key));  // no Clothes tab while there are no clothes
+  const shownAge = () => (preview === 'now' ? age : preview);
+  const outfitsFor = (key) => (CATALOG[key] ?? []).length;
+  const usable = (key, stage) => (scope === 'all' || CONTROLS[key].half === 'style') && (CONTROLS[key].young || age >= (CONTROLS[key].minAge ?? 0))
+    && (stage === 'adult' || !STAGES[stage].drop.includes(key))
+    && (!['outfit', 'babyOutfit', 'kidOutfit'].includes(key) || outfitsFor(key))  // no outfit row while there are none for that age
+    && (key !== 'outfitColor' || outfitsFor(stage === 'adult' ? 'outfit' : STAGES[stage].swap.outfit));
   // scope 'tweaks' is the surgeon's: only proportions, and they are worn rather than born with.
-  const tabs = scope === 'tweaks' ? [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }]
-    : TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);
+  const tabsFor = (stage) => {
+    if (scope === 'tweaks') return [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }];
+    const list = TABS.map((t) => ({ ...t, keys: t.keys.map((k) => (stage === 'adult' ? k : STAGES[stage].swap[k] ?? k)).filter((k) => usable(k, stage)),
+      tweaks: stage === 'adult' ? t.tweaks : (t.tweaks ?? []).filter((k) => STAGES[stage].tweaks.includes(k)) }))
+      .filter((t) => t.keys.length || t.tweaks?.length);
+    if (scope === 'style') list.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
+    return list;
+  };
   const tw = () => a.inherited.tweaks;
-  if (scope === 'style') tabs.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
-  let tab = tabs[0].id;
+  let tab = tabsFor(stageOf(age))[0].id;
 
   const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, face: o.face ?? o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
   const withValue = (key, value) => {
@@ -93,6 +118,10 @@ export function mountAppearanceEditor(el, o = {}) {
   };
   const optionsFor = (key) => {
     let list = CATALOG[key];
+    // A baby's hair suits the hair they were born with.
+    if (key === 'babyHair') return (BABY_HAIR_BY_TEXTURE[a.inherited.hairTexture] ?? BABY_HAIR_BY_TEXTURE.straight).map((id) => part('babyHair', id)).filter(Boolean);
+    // A child's styles: the children's ones among the hairstyles, filtered as for grown-ups.
+    if (key === 'kidHair') return optionsFor('hair').filter((h) => CATALOG.kidHair.some((k) => k.id === h.id));
     if (key === 'hair') {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
@@ -112,23 +141,27 @@ export function mountAppearanceEditor(el, o = {}) {
   function control(key) {
     const c = CONTROLS[key];
     const current = a[c.half][key];
-    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'eyes' ? eyesFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
+    const look = c.young ? resolveLook(a, seed, o.gender) : null;
+    const shown = key === 'babyHair' ? look.babyHair : key === 'babyOutfit' ? look.babyClothes : key === 'kidOutfit' ? look.kidClothes
+      : key === 'kidHair' ? (look.kidHairChosen || look.kidHair ? look.kidHair : a.style.hair)
+      : key === 'lips' ? lipsFor(current, o.gender) : key === 'eyes' ? eyesFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
     const isOn = (id) => (c.multi ? current.includes(id) : shown === id);
-    const zoom = ZOOM[key];
+    // Thumbnails show the person at the age being looked at; a baby's or child's face is drawn whole.
+    const thumbBox = (k) => (stageOf(shownAge()) === 'adult' ? ZOOM[k] : undefined);
     const options = optionsFor(key).map((x) => {
       const on = isOn(x.id) ? 'on' : '';
       if (c.kind === 'swatch') return `<button type="button" class="av-opt av-swatch ${on}" data-key="${key}" data-id="${x.id}" style="background:${x.hex}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}"></button>`;
       if (c.kind === 'chip') return `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${x.id}" aria-pressed="${!!on}">${esc(x.name)}</button>`;
-      return `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${x.id}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}">${draw(withValue(key, x.id), { viewBox: zoom })}<span>${esc(x.name)}</span></button>`;
+      return `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${x.id}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}">${draw(withValue(key, x.id), { viewBox: thumbBox(key), age: shownAge() })}<span>${esc(x.name)}</span></button>`;
     });
     if (c.none) {
       const on = current == null || current === c.noneId ? 'on' : '';
       const id = c.noneId ?? '';
       options.unshift(c.kind === 'thumb'
-        ? `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${draw(withValue(key, c.noneId ?? null), { viewBox: zoom })}<span>${esc(c.none)}</span></button>`
+        ? `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${draw(withValue(key, c.noneId ?? null), { viewBox: thumbBox(key), age: shownAge() })}<span>${esc(c.none)}</span></button>`
         : `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${esc(c.none)}</button>`);
     }
-    const chosen = c.multi ? current.map((id) => part(key, id)?.name).filter(Boolean).join(', ') : part(key, shown)?.name ?? c.none ?? '';
+    const chosen = c.multi ? current.map((id) => part(key, id)?.name).filter(Boolean).join(', ') : part(key, shown)?.name ?? part('hair', shown)?.name ?? c.none ?? '';
     const filters = c.filter ? `<div class="av-filters">${HAIR_FILTERS.map(([id, label]) => `<button type="button" class="av-chip av-filter ${hairFilter === id ? 'on' : ''}" data-filter="${id}">${esc(label)}</button>`).join('')}</div>` : '';
     return `<div class="av-control"><div class="av-label"><strong>${esc(c.label)}</strong><span>${esc(chosen)}</span></div>${filters}
       <div class="av-options ${c.kind}">${options.join('')}</div></div>`;
@@ -144,17 +177,19 @@ export function mountAppearanceEditor(el, o = {}) {
   }
 
   function render() {
-    const t = tabs.find((x) => x.id === tab);
-    const shownAge = preview === 'now' ? age : preview;
+    const tabs = tabsFor(stageOf(shownAge()));
+    // A tab that has nothing for this age (Eyes for a baby, say): the first one that has.
+    let t = tabs.find((x) => x.id === tab);
+    if (!t) { t = tabs[0]; tab = t.id; }
     el.innerHTML = `
       <div class="av-editor">
         <div class="av-stage">
-          <div class="av-portrait" data-portrait>${draw(a, { age: shownAge, label: 'Your portrait' })}</div>
+          <div class="av-portrait" data-portrait>${draw(a, { age: shownAge(), label: 'Your portrait' })}</div>
           <div class="av-previews" role="group" aria-label="See the face at another age">${PREVIEWS.map(([v, label]) => `<button type="button" class="av-chip av-preview ${preview === v ? 'on' : ''}" data-preview="${v}">${esc(label)}</button>`).join('')}</div>
           <button type="button" class="btn small av-random" data-random>${icon('sparkle')}Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
-        <div class="av-panel">${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
+        <div class="av-panel">${stageOf(shownAge()) !== 'adult' ? `<p class="av-stage-note muted">${stageOf(shownAge()) === 'baby' ? 'As a baby: a baby\'s face and eyes. Choose their hair and outfit.' : 'As a child: a child\'s face and eyes. Choose their hairstyle and outfit as a child.'}</p>` : ''}${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
       </div>`;
   }
   const keepScroll = (fn) => {

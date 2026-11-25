@@ -141,7 +141,7 @@ export function dressFor(look, ctx = {}) {
   const young = stage === 'baby' || stage === 'toddler';
   if (young) {
     // A baby has a baby's hair; from 3, a child's hairstyle (a grown-up's waits until 14, as for a kid).
-    out.hair = stage === 'baby' ? look.babyHair ?? null : out.hair && !kidsMayWear(out.hair) ? look.kidHair ?? null : out.hair;
+    out.hair = stage === 'baby' ? look.babyHair ?? null : look.kidHairChosen || (out.hair && !kidsMayWear(out.hair)) ? look.kidHair ?? null : out.hair;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
@@ -151,7 +151,7 @@ export function dressFor(look, ctx = {}) {
   } else if (stage === 'kid') {
     out.eyes = babyEyes(out.eyes, gender);  // children keep the round toddler eyes (curation.BABY_EYES) until the grown-up head at 14
     // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
-    if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
+    if (look.kidHairChosen || (out.hair && !kidsMayWear(out.hair))) out.hair = look.kidHair ?? null;  // or the one chosen for their childhood
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     // Children's clothes until 14, when the kid head ends: never a grown-up's outfit (resolveLook's kidClothes).
