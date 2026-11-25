@@ -69,6 +69,15 @@ function newPatient(fx, p) {
   n.flags.patient = true;
   store.state.npcs[n.id] = n;
   W().patients[n.id] = { id: n.id, caseIds: [], firstYear: year(), lastYear: year(), bornYear: year() - age };
+  // A child comes with a parent or guardian; some patients come with the relative who looks after them. They are kept
+  // with the patient's record, so a follow-up brings the same family back.
+  if (fx.guardian || fx.household) {
+    const g = makeNpc({ role: 'patient', countryId: p.countryId, age: fx.guardian && age < 18 ? age + 24 + Math.floor(rng.next() * 12) : Math.max(20, age + Math.floor(rng.next() * 20) - 10), relationship: 50, lastName: n.lastName });
+    g.flags.patient = true;
+    g.flags.patientKin = n.id;
+    store.state.npcs[g.id] = g;
+    W().patients[n.id].household = [{ id: g.id, as: fx.guardian && age < 18 ? 'parent or guardian' : 'family member' }];
+  }
   return n;
 }
 
@@ -138,6 +147,7 @@ export function caseView(id) {
     id: c.id, status: c.status, role: c.role, label: fx.label, tier: fx.tier, supervised: supervised(c.role),
     patient: patient ? { name: `${patient.firstName} ${patient.lastName}`, first: patient.firstName, age: patient.age, gender: patient.gender } : null,
     guardian: !!fx.guardian, household: !!fx.household, followUp: !!c.followOf,
+    family: (W().patients[c.patientId]?.household ?? []).map((x) => ({ name: store.state.npcs[x.id] ? `${store.state.npcs[x.id].firstName} ${store.state.npcs[x.id].lastName}` : 'A relative', as: x.as })),
     // One emergency, several teams: who else is working on the same patient (data/medicineCases.js `episode`).
     teams: fx.episode ? [...new Set(CASES.filter((x) => x.episode === fx.episode && x.id !== fx.id).map((x) => SPECIALTY_BY_ID[x.specialty[0]]?.name).filter(Boolean))] : [],
     intro: fill(fx.intro, c, patient), history: fill(fx.history, c, patient), exam: fill(fx.exam, c, patient),

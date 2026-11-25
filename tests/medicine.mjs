@@ -229,6 +229,18 @@ section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} 
   const mm = careless;
   check(drama.romanceAllowed({ age: 30, flags: { medRole: 'supervisor' }, role: 'coworker' }, mm) === false && drama.romanceAllowed({ age: 30, flags: { patient: true }, role: 'coworker' }, mm) === false, 'no romance with a supervisor or a patient');
 }
+{
+  rng.seed(606);
+  store.state = createLife({ countryId: 'us' });
+  const q = store.state.player; q.age = 40;
+  const pm = core.M(q);
+  pm.completed.push({ specialtyId: 'pediatrics', kind: 'residency', from: 2000, to: 2003 });
+  pm.job = { specialtyId: 'pediatrics', hospitalId: null, rank: 'attending', since: 2003 };
+  const kids = cases.caseload(pm, q).map((c) => cases.caseView(c.id)).filter((v) => v.guardian && v.patient.age < 16);
+  check(kids.length > 0 && kids.every((v) => v.family.length === 1 && v.family[0].as === 'parent or guardian'), 'a child patient comes with a parent or guardian');
+  const kinIds = Object.values(core.W().patients).flatMap((x) => (x.household ?? []).map((h) => h.id));
+  check(kinIds.every((id) => !q.npcIds.includes(id)), 'a patient\'s family is not added to the player\'s people');
+}
 section('drama and outcomes kept apart; unsafe care is not rewarded');
 
 // 6. Podiatry is its own route.

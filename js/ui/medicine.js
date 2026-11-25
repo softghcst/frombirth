@@ -6,7 +6,7 @@
 // Patient cases are confidential: they are shown here only, to the physician.
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { SPECIALTY_BY_ID, SKILLS, RANKS, jurisdiction } from '../data/medicine.js';
+import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, jurisdiction } from '../data/medicine.js';
 import { openModal, messageModal, pickModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { med, M, currentSpecialty, specialtyName, qualified, reputationOf } from '../engine/medicine/core.js';
@@ -15,7 +15,7 @@ import * as cases from '../engine/medicine/cases.js';
 import * as ladder from '../engine/medicine/ladder.js';
 import * as practice from '../engine/medicine/practice.js';
 import { setDrama, DRAMA } from '../engine/medicine/drama.js';
-import { hospitalName, hospital, kindName } from '../engine/medicine/hospitals.js';
+import { hospitalName, hospital, kindName, deptOf, deptHead } from '../engine/medicine/hospitals.js';
 import { store } from '../state.js';
 
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -116,7 +116,14 @@ const VIEWS = {
     const where = m.training?.hospitalId ?? m.job?.hospitalId;
     if (where) {
       const h = hospital(where);
-      out += card(hospitalName(where), kv([['Kind', kindName(h)], ['Teaching', h.teaching ? 'Yes, runs residency programs' : 'No'], ['Departments', String(h.depts.length)], ...(m.job ? [['Your post', p.career.title], ['Since', String(m.job.since)]] : [])]));
+      const spec = currentSpecialty(m);
+      const dept = deptOf(spec);
+      const headId = h.heads[dept];
+      const head = headId === (p.id ?? 'player') ? null : (headId ? store.state.npcs[headId] : deptHead(h, dept));
+      out += card(hospitalName(where), kv([['Kind', kindName(h)], ['Teaching', h.teaching ? 'Yes, runs residency programs' : 'No'],
+        ['Departments', h.depts.map((d) => DEPARTMENTS[d] ?? d).join(', ')],
+        ['Your department', `${DEPARTMENTS[dept] ?? 'Medicine'}${head ? `, led by ${head.firstName} ${head.lastName}` : headId ? ', led by you' : ''}`],
+        ...(m.job ? [['Your post', p.career.title], ['Since', String(m.job.since)]] : [])]));
     }
     if (m.offer && m.offer.year === store.state.year) out += card('An offer', `<p>${esc(hospitalName(m.offer.hospitalId))} offers you the post of ${esc(RANKS[m.offer.rank].title.toLowerCase())}.</p>${btn('offer', 'Accept', { arg: 'yes', cls: 'primary' })}${btn('offer', 'Decline', { arg: 'no' })}`);
     const posts = ladder.postOptions(p, m);
@@ -157,6 +164,7 @@ async function openCase(id, api) {
     root.innerHTML = `<h2 style="margin-top:0">${esc(v.label)}</h2>
       <p class="muted">Confidential${v.supervised ? ' · supervised' : ''}${v.guardian ? ' · with a parent or guardian' : ''}</p>
       ${v.teams.length ? `<p class="muted">One emergency, several teams: ${esc(v.teams.join(', '))} are working on this patient too.</p>` : ''}
+      ${v.family.length ? `<p class="muted">With ${esc(v.family.map((f) => `${f.name}, ${f.as}`).join('; '))}.</p>` : ''}
       <p>${esc(v.intro)}</p><p><strong>History.</strong> ${esc(v.history)}</p><p><strong>Examination.</strong> ${esc(v.exam)}</p>
       ${v.triage ? `<div class="section-label">Who first?</div><p>${esc(v.triage.text)}</p>${v.triage.options.map((o) => btn('triage', o.label, { arg: o.id })).join('')}` : ''}
       <div class="section-label">Tests</div>${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
