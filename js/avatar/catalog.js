@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_HAIR, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -45,7 +45,7 @@ const MARK_FILES = new Set(MARKS.map((m) => m.file));
 
 const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|^outfit_kid_|heir|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
 export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
-export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
+export const HAIR_STYLES = parts('hair', (p) => !/^hair_(baby|kid)_/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
 export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: withdrawn, so babies and toddlers are bald
 /**
  * Hairstyles from the fitting pipeline, read from assets/hair_manifest.json (js/avatar/fittedHair.js): offered in the
@@ -115,6 +115,8 @@ INDEX.hair.bald = { id: 'bald', name: 'Shaved', type: 'any' };
  */
 export function lipsFor(id, gender) {
   const match = gender === 'male' ? LIP_MATCH.male : gender === 'female' ? LIP_MATCH.female : null;
+  // A men's mouth is never drawn on a woman, nor offered to one: any not matched above is drawn as a neutral one.
+  if (gender === 'female' && /^lips_masc_/.test(id ?? '')) return match[id] ?? 'lips_8';
   return match?.[id] ?? id;
 }
 
@@ -185,8 +187,9 @@ const OLD_HAIRSTYLE = {
   curls_tight: 'hair_boy_short_11', coils: 'hair_girl_short_14', braids: 'hair_girl_long_09', locs: 'hair_boy_medium_09', bob: 'hair_girl_short_01',
   long_straight: 'hair_girl_long_02', long_wavy: 'hair_girl_long_01', long_curly: 'hair_girl_long_07', ponytail: 'hair_boy_updo_11_high_ponytail', bun: 'hair_updo_03', puffs: 'hair_updo_09',
 };
-const OLD_GLASSES = { round: 'glasses_1', square: 'glasses_3', cat_eye: 'glasses_2', aviator: 'glasses_4' };
-const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_eyeliner', bold: 'makeup_12_smoky_wing' };
+// The glasses and make-up are being redrawn: older saves' choices have nothing to map to, and are dropped.
+const OLD_GLASSES = {};
+const OLD_MAKEUP = {};
 /**
  * The random pools as they were when the earlier avatar system's saves were first converted. An old shape
  * id is converted from these, then moved off anything since withdrawn, so it always lands on the same part
@@ -282,9 +285,18 @@ export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] 
  * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
  * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
  */
+/** A lipstick's shade on a skin of this depth (PAL.LIP_SHADES), blended between the nearest anchors. */
+export function lipShade(id, depth = 8) {
+  const ramp = PAL.LIP_SHADES[id];
+  if (!ramp) return part('lipColor', id)?.hex ?? null;
+  const d = Math.max(ramp[0][0], Math.min(ramp.at(-1)[0], depth));
+  const i = Math.max(0, ramp.findIndex(([at]) => at >= d) - 1);
+  const [a, b] = [ramp[i], ramp[Math.min(i + 1, ramp.length - 1)]];
+  return b[0] === a[0] ? a[1] : mixHex(a[1], b[1], (d - a[0]) / (b[0] - a[0]));
+}
 export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 } };
 function lipColors(skin, lipColor, gender) {
-  if (lipColor) return { lip: part('lipColor', lipColor).hex };
+  if (lipColor) return { lip: lipShade(lipColor, skin.depth) };
   if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= DEPTH.chestnut ? W.deepK : W.k) }; }
   return { lip: PAL.NATURAL_LIP_LOWER[skin.depth], lipUpper: PAL.NATURAL_LIP_UPPER[skin.depth] };
 }
@@ -309,6 +321,8 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: st.browStyle ?? g.brows, nose: g.nose, lips, beard: st.beard ?? null,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: st.babyHair ?? (babyHair.length ? seeded(babyHair, seed, 'babyhair') : null),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
+    // Hair drawn for the kid head (curation.KID_HAIR), for this child's gender and texture, when there is some.
+    kidDrawnHair: ((own) => (own.length ? seeded(own, seed, 'kiddrawnhair') : null))(KID_HAIR[sex]?.[g.hairTexture] ?? KID_HAIR[sex]?.straight ?? []),
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
     // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
     kidHairChosen: !!st.kidHair,

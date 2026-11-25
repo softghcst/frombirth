@@ -11,6 +11,7 @@
 // Nothing is guaranteed: a residency or fellowship place is applied for and may not be offered.
 // A resident practices under supervision only; a student has no privileges of their own.
 import { rng } from '../../rng.js';
+import { MAJOR_BY_ID } from '../../data/majors.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
@@ -33,7 +34,13 @@ export const isPodiatry = (m = med()) => m?.route === 'dpm';
 /** Who can do premedical activities: someone at university, or a graduate who has not yet started medical school. */
 export function premedOpen(p = player()) {
   if (p.age < 17 || inMedSchool(p) || holds('medical', p) || holds('podiatric', p)) return false;
-  return (p.education.enrolled && p.education.stage === 'university') || holds('university', p);
+  // Only for someone on the way to medicine: studying (or holding a degree in) a subject that leads there, and not
+  // settled in another career. Anyone who has already started on it keeps it.
+  const towardMedicine = (id) => !!MAJOR_BY_ID[id]?.tracks?.includes('medical');
+  const studying = p.education.enrolled && p.education.stage === 'university' && towardMedicine(p.education.majorId);
+  const started = !!p.medicine?.premed && Object.values(p.medicine.premed).some((v) => typeof v === 'number' && v > 0);
+  const graduate = (started || p.education.degrees.some((d) => d.type === 'university' && towardMedicine(d.majorId))) && !p.career.careerId;
+  return studying || graduate;
 }
 
 /** Premedical activities, each once a year. */
@@ -212,9 +219,28 @@ export function runMatch(kind, wanted) {
   const what = kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`;
   m.match = { kind, year: year(), applied: [...wanted], tries: (m.match?.kind === kind ? m.match.tries ?? 0 : 0) + 1, status: 'unmatched' };
   for (const id of wanted) {
-    if (!roll(placeChance(id, m))) continue;
+    // One fellowship place, two strong residents: when a rival from the program applies too, the program chooses
+    // between the two applications, on the record. Otherwise it is the ordinary chance of a place.
+    const rival = kind === 'fellowship' && SPECIALTY_BY_ID[id].compete >= 0.5
+      ? (m.people.rivalIds ?? []).map((x) => store.state.npcs[x]).find((n) => n?.alive && !n.flags.medFellowship) : null;
+    if (!rival && !roll(placeChance(id, m))) continue;
     const site = pickSite(id, m, p);
     if (!site) continue;
+    if (kind === 'fellowship') {
+      if (rival) {
+        const theirs = (rival.meters.intellect ?? 50) * 0.7 + rng.int(0, 30);
+        const mine = applicationStrength(id, m) * 0.7 + rng.int(0, 30);
+        rival.flags.medFellowship = id;
+        m.fellowshipRace = { year: year(), specialtyId: id, rivalId: rival.id, won: mine >= theirs };
+        if (mine < theirs) {
+          remember(rival, `medFellowship:${id}`, `Was chosen over you for the ${specialtyName(id)} fellowship.`);
+          log(`There was one ${specialtyName(id)} fellowship place, and the program chose ${rival.firstName} ${rival.lastName}. On paper it was close.`, 'system', 'bad');
+          continue;
+        }
+        remember(rival, `medFellowship:${id}`, `Lost the ${specialtyName(id)} fellowship place to you.`);
+        rival.flags.medFellowship = 'missed';
+      }
+    }
     return matched(kind, id, site, what);
   }
   // A second round for places left unfilled: less competitive programs, for those who opt in (the default).
@@ -356,7 +382,7 @@ export function retitle(p = player(), m = med()) {
   } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
-    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
+    c.title = { attending: year() < 1950 ? `Staff ${doc}` : `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
       chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
   }
 }
@@ -573,6 +599,8 @@ export function tickTraining() {
 /** After school: an internship first where the country has one, otherwise straight to residency applications. */
 function startAfterSchool(p, m) {
   const j = jurisdiction(p.countryId);
+  // Where the license comes with graduation (afterTraining 0), it is sat now, before any training place.
+  if (j.license.afterTraining === 0 && m.route !== 'dpm') licenseCheck(p, m, null);
   if (m.route !== 'dpm' && j.internship > 0 && !m.completed.length && !(m.evaluations ?? []).some((x) => x.kind === 'internship')) {
     const site = trainingSites('internal', p.countryId, p.city)[0];
     log(`Every graduate here works ${j.internship === 1 ? 'a supervised year' : `${j.internship} supervised years`} before specialty training.`, 'system', 'neutral');

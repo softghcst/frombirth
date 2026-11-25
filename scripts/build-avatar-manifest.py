@@ -483,6 +483,8 @@ def recolour(folder, name, elements):
     # Outlines are never recoloured. In hair and brows the darkest of several tones is the outline, however dark or light it is.
     browns = [c for c in weights if not is_white(c)]
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
+    if folder == 'hair' and re.match(r'hair_(baby|kid)_', name):  # drawn in a mid brown on a child template: its dark tones are the outline
+        candidates = {c: w for c, w in candidates.items() if lum(c) >= INK}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
         candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
@@ -493,7 +495,7 @@ def recolour(folder, name, elements):
     lm = max(lum(main), 0.01)
     mapping = {main: f'var(--{var},{main})'}
     for c in candidates:
-        if folder == 'hair' and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
+        if folder == 'hair' and not name.startswith('hair_kid_') and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
             mapping[c] = f'var(--skin-color,{c})'  # scalp showing at a parting or hairline
             continue
         if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:
@@ -631,7 +633,7 @@ def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
     # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
     # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
-    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and name.startswith('hair_baby_'))) and vb:
+    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and re.match(r'hair_(baby|kid)_', name))) and vb:
         s = 512 / vb[2]
         transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
         return 'as drawn on the child template'
@@ -1362,7 +1364,9 @@ def process(path, folder, force=False):
     name = os.path.basename(path)[:-4]
     notes = []
     # Solid white backgrounds, and the white "sticker" outline some packs put round a garment.
-    box = bbox_of(elements)
+    # Not on parts drawn on a template (children's clothes, baby hair): their background is already transparent, and a
+    # white garment would be taken for one.
+    box = None if re.match(r'(outfit_(baby|kid)_|hair_(baby|kid)_)', os.path.basename(path)) else bbox_of(elements)
     if box:
         bw, bh = box[2] - box[0], box[3] - box[1]
         full = lambda e: (lambda b: b and (b[2] - b[0]) >= bw * 0.9 and (b[3] - b[1]) >= bh * 0.9)(bbox_of([e]))
@@ -1432,6 +1436,8 @@ def tags_for(folder, name):
             t['gender'] = HAIR_GENDER[name]
         if 'baby' in parts:
             t['age'] = 'baby'
+        if name.startswith('hair_kid_'):
+            t['age'] = 'kid'
         for length in ('short', 'medium', 'long', 'updo'):
             if length in parts:
                 t['length'] = length
@@ -1470,9 +1476,9 @@ def label(name):
     if name.startswith('hair_updo'):
         length = 'Up'
     text = ' '.join(words)
-    if name.startswith('hair_baby') or (name.startswith('head_00')):
+    if re.match(r'hair_(baby|kid)_', name) or (name.startswith('head_00')):
         text = text or name
-    if name.startswith('hair') and not name.startswith('hair_baby'):
+    if name.startswith('hair') and not re.match(r'hair_(baby|kid)_', name):
         # Two packs share their numbering; the second continues from 17 so every name is different.
         text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
     elif parts[0] == 'lips' and text == 'masc' and number is not None:

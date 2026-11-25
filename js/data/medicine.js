@@ -52,7 +52,7 @@ export const SPECIALTIES = [
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
   // Integrated surgical residencies (entered straight from medical school, in the US)
   S('ct_integrated', 'Integrated Thoracic Surgery', 'cardiothoracic surgeon', { years: 6, play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.9, grants: 'ctsurg',
-    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'gs_hernia'], minYear: 2008 }),
+    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta', 'gs_hernia'], minYear: 2008 }),
   S('vascular_integrated', 'Integrated Vascular Surgery', 'vascular surgeon', { years: 5, play: 'or', dept: 'vascular', surgical: true, compete: 0.7, grants: 'vascular',
     procedures: ['vs_repair'], minYear: 2007 }),
   S('plastic_integrated', 'Integrated Plastic Surgery', 'plastic surgeon', { years: 6, play: 'or', dept: 'plastic', surgical: true, compete: 0.9, grants: 'plastic',
@@ -74,7 +74,7 @@ export const SPECIALTIES = [
   F('mfm', 'Maternal-Fetal Medicine', 'maternal-fetal medicine specialist', ['obgyn'], 3, { play: 'panel', dept: 'obgyn', compete: 0.5 }),
   // Surgical fellowships
   F('ctsurg', 'Cardiothoracic Surgery', 'cardiothoracic surgeon', ['gensurg'], 2, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6,
-    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic'], focus: ['cardiac', 'thoracic'], minYear: 1950 }),
+    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta'], focus: ['cardiac', 'thoracic'], minYear: 1950 }),
   F('ct_heart_transplant', 'Heart Transplantation', 'heart transplant surgeon', ['ctsurg'], 1, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6, procedures: ['tx_heart'], minYear: 1985 }),
   F('trauma', 'Trauma and Acute Care Surgery', 'trauma surgeon', ['gensurg'], 2, { play: 'or', dept: 'trauma', surgical: true, compete: 0.45,
     procedures: ['tr_emergency', 'icu_procedure'], minYear: 1970 }),
@@ -136,6 +136,7 @@ export const PROCEDURES = [
   P('ct_bypass', 'Coronary artery bypass', 1968, 0.15),
   P('ct_valve', 'Heart valve operation', 1960, 0.18),
   P('ct_thoracic', 'Thoracic (lung) operation', 1940, 0.14),
+  P('ct_aorta', 'Aortic operation', 1955, 0.2),
   P('tx_heart', 'Heart transplant', 1983, 0.3),
   P('tx_kidney', 'Kidney transplant', 1960, 0.15),
   P('tx_liver', 'Liver transplant', 1983, 0.25),
@@ -291,6 +292,20 @@ export const JURISDICTIONS = {
     license: { name: 'full GMC registration', afterTraining: 1 }, internship: 2, selection: 'specialty training recruitment' },
   au: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD / MBBS'], exams: [{ id: 'finals', name: 'Final examinations', year: 4 }],
     license: { name: 'general registration', afterTraining: 1 }, internship: 1, selection: 'specialty college selection' },
+  // Broad shapes only (marked simplified): how long the supervised years after school last before specialty
+  // training, and plain words for registration and selection. No exam names, fees or rules are claimed.
+  in: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'medical registration', afterTraining: 1 }, selection: 'postgraduate entrance examinations' },
+  ph: { ...SIMPLE, entry: 'graduate', degrees: ['MD'], internship: 1, license: { name: 'the physician licensure examination and registration', afterTraining: 1 }, selection: 'residency applications to hospitals' },
+  jp: { ...SIMPLE, degrees: ['MD'], internship: 2, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'the postgraduate training match' },
+  de: { ...SIMPLE, degrees: ['Medical degree (state examination)'], internship: 0, license: { name: 'a full license to practice medicine', afterTraining: 0 }, selection: 'applications to hospitals for specialty training' },
+  fr: { ...SIMPLE, degrees: ['Doctor of Medicine'], internship: 0, license: { name: 'registration with the medical council', afterTraining: 0 }, selection: 'the national ranking examination' },
+  br: { ...SIMPLE, degrees: ['Medical degree'], internship: 0, license: { name: 'registration with the regional medical council', afterTraining: 0 }, selection: 'residency selection examinations' },
+  ng: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'full registration with the medical council', afterTraining: 1 }, selection: 'residency applications to teaching hospitals' },
+  kr: { ...SIMPLE, degrees: ['MD'], internship: 1, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'residency selection at teaching hospitals' },
+  mx: { ...SIMPLE, degrees: ['Médico cirujano'], internship: 1, license: { name: 'a professional license', afterTraining: 1 }, selection: 'the national residency examination' },
+  za: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration with the health professions council', afterTraining: 2 }, selection: 'registrar post applications' },
+  ie: { ...SIMPLE, degrees: ['MB BCh BAO'], internship: 1, license: { name: 'registration with the medical council', afterTraining: 1 }, selection: 'specialty training applications' },
+  nz: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration in a general scope', afterTraining: 1 }, selection: 'specialty college selection' },
   default: SIMPLE,
 };
 export const jurisdiction = (countryId) => JURISDICTIONS[countryId] ?? JURISDICTIONS.default;

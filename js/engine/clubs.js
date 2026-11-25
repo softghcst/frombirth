@@ -24,9 +24,19 @@ export const rankName = (c, rank) => (rank >= 2 ? c.top : CLUB_RANKS[rank]);
 export const duesOf = (c, p = player()) => (familyPays(p) ? 0 : localMoney(c.dues, country()));
 
 /** Why the player cannot join this club now, or ''. */
+/** Clubs and classes are for children and teenagers: a grown-up's hobbies are lessons, skills and their own time. */
+export const CLUB_AGE_LIMIT = 17;
+/**
+ * Clubs no longer offered, because something else in the game already is that: coding, art, writing, drama, martial
+ * arts, swimming and astronomy are Lessons (or Martial Arts); investing, parents' and seniors' groups are for adults.
+ * Kept in the data so older saves still read.
+ */
+export const RETIRED_CLUBS = new Set(['coding', 'drawing', 'writers', 'drama', 'dojo', 'swimclub', 'astronomy', 'investing', 'parents', 'seniors']);
+
 export function whyNot(c, p = player()) {
   const mine = clubsOf(p).now;
   if (p.legal.incarceration) return 'Not from prison.';
+  if (p.age > CLUB_AGE_LIMIT && !mine[c.id]) return 'Clubs and classes are for children and teenagers.';
   if (mine[c.id]) return 'You are a member.';
   if (p.age < c.minAge) return `From age ${c.minAge}`;
   if (c.maxAge && p.age > c.maxAge) return `Up to age ${c.maxAge}`;
@@ -42,7 +52,8 @@ export function whyNot(c, p = player()) {
 /** Clubs that exist in this year, grouped, each with whether the player can join. */
 export function clubOptions(p = player()) {
   const y = store.state.year;
-  return CLUB_KINDS.map((k) => ({ ...k, clubs: CLUBS.filter((c) => c.kind === k.id && y >= c.from && !(c.maxAge && p.age > c.maxAge + 10))
+  if (p.age > CLUB_AGE_LIMIT) return [];
+  return CLUB_KINDS.map((k) => ({ ...k, clubs: CLUBS.filter((c) => c.kind === k.id && y >= c.from && !RETIRED_CLUBS.has(c.id) && c.minAge <= CLUB_AGE_LIMIT && !(c.maxAge && p.age > c.maxAge + 10))
     .map((c) => ({ club: c, dues: duesOf(c, p), why: whyNot(c, p) })) })).filter((k) => k.clubs.length);
 }
 
@@ -149,7 +160,7 @@ export function tickClubs() {
     if (!c) { delete C.now[m.id]; continue; }
     if (p.legal.incarceration) { end(p, m, 'prison', `Your membership of ${the(c)} lapsed while you were inside.`); continue; }
     if (m.countryId !== p.countryId) { end(p, m, 'moved', `You left ${the(c)} behind when you moved.`); continue; }
-    if (c.maxAge && p.age > c.maxAge) { end(p, m, 'grew', `You grew out of ${the(c)}. ${m.years} years of it.`); continue; }
+    if ((c.maxAge && p.age > c.maxAge) || p.age > CLUB_AGE_LIMIT) { end(p, m, 'grew', `You grew out of ${the(c)}. ${m.years} years of it.`); continue; }
     // Dues for the year to come (the first year's were paid on joining).
     if (m.paid !== store.state.year) {
       const dues = duesOf(c, p);

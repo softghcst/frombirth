@@ -37,6 +37,8 @@ export const BUSINESS_TYPES = [
   B('accountancy', 'Accountancy practice', 'corporate', 25000, 100000, 0.04, 14000, 58000, 'accountant', { experience: { accountant: 4, audit: 4 } }, { solo: true }),
   B('consultancy', 'Consultancy', 'corporate', 15000, 140000, 0.05, 10000, 85000, 'consulting', { experienceTotal: 10 }, { solo: true, remote: true }),
   B('law_firm', 'Law practice', 'law', 45000, 170000, 0.04, 26000, 60000, 'lawyer', { program: 'law', experience: { lawyer: 4, prosecutor: 4, defender: 4 } }, { solo: true }),
+  // A licensed private investigator's agency (engine/investigations/private.js checks the license). No police powers come with it.
+  B('investigations', 'Private investigation agency', 'novelty', 30000, 70000, 0.06, 14000, 40000, 'pi', { minAge: 21, experience: { pi: 2, police: 3, detective: 2, fbi_agent: 2 } }),
   B('clinic', 'Medical practice', 'health', 140000, 150000, 0.12, 36000, 52000, 'doctor', { program: 'medical', experience: { doctor: 4 } }),
   B('dental_practice', 'Dental practice', 'health', 160000, 140000, 0.16, 32000, 50000, 'dentist', { program: 'dental' }),
   B('vet_practice', 'Veterinary practice', 'land', 130000, 115000, 0.2, 30000, 44000, 'vet', { program: 'veterinary' }),

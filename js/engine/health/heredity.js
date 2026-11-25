@@ -147,7 +147,28 @@ export function bornWith(genome, id) {
     const L = Math.sqrt(h2) * (h2 ? liability(genome, def.id) : 0) + Math.sqrt(1 - h2) * r.normal();
     if (L > probit(1 - def.onset.prevalence)) out.push(def.id);
   }
-  for (const [key, gene] of Object.entries(GENES)) if (affected(genome, key, r)) out.push(gene.condition);
+  const genes = [];
+  for (const [key, gene] of Object.entries(GENES)) if (affected(genome, key, r)) genes.push(gene.condition);
+  // Kept in the order they were found; inherited single-gene conditions are kept first when some must go.
+  const kept = fewer([...genes, ...out]);
+  return [...out, ...genes].filter((id) => kept.includes(id));
+}
+
+/** Learning differences: reading, numbers, handwriting, language. */
+const LEARNING = ['dyslexia', 'dyscalculia', 'dysgraphia', 'dld'];
+/**
+ * Keeps what one person is born with to a believable handful: at most one learning difference, two developmental
+ * conditions and three in all. Inherited single-gene conditions come first, so families still match.
+ */
+export function fewer(ids) {
+  const out = [];
+  for (const id of [...new Set(ids)]) {
+    const def = CONDITION_BY_ID[id];
+    if (LEARNING.includes(id) && out.some((x) => LEARNING.includes(x))) continue;
+    if (def?.group === 'neurodev' && out.filter((x) => CONDITION_BY_ID[x]?.group === 'neurodev').length >= 2) continue;
+    if (out.length >= 3) break;
+    out.push(id);
+  }
   return out;
 }
 

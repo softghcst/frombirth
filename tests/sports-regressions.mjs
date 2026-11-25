@@ -219,7 +219,7 @@ caseOf('a professional in one sport cannot simply switch to another', () => {
   const forced = life.internals.ANSWERS().turnPro(S(), { sportId: 'golf' }, 'yes');
   check(!forced.ok && golf.level !== 'pro' && !golf.proYear, 'and cannot, even when answering yes');
   const club = life.internals.signPro(S(), { sportId: 'soccer', orgId: 'nobody', salary: 1000, years: 2, level: 0 });
-  check(!club.ok && !sp.entryOf('soccer').contractId, 'no club signs them for another sport either');
+  check(!club.ok && !sp.entryOf('soccer')?.contractId, 'no club signs them for another sport either');
   // Retiring from tennis: two seasons away, then golf is open.
   life.retire('tennis');
   check(/seasons away/.test(sp.proLock('golf')), `just retired: not yet (${sp.proLock('golf')})`);

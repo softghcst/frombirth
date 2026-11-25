@@ -15,7 +15,9 @@ const root = () => document.getElementById('modal-root');
 export function openModal(html, opts = {}) {
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
-  scrim.innerHTML = `<div class="modal ${opts.tone ? `tone-${opts.tone}` : ''}" role="dialog" aria-modal="true">${html}</div>`;
+  // full: a page of its own, the whole screen, with Back (and its name) in a bar along the top.
+  if (opts.full) scrim.classList.add('scrim-full');
+  scrim.innerHTML = `<div class="modal ${opts.full ? 'modal-full' : ''} ${opts.tone ? `tone-${opts.tone}` : ''}" role="dialog" aria-modal="true">${html}</div>`;
   // Focus goes into the dialog, and back to where it was when the dialog closes.
   // A dialog opened from inside another returns focus where that one would have.
   const opener = document.activeElement;
@@ -45,7 +47,7 @@ export function openModal(html, opts = {}) {
   if (opts.dismissable && opts.back !== false) {
     const row = document.createElement('div');
     row.className = 'modal-backrow';
-    row.innerHTML = '<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>';
+    row.innerHTML = `<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>${opts.full && opts.title ? `<strong class="modal-bartitle">${esc(opts.title)}</strong>` : ''}`;
     // A page with levels of its own (a screen opened from a screen) has its own back control: this one presses it, so Back
     // steps out one level at a time and only leaves the page from the first.
     row.firstElementChild.addEventListener('click', () => {

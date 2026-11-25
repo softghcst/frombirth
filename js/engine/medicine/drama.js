@@ -22,9 +22,12 @@ import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputat
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
 import { doResearch } from './research.js';
+import { practices } from './practice.js';
+import * as biz from '../business.js';
 import { employer, chronicle } from '../employers.js';
 import { SPECIALTY_BY_ID, DEPARTMENTS } from '../../data/medicine.js';
 import { workplacesFor, hospital, hospitalsIn } from './hospitals.js';
+import { staffOf } from '../workplace.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 
@@ -76,6 +79,16 @@ function eligible(p, m) {
       const o = rng.pick(away);
       m.awayOffer = { hospitalId: o.e.id, city: o.city, year: year() };
       out.push({ id: 'med_offer_away', cast: { words: { hospital: o.e.name, city: o.city } } });
+    }
+  }
+  // Two hospitals, one relationship: a partner who is also a physician is offered a post in another city.
+  const love = partner();
+  if (love && (m.job || t) && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(love.life?.job?.careerId) && !m.partnerOffer && roll(0.2)) {
+    const away = citiesOf(p.countryId).filter((c) => c.name !== p.city);
+    if (away.length) {
+      const city = rng.pick(away).name;
+      const at = hospitalsIn(p.countryId, city).find(({ h: oh }) => oh.kind !== 'clinic');
+      if (at) { m.partnerOffer = { npcId: love.id, hospitalId: at.e.id, city, year: year() }; out.push({ id: 'med_partner_offer', cast: { peer: love.id, words: { hospital: at.e.name, city } } }); }
     }
   }
   // The old team, years later.
@@ -145,6 +158,28 @@ export function hospitalYear() {
       log(`${e.name} founded a new department: ${DEPARTMENTS[d]}.`, 'system', 'neutral');
     }
   }
+  // A department chief retires now and then, and a successor is chosen from the department's senior physicians
+  // (or offered to the player, if they are eligible: engine/medicine/ladder.js answers the offer).
+  const dept = SPECIALTY_BY_ID[currentSpecialty(m)]?.dept;
+  const headId = dept ? h.heads[dept] : null;
+  const head = headId ? npc(headId) : null;
+  if (head?.alive && head.age >= 60 && roll(0.12)) {
+    head.flags.title = `Retired chief of ${DEPARTMENTS[dept]}`;
+    if (head.life?.job) head.life.job = null;
+    const eligible = m.job && ['senior', 'director'].includes(m.job.rank) && m.skills.leadership >= 55 && m.reputation >= 60;
+    if (eligible) {
+      m.offer = { rank: 'chief', year: year(), hospitalId: id };
+      delete h.heads[dept];
+      chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}; the search for a successor began.`);
+      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from My Medical Career.`, 'system', 'good');
+    } else {
+      const pool = staffOf(e).filter((n) => n.alive && n.id !== head.id && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) && (n.life.job.level ?? 0) >= 1);
+      const next = pool.sort((a, b) => (b.meters.intellect ?? 0) - (a.meters.intellect ?? 0))[0] ?? null;
+      if (next) { h.heads[dept] = next.id; next.flags.title = `Chief of ${DEPARTMENTS[dept]}`; next.life.job.level = 3; } else delete h.heads[dept];
+      chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}${next ? `; ${next.firstName} ${next.lastName} succeeds them` : ''}.`);
+      log(`${head.firstName} ${head.lastName} retired as chief of your department${next ? `. ${next.firstName} ${next.lastName} was chosen to succeed them` : ''}.`, 'system', 'neutral');
+    }
+  }
   // Colleagues decide for themselves: now and then one takes a post elsewhere in the country.
   for (const n of [...m.people.colleagueIds, ...m.people.friendIds].map(npc)) {
     if (!n?.alive || n.life?.job?.employerId !== id || n.id === m.people.mentorId || !roll(0.06)) continue;
@@ -172,7 +207,7 @@ export function dramaYear() {
   if (!list.length) return;
   const n = rate >= 1 ? 2 : roll(rate) ? 1 : 0;
   // A disclosure or a thank-you comes whatever the setting: they are about patients, not drama.
-  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away'].includes(x.id));
+  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away', 'med_partner_offer'].includes(x.id));
   const rest = list.filter((x) => !must.includes(x)).sort(() => rng.next() - 0.5).slice(0, n);
   for (const x of [...must.slice(0, 2), ...rest]) {
     m.scenes[x.id] = year();
@@ -283,6 +318,27 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'family') { const pt = partner(); if (pt) pt.meters.relationship = clamp(pt.meters.relationship + 6); p.stats.mood = clamp(p.stats.mood + 4); }
       return '';
     }
+    case 'partnerOffer': {
+      const o = m.partnerOffer;
+      m.partnerOffer = null;
+      const love = npc(o?.npcId);
+      if (!o || !love?.alive) return '';
+      if (how === 'follow') {
+        // Moving together: the partner takes the post; the player looks for one there (it is not guaranteed).
+        love.life.job.employerId = o.hospitalId;
+        p.finance.cash += moveCost();
+        const r = relocate(o.city);
+        if (!r.ok) { p.finance.cash -= moveCost(); return `The move fell through: ${r.text}`; }
+        love.meters.relationship = clamp(love.meters.relationship + 10);
+        const spec = currentSpecialty(m);
+        const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
+        if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
+        return `You move to ${o.city} together. You will need to find a post there: My Medical Career, Hospital.`;
+      }
+      if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
+      if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }
+      return '';
+    }
     case 'reunion':
       if (how === 'go' && who) { who.meters.relationship = clamp(who.meters.relationship + 12); p.stats.mood = clamp(p.stats.mood + 5); }
       return '';
@@ -324,6 +380,10 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'cover') p.career.stress = clamp((p.career.stress ?? 50) + 6);
       return '';
     }
+    case 'story':
+      if (how === 'teach') return doResearch('teach').text;
+      if (how === 'expand') { const b = practices(m).find((x) => x.sites === 1); return b ? biz.expand(b).text : ''; }
+      return '';
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

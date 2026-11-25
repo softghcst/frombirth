@@ -1418,3 +1418,13 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 @keyframes wp-fall { to { transform: translateY(110vh) rotate(540deg); } }
 .wp-finale.sv-still *, .wp-finale.sv-still { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .wp-rings, .wp-just, .wp-pair, .wp-names, .wp-after, .wp-heart, .wp-confetti i, .wp-tile { animation: none !important; transition: none !important; } }
+/* Explore the World as a page of its own: its sections as big buttons, two to a row, nothing cut off at the edge. */
+.modal-full .gl-nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 4px 0 10px; background: none; }
+.modal-full .gl-nav .chip { display: flex; align-items: center; min-height: 48px; justify-content: center; text-align: center; font-size: 0.98rem; border-radius: 14px; white-space: normal; }
+@media (min-width: 640px) { .modal-full .gl-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Digital Life forms: tick boxes stay tick boxes (not stretched like text fields), each choice a pill that lights up when picked. */
+.dl-checks input[type="checkbox"], .dl-check input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; width: 18px; height: 18px; min-height: 0; min-width: 0;
+  flex: none; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; accent-color: var(--accent); }
+.dl-checks label { padding: 6px 12px 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); max-width: 100%; line-height: 1.25; }
+.dl-checks label:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
