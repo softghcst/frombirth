@@ -465,8 +465,32 @@ export function closeYear(m = med()) {
     resolve(c, plan, fx.decision ? { quality: rng.next() < sharp ? 'best' : 'ok' } : null, 'busy year');
   }
   // Keep the record list bounded: case details older than thirty years are summarized away.
-  const cutoff = year() - 30;
+  const cutoff = year() - KEEP_YEARS;
   m.caseIds = m.caseIds.filter((id) => { const c = W().cases[id]; if (c && c.year < cutoff) { delete W().cases[id]; return false; } return !!c; });
+  prunePatients(m);
+}
+
+/** How long a closed case's details are kept; the counts (experience, judgment) stay for good. */
+export const KEEP_YEARS = 15;
+
+/**
+ * A long career sees hundreds of patients. Once a patient has no case left on file and nothing waits on them
+ * (a follow-up, a thank-you not yet written), they and the family member who came with them leave the save.
+ * Nobody the player knows is ever removed.
+ */
+export function prunePatients(m = med()) {
+  const keep = new Set([...(m?.followUps ?? []).map((f) => f.patientId), ...(m?.grateful ?? []).filter((g) => !g.thanked).map((g) => g.patientId)]);
+  for (const ep of Object.values(W().episodes)) if (ep.year >= year() - KEEP_YEARS) keep.add(ep.patientId);
+  const known = new Set(player().npcIds);
+  for (const [id, rec] of Object.entries(W().patients)) {
+    rec.caseIds = rec.caseIds.filter((c) => W().cases[c]);
+    if (rec.caseIds.length || keep.has(id) || known.has(id)) continue;
+    for (const h of rec.household ?? []) if (!known.has(h.id) && store.state.npcs[h.id]?.flags?.patient) delete store.state.npcs[h.id];
+    if (store.state.npcs[id]?.flags?.patient) delete store.state.npcs[id];
+    delete W().patients[id];
+  }
+  for (const [k, ep] of Object.entries(W().episodes)) if (ep.year < year() - KEEP_YEARS) delete W().episodes[k];
+  if (m?.grateful) m.grateful = m.grateful.filter((g) => !g.thanked && g.year >= year() - KEEP_YEARS);
 }
 
 /** Counts for the career page (no patient names). */

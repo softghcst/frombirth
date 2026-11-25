@@ -215,6 +215,19 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   // G. An offer in another city.
   const away = jobs.postings('country', p, m).find((x) => x.away && !x.block);
   if (away) { m.awayOffer = { hospitalId: away.id, city: away.city, year: store.state.year }; const was = p.city; drama.medicineChoice('away:accept'); check(p.city !== was && m.job.hospitalId === away.id, 'G. a transfer across the country is taken'); }
+  // Arc E. Two hospitals, one relationship: the partner's offer elsewhere, and the decision taken together.
+  peer.role = 'partner'; // (whatever they answered above, the arc is about a couple)
+  {
+    peer.life ??= { edu: { stage: 'done', degrees: [] }, job: null, history: [] };
+    peer.life.job = { careerId: 'doctor', level: 1, title: 'Physician', salary: 0, years: 5, employerId: m.job.hospitalId };
+    const away2 = jobs.postings('country', p, m).find((x) => x.away);
+    if (away2) {
+      m.partnerOffer = { npcId: peer.id, hospitalId: away2.id, city: away2.city, year: store.state.year };
+      const was = p.city;
+      drama.medicineChoice('partnerOffer:follow');
+      check(p.city === away2.city && p.city !== was && peer.life.job.employerId === away2.id && !m.partnerOffer, 'E. a partner\'s offer elsewhere: the move made together');
+    }
+  }
   // H. A disagreement in the operating room rewards speaking up with evidence, not arguing.
   const r0 = m.skills.reasoning; drama.medicineChoice('talk:speak');
   const p0 = m.skills.professionalism; drama.medicineChoice('talk:argue');

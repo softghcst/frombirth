@@ -273,6 +273,11 @@ export default [
     ['Slow down: fewer hours, more life', 'You ask for a lighter schedule. Your family notices before you do.', 'strain:hours'],
     ['Carry on exactly as you are', 'You love this work. There is no rule that says you must stop.', null],
   ]),
+  scene('med_partner_offer', '{peer} has been offered a post at {hospital}, in {city}: the job they have wanted for years. It is not where your work is.', [
+    ['Move together, and look for a post there', 'You start packing, and applying.', 'partnerOffer:follow', 'good'],
+    ['Talk it through properly before anyone decides', 'You sit up late, two nights running.', 'partnerOffer:talk', 'good'],
+    ['Ask them to turn it down', 'You ask. They decide.', 'partnerOffer:stay'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],
