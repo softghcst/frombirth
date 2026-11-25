@@ -65,10 +65,11 @@ section('the past: only clubs that existed then');
   const charm = p.stats.charm; const singing = p.talents.singing ?? 0;
   const before = p.finance.cash;
   year();
-  check(p.stats.charm > charm, `a year of debating makes them more charming (${charm} → ${p.stats.charm})`);
+  // The rest of a year moves charm by chance too, so what the club itself adds is checked on its own.
+  { const c0 = p.stats.charm; cl.tickClubs(); check(p.stats.charm > c0, `a year of debating makes them more charming (${c0} → ${p.stats.charm}; ${charm} before the year)`); for (const x of Object.values(cl.clubsOf().now)) x.years -= 1; }
   check((p.talents.singing ?? 0) > singing, `a year in a choir is singing practice (${singing} → ${p.talents.singing})`);
   void before;
-  check(cl.memberships().every((m) => m.years === 1), 'each membership is a year old');
+  check(cl.memberships().every((m) => m.years === 1), `each membership is a year old (${cl.memberships().map((m) => m.id + ' ' + m.years)})`);
   // Friendships come by chance, year by year: give it up to ten years of membership.
   for (let i = 0; i < 9 && cl.memberships().flatMap((m) => m.friends).length < 2; i++) year();
   const friends = cl.memberships().flatMap((m) => m.friends);

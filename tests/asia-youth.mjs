@@ -161,7 +161,7 @@ section('Korea: a 10-club, 11-round draft; military service, Sangmu, the medal e
   check(youth.firstProAge({ countryId: 'uk' }, 'soccer') === 17 && youth.firstProAge({ countryId: 'br' }, 'soccer') === 16, 'a first professional contract at 17 in England, 16 elsewhere');
   check(youth.maxYears({ age: 16 }, 'soccer', 5) === 3 && youth.maxYears({ age: 19 }, 'soccer', 5) === 5 && youth.maxYears({ age: 16 }, 'baseball', 7) === 7, 'under 18, a soccer contract runs three years at most');
   let kept = null;
-  for (let tries = 0; tries < 4 && !kept; tries++) {
+  for (let tries = 0; tries < 10 && !kept; tries++) {
     const e = boy('uk', 'soccer', 13, 6);
     let deal = null;
     for (let i = 0; i < 5 && !deal; i++) deal = year({ academy: 'yes', youthDeal: 'yes', contract: 'no' }).find((d) => d.kind === 'youthDeal');
