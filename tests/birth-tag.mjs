@@ -3,7 +3,8 @@
 // Run with: node tests/birth-tag.mjs
 import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
-import { tickChildren, cleanName, nameBaby, surnameChoices, NAME_LIMITS } from '../js/engine/children.js';
+import { tickFamily } from '../js/engine/familyGen.js';
+import { adopt, tickChildren, cleanName, nameBaby, surnameChoices, NAME_LIMITS } from '../js/engine/children.js';
 import { keepsake, weekdayOf, inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
 import { yearSpan } from '../js/engine/birthday.js';
 import { rng } from '../js/rng.js';
@@ -98,6 +99,31 @@ check(NAME_LIMITS.first === 20 && NAME_LIMITS.last === 30, 'first names up to 20
   baby.firstName = 'José';
   nameBaby(baby.id, 'Mateo', p.lastName);
   check(!store.state.journal.some((e) => e.age === p.age && /José/.test(e.text)) && store.state.journal.some((e) => e.age === p.age && /Mateo/.test(e.text)), 'José becomes Mateo in the story');
+}
+
+// A new brother or sister: tagged, born to the player's parents, shown once.
+{
+  const p = life();
+  p.age = 5; p.birthYear = store.state.year - 5; p.flags.parentsStatus = 'together';
+  for (const n of Object.values(store.state.npcs)) if (n.role === 'parent' && n.gender === 'female') n.age = 30;
+  const real = rng.chance.bind(rng);
+  rng.chance = (x) => (x === 0.07 ? true : real(x));
+  const before = new Set(p.npcIds);
+  try { tickFamily(); } finally { rng.chance = real; }
+  const sib = p.npcIds.filter((id) => !before.has(id)).map((id) => store.state.npcs[id]).find((n) => n.role === 'sibling');
+  check(sib?.birthInfo && sib.flags.birthTag === 'new' && sib.parentIds?.length === 2, 'a new sibling gets a tag, from both parents');
+  check(sib && sib.birthday.m === Number(sib.birthInfo.date.slice(5, 7)) - 1, "and the sibling's birthday is the day on it");
+}
+
+// Adopting: the day they came home, the agency and caseworker, who adopted them; their own birthday.
+{
+  const p = life();
+  p.age = 34; p.birthYear = store.state.year - 34; p.finance.cash = 10000000;
+  const r = adopt();
+  const kid = store.state.npcs[r.childId];
+  check(r.ok && kid?.adoptionInfo && kid.flags.adoptionCard === 'new', `an adopted child gets an adoption day card (${r.text})`);
+  check(kid.adoptionInfo.ageThen === kid.age && kid.adoptionInfo.by[0] === p.id && /\w/.test(kid.adoptionInfo.agency) && /^(Ms|Mr|Mrs)\. /.test(kid.adoptionInfo.caseworker), 'with their age, who adopted them, the agency and caseworker');
+  check(kid.birthday && !kid.birthInfo, 'they have a birthday, but no birth tag: that day was not ours to keep');
 }
 
 // The player's own tag: made once, and the same when asked again.
