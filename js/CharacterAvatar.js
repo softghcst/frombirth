@@ -182,6 +182,10 @@ export function dressFor(look, ctx = {}) {
     out.clothes = dress === undefined ? out.clothes : dress;
     out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : gender === 'female' ? ROYAL.crowns.queen : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank === 'heir' ? (gender === 'female' ? ROYAL.crowns.crownPrincess : ROYAL.crowns.crownPrince) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
     out.hat = null;
+  } else if (rank === 'noble' && stage === 'kid') {
+    // A noble child: smart, but nothing that reads as a prince's or princess's (ROYAL.outfits.nobleKid).
+    const list = ROYAL.outfits.nobleKid[gender] ?? [];
+    out.clothes = (list.includes(look.nobleKidClothes) ? look.nobleKidClothes : list[0]) ?? out.clothes;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {
     out.crown = ROYAL.crowns.noble;
     const titled = ROYAL.outfits.nobleByTitle[ctx.royal?.title]?.[gender];
