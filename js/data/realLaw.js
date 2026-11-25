@@ -5,7 +5,7 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will',
+//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship',
 //          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
@@ -50,6 +50,15 @@ export const REAL_LAWS = [
   L('uk_pace76', ['uk'], 'confession', 'Police and Criminal Evidence Act 1984, section 76', 1986, 'A confession obtained by oppression, or in circumstances making it unreliable, must be excluded.', { excludes: true }),
   L('uk_cja_hearsay', ['uk'], 'hearsay', 'Criminal Justice Act 2003, sections 114 to 136', 2005, 'Hearsay is admissible in criminal proceedings only on the grounds the Act allows.'),
   L('uk_cpia', ['uk'], 'disclosure', 'Criminal Procedure and Investigations Act 1996', 1997, 'The prosecution must disclose material that might undermine its case or assist the defense.'),
+  // Prenups, support, protection, adoption and guardianship (the Family Law and Divorce Law cases).
+  L('us_upaa', ['us'], 'prenup', 'Uniform Premarital Agreement Act (1983)', 1983, 'A premarital agreement is not enforced if it was not signed voluntarily, or was unconscionable and signed without fair disclosure of the other side\'s property.'),
+  L('us_fsa88', ['us'], 'support', 'Family Support Act of 1988', 1989, 'States must set child support by guidelines and review orders, so support follows real changes in circumstances.'),
+  L('us_vawa', ['us'], 'protection', 'Violence Against Women Act (1994)', 1994, 'A protection order made in one state must be enforced in every other state.'),
+  L('uk_radmacher', ['uk'], 'prenup', 'Radmacher v Granatino (2010)', 2010, 'A court should give effect to a nuptial agreement made freely, with a full understanding of what it means, unless holding the couple to it would be unfair.'),
+  L('uk_csa91', ['uk'], 'support', 'Child Support Act 1991', 1993, 'Created the Child Support Agency to work out and collect child support.'),
+  L('uk_fla96', ['uk'], 'protection', 'Family Law Act 1996, Part IV', 1997, 'A court can make a non-molestation order, and an order about who may live in the family home.'),
+  L('uk_aca02', ['uk'], 'adoption', 'Adoption and Children Act 2002', 2005, 'The child\'s welfare, throughout their life, is the court\'s paramount consideration; a parent\'s consent can be dispensed with only if the child\'s welfare requires it.'),
+  L('uk_sgo', ['uk'], 'guardianship', 'Children Act 1989, section 14A (special guardianship, added 2002)', 2005, 'A relative can be made a special guardian: day-to-day parental responsibility, without ending the parents\' legal ties.'),
   L('uk_children', ['uk'], 'custody', 'Children Act 1989, section 1', 1991, 'The child\'s welfare is the court\'s paramount consideration.'),
   L('uk_dra1969', ['uk'], 'divorce', 'Divorce Reform Act 1969 (in force 1971)', 1971, 'Divorce for irretrievable breakdown, shown by one of five facts: adultery, behavior or desertion, or two or five years\' separation.', { nofault: 'facts', until: 2021, note: 'Before 1971, divorce in England required proof of a matrimonial offense such as adultery or cruelty.' }),
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),

@@ -115,18 +115,21 @@ export function createCase(templateId, o = {}) {
     c.vars.charge = OFFENSE_BY_ID[T.offense]?.name ?? T.offense;
   } else {
     // A returning client is the same person, with their history intact; a divorce or custody case may be a real couple.
-    const couple = T.kind === 'family' && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
-    const client = couple ? couple[0] : (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client' });
+    const couple = T.kind === 'family' && !T.noCouple && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
+    const client = couple ? couple[0] : (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client', ...(templateId === 'guardianship' ? { age: rng.int(55, 72) } : {}) });
     if (couple) c.realCouple = true;
     c.clientId = role === 'agency' ? null : client.id;
     c.vars.client = nameOf(client.id);
     if (['family', 'child'].includes(T.kind)) {
-      const other = couple ? couple[1] : party(countryId, { title: T.kind === 'family' ? 'Spouse' : 'Parent' });
-      other.flags.spouseId = client.id; client.flags.spouseId = other.id; // a marriage on the record, between two real people
+      const other = couple ? couple[1] : party(countryId, { title: T.otherTitle ?? (T.kind === 'family' ? 'Spouse' : 'Parent') });
+      // A marriage on the record, between two real people, where the case is about one (not a protective order, an
+      // adoption by a stepparent, or a grandparent's guardianship).
+      if (!T.noCouple) { other.flags.spouseId = client.id; client.flags.spouseId = other.id; }
       c.parties.otherId = other.id;
       c.vars.other = nameOf(other.id);
       const kid = party(countryId, { age: rng.int(6, 15), title: 'Child' });
-      kid.flags.parentIds = [client.id, other.id];
+      kid.flags.parentIds = T.noCouple ? [other.id] : [client.id, other.id];
+      if (templateId === 'guardianship') kid.flags.grandparentId = client.id;
       c.parties.childId = kid.id;
       c.vars.child = first(kid.id);
       c.vars.childAge = String(kid.age);
@@ -505,6 +508,7 @@ export function currentOffer(c) {
       ? { text: `The prosecutor offers a plea to ${lesser}.`, value: s, kind: 'plea' }
       : { text: `The defense will plead to ${lesser}.`, value: s, kind: 'plea' };
   }
+  if (T.offer) return { text: fill(T.offer, c), value: s, kind: c.kind === 'transaction' ? 'terms' : 'settlement' };
   if (c.kind === 'family') return { text: T.kind === 'family' && c.templateId === 'divorce' ? `${first(c.parties.otherId)} offers ${Math.round(clamp(40 + s * 25, 35, 62))}% of the shared property to ${first(c.clientId)}.` : `${first(c.parties.otherId)} proposes a shared parenting plan.`, value: s, kind: 'settlement', share: Math.round(clamp(40 + s * 25, 35, 62)) };
   if (c.kind === 'child') return { text: c.templateId === 'juvenile' ? 'The prosecutor agrees to diversion if the damage is repaired.' : 'The agency proposes services at home, with reviews every three months.', value: s, kind: 'agreement' };
   if (c.kind === 'transaction') return { text: c.templateId === 'acquisition' ? 'The seller will give an indemnity and take 4% off the price.' : 'The other side agrees to mutual notice of three months.', value: s, kind: 'terms' };
@@ -695,7 +699,7 @@ function decide(c, adv, lines, o = {}) {
     }
     const won = share >= 0.5;
     const kindMap = { family: won ? 'orders' : 'orders', child: won ? 'orders' : 'orders', immigration: won ? 'approved' : 'denied', civil: c.forum === 'appeal' ? (won ? 'reversed' : 'affirmed') : won ? 'judgment' : 'judgment_against', transaction: won ? 'closed' : 'closed_risk' };
-    const text = {
+    let text = {
       family: c.templateId === 'divorce' ? (won ? 'The court divided the property fairly, counting the account that was hidden.' : 'The court divided the property; the hidden account was not proved.')
         : won ? `The court adopted a parenting plan built around ${c.vars.child}'s school and routines.` : `The court adopted the other parent's plan, with time for ${first(c.clientId)}.`,
       child: c.templateId === 'juvenile' ? (won ? `${c.vars.child} was diverted: the damage repaired, and no formal finding.` : `A formal finding, with supervision for ${c.vars.child}.`)
@@ -707,6 +711,7 @@ function decide(c, adv, lines, o = {}) {
         : won ? 'Judgment for your client.' : 'Judgment for the other side.',
       transaction: won ? 'Signed and closed, with the risks covered.' : 'Signed, though some risk was left in the agreement.',
     }[c.kind];
+    if (T.won) text = fill(won ? T.won : T.lost, c); // a case with outcomes worded for itself
     lines.push(text);
     out = { kind: kindMap[c.kind], text, favorable: won ? 1 : -0.5, trial: c.forum === 'trial', amount: c.kind === 'civil' && won ? currentOffer(c).claim : 0 };
     if (c.kind === 'transaction' && !won) c.risk = 'A liability left uncovered in the agreement.';
@@ -765,6 +770,11 @@ export function close(c, out, lines = []) {
   c.stageIdx = c.stages.length;
   note(c, `Outcome: ${out.text}`);
   // What the result changes in the world, on the people's and companies' own records.
+  // An adoption makes a parent; a guardianship a guardian; a protective order goes on the other person's record.
+  const N = (id) => store.state.npcs[id];
+  if (out.favorable > 0 && c.templateId === 'adoption' && N(c.parties.childId)) { const kid = N(c.parties.childId); kid.flags.parentIds = [...new Set([...(kid.flags.parentIds ?? []), c.clientId])]; kid.flags.adoptedBy = c.clientId; kid.flags.adoptedYear = store.state.year; }
+  if (out.favorable > 0 && c.templateId === 'guardianship' && N(c.parties.childId)) N(c.parties.childId).flags.guardianId = c.clientId;
+  if (out.favorable > 0 && c.templateId === 'protective_order' && N(c.parties.otherId)) N(c.parties.otherId).flags.protectiveOrder = { protects: c.clientId, year: store.state.year };
   if (c.templateId === 'divorce' && ['orders', 'settlement'].includes(out.kind)) {
     for (const id of [c.clientId, c.parties.otherId]) { const n = store.state.npcs[id]; if (!n) continue; n.flags.divorced = store.state.year; n.flags.spouseId = null; if (n.life) { n.life.married = false; n.life.partnerId = null; } }
   }

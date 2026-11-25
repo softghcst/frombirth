@@ -46,6 +46,9 @@ function topicsOf(c) {
     if (c.jury) t.push('jury');
   }
   if (c.templateId === 'divorce') t.push('divorce');
+  const own = { prenup: 'prenup', support_change: 'support', protective_order: 'protection', adoption: 'adoption', guardianship: 'guardianship' }[c.templateId];
+  if (own) t.push(own);
+  if (['adoption', 'guardianship'].includes(c.templateId)) t.push('custody');
   if (['custody', 'divorce', 'dependency'].includes(c.templateId)) t.push('custody');
   if (c.templateId === 'dismissal') t.push('retaliation');
   if (c.templateId === 'trademark') t.push('trademark');
