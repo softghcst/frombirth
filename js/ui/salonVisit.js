@@ -13,7 +13,7 @@ import { fmtMoney } from '../util.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const pickBy = (list, key) => list[hash(key) % list.length];
-const SALONS = ['Shear Joy', 'The Mane Room', 'Curl Up & Dye', 'Blow & Glow', 'Snip Studio', 'Hair Apparent'];
+const SALONS = ['Shear Joy', 'The Mane Room', 'Curl Up & Dye', 'Golden Hour Salon', 'Snip Studio', 'Hair Apparent'];
 const STYLISTS = ['Jade', 'Marisol', 'Tobi', 'Priya', 'Sasha', 'Andre', 'Kiko', 'Lena', 'Dami', 'Rosa'];
 
 /** The salon's sign: scissors crossed over a hair dryer, in a round badge. */
