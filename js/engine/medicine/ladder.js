@@ -254,7 +254,10 @@ export function postYear() {
   for (const step of nextRank(m.job, h)) {
     if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead || m.skills.management < (step.mgmt ?? 0)) continue;
     if (step.faculty && !m.research?.faculty) continue;
-    if (!roll(step.odds + (m.reputation - step.rep) / 200)) continue;
+    // A chief you once helped is on your side; one you fell out with is not (actual memories, not invented ones).
+    const head = store.state.npcs[h.heads[deptOf(m.job.specialtyId)]];
+    const ally = head && (head.memories ?? []).some((x) => x.key === 'medHelped') ? 0.08 : head && (head.memories ?? []).some((x) => x.key === 'medDisagreed') && !head.flags.medReconciled ? -0.05 : 0;
+    if (!roll(step.odds + ally + (m.reputation - step.rep) / 200)) continue;
     if (!step.leader) { takeRank(p, m, step.id); log(`You were made ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; }
     // A leadership seat has other candidates: a rival from residency who works here, or a colleague of long standing.
     const other = contender(h, m);

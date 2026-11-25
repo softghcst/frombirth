@@ -262,6 +262,50 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   drama.medicineChoice('reunion:go', { peer: peer.id });
   check(peer.meters.relationship >= rel, 'M. former colleagues reconnect');
 }
+// ---------- Relationships, power and what they lead to ----------
+{
+  rng.seed(4444);
+  const q = life('us', 40);
+  const rm = core.M(q);
+  strong(rm, 80);
+  rm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+  rm.license = { status: 'full', countryId: 'us' };
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startPost('internal', site.e.id, 'attending');
+  const mk = (rel = 70) => { const n = makeNpc({ role: 'coworker', countryId: 'us', age: 40, relationship: rel }); n.flags.medRole = 'peer';
+    n.life = { edu: { stage: 'done', degrees: [] }, job: { careerId: 'doctor', level: 1, title: 'Physician', salary: 0, years: 5, employerId: site.e.id }, savings: 0, history: [] };
+    store.state.npcs[n.id] = n; q.npcIds.push(n.id); rm.people.colleagueIds.push(n.id); return n; };
+  // Power: a chief and someone in their hospital; an owner and an employee.
+  const colleague = mk();
+  check(drama.romanceAllowed(colleague, rm), 'colleagues on the same rung may date');
+  rm.job.rank = 'chief';
+  check(!drama.romanceAllowed(colleague, rm), 'a chief may not date someone in their hospital');
+  rm.job.rank = 'attending';
+  colleague.flags.employeeOf = 'biz_x'; q.businesses = [{ id: 'biz_x', status: 'open' }];
+  check(!drama.romanceAllowed(colleague, rm), 'an owner may not date their employee');
+  delete colleague.flags.employeeOf; q.businesses = [];
+  // Colleague actions, once a year each.
+  check(drama.withColleague(colleague.id, 'time').ok && !drama.withColleague(colleague.id, 'time').ok, 'spending time with a colleague, once a year');
+  const rival = mk(60); rm.people.rivalIds.push(rival.id);
+  check(drama.colleagueActions(rival.id).some((x) => x.id === 'reconcile'), 'a rival can be offered peace');
+  // A boundary set or reported costs the player nothing.
+  const senior = mk(50); senior.age = 60;
+  const before = JSON.stringify(rm.skills);
+  drama.medicineChoice('boundary:report', { mentor: senior.id });
+  check(senior.flags.disciplined === 1 && JSON.stringify(rm.skills) === before, 'reporting unwanted attention leads to a process for them, and costs the player nothing');
+  // Butterfly: help a colleague through a hard year; years later they are chief, and remember.
+  const helped = mk(55);
+  drama.medicineChoice('help:yes', { peer: helped.id });
+  check((helped.memories ?? []).some((x) => x.key === 'medHelped') && events((e) => e.kind === 'medical_relationship').length === 1, 'helping a colleague is a canonical event they remember');
+  const h = hospital(site.e.id);
+  const head = deptHead(h, 'medicine'); head.age = 66;
+  helped.meters.intellect = 100;
+  let succeeded = false;
+  for (let i = 0; i < 30 && !succeeded; i++) { year(); q.age = Math.min(q.age, 55); succeeded = h.heads.medicine === helped.id || (h.heads.medicine && h.heads.medicine !== head.id); }
+  check(succeeded, 'the chief retires and is succeeded');
+}
+section('relationships: peers may, power may not; boundaries are safe; help is remembered');
+
 // ---------- Career branches: clinical, academic, administrative (to chief executive) ----------
 {
   const branch = (track, start, seed) => {
@@ -277,7 +321,7 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
     ladder.setTrack(track);
     if (track === 'academic') bm.research = { projects: [], papers: [{}, {}, {}], talks: 2, taught: 5, faculty: true, director: false };
     const seen = [bm.job.rank];
-    for (let i = 0; i < 30 && seen.length < 4; i++) {
+    for (let i = 0; i < 30 && seen.length < 4 && !seen.includes('ceo'); i++) {
       year(); q.age = Math.min(q.age, 60);
       for (const k of Object.keys(bm.skills)) bm.skills[k] = 95;
       if (bm.offer) ladder.answerOffer(true);

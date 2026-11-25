@@ -278,6 +278,30 @@ export default [
     ['Talk it through properly before anyone decides', 'You sit up late, two nights running.', 'partnerOffer:talk', 'good'],
     ['Ask them to turn it down', 'You ask. They decide.', 'partnerOffer:stay'],
   ]),
+  scene('med_former_partner', '{peer}, whom you used to be with, works at the hospital too. You pass in the corridor most days.', [
+    ['Keep it civil and professional', 'A nod, a hello, a patient handed over properly. It gets easier.', 'exColleague:civil', 'good'],
+    ['Keep your distance', 'You change your route to the cafeteria.', 'exColleague:distance'],
+  ]),
+  scene('med_couple_schedules', 'You and {peer} work at the same hospital, and this month your rotas never overlap. You have not had dinner together in weeks.', [
+    ['Sit down and plan the next month together', 'Two rota swaps and one shared Sunday. It is enough.', 'schedules:talk', 'good'],
+    ['Wait for things to calm down', 'They do not, on their own.', 'schedules:wait'],
+  ]),
+  scene('med_colleague_struggling', '{peer} has not been themselves: short with patients, quiet in the mess, a mistake caught just in time.', [
+    ['Take them aside, ask, and help', 'They tell you. You cover two nights and walk them to the wellbeing service. They do not forget it.', 'help:yes', 'good'],
+    ['It is not your business', 'Someone else notices, eventually.', 'help:no'],
+  ]),
+  scene('med_friend_returns', '{peer}, who left years ago for another post, is back: a new job, at the same hospital as you.', [
+    ['Pick up where you left off', 'Within a week it is as if they never left.', 'reunion:go', 'good'],
+    ['Say hello, and leave it there', 'A friendly nod in the corridor.', 'reunion:later'],
+  ]),
+  scene('med_boundary', '{mentor}, senior to you, keeps finding reasons to be alone with you, and tonight says something that is not about work. It is not welcome.', [
+    ['Say no, clearly, and leave', 'You say it plainly. Nothing about your work depends on them, and nothing will.', 'boundary:refuse', 'good'],
+    ['Report it to the hospital', 'You report it. It is handled properly, and you are protected from any consequence for having done so.', 'boundary:report', 'good'],
+  ]),
+  scene('med_reconcile', 'Years after you argued with {mentor} in front of the whole team, you find yourselves on the same committee.', [
+    ['Clear the air', 'You both remember it differently. You agree it does not matter now.', 'reconcile:yes', 'good'],
+    ['Keep it professional and no more', 'You work together, correctly and coolly.', 'reconcile:no'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],
