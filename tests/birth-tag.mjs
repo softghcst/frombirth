@@ -84,6 +84,22 @@ check(NAME_LIMITS.first === 20 && NAME_LIMITS.last === 30, 'first names up to 20
   check(store.state.journal.some((e) => e.age === mom.age && /Luna/.test(e.text)), 'and says it');
 }
 
+// A baby first called José, renamed: the story says the new name (accented letters are letters).
+{
+  const p = life();
+  p.age = 30; p.birthYear = store.state.year - 30;
+  const partner = Object.values(store.state.npcs).find((n) => n.role === 'parent');
+  store.state.year += 1; p.age += 1;
+  p.flags.pregnancy = { otherId: partner.id, dueAge: p.age };
+  const before = new Set(p.npcIds);
+  tickChildren();
+  const baby = p.npcIds.filter((id) => !before.has(id)).map((id) => store.state.npcs[id])[0];
+  for (const e of store.state.journal.filter((x) => x.age === p.age)) e.text = e.text.split(baby.firstName).join('José');
+  baby.firstName = 'José';
+  nameBaby(baby.id, 'Mateo', p.lastName);
+  check(!store.state.journal.some((e) => e.age === p.age && /José/.test(e.text)) && store.state.journal.some((e) => e.age === p.age && /Mateo/.test(e.text)), 'José becomes Mateo in the story');
+}
+
 // The player's own tag: made once, and the same when asked again.
 const me = life();
 const t1 = JSON.stringify(playerBirthInfo(me));

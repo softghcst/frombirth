@@ -235,7 +235,8 @@ export function nameBaby(npcId, first, last) {
   npc.firstName = f;
   npc.lastName = l;
   const p = player();
-  const re = new RegExp(`\\b${old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+  // Whole names only, in any alphabet: "José" and "Zoë" too (\\b does not count accented letters as letters).
+  const re = new RegExp(`(?<![\\p{L}\\p{M}])${old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{M}])`, 'gu');
   for (const e of store.state.journal.filter((x) => x.age === p.age)) e.text = e.text.replace(re, f);
   for (const m of p.milestones.filter((x) => x.age === p.age)) m.text = m.text.replace(re, f);
   return result(true, `Welcome, ${f} ${l}.`, 'good');
