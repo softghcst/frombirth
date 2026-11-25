@@ -26,30 +26,6 @@ const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
 </svg>`;
 
 /**
- * The garland over the couple: a curve of flowers in the theme's color (and white), fuller for grander flowers. Wild
- * flowers are little and few, roses more, peonies and orchids big and many.
- */
-function garland(hex, flowers) {
-  const n = flowers === 'peonies' ? 15 : flowers === 'roses' ? 11 : 8;
-  const r = flowers === 'peonies' ? 11 : flowers === 'roses' ? 9 : 7;
-  const blooms = Array.from({ length: n }, (_, i) => {
-    const t = Math.PI * (0.08 + 0.84 * (i / (n - 1)));
-    const x = 150 - 136 * Math.cos(t); const y = 150 - 128 * Math.sin(t);
-    const fill = i % 3 === 1 ? '#FFFFFF' : hex;
-    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="${r}" fill="${fill}" stroke="#23140f" stroke-width="2.5"/><circle r="${(r / 3).toFixed(1)}" fill="#FFD36E" stroke="#23140f" stroke-width="1.5"/></g>`;
-  }).join('');
-  // A leafy vine under the flowers: leaves along the curve, turned with it.
-  const vine = Array.from({ length: 25 }, (_, i) => { const t = Math.PI * (0.04 + 0.92 * (i / 24)); return `${(150 - 136 * Math.cos(t)).toFixed(1)} ${(150 - 128 * Math.sin(t)).toFixed(1)}`; }).join(' L');
-  const leaves = Array.from({ length: 22 }, (_, i) => {
-    const t = Math.PI * (0.06 + 0.88 * (i / 21));
-    const x = 150 - 136 * Math.cos(t); const y = 150 - 128 * Math.sin(t);
-    const ang = (t * 180) / Math.PI + (i % 2 ? 70 : -70);
-    return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="7" ry="3.2" fill="${i % 3 ? '#5E9C4E' : '#7DBA68'}" stroke="#2F5E33" stroke-width=".8" transform="rotate(${ang.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)}) translate(5 0)"/>`;
-  }).join('');
-  return `<svg class="wp-garland" viewBox="0 0 300 170" aria-hidden="true"><path d="M${vine}" fill="none" stroke="#3F7A3A" stroke-width="3" stroke-linecap="round"/>${leaves}${blooms}</svg>`;
-}
-
-/**
  * Opens the planner for an engagement to `npc`. Resolves when the scene closes: { married: true } after the wedding,
  * otherwise {}.
  * @param {object} api the game's (changed() after the wedding)
@@ -86,14 +62,15 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
 
     /**
      * The stage: the venue behind, and in front the couple up close, in two round frames side by side (as close as
-     * the salon's mirror), under a garland of the flowers and colors chosen. At the kiss the frames meet, with a heart.
+     * the salon's mirror); the venue's flowers and décor take the colors and flowers chosen. At the kiss the frames meet,
+     * with a heart.
      */
     const closeUp = { viewBox: '86 120 340 340' };
     const stage = ({ kiss = false } = {}) => `
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
-        ${venueScene(chosen('venue'), themeHex())}
+        ${venueScene(chosen('venue'), themeHex(), chosen('flowers'))}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
-        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${garland(themeHex(), chosen('flowers'))}
+        <div class="wp-altar${kiss ? ' wp-kiss' : ''}">
           <div class="wp-couple"><div class="wp-person">${youFace(90, closeUp)}</div><div class="wp-person">${themFace(90, closeUp)}</div>
           ${kiss ? '<span class="wp-kiss-heart" aria-hidden="true">♥</span>' : ''}</div></div>
         <button type="button" class="sv-leave" data-leave aria-label="Stop planning">×</button>

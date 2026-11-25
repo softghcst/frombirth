@@ -93,10 +93,21 @@ function bunting(x1, y1, x2, y2, sag, n, hex) {
   return `<path d="M${x1} ${y1} Q${n1(mx)} ${n1(my + sag)} ${x2} ${y2}" fill="none" stroke="#3B3030" stroke-width="1"/>${flags}`;
 }
 
+/**
+ * How full the vases are, from the flowers chosen: a few small wild flowers, an armful of roses, or a great spill of
+ * peonies and orchids. Set by venueScene for the scene being drawn.
+ */
+const BOUQUETS = {
+  wild: { k: 0.85, at: [[-10, -34], [0, -40], [10, -34], [-4, -30], [6, -29]] },
+  roses: { k: 1, at: [[-14, -36], [-6, -40], [2, -38], [10, -40], [16, -34], [-10, -30], [8, -30], [0, -44]] },
+  peonies: { k: 1.2, at: [[-18, -34], [-12, -42], [-4, -46], [4, -44], [12, -42], [18, -34], [-14, -28], [-6, -34], [2, -36], [10, -32], [16, -26], [-2, -28], [6, -50], [-8, -50]] },
+};
+let bouquet = BOUQUETS.roses;
+
 /** A tall vase of flowers in the couple's color, at (x, y), at scale s. */
-const flowers = (x, y, s, hex) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="2" rx="12" ry="3" fill="#000" opacity=".15"/>
+const flowers = (x, y, s, hex) => `<g transform="translate(${x} ${y}) scale(${n1(s * bouquet.k * 100) / 100})"><ellipse cx="0" cy="2" rx="12" ry="3" fill="#000" opacity=".15"/>
   <path d="M-7 0 L-9 -22 h18 L7 0z" fill="#F4F1EC" stroke="${LINE}" stroke-width="1"/><path d="M-4 -22 q-8 -10 -12 -14M4 -22 q8 -10 12 -14M0 -22v-12" stroke="#4E8A45" stroke-width="2" fill="none"/>
-  ${[[-14, -36], [-6, -40], [2, -38], [10, -40], [16, -34], [-10, -30], [8, -30], [0, -44]].map(([fx, fy], i) => `<circle cx="${fx}" cy="${fy}" r="${i % 3 ? 5 : 6}" fill="${i % 4 === 1 ? '#FFFFFF' : hex}" stroke="${LINE}" stroke-width=".8"/>`).join('')}</g>`;
+  ${bouquet.at.map(([fx, fy], i) => `<circle cx="${fx}" cy="${fy}" r="${i % 3 ? 5 : 6}" fill="${i % 4 === 1 ? '#FFFFFF' : hex}" stroke="${LINE}" stroke-width=".8"/>`).join('')}</g>`;
 
 const VENUES = {
   beach(hex) {
@@ -276,9 +287,10 @@ const VENUES = {
   },
 };
 
-/** The illustrated backdrop for a venue, in the couple's color `hex`. */
-export function venueScene(venue, hex = '#F6B8C8') {
+/** The illustrated backdrop for a venue, in the couple's color `hex`, its vases filled with the `flowers` chosen. */
+export function venueScene(venue, hex = '#F6B8C8', flowers = 'roses') {
   const draw = VENUES[venue] ?? VENUES.garden;
+  bouquet = BOUQUETS[flowers] ?? BOUQUETS.roses;
   return `<svg class="sv-room" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${draw(hex)}
     <rect width="${W}" height="${H}" fill="url(#ws-vignette)"/><defs>${rad('ws-vignette', [[0.55, '#000000', 0], [1, '#000000', 0.22]], 0.5, 0.45, 0.75)}</defs></svg>`;
 }
