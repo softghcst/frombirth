@@ -62,6 +62,7 @@ const bike = (p) => { const a = { id: `asset_test_${p.assets.length}`, kind: 've
   check(martial.fightEdge(p) > before && martial.bestMove(p), `training counts in a fight (${martial.fightEdge(p).toFixed(2)}, ${martial.bestMove(p)})`);
   check(!martial.takeCourse('kravmaga').ok, 'krav maga is for twelve and up');
   const q = life(30);
+  q.finance.cash = 1e6; // fourteen years of courses, whatever else the years cost
   for (let y = 0; y < 14; y++) { martial.takeCourse('karate'); martial.takeCourse('karate'); advanceYear(); store.state.pendingEvents = []; }
   check(martial.styles().find((x) => x.id === 'karate').black && q.milestones.some((m) => /black belt in karate/i.test(m.text)), 'years of karate: a black belt, and a milestone');
   // A ride's snatch: the move shows as a way to handle it, for someone who knows one.

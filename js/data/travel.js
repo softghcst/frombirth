@@ -23,7 +23,7 @@ export const LANDMASS = {
 /** Overland links that opened at a known date: [landmass, landmass, year]. */
 export const FIXED_LINKS = [['gb', 'afroeurasia', 1994]];
 /** Everything not named above is part of Africa, Europe and Asia, unless it is one of these islands, each its own. */
-export const ISLANDS = ['aw', 'bs', 'cu', 'jm', 'pr', 'ie', 'jp', 'au', 'nz', 'ph', 'id', 'tw', 'pg', 'ws'];
+export const ISLANDS = ['aw', 'bs', 'cu', 'jm', 'pr', 'ie', 'jp', 'au', 'nz', 'ph', 'id', 'tw', 'pg', 'ws', 'fj', 'pf', 'mv', 'mu', 'sc'];
 /** Countries with no coastline (factual). Used for beaches and ferries. */
 export const LANDLOCKED = ['ad', 'at', 'bo', 'py', 'ch', 'cz', 'hu', 'rs', 'sk', 'et', 'ug', 'zw', 'af', 'kz', 'mn', 'np'];
 
@@ -222,9 +222,9 @@ export const ENTRY = {
  */
 export const DEFAULT_ENTRY = { days: 90, visa: 'Visitor visa' };
 export const LIBERAL = ['mx', 'ar', 'cl', 'co', 'pe', 'ec', 'uy', 'py', 'bo', 'cr', 'pa', 'gt', 'sv', 'ni', 'do', 'jm', 'bs', 'bz', 'ht', 'aw', 'pr', 'gy',
-  'th', 'my', 'sg', 'ph', 'id', 'tw', 'hk', 'ge', 'rs', 'ua', 'il', 'ma', 'tn', 'za', 'kz', 'mn', 'qa', 'kw', 'jo', 'lb', 'np', 'ws', 'pg', 'al', 'gh', 'ke', 'ug', 'et', 'eg', 'vn'];
+  'th', 'my', 'sg', 'ph', 'id', 'tw', 'hk', 'ge', 'rs', 'ua', 'il', 'ma', 'tn', 'za', 'kz', 'mn', 'qa', 'kw', 'jo', 'lb', 'np', 'ws', 'pg', 'al', 'gh', 'ke', 'ug', 'et', 'eg', 'vn', 'fj', 'mv', 'mu', 'sc'];
 /** Where a visitor visa is bought on arrival or online in minutes (for the LIBERAL places' other visitors). Simplified. */
-export const ON_ARRIVAL = ['eg', 'jo', 'lb', 'np', 'ke', 'ug', 'et', 'id', 'kz', 'mn', 'ws', 'pg', 'gh'];
+export const ON_ARRIVAL = ['eg', 'jo', 'lb', 'np', 'ke', 'ug', 'et', 'id', 'kz', 'mn', 'ws', 'pg', 'gh', 'mv', 'sc', 'mu', 'fj'];
 
 /**
  * Fictional gameplay parameters for decisions. Not real approval rates.
@@ -311,6 +311,10 @@ export const JURISDICTIONS = {
   nz: { history: [[1906, 'Colony of New Zealand']] },
   pg: { history: [[1975, 'Territory of Papua and New Guinea (Australian)']] },
   ws: { history: [[1962, 'Western Samoa (New Zealand trust territory)']] },
+  fj: { history: [[1970, 'Fiji (British colony)']] },
+  mv: { history: [[1965, 'Maldive Islands (British protectorate)']] },
+  mu: { history: [[1968, 'Mauritius (British colony)']] },
+  sc: { history: [[1976, 'Seychelles (British colony)']] },
   ca: { history: [[1866, 'British North America']] },
   jm: { history: [[1962, 'Jamaica (British colony)']] },
   bs: { history: [[1973, 'The Bahamas (British colony)']] },

@@ -106,7 +106,7 @@ function tagsOf(destId) {
   const c = COUNTRIES[destId];
   const tags = new Set(['culture', 'history', 'cities']);
   if (coastal(destId)) tags.add('beach');
-  if (regionOf(destId) === 'Africa' || ['nz', 'au', 'ca', 'no', 'cl', 'ar', 'np', 'mn', 'pe', 'ec', 'cr', 'ch', 'at', 'fi', 'se', 'ge', 'bo', 'ws', 'pg', 'gy', 'bz'].includes(destId)) tags.add('nature');
+  if (regionOf(destId) === 'Africa' || ['nz', 'au', 'ca', 'no', 'cl', 'ar', 'np', 'mn', 'pe', 'ec', 'cr', 'ch', 'at', 'fi', 'se', 'ge', 'bo', 'ws', 'pg', 'gy', 'bz', 'fj', 'pf', 'mv', 'sc', 'mu'].includes(destId)) tags.add('nature');
   if ((c.living?.cost ?? 1) < 0.6) tags.add('budget');
   if ((c.living?.safety ?? 50) >= 60) tags.add('family');
   if (Object.values(store.state.universities ?? {}).some((u) => u.countryId === destId) || (c.living?.infra ?? 50) >= 70) tags.add('education');

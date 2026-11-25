@@ -484,7 +484,7 @@ export async function honeymoonPostcard(api, trip) {
   await new Promise((done) => {
     const m = openModal(`<div class="wp-postcard-screen wq-postcard">
       <p class="wp-pc-eyebrow">A postcard from the honeymoon</p>
-      <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(art, where, hex)}</div></div>
+      <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(art, where, hex, trip.mode === 'cruise_ship' ? null : dest.countryId)}</div></div>
       <button type="button" class="btn primary" data-done>Keep it</button></div>`, { tone: 'good' });
     m.el.querySelector('[data-done]').onclick = () => { m.close(); done(); };
   });

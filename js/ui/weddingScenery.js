@@ -473,7 +473,7 @@ const POSTCARDS = {
 };
 
 /** The countries with a card of their own: their best-known coast or island. */
-const COUNTRY_CARDS = { gr: 'Santorini', id: 'Bali', mx: 'Tulum' };
+const COUNTRY_CARDS = { gr: 'Santorini', id: 'Bali', mx: 'Tulum', pf: 'Bora Bora', mv: 'the Maldives', fj: 'Fiji', mu: 'Mauritius', sc: 'the Seychelles' };
 
 /**
  * Which picture a postcard from a place shows: the country's own, or by what kind of place it is (a cruise, a warm
@@ -491,9 +491,17 @@ export function postcardArt({ countryId, cruise = false, lat = 40, coastal = tru
  * The postcard (300 x 200): a cartoon of the place (`art`, a key of POSTCARDS), "Greetings from" and its name
  * (`title`) across the sky, a stamp in the couple's color.
  */
-export function postcardFront(art, title, hex) {
+/**
+ * The postcards painted for the game (assets/postcards/<code>.webp, from the prompts in assets/CHATGPT_POSTCARD_PROMPT.md):
+ * a country's code, or a general card (city, beach, mountains, cruise). Listed here as each arrives; any other place
+ * keeps its drawn card.
+ */
+export const POSTCARD_PHOTOS = new Set([]);
+
+export function postcardFront(art, title, hex, countryId = null) {
   const id = 'pc';
-  const draw = POSTCARDS[art] ?? POSTCARDS.city;
+  const photo = [countryId, { 'the Seychelles': 'beach', 'the Maldives': 'beach' }[art] ?? art].find((k) => k && POSTCARD_PHOTOS.has(k));
+  const draw = photo ? () => `<image href="./assets/postcards/${photo}.webp" width="300" height="200" preserveAspectRatio="xMidYMid slice"/>` : POSTCARDS[art] ?? POSTCARDS.city;
   const name = String(title).replace(/^the /, 'The ');
   const big = name.length > 14 ? 24 : 32;
   return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
