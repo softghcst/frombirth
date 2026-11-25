@@ -167,7 +167,8 @@ const VIEWS = {
         ['Hospital', hospitalName(t.hospitalId)], ['Year', `${t.pgy} of ${t.years}`], ['Started', String(t.startYear)],
         ['Evaluations', t.evals.map((e) => `year ${e.pgy}: ${e.score}`).join(', ') || 'The first comes at the end of the year'],
         ...(t.chief ? [['Chief resident', 'Yes']] : []), ...(t.probation ? [['Remediation', 'Under closer supervision this year']] : []),
-      ]) + muted('A trainee decides nothing alone: plans are reviewed, and operations are done with a supervising surgeon.'));
+      ]) + (t.kind === 'internship' && year() <= 1968 ? `<div class="section-label">After the internship</div>${btn('afterIntern', 'Go into general practice', { arg: 'gp', cls: m.afterInternship === 'gp' ? 'primary' : '' })}${btn('afterIntern', 'Apply for a specialty residency', { arg: 'residency', cls: m.afterInternship === 'residency' ? 'primary' : '' })}${m.afterInternship === 'residency' ? applyBlock(m) : ''}` : '')
+        + muted('A trainee decides nothing alone: plans are reviewed, and operations are done with a supervising surgeon.'));
     }
     if (m.completed.length) out += card('Completed training', kv(m.completed.map((c) => [specialtyName(c.specialtyId), `${c.hospital ?? ''} ${c.from}–${c.to}${c.chief ? ', chief resident' : ''}`])));
     return out || card('Training', muted('Nothing yet.'));
@@ -418,6 +419,7 @@ const ACTIONS = {
   doToo: (_, x) => x.say(train.setDoToo(!med()?.doToo)),
   drama: (level, x) => x.say(drama.setDrama(level)),
   reapply: (on, x) => x.say(train.setReapply(on === 'on')),
+  afterIntern: (c, x) => x.say(train.setAfterInternship(c)),
   local: (on, x) => x.say(train.setLocal(on === 'on')),
   second: (on, x) => x.say(train.setSecondRound(on === 'on')),
   research: (id, x) => x.say(id ? research.doResearch(id) : train.researchYear()),

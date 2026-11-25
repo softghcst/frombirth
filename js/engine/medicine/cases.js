@@ -58,6 +58,7 @@ export function fixturesFor(specialtyId, when = year()) {
   const ids = new Set([specialtyId, qualifiesAs(specialtyId)]);
   if (s?.kind === 'fellowship') for (const a of s.after) ids.add(a);
   if (specialtyId === 'ct_integrated') ids.add('ctsurg');
+  if (specialtyId === 'general') { ids.add('family'); ids.add('internal'); ids.add('pediatrics'); } // a general practitioner sees everyone
   const direct = CASES.filter((c) => !c.followUpOnly && c.minYear <= when && c.specialty.includes(specialtyId));
   if (direct.length >= 3) return direct;
   return CASES.filter((c) => !c.followUpOnly && c.minYear <= when && c.specialty.some((x) => ids.has(x)));
