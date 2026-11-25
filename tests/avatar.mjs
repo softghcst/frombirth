@@ -34,6 +34,21 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
     const svg = readFileSync(file, 'utf8');
     check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
     if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
+    if (folder === 'heads') {
+      // No straight edge runs across a head: two pieces of a path meeting edge to edge show as a hairline across the
+      // face in Safari (scripts/unify_head_necks.mjs stitches the head to the shared neck so they never do).
+      for (const d of [...svg.matchAll(/ d="([^"]*)"/g)].map((m) => m[1])) {
+        const pts = [...d.matchAll(/([MLQZ])([^MLQZ]*)/g)].map(([, c, a]) => [c, a.trim().split(/[ ,]+/).filter(Boolean).map(Number)]);
+        let pos = null, start = null, longest = 0;
+        for (const [c, a] of pts) {
+          const p = c === 'Z' ? start : a.length ? a.slice(-2) : null;
+          if (c === 'M') { pos = start = p; continue; }
+          if (p && pos && Math.abs(p[1] - pos[1]) < 0.01 && pos[1] > 180 && pos[1] < 500) longest = Math.max(longest, Math.abs(p[0] - pos[0]));
+          pos = p;
+        }
+        check(longest < 40, `${p.file} has a straight edge ${longest.toFixed(0)} long across the head (a seam)`); // a square jaw is flat for about 20
+      }
+    }
     check(!/<rect[^>]*fill="#fff/i.test(svg), `${p.file} still has a white background`);
   }
 }
