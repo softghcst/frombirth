@@ -62,6 +62,18 @@ export default [
     ],
   },
 
+  {
+    // Queued by engine/worklife.js when a young person or a student has taken on too much (stress near the top).
+    id: 'overloaded', category: 'health', ageRange: [8, 30], queuedOnly: true,
+    text: 'School, {load}. You are tired all the time, your marks are slipping, and you snapped at someone who did not deserve it. Something has to give.',
+    choices: [
+      { label: 'Drop a club', outcomes: [any('You tell the club you are stepping back. The week has room in it again.', 'good', { type: 'unload', value: 'club' })] },
+      { label: 'Give up the job', outcomes: [any('You hand in your notice. Less money, more sleep.', 'good', { type: 'unload', value: 'job' })] },
+      { label: 'Talk to someone about it', outcomes: [any('You tell someone how much it has all been. Saying it out loud helps more than you expected.', 'good', { type: 'unload', value: 'talk' })] },
+      { label: 'Push through', outcomes: [any('You keep everything going. You are not sure how much longer you can.', 'bad', { type: 'unload', value: 'push' })] },
+    ],
+  },
+
   tellPartner('partner'),
   tellPartner('spouse'),
   {

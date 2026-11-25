@@ -21,7 +21,7 @@ import { speaks, languagesOf } from './languages.js';
 import { SERVICES, SERVICE_BY_ID, RATES } from '../data/freelance.js';
 import { serviceExists } from '../data/eras.js';
 import { resolve } from './conditions.js';
-import { career as careerState, canFit, freelanceHours, weeklyLoad, workLaw } from './worklife.js';
+import { career as careerState, canFit, freelanceHours, weeklyLoad, workLaw, CHILD_ODD_JOBS } from './worklife.js';
 import { hereCity } from './cities.js';
 import { phase } from './economy.js';
 
@@ -82,6 +82,17 @@ export function withdraw(id) {
 
 /** Sets the hours a week the player is open for freelance work. */
 export function setAvailability(hours) {
+  // Under 18 (and more so under the working age), only as many hours as the law leaves after any other paid work.
+  const p = player();
+  if (p.age < 18) {
+    const law = workLaw();
+    const other = weeklyLoad(p).paid - freelanceHours();
+    const most = Math.max(0, (p.age < law.workAge ? CHILD_ODD_JOBS : law.minorHours) - other);
+    if (hours > most) {
+      fl().hoursOffered = most;
+      return result(true, most ? `At ${p.age} you can only take on ${most} hours a week of freelance work${other ? ', with your other work' : ''}.` : `At ${p.age}, with your other work, there is no time left for freelance work.`, 'neutral');
+    }
+  }
   fl().hoursOffered = hours;
   return result(true, hours ? `You are taking on up to ${hours} hours a week of freelance work.` : 'You are not taking on freelance work.', 'neutral');
 }
