@@ -23,7 +23,7 @@ import { events, visible, archiveIdOf } from './chronicle.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const WINDOW = 6;
-const LEGAL = new Set(['lawyer', 'prosecutor', 'defender', 'gov_counsel', 'judiciary', 'attorney_general']);
+const LEGAL = new Set(['lawyer', 'prosecutor', 'defender', 'gov_counsel', 'judiciary', 'attorney_general', 'us_attorney', 'solicitor_general']);
 
 // ---------- Where the player stands ----------
 
@@ -251,7 +251,7 @@ const completedIn = (p, track) => lawOf(p).history.filter((h) => !h.clinic && !h
 
 // ---------- Promotions and selection ----------
 
-const GATE_TEXT = { partnership: 'a vote of the partners', managing: 'election by the partners as managing partner', da: 'selection as District Attorney (an election or appointment)',
+const GATE_TEXT = { us_attorney: 'nomination by the President and confirmation by the Senate', solicitor_general: 'nomination by the President and confirmation by the Senate', partnership: 'a vote of the partners', managing: 'election by the partners as managing partner', da: 'selection as District Attorney (an election or appointment)',
   chief_defender: 'appointment as head of the office', general_counsel: 'appointment as general counsel', ag: 'election or appointment as Attorney General' };
 /** What the career engine also needs before a legal promotion: real experience in cases, standing, and for some posts a selection. */
 function gate(careerId, at) {
@@ -302,6 +302,14 @@ export function opportunities(p = player()) {
   if (admitted(p) && t && t !== 'attorney_general') {
     const senior = (t === 'lawyer' && c.level >= 2) || (['prosecutor', 'gov_counsel'].includes(t) && c.level >= 2) || (t === 'defender' && c.level >= 2) || t === 'judiciary' || !!p.politics;
     out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal });
+    // The federal offices exist only in the United States, and each is a nomination and then a Senate vote.
+    if (prof.depth === 'full') {
+      const fed = ['prosecutor', 'gov_counsel', 'attorney_general', 'us_attorney'].includes(t) && c.level >= (t === 'prosecutor' || t === 'gov_counsel' ? 2 : 0);
+      const blocked = L.rep.integrity < 60 ? 'A better name for integrity first' : '';
+      if (t !== 'us_attorney') out.push({ id: 'us_attorney', name: 'Seek nomination as United States Attorney', why: yrs < 10 ? 'After ten years of legal work' : !fed ? 'Senior prosecution or government legal work first' : blocked || cool('us_attorney', 48), how: 'nominated by the President, confirmed by the Senate' });
+      if (t !== 'solicitor_general') out.push({ id: 'solicitor_general', name: 'Seek nomination as Solicitor General', why: yrs < 15 ? 'After fifteen years of legal work' : (L.skills.appellate ?? 0) < 45 ? 'A name as an appellate advocate first' : blocked || cool('solicitor_general', 48), how: 'nominated by the President, confirmed by the Senate' });
+      if (!(t === 'attorney_general' && L.agKind === 'federal')) out.push({ id: 'ag_federal', name: 'Seek nomination as United States Attorney General', why: yrs < 15 ? 'After fifteen years of legal work' : !(senior || t === 'us_attorney' || t === 'solicitor_general' || t === 'attorney_general') ? 'A senior legal or public role first' : L.rep.recognition < 45 ? 'A national name first' : blocked || cool('ag_federal', 48), how: prof.ag.federal });
+    }
   }
   return out;
 }
@@ -355,6 +363,23 @@ export function seek(id, p = player()) {
     becomeJudge(p);
     return result(true, 'You were selected for the bench. From now on you rule on cases; you do not argue them.', 'good');
   }
+  if (['us_attorney', 'solicitor_general', 'ag_federal'].includes(id)) {
+    // Two steps, each of which can fail: the President's nomination, then the Senate's vote.
+    const top = id === 'ag_federal';
+    const nominated = luck < clamp((top ? 0.1 : 0.2) + s + (p.politics ? 0.1 : 0) + (L.rep.recognition - 45) / 200, 0.03, 0.6);
+    const name = { us_attorney: 'United States Attorney', solicitor_general: 'Solicitor General', ag_federal: 'United States Attorney General' }[id];
+    if (!nominated) return result(false, `The President nominated someone else for ${name}.`, 'bad');
+    const yes = Math.round(clamp(50 + s * 60 + (L.rep.integrity - 60) / 2 + (rng.next() - 0.5) * 30, 20, 85));
+    if (yes < 51) {
+      canon(`law:${id}:fail:${nowM()}`, `Not confirmed as ${name}`, `Nominated, and rejected by the Senate, ${yes} to ${100 - yes}.`, { privacy: 'public', sig: 2, milestone: false });
+      return result(false, `The President nominated you, but the Senate voted you down, ${yes} to ${100 - yes}.`, 'bad');
+    }
+    withdrawAll(p, 'You left your post for federal office.');
+    if (top) { hire(CAREER_BY_ID.attorney_general, 1, 70, 'appointed'); L.agKind = 'federal'; select(p, 'ag'); }
+    else { hire(CAREER_BY_ID[id], 1, 70, 'appointed'); select(p, id); }
+    canon(`law:${id}:${p.id}`, `Confirmed as ${name}`, `Nominated by the President and confirmed by the Senate, ${yes} to ${100 - yes}.`, { privacy: 'public', sig: 3 });
+    return result(true, `The Senate confirmed you, ${yes} to ${100 - yes}. You are ${name}.`, 'good');
+  }
   if (id === 'ag') {
     const elected = prof.depth === 'full';
     const cost = elected ? localCost(250000, country()) : 0;
@@ -364,6 +389,7 @@ export function seek(id, p = player()) {
     if (luck >= chance) return result(false, elected ? 'You ran for Attorney General and lost the statewide vote.' : 'The government appointed someone else.', 'bad');
     withdrawAll(p, 'You left private practice for public office.');
     hire(CAREER_BY_ID.attorney_general, 1, 65, elected ? 'elected' : 'appointed');
+    L.agKind = elected ? 'state' : 'national';
     select(p, 'ag');
     canon(`law:ag:${p.id}`, `${elected ? 'Elected' : 'Appointed'} Attorney General`, `${elected ? 'Won a statewide election' : 'Was appointed'} as Attorney General.`, { privacy: 'public', sig: 3 });
     return result(true, elected ? 'You won the statewide vote. You are Attorney General.' : 'You were appointed Attorney General.', 'good');

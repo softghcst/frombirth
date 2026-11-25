@@ -200,6 +200,11 @@ export const TRACKS = [
   // (engine/lawPractice.js gates the top rung), never by applying or by winning cases.
   T('attorney_general', 'Attorney General\'s office', 'law', { branchOnly: true, hire: 'interview', req: { program: 'law', minAge: 30, cleanRecord: true, experience: { prosecutor: 10, gov_counsel: 10, lawyer: 12, defender: 10 } }, hours: 60, stress: 4, values: ['prestige', 'service'], outside: false, aliases: ['Attorney General'] },
     L(['Deputy Attorney General', 140, 185, 4], ['Attorney General', 170, 240, 0])),
+  // Federal offices in the United States: nominated by the President and confirmed by the Senate (engine/lawPractice.js).
+  T('us_attorney', 'United States Attorney', 'law', { branchOnly: true, hire: 'interview', req: { program: 'law', minAge: 35, cleanRecord: true, experience: { prosecutor: 10, gov_counsel: 10 } }, hours: 58, stress: 3, values: ['service', 'prestige'], outside: false },
+    L(['First Assistant United States Attorney', 140, 175, 4], ['United States Attorney', 165, 200, 0])),
+  T('solicitor_general', 'Solicitor General', 'law', { branchOnly: true, hire: 'interview', req: { program: 'law', minAge: 38, cleanRecord: true, experience: { lawyer: 15, gov_counsel: 12, prosecutor: 12, judiciary: 6 } }, hours: 58, stress: 3, values: ['prestige', 'service'], outside: false },
+    L(['Deputy Solicitor General', 150, 190, 4], ['Solicitor General', 180, 220, 0])),
   T('judiciary', 'The bench', 'law', { branchOnly: true, hire: 'interview', req: { program: 'law', minAge: 35, cleanRecord: true, experience: { lawyer: 8, prosecutor: 8, defender: 8 } },
     stress: 2, values: ['prestige', 'service', 'stability'], outside: false, aliases: ['Judge', 'Magistrate'] },
   L(['District judge', 150, 190, 6], ['Circuit judge', 190, 240, 8], ['Appeal court judge', 240, 320, 0])),

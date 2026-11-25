@@ -140,6 +140,26 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(!got || (p().career.careerId === 'attorney_general' && p().career.level === 1), `won: Attorney General (${got ? p().career.title : 'lost every time, which can happen'})`);
 }
 
+// Federal offices (US only): a nomination, then a Senate vote; each can fail; none is a promotion.
+{
+  lawyer('prosecutor', { level: 2 });
+  p().age = 52; p().career.experience = { prosecutor: 18 }; L().rep.integrity = 75; L().rep.recognition = 60; L().skills.appellate = 60;
+  const ids = lp.opportunities().map((x) => x.id);
+  check(['us_attorney', 'solicitor_general', 'ag_federal'].every((x) => ids.includes(x)), `a senior US prosecutor may seek the federal offices (${ids.join(', ')})`);
+  check(/Senate/.test(lp.opportunities().find((x) => x.id === 'ag_federal').how), 'the US Attorney General is appointed by the President and confirmed by the Senate');
+  const texts = [];
+  let got = false;
+  for (let i = 0; i < 20 && !got; i++) { const r = lp.seek('us_attorney'); texts.push(r.text); got = r.ok; if (!got) L().tried.us_attorney -= 48; }
+  check(texts.some((t) => /nominated someone else|voted you down/.test(t)) || got, 'a nomination can go to someone else, or the Senate can say no');
+  check(!got || (p().career.careerId === 'us_attorney' && p().career.level === 1 && /United States Attorney/.test(p().career.title)), `confirmed: ${got ? p().career.title : 'not this time'}`);
+  check(!got || /confirmed/i.test(texts.at(-1)), 'confirmation names the Senate vote');
+  career.hire(CAREER_BY_ID.us_attorney, 0, 95, 'test'); p().career.yearsInRole = 9;
+  check(career.nextStep().missing.some((x) => /Senate/.test(x)), 'a First Assistant is never promoted to US Attorney by the career engine');
+  lawyer('prosecutor', { level: 2, countryId: 'uk' });
+  p().age = 52; p().career.experience = { prosecutor: 18 };
+  check(!lp.opportunities().some((x) => ['us_attorney', 'solicitor_general', 'ag_federal'].includes(x.id)), 'outside the US there are no American federal offices');
+}
+
 // 13–14. The bench: eligibility, selection, and a judge does not represent anyone.
 {
   lawyer('lawyer');
