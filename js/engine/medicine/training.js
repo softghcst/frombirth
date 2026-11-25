@@ -227,7 +227,7 @@ export function runMatch(kind, wanted) {
       if (site) return matched(kind, o.id, site, 'In the second round, for places left unfilled');
     }
   }
-  if (kind === 'residency') storyOnce('med_match_day_unmatched', { words: { specialty: specialtyName(wanted[0]) } }, m);
+  if (kind === 'residency') storyOnce('med_match_day_unmatched', { words: { specialty: specialtyName(wanted[0]), day: matchDay(p) } }, m);
   log(`${what}: no place this year in ${wanted.map((id) => specialtyName(id)).join(' or ')}. You can apply again next year.`, 'system', 'bad');
   p.stats.mood = clamp(p.stats.mood - 12);
   note(`Did not match into ${specialtyName(wanted[0])} (${year()}).`, 'career', { log: false });
@@ -254,7 +254,7 @@ function pickSite(id, m, p) {
 function matched(kind, id, site, what) {
   const p = player();
   const m = M();
-  if (kind === 'residency') storyOnce('med_match_day', { words: { specialty: specialtyName(id), hospital: site.e.name, city: site.city } }, m);
+  if (kind === 'residency') storyOnce('med_match_day', { words: { specialty: specialtyName(id), hospital: site.e.name, city: site.city, day: matchDay(p) } }, m);
   m.match.status = 'matched';
   m.match.specialtyId = id;
   m.match.hospitalId = site.e.id;
@@ -266,6 +266,13 @@ function matched(kind, id, site, what) {
     else { p.finance.cash -= moveCost(); log(`You could not move to ${site.city} (${r.text}) and gave up the place.`, 'system', 'bad'); m.match.status = 'declined'; return null; }
   }
   return startTraining(kind, id, site.e.id);
+}
+
+/** What the day training places are announced is called: Match Day in the US (from 1952), plainer words elsewhere. */
+function matchDay(p) {
+  if (p.countryId === 'us') return year() >= ERA.residencyMatch ? 'Match Day' : 'The day the hospital letters arrive';
+  if (p.countryId === 'ca') return 'Match Day';
+  return 'Results day for specialty training';
 }
 
 /** Applying nationwide (may mean moving) or only in the player's own city. */
@@ -343,11 +350,13 @@ export function retitle(p = player(), m = med()) {
     // Before the modern residency system, a doctor in hospital training was a house officer (US, before about 1950).
     const old = year() < 1950;
     c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? (old ? 'House officer' : 'Intern') : t.chief ? `Chief resident, ${s.name}`
-      : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
+      : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}`
+        // Outside the United States the game does not use US titles: a plain "specialty trainee" with the year.
+        : p.countryId !== 'us' ? `Specialty trainee, ${s.name} (year ${t.pgy})` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
   } else if (m.job && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
-    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: `Chief of ${s?.name ?? 'Medicine'}`,
+    c.title = { attending: `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
       chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
   }
 }

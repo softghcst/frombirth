@@ -18,7 +18,7 @@ import { postYear, claimsYear } from './ladder.js';
 import { caseload, closeYear } from './cases.js';
 import { practiceYear } from './practice.js';
 import { researchYear } from './research.js';
-import { dramaYear } from './drama.js';
+import { dramaYear, hospitalYear } from './drama.js';
 
 export * from './core.js';
 export const MEDICAL_CAREERS = ['doctor', 'surgery', 'psychiatry', 'podiatrist'];
@@ -67,6 +67,7 @@ export function tickMedicine() {
   m = med(p);
   if (!m) return;
   postYear();
+  hospitalYear();
   claimsYear(p, m);
   practiceYear();
   researchYear();

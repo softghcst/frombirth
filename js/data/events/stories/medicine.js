@@ -71,11 +71,11 @@ export default [
     ['Ask the residents what they would change', 'Some deflect. One tells you exactly, and you trust that program more for it.', 'skill:reasoning:1', 'good'],
     ['Focus on impressing the faculty', 'They seem impressed. You learn less about where you would be happy.', null],
   ]),
-  scene('med_match_day', 'Match Day. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
+  scene('med_match_day', '{day}. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
     ['Call home', 'Someone on the other end cries before you finish the sentence.', null, 'good', st('mood', 10)],
     ['Find your friends and compare', 'The room is shouting. Some of them got their first choice, some did not, and you hold on to each other either way.', null, 'good', st('mood', 6)],
   ]),
-  scene('med_match_day_unmatched', 'Match Day. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
+  scene('med_match_day_unmatched', '{day}. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
     ['Step outside and breathe', 'It is not the end. It is a year you did not plan. Tomorrow you will make a plan.', null, 'neutral', st('mood', 2)],
     ['Go straight to the dean\'s office', 'They have seen this before. They walk you through the options, calmly, and you leave with a list.', 'skill:professionalism:1'],
   ]),
@@ -157,6 +157,15 @@ export default [
   scene('med_alter_record', 'After a case went badly, a senior colleague asks you to "tidy up" a note you wrote that night: change a time, leave out a line.', [
     ['Refuse, and explain why', 'A medical record is what happened, not what we wish had.', 'record:refuse', 'good'],
     ['Do as they ask', 'You change it.', 'record:alter', 'bad'],
+  ]),
+  scene('med_staffing_shortage', '{hospital} is short of nurses and doctors this year. The rota has gaps, and someone has to decide what gives.', [
+    ['Cover extra shifts for a while', 'You cover. The department notices, and so does your sleep.', 'politics:cover'],
+    ['Raise it with the chief, with the numbers', 'You bring a page of figures. It moves faster than complaints ever did.', 'politics:data', 'good'],
+    ['Escalate it to the hospital board', 'It is not popular with everyone. It is heard.', 'politics:escalate'],
+  ]),
+  scene('med_budget_dispute', '{hospital} is cutting budgets, and the departments are arguing over who loses what.', [
+    ['Propose cuts that do not touch patient care', 'Your proposal is dull and careful, and it is the one they adopt.', 'politics:cut', 'good'],
+    ['Defend your own department hard', 'You protect your people this year. Other departments remember.', 'politics:protect'],
   ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],

@@ -10,7 +10,7 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { advanceTurn } from '../js/engine/turns.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY } from '../js/data/medicine.js';
+import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare } from '../js/data/medicine.js';
 import { CASES, CASE_BY_ID } from '../js/data/medicineCases.js';
 import { EVENT_BY_ID } from '../js/data/events/index.js';
 import * as edu from '../js/engine/education.js';
@@ -23,6 +23,7 @@ import * as ladder from '../js/engine/medicine/ladder.js';
 import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import * as research from '../js/engine/medicine/research.js';
+import * as jobs from '../js/engine/medicine/jobs.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
@@ -94,6 +95,31 @@ for (const c of CASES) {
   for (const t of c.needs ?? []) check(!!TEST_BY_ID[t], `case ${c.id}: needs unknown test ${t}`);
   check(!/\b\d+\s?(mg|mcg|ml|units?)\b/i.test(JSON.stringify(c)), `case ${c.id}: names a dose`);
 }
+// Every specialty a case lists can carry out its best plan: by doing it, or by referring to whoever does.
+{
+  rng.seed(1);
+  store.state = createLife({ countryId: 'us' });
+  const q = store.state.player;
+  let stuck = [];
+  for (const c of CASES.filter((x) => x.minYear <= 2020)) for (const sid of c.specialty) {
+    q.medicine = null;
+    const mm = core.M(q);
+    mm.completed = [{ specialtyId: sid, kind: SPECIALTY_BY_ID[sid].kind, from: 2000, to: 2005 }];
+    mm.job = { specialtyId: sid, hospitalId: null, rank: 'attending', since: 2005 };
+    const pt = { id: 'pt_chk', firstName: 'A', lastName: 'B', age: 40, alive: true, flags: {} };
+    store.state.npcs[pt.id] = pt;
+    core.W().cases.chk = { id: 'chk', fixtureId: c.id, patientId: pt.id, specialtyId: sid, role: 'physician', year: 2020, status: 'open', tests: [], notes: [] };
+    const saveYear = store.state.year; store.state.year = 2020;
+    const v = cases.caseView('chk');
+    store.state.year = saveYear;
+    const best = c.plans.filter((x) => x.quality === 'best' && (x.minYear ?? 0) <= 2020 && (x.maxYear ?? 9999) >= 2020).map((x) => x.id);
+    if (!v.plans.some((x) => best.includes(x.id) && !x.block)) stuck.push(`${c.id}/${sid}`);
+  }
+  delete core.W().cases.chk;
+  check(!stuck.length, `every listed specialty can reach a case's best plan (${stuck.slice(0, 6).join(', ')})`);
+}
+check(eraCare(1910) < eraCare(1950) && eraCare(1950) < eraCare(2000) && eraCare(2020) === 1, 'hospitals of earlier eras have less to work with');
+check(cases.fixturesFor('internal', 1910).every((c) => c.minYear <= 1910), 'a 1910 physician sees only cases of 1910');
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
 for (const id of ['med_rotation', 'med_mentor', 'med_rival', 'med_romance', 'med_disclosure', 'med_grateful', 'med_leadership_offer']) check(!!EVENT_BY_ID[id], `scene ${id} registered`);
@@ -452,6 +478,60 @@ section('teaching residents; claims decided on the care, not the result');
   check(rm.skills.integrity < integrity1, 'accepting a gift from industry is a conflict of interest');
 }
 section('research and teaching, wellbeing, and an offer from another city');
+
+// 8e. Choosing where to work: postings across the country, an employer's profile, an offer, negotiating, accepting.
+{
+  rng.seed(97531);
+  const q = life('us', 36);
+  q.city = COUNTRIES.us.cities[0];
+  const jm = core.M(q);
+  for (const k of Object.keys(jm.skills)) jm.skills[k] = 90;
+  jm.completed.push({ specialtyId: 'cardiology', kind: 'fellowship', from: 2000, to: 2003 });
+  jm.boards.push({ specialtyId: 'cardiology', passed: true, year: 2003, tries: 1 });
+  jm.license = { status: 'full', countryId: 'us' };
+  const kinds = new Set(hospitalsIn('us', q.city).map(({ h }) => h.kind));
+  check(kinds.has('public_health') && kinds.has('heart'), `a big city has a public health service and specialty hospitals (${[...kinds].join(', ')})`);
+  const here = jobs.postings('city', q, jm);
+  const all = jobs.postings('country', q, jm);
+  check(all.length > here.length && all.some((x) => x.away), 'posts can be browsed across the country');
+  check(JSON.stringify(jobs.postings('country', q, jm)) === JSON.stringify(all), 'the year\'s openings are the same each time they are looked at');
+  const v = jobs.hospitalProfile(all[0].id);
+  check(v && v.ownership && v.departments.length && v.physicians > 0, 'an employer can be reviewed before applying');
+  let offered = null;
+  for (const o of all.filter((x) => !x.block)) { const r = jobs.applyFor(o.id); if (r.ok) { offered = o; break; } }
+  check(!!offered && jobs.offers(jm).length === 1 && !jm.job, 'an interview can end in an offer, which waits for an answer');
+  if (offered) {
+    const before = jobs.offers(jm)[0]?.salary;
+    jobs.negotiate(offered.id);
+    check(!jobs.negotiate(offered.id).ok, 'an offer is negotiated once');
+    const still = jobs.offers(jm)[0];
+    if (still) {
+      check(still.salary >= before, 'negotiating never lowers an offer');
+      const r = jobs.acceptOffer(offered.id);
+      check(r.ok && jm.job?.hospitalId === offered.id && q.city === offered.city && q.career.salary === still.salary, `accepting starts the post where it is (${r.text})`);
+    }
+  }
+}
+section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');
+
+// 8f. Another country is not the US: an internship first, its own words, a simplified profile.
+{
+  rng.seed(8642);
+  const q = life('uk', 26);
+  const gm = core.M(q);
+  strong(gm);
+  gm.route = 'md'; gm.stage = 'graduate'; gm.school = { name: 'medical school', year: 4, rotations: [], exams: { finals: { pass: true, score: 80 } }, interest: { internal: 5 }, apply: ['internal', 'family'], graduated: true, countryId: 'uk' };
+  store.state.pendingEvents = [];
+  gm.local = true;
+  // The year after graduating: the supervised years every graduate here works first.
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startTraining('internship', 'internal', site.e.id);
+  check(gm.training.kind === 'internship' && gm.training.years === 2, 'in the UK profile, two supervised years come before specialty training');
+  for (let i = 0; i < 6 && (gm.training?.kind ?? 'internship') === 'internship'; i++) { strong(gm); year(); }
+  if (gm.training) check(/^Specialty trainee/.test(q.career.title) && !/PGY/.test(q.career.title), `UK titles are not US ones (${q.career.title})`);
+  check(gm.license.status === 'full' && /GMC/.test(gm.license.name), `registration follows the UK profile (${gm.license.name})`);
+}
+section('another country: its own route, words and license, marked simplified');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

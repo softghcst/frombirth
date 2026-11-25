@@ -193,6 +193,10 @@ export const HOSPITAL_KINDS = {
   community: { name: 'Community hospital', teaching: false, fellowships: false, resources: 60, payK: 0.97, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'radiology', 'anesthesiology', 'family', 'icu', 'psychiatry', 'podiatry'] },
   childrens: { name: "Children's hospital", teaching: true, fellowships: true, resources: 85, payK: 1.02, depts: ['pediatrics', 'peds_surgery', 'nicu', 'emergency', 'radiology', 'anesthesiology', 'psychiatry', 'icu'] },
   rural: { name: 'Rural health facility', teaching: false, fellowships: false, resources: 40, payK: 1.08, depts: ['family', 'emergency', 'medicine', 'obgyn'] },
+  government: { name: 'Government hospital', teaching: true, fellowships: false, resources: 70, payK: 0.95, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'psychiatry', 'radiology', 'pathology', 'anesthesiology', 'icu', 'family', 'trauma', 'rehabilitation', 'neurology', 'cardiology', 'podiatry'] },
+  public_health: { name: 'Public health service', teaching: false, fellowships: false, resources: 45, payK: 0.92, depts: ['family', 'medicine', 'pediatrics', 'psychiatry', 'obgyn'] },
+  heart: { name: 'Specialty hospital (heart)', teaching: true, fellowships: true, resources: 92, payK: 1.08, depts: ['cardiology', 'cardiothoracic', 'vascular', 'anesthesiology', 'radiology', 'icu'] },
+  bone: { name: 'Specialty hospital (orthopedic)', teaching: true, fellowships: true, resources: 88, payK: 1.06, depts: ['orthopedics', 'rehabilitation', 'podiatry', 'anesthesiology', 'radiology', 'neurosurgery'] },
   clinic: { name: 'Physician group clinic', teaching: false, fellowships: false, resources: 50, payK: 1, depts: ['family', 'medicine', 'pediatrics', 'dermatology', 'psychiatry', 'podiatry', 'cardiology', 'neurology', 'rehabilitation'] },
 };
 
@@ -252,6 +256,14 @@ export const ERA = {
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
 };
 
+/**
+ * What a hospital of a given year can do, against today's (1). A broad era modifier, not a history:
+ * before antibiotics and blood banking (about 1945) and modern intensive care (about 1960), the same
+ * hospital had far less to work with; resources and the margin for error scale with it.
+ */
+export const ERA_CARE = [[1920, 0.55], [1945, 0.68], [1960, 0.8], [1980, 0.9], [9999, 1]];
+export const eraCare = (y) => ERA_CARE.find(([until]) => y < until)[1];
+
 // ---------- Jurisdictions ----------
 //
 //   entry        'graduate' (a bachelor's first) | 'direct' (medical school from secondary school)
@@ -275,7 +287,7 @@ export const JURISDICTIONS = {
     selection: 'the residency Match', ownership: 'physician', detail: 'detailed' },
   ca: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD'], exams: [{ id: 'mccqe1', name: 'MCCQE Part I', year: 4 }],
     license: { name: 'provincial licensure', afterTraining: 2 }, internship: 0, selection: 'the national residency match', ownership: 'physician' },
-  gb: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
+  uk: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
     license: { name: 'full GMC registration', afterTraining: 1 }, internship: 2, selection: 'specialty training recruitment' },
   au: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD / MBBS'], exams: [{ id: 'finals', name: 'Final examinations', year: 4 }],
     license: { name: 'general registration', afterTraining: 1 }, internship: 1, selection: 'specialty college selection' },

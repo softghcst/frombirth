@@ -19,7 +19,7 @@ import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { CASES, CASE_BY_ID } from '../../data/medicineCases.js';
-import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, qualifiesAs } from '../../data/medicine.js';
+import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs, eraCare } from '../../data/medicine.js';
 import { makeNpc } from '../npcFactory.js';
 import { M, med, W, year, grow, nextId, result, roll, currentSpecialty, qualified } from './core.js';
 import { hospital } from './hospitals.js';
@@ -183,7 +183,11 @@ function plansFor(fx, c) {
     const proc = x.procedure ? PROCEDURE_BY_ID[x.procedure] : null;
     if (proc && proc.minYear > now) block = `${proc.name} is not yet done in ${now}.`;
     else if (proc && c.role === 'student') block = '';
-    else if (proc && c.role === 'physician' && !privileges(m).has(proc.id)) block = `You do not hold privileges for ${proc.name.toLowerCase()}. Refer instead.`;
+    else if (proc && c.role === 'physician' && !privileges(m).has(proc.id)) {
+      // Not this physician's procedure: the right plan is to refer to someone whose it is (the same plan, done by them).
+      const to = SPECIALTIES.find((s) => s.procedures.includes(proc.id) && s.kind !== 'fellowship') ?? SPECIALTIES.find((s) => s.procedures.includes(proc.id));
+      return { ...x, procedure: undefined, refer: x.refer ?? to?.id, label: `${x.label} (referred to ${to?.name ?? 'a specialist'})`, block: '' };
+    }
     return { ...x, block };
   });
 }
@@ -276,7 +280,7 @@ const OR_POINTS = { best: 4, ok: 0, poor: -8, unsafe: -20 };
 function startOr(c, proc) {
   const m = M();
   const h = c.hospitalId ? hospital(c.hospitalId) : null;
-  const resources = h?.resources ?? 60;
+  const resources = Math.round((h?.resources ?? 60) * eraCare(year()));
   const risk = proc.risk * (1.3 - m.skills.technical / 100) * (supervised(c.role) ? 0.85 : 1) * (0.6 + (100 - resources) / 100);
   c.status = 'or';
   c.or = { procedure: proc.id, step: 'consent', resources, risk: Math.round(risk * 100) / 100, complication: roll(risk), choices: {}, points: 0 };
@@ -387,7 +391,7 @@ function resolve(c, plan, decision, how = 'played') {
     else if (complication) notes.push('A complication: the team paused, called for help, and managed it together.');
   } else if (proc) {
     const h = c.hospitalId ? hospital(c.hospitalId) : null;
-    const res0 = h?.resources ?? 60;
+    const res0 = Math.round((h?.resources ?? 60) * eraCare(year()));
     const risk = proc.risk * (1.3 - m.skills.technical / 100) * (supervised(c.role) ? 0.85 : 1) * (0.6 + (100 - res0) / 100);
     if (roll(risk)) { complication = true; res = STEP_DOWN[res]; notes.push('There was a complication during the procedure; the team managed it together.'); }
   }
