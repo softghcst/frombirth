@@ -207,6 +207,38 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(L().rep.integrity < integ && L().misconduct >= 1 && lp.opportunities().find((x) => x.id === 'elevation')?.why, 'hearing it anyway is misconduct, and blocks the next appointment');
 }
 
+// Leading an office, and a judge's civil list; managing the workload.
+{
+  lawyer('prosecutor', { level: 3 });
+  check(lp.leadsOffice() === 'da', 'the top of the prosecutor\'s office leads it');
+  const ds = lp.leaderDuties().map((d) => d.id);
+  check(['priorities', 'review', 'supervise'].every((x) => ds.includes(x)), `a District Attorney has duties of office (${ds})`);
+  const integ = L().rep.integrity;
+  lp.doDuty('review', 'evidence');
+  check(L().rep.integrity > integ && !lp.doDuty('review', 'evidence').ok, 'reviewing a major case on the evidence counts for integrity; once a half-year');
+  lp.doDuty('priorities', 'diversion');
+  check(L().office.priority === 'diversion', 'the office\'s priorities are set and kept');
+  lawyer('lawyer');
+  career.hire(CAREER_BY_ID.attorney_general, 1, 70, 'test');
+  check(lp.leaderDuties().some((d) => d.id === 'opinion'), 'an Attorney General gives legal opinions');
+  const i2 = L().rep.integrity; lp.doDuty('opinion', 'politics');
+  check(L().rep.integrity < i2, 'an opinion bent to politics costs integrity');
+  lawyer('judiciary');
+  const m = lp.benchMatter();
+  check(m && m.bench && m.judgeId === p().id && !L().caseIds.includes(m.id) && lp.rulingOptions(m).length >= 3, `a judge hears a civil or family matter: ${m?.title}`);
+  const r = lp.rule(m.id, m.templateId === 'custody' ? 'improper' : 'for');
+  check(m.done && L().benchRecord.length === 1 && (m.templateId !== 'custody' || /Wealth is not the test/.test(r.text)), 'the ruling is recorded; custody never goes to the wealthier parent as such');
+  check(!lp.benchMatter(), 'one civil matter a half-year');
+  lawyer('lawyer', { level: 1 });
+  const cap0 = lc.workload().capacity;
+  check(lp.askSupport().ok && lc.workload().capacity === cap0 + 3 && !lp.askSupport().ok, 'asking for support gives room for a while, not again at once');
+  const c = lc.createCase('assault', { role: 'defense', track: 'lawyer' });
+  const pts = lc.workload().points;
+  check(lp.delegate(c.id).ok && lc.workload().points === pts - c.level / 2, 'a senior lawyer can delegate the routine work of a case');
+  const due = c.due;
+  check(lp.takeLeave().ok && c.due === due + 1 && !lp.takeLeave().ok, 'leave moves the deadlines back, once a year');
+}
+
 // 15. Retirement keeps the record; a descendant sees the career, not the clients' secrets.
 {
   lawyer('lawyer');

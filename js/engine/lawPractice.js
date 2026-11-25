@@ -19,6 +19,7 @@ import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } fro
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
+import { employer as employerOf } from './employers.js';
 import { events, visible, archiveIdOf, archived } from './chronicle.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -763,6 +764,159 @@ function caseChoice(scene, choice, p, L) {
     case 'ag': return choice === 'run' ? seek('ag', p).text : 'Not this time.';
     default: return '';
   }
+}
+
+// ---------- Managing the work ----------
+
+/** Asks a supervisor for help with the load: three more cases' worth of room for six months. Once a half-year. */
+export function askSupport(p = player()) {
+  const L = lawOf(p);
+  if (!trackOf(p) || trackOf(p) === 'own') return result(false, trackOf(p) === 'own' ? 'Your own firm: hire staff instead.' : 'You are not practicing.', 'neutral');
+  if ((L.support?.asked ?? -99) >= nowM() - 6) return result(false, 'You asked recently.', 'neutral');
+  const sup = supervisor(p);
+  L.support = { asked: nowM(), until: nowM() + 6 };
+  sup.meters.relationship = clamp(sup.meters.relationship - 2);
+  return result(true, `${sup.firstName} ${sup.lastName} takes some of your files for the next few months.`, 'good');
+}
+/** Two weeks away: rest, and every open case's next step moves back a month. Once a year. */
+export function takeLeave(p = player()) {
+  const L = lawOf(p);
+  if ((L.leave ?? -99) >= nowM() - 12) return result(false, 'You took leave this year.', 'neutral');
+  L.leave = nowM();
+  p.stats.health = clamp(p.stats.health + 4); p.stats.mood = clamp(p.stats.mood + 8);
+  for (const c of L.caseIds.map(cases.caseById).filter((x) => x && !x.done && !x.awaiting)) { c.due += 1; for (const d of c.deadlines.filter((x) => x.met == null)) d.due += 1; }
+  return result(true, 'You take two weeks away. The office moves your deadlines back a month.', 'good');
+}
+/** A senior lawyer hands a case's routine work to a junior: half the load, the decisions still theirs. */
+export function delegate(caseId, p = player()) {
+  const c = cases.caseById(caseId);
+  if (!c || c.done || c.lawyerId !== p.id) return result(false, 'Not your open case.', 'neutral');
+  const senior = (p.career?.level ?? 0) >= 1 || (trackOf(p) === 'own' && (ownFirm(p)?.staff?.length ?? 0) + (ownFirm(p)?.others ?? 0) > 0);
+  if (!senior) return result(false, 'You need a junior to delegate to.', 'neutral');
+  if (c.delegated) return result(false, 'Already delegated.', 'neutral');
+  c.delegated = { m: nowM() };
+  c.bonus = (c.bonus ?? 0) - 0.01;
+  return result(true, 'A junior colleague takes over the routine work. The decisions stay yours.', 'good');
+}
+
+// ---------- Leading an office ----------
+
+/** Whether the player leads a legal office, and which. */
+export function leadsOffice(p = player()) {
+  const id = p.career?.careerId; const lv = p.career?.level ?? 0;
+  if (id === 'prosecutor' && lv >= 3) return 'da';
+  if (id === 'defender' && lv >= 2) return 'chief_defender';
+  if (id === 'gov_counsel' && lv >= 3) return 'general_counsel';
+  if (id === 'attorney_general') return 'ag';
+  if (id === 'us_attorney' && lv >= 1) return 'us_attorney';
+  if (id === 'solicitor_general' && lv >= 1) return 'sg';
+  return null;
+}
+/** What leading the office asks of the player this half-year: each duty once. */
+export function leaderDuties(p = player()) {
+  const lead = leadsOffice(p);
+  if (!lead) return [];
+  const L = lawOf(p);
+  const w = Math.floor(nowM() / WINDOW);
+  const done = (id) => L.duties?.[`${w}:${id}`];
+  const list = [
+    { id: 'priorities', name: 'Set the office\'s priorities', options: [['Serious violent crime', 'violent'], ['Fraud and corruption', 'fraud'], ['Diversion for first offenders', 'diversion'], ['Clearing the backlog of old cases', 'backlog']] },
+    { id: 'review', name: 'Review a major case in the office', text: 'A senior attorney brings you a case the whole office is watching. The evidence is weaker than the headlines.', options: [['Decide on the evidence: drop what does not hold', 'evidence'], ['Press on: the public expects it', 'pressure'], ['Seek a fair plea', 'plea']] },
+    { id: 'supervise', name: 'Supervise your attorneys', options: [['Sit in on trials and give honest feedback', 'mentor'], ['Set targets and leave them to it', 'targets']] },
+  ];
+  if (lead === 'ag') list.push({ id: 'opinion', name: 'Give a legal opinion to the government', text: 'The government asks whether a new policy is lawful. It is popular, and probably not.', options: [['Advise on the law, as it stands', 'law'], ['Find a way to say yes', 'politics']] });
+  if (lead === 'sg') list.push({ id: 'argue', name: 'Argue a case before the Supreme Court', text: 'The government\'s appeal is set for argument. You decide how to put it.', options: [['Concede the weak point and win on the strong one', 'strong'], ['Defend every point', 'every']] });
+  if (L.controversy && !L.controversy.answered) list.push({ id: 'controversy', name: 'Answer a controversy', text: L.controversy.text, options: [['Admit the mistake and fix it', 'admit'], ['Defend the office\'s decision', 'defend'], ['Blame a junior attorney', 'blame']] });
+  return list.map((d) => ({ ...d, done: !!done(d.id) }));
+}
+/** Carries out a duty of office. */
+export function doDuty(id, choice, p = player()) {
+  const d = leaderDuties(p).find((x) => x.id === id);
+  if (!d) return result(false, 'That is not yours to do.', 'neutral');
+  if (d.done) return result(false, 'Done for this half-year.', 'neutral');
+  const L = lawOf(p);
+  (L.duties ??= {})[`${Math.floor(nowM() / WINDOW)}:${id}`] = choice;
+  gain(p, { leadership: 3, management: 1 });
+  let text = '';
+  if (id === 'priorities') { L.office = { ...(L.office ?? {}), priority: choice, since: nowM() }; L.rep.recognition = clamp(L.rep.recognition + 1); text = { violent: 'Serious violent crime comes first in your office.', fraud: 'Your office goes after fraud and corruption.', diversion: 'First offenders are offered diversion where the law allows.', backlog: 'The old cases get cleared, one by one.' }[choice]; canon(`law:priority:${p.id}:${nowM()}`, 'Set office priorities', text, { privacy: 'public', sig: 1, milestone: false }); }
+  if (id === 'review') {
+    if (choice === 'evidence') { L.rep.integrity = clamp(L.rep.integrity + 3); text = 'You drop the charges that do not hold. Some headlines are angry; the judges notice who is careful.'; }
+    else if (choice === 'pressure') { L.rep.integrity = clamp(L.rep.integrity - 3); L.rep.recognition = clamp(L.rep.recognition + 2); if (rng.chance(0.4)) L.controversy = { text: 'A case your office pressed on despite weak evidence has collapsed at trial, and the papers want to know why.', m: nowM() }; text = 'The case goes ahead, under your name.'; }
+    else { L.rep.integrity = clamp(L.rep.integrity + 1); text = 'A plea that fits what the evidence can prove.'; }
+  }
+  if (id === 'supervise') { if (choice === 'mentor') { gain(p, { leadership: 2 }); adjustPerformance(2); text = 'Your attorneys get better, and they know who helped.'; } else { adjustPerformance(1); text = 'The numbers improve. The trials do not.'; } }
+  if (id === 'opinion') { if (choice === 'law') { L.rep.integrity = clamp(L.rep.integrity + 4); text = 'You advise that the policy is unlawful as written. The government is not pleased.'; } else { L.rep.integrity = clamp(L.rep.integrity - 6); text = 'Your opinion finds a way. The courts may not.'; if (rng.chance(0.5)) L.controversy = { text: 'A court has struck down the policy your opinion called lawful.', m: nowM() }; } }
+  if (id === 'argue') {
+    const won = rng.chance(clamp(0.35 + (L.skills.appellate ?? 20) / 150 + (choice === 'strong' ? 0.12 : 0), 0.1, 0.85));
+    canon(`law:sg:${p.id}:${nowM()}`, won ? 'Won a Supreme Court argument' : 'Lost a Supreme Court argument', won ? 'The Court ruled for the government.' : 'The Court ruled against the government.', { privacy: 'public', sig: 2, milestone: false });
+    L.rep.advocacy = clamp(L.rep.advocacy + (won ? 3 : 1)); text = won ? 'The Court rules for the government.' : 'The Court rules against you, five to four.';
+  }
+  if (id === 'controversy') {
+    L.controversy.answered = choice;
+    if (choice === 'admit') { L.rep.integrity = clamp(L.rep.integrity + 3); L.rep.recognition = clamp(L.rep.recognition - 2); text = 'You say what went wrong and what will change. It costs you a week of headlines, and earns you trust.'; }
+    else if (choice === 'defend') text = 'You stand by the office. The story fades, slowly.';
+    else { L.rep.integrity = clamp(L.rep.integrity - 8); adjustPerformance(-3); text = 'A junior attorney takes the blame. The office knows the truth.'; }
+  }
+  return result(true, text, 'good');
+}
+
+// ---------- The bench: civil and family matters ----------
+
+const BENCH_MATTERS = ['contract_dispute', 'injury', 'boundary', 'custody', 'divorce', 'dismissal'];
+/** A civil or family matter for a judge to decide: once a half-year. Real parties; the evidence decides. */
+export function benchMatter(p = player()) {
+  if (trackOf(p) !== 'judiciary') return null;
+  const L = lawOf(p);
+  const w = Math.floor(nowM() / WINDOW);
+  const open = (L.bench ?? []).map(cases.caseById).find((c) => c && !c.done);
+  if (open) return open;
+  if ((L.benchWindow ?? -1) === w) return null;
+  L.benchWindow = w;
+  const c = cases.createCase(rng.pick(BENCH_MATTERS), { track: 'judiciary' });
+  L.caseIds = L.caseIds.filter((x) => x !== c.id); // a judge's matter is not a client's case
+  c.lawyerId = null; c.judgeId = p.id; c.bench = true; c.role = 'judge';
+  for (const e of c.evidence) e.reviewed = true;
+  (L.bench ??= []).push(c.id);
+  return c;
+}
+/** What the evidence supports, for checking a ruling: the claimant's share of the evidence. */
+const supported = (c) => { const s = cases.strength({ ...c, role: 'plaintiff' }).share; return s > 0.58 ? 'for' : s < 0.42 ? 'against' : 'part'; };
+/** The rulings open to the judge, worded for the matter. */
+export function rulingOptions(c) {
+  if (c.templateId === 'custody') return [['Adopt the parenting plan built around the child\'s school and needs', 'for'], ['Split the time exactly in half, whatever the schedules', 'part'], ['Give custody to the parent who earns more', 'improper']];
+  return [['For the claimant', 'for'], ['For the respondent', 'against'], ['For the claimant in part', 'part']];
+}
+/** Rules on a matter. A ruling the evidence does not support may be reversed; a judge who knows a party must step aside. */
+export function rule(caseId, ruling, p = player()) {
+  const c = cases.caseById(caseId);
+  if (!c?.bench || c.done) return result(false, 'There is nothing to rule on.', 'neutral');
+  const L = lawOf(p);
+  const known = [c.clientId, c.parties.otherId].map((id) => store.state.npcs[id]).find((n) => n && (p.npcIds.includes(n.id) || n.flags.formerClientOf === p.id));
+  if (ruling === 'recuse') { c.done = true; c.outcome = { kind: 'recused', text: 'The judge stepped aside.', m: nowM(), year: store.state.year }; return result(true, 'You step aside, and the matter goes to another judge.', 'good'); }
+  if (known) { L.rep.integrity = clamp(L.rep.integrity - 8); L.misconduct = (L.misconduct ?? 0) + 1; }
+  const right = ruling === 'improper' ? false : c.templateId === 'custody' ? ruling === 'for' : ruling === supported(c);
+  const reversed = !right && rng.chance(0.5);
+  c.done = true;
+  c.outcome = { kind: `ruled_${ruling}`, text: `${{ for: 'For the claimant', against: 'For the respondent', part: 'In part', improper: 'Custody to the wealthier parent' }[ruling]}.${reversed ? ' Reversed on appeal.' : ''}`, m: nowM(), year: store.state.year, right, reversed };
+  (L.benchRecord ??= []).push({ caseId: c.id, title: c.title, ruling, right, reversed, year: store.state.year });
+  if (right) { adjustPerformance(2); L.rep.integrity = clamp(L.rep.integrity + 1); }
+  if (reversed) adjustPerformance(-3);
+  if (ruling === 'improper') { L.rep.integrity = clamp(L.rep.integrity - 6); return result(false, 'Wealth is not the test: the child\'s interests are. The appeal court will say so.', 'bad'); }
+  return result(right, right ? 'Your ruling follows the evidence and the law.' : reversed ? 'The appeal court reverses you: the evidence did not support the ruling.' : 'Your ruling stands, though it was a close thing.', right ? 'good' : 'neutral');
+}
+
+// ---------- The office and the court ----------
+
+/** Where the player works, and the court they appear in: real people, real records. */
+export function officeView(p = player()) {
+  const e = employerOf(p.career?.employerId);
+  const b = cases.LC();
+  const judges = k.bench(p.countryId).judges.map((id) => store.state.npcs[id]).filter(Boolean).map((n) => {
+    const mine = Object.values(b).filter((c) => c.judgeId === n.id && c.lawyerId === p.id);
+    return { id: n.id, name: `${n.firstName} ${n.lastName}`, since: n.flags.justice?.since ?? null, cases: mine.length, decided: mine.filter((c) => c.done).length, classmate: n.id === lawOf(p).people?.studyMate };
+  });
+  return { employer: e ? { name: e.name, city: e.city, founded: e.founded, history: (e.history ?? []).slice(-8).reverse() } : null, judges,
+    rivals: Object.values(store.state.npcs).filter((n) => n.alive && n.flags.rivalOf === p.id).map((n) => ({ id: n.id, name: `${n.firstName} ${n.lastName}`, cases: n.flags.rivalCases ?? 1 })) };
 }
 
 // ---------- Legacy ----------
