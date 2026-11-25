@@ -10,6 +10,7 @@ import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import * as salon from '../engine/salon.js';
 import { player, country } from '../state.js';
 import { fmtMoney } from '../util.js';
+import { navRow } from './kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const pickBy = (list, key) => list[hash(key) % list.length];
@@ -27,15 +28,23 @@ export const shopLabel = (p) => (shopFor(p) === 'barber' ? 'Barbershop' : 'Beaut
 /** The shop near the player: one name per city, the same each visit. */
 export const shopName = (p) => pickBy(shopFor(p) === 'barber' ? BARBERSHOPS : SALONS, `${p.city ?? ''}:${p.countryId}`);
 
-/** The salon's sign: scissors crossed over a hair dryer, in a round badge. */
+/** The salon's sign: a pair of open scissors, pink-handled, in a round badge with a sparkle or two. */
 const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
   <circle cx="60" cy="60" r="56" fill="#FFE3EC" stroke="#23140f" stroke-width="4"/>
-  <circle cx="60" cy="60" r="46" fill="none" stroke="#F59B7A" stroke-width="3" stroke-dasharray="4 6"/>
-  <g class="sv-dryer"><path d="M30 52c0-11 9-19 21-19h14c6 0 10 5 10 11s-4 11-10 11H51c-12 0-21-1-21-3z" fill="#7956A0" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M44 55l-5 26c-1 4 2 7 6 7h3c3 0 5-2 6-5l3-28" fill="#7956A0" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M75 39h9M75 45h11M75 51h9" stroke="#23140f" stroke-width="3" stroke-linecap="round"/></g>
-  <g class="sv-scissors"><g class="sv-blade-a"><path d="M58 64l30 22" stroke="#23140f" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="88" r="8" fill="#FFB699" stroke="#23140f" stroke-width="3.5"/><path d="M56 82l8-10" stroke="#23140f" stroke-width="4"/></g>
-    <g class="sv-blade-b"><path d="M58 86l30-22" stroke="#23140f" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="62" r="8" fill="#FFB699" stroke="#23140f" stroke-width="3.5"/></g></g>
+  <circle cx="60" cy="60" r="47" fill="none" stroke="#F59B7A" stroke-width="3" stroke-dasharray="4 6"/>
+  <g class="sv-scissors">
+    <g class="sv-blade-a"><g transform="rotate(-22 60 62)">
+      <path d="M60 64V82" stroke="#23140f" stroke-width="9" stroke-linecap="round"/><path d="M60 64V82" stroke="#F28CA8" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="95" r="11" fill="#F28CA8" stroke="#23140f" stroke-width="3.5"/><circle cx="60" cy="95" r="5" fill="#FFE3EC" stroke="#23140f" stroke-width="2.5"/>
+      <path d="M54.5 64L58 14Q60 10 62 14L65.5 64Z" fill="#E3E9EF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M60 58L60.6 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".8"/></g></g>
+    <g class="sv-blade-b"><g transform="rotate(22 60 62)">
+      <path d="M60 64V82" stroke="#23140f" stroke-width="9" stroke-linecap="round"/><path d="M60 64V82" stroke="#F28CA8" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="95" r="11" fill="#F28CA8" stroke="#23140f" stroke-width="3.5"/><circle cx="60" cy="95" r="5" fill="#FFE3EC" stroke="#23140f" stroke-width="2.5"/>
+      <path d="M54.5 64L58 14Q60 10 62 14L65.5 64Z" fill="#E3E9EF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M60 58L60.6 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".8"/></g></g>
+    <circle cx="60" cy="62" r="4.5" fill="#D8B25A" stroke="#23140f" stroke-width="2.5"/></g>
+  <g fill="#FFFFFF" stroke="#23140f" stroke-width="2" stroke-linejoin="round"><path d="M28 34l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M92 30l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z"/></g>
 </svg>`;
 
 /** The salon, drawn in the game's style: a striped wall, shelves of products, a plant, and the mirror's frame of bulbs. */
@@ -117,16 +126,15 @@ const BULBS = (() => {
 })();
 
 /**
- * The way in, at the top of the Self tab: the shop's own sign (scissors and a dryer for the salon, a barber's pole for
- * the barbershop), its name and what it does. A button carrying data-salon, which opens the visit.
+ * The way in, first on the Self tab: an ordinary row, its picture the shop's own badge (scissors for the salon, a
+ * barber's pole for the barbershop). Carries data-salon, which opens the visit.
  */
-export function shopDoor(p) {
+export function shopRow(p) {
   const barber = shopFor(p) === 'barber';
-  const what = barber ? 'Cuts, beard grooming, brows and more' : 'Hair, brows, makeup and more';
-  return `<div class="shop-door-wrap"><button type="button" class="shop-door${barber ? ' shop-door-barber' : ''}" data-salon aria-label="${esc(`${shopLabel(p)}: ${shopName(p)}`)}">
-    <span class="shop-door-logo">${(barber ? BARBER_LOGO : LOGO).replace(/id="sv-pole-logo"/, 'id="sv-pole-door"').replace(/url\(#sv-pole-logo\)/, 'url(#sv-pole-door)')}</span>
-    <span class="shop-door-text"><strong>${esc(shopLabel(p))}</strong><span class="shop-door-name">${esc(shopName(p))}</span><span class="shop-door-sub">${esc(what)}</span></span>
-    <span class="shop-door-go" aria-hidden="true">›</span></button></div>`;
+  const badge = (barber ? BARBER_LOGO : LOGO).replace('class="sv-logo-art"', `class="shop-badge${barber ? ' shop-badge-barber' : ''}"`)
+    .replace(/id="sv-pole-logo"/, 'id="sv-pole-row"').replace(/url\(#sv-pole-logo\)/, 'url(#sv-pole-row)');
+  return navRow({ attrs: 'data-salon', label: shopLabel(p), art: badge,
+    sub: shopName(p) });
 }
 
 export function openSalonVisit(api, { intro = true } = {}) {

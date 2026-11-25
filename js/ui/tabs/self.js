@@ -17,7 +17,7 @@ import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
-import { openSalonVisit, shopDoor } from '../salonVisit.js';
+import { openSalonVisit, shopRow } from '../salonVisit.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
@@ -44,7 +44,7 @@ export default {
     const sick = med.treatable().some((x) => !x.managed && !x.seen);
     const crownLine = !p.royal && !p.flags.formerRoyal ? royalCard() : '';
     el.innerHTML = `
-      ${salon.canVisitSalon() ? shopDoor(p) : ''}
+      ${salon.canVisitSalon() ? navGroup([shopRow(p)]) : ''}
       <div class="card"><h3>Health and mood</h3>
         ${meterHtml('Mood', p.stats.mood, true)}${meterHtml('Health', p.stats.health, true)}
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
