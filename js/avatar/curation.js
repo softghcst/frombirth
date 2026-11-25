@@ -162,7 +162,7 @@ export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fri
  * empty they wear the older styles, as before.
  */
 export const KID_HAIR = {
-  female: { straight: ['hair_kid_girl_straight_01_blunt_bangs', 'hair_kid_girl_straight_02_ponytail', 'hair_kid_girl_straight_03_bob_headband', 'hair_kid_girl_straight_04_space_buns'], wavy: ['hair_kid_girl_wavy_06_half_up_bow'], curly: [], coily: [] },
+  female: { straight: ['hair_kid_girl_straight_01_blunt_bangs', 'hair_kid_girl_straight_02_ponytail', 'hair_kid_girl_straight_03_bob_headband', 'hair_kid_girl_straight_04_space_buns'], wavy: ['hair_kid_girl_wavy_06_half_up_bow', 'hair_kid_girl_wavy_07_dutch_braids', 'hair_kid_girl_wavy_08_pigtails'], curly: ['hair_kid_girl_curly_09_pineapple', 'hair_kid_girl_curly_10_ringlets'], coily: [] },
   male: { straight: [], wavy: [], curly: [], coily: [] },
 };
 
