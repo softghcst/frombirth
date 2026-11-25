@@ -124,6 +124,55 @@ export default [
     C('Call whoever has the file now', 'They promised to look at it again.', 'stayed:call'),
     C('Let it rest', 'You let it rest.', 'stayed:rest')]),
 
+  // ---------- More of the work ----------
+  Q('inv_interview_panel', 'The selection panel for {unit}: three senior detectives and a long table. "Tell us about a time your first theory was wrong."', [
+    C('Tell them about a case where the evidence changed your mind', 'They wrote that down. One of them nodded.', 'panel:honest'),
+    C('Say your first theories are usually right', 'Nobody wrote anything down.', 'panel:boast')]),
+  Q('inv_new_poi', 'In {case}, the evidence points to someone new: {person}. Nobody had heard the name before.', [
+    C('Find out who they are before deciding anything', 'You started with what the records say about them.', 'poi:check'),
+    C('Assume this is the one', '{partner} reminded you that a name is not a suspect.', 'poi:jump')]),
+  Q('inv_another_look', '{case} has been sitting still. {partner} suggests going back to the beginning, as if you had never seen the file.', [
+    C('Do it: read the file fresh', 'You found a question nobody had asked.', 'look:fresh'),
+    C('Stick with the plan', 'The plan stayed the plan.', 'look:stay')]),
+  Q('inv_examiner', 'The medical examiner\'s report on {case} is in. Cause and manner of death are set out separately, with what is certain and what is not.', [
+    C('Read it with the examiner', 'The examiner explained what the findings can and cannot tell you about who was involved.', 'me:discuss'),
+    C('Read it alone', 'You read it twice.', 'me:read')]),
+  Q('inv_specialist', 'A specialist joins the team on {case}: {specialist}, who knows {field} better than anyone you have worked with.', [
+    C('Ask them to explain it from the start', 'An hour well spent.', 'spec:learn'),
+    C('Leave them to it', 'They worked alone, and well.', 'spec:leave')]),
+  Q('inv_fed_prosecutor', 'An assistant United States attorney, {prosecutor}, calls about {case}: "Walk me through what you have, and what you do not."', [
+    C('Go through it all, including the gaps', 'The call took an hour. The gaps were the useful part.', 'fedpros:full'),
+    C('Lead with the strongest evidence', 'The prosecutor asked about the gaps anyway.', 'fedpros:sell')]),
+  Q('inv_supervisory', 'A supervisory post has opened in your office. It means running a squad, and fewer cases of your own.', [
+    C('Put your name forward', 'You can apply from Career Progress.', 'sup:apply'),
+    C('Stay an agent in the field', 'You stayed with the cases.', 'sup:stay')]),
+  Q('inv_transfer', 'Headquarters needs agents in {city}. You are on the list for a transfer across the country.', [
+    C('Accept the transfer', 'You will report to {city}.', 'transfer:yes'),
+    C('Ask to stay, for family reasons', 'They took you off the list, this time.', 'transfer:no')]),
+  Q('inv_reassignment', 'You have been reassigned from {old} to {new}, effective Monday. Nobody asked you.', [
+    C('Make the best of it', 'New cases, new people. Some of it was interesting.', 'reassign:accept'),
+    C('Ask your supervisor why', 'Staffing, they said. It was true.', 'reassign:ask')]),
+  Q('inv_defense_challenge', 'The defense in {case} is challenging how a piece of evidence was handled. You will be asked about the custody record.', [
+    C('Go through the record exactly as it is, gap and all', 'You explained what was recorded and what was not.', 'defense:honest'),
+    C('Say the gap does not matter', 'The judge will decide whether it matters.', 'defense:dismiss')]),
+  Q('inv_review_board', 'The complaint about you has reached the review board. You may attend, with a representative, and speak.', [
+    C('Attend and answer honestly', 'You answered every question.', 'board:attend'),
+    C('Let your representative speak for you', 'Your representative spoke well.', 'board:rep')]),
+  Q('inv_new_trial', 'In {case}, kept evidence could now be tested with a method that did not exist when it was tried. Someone was convicted.', [
+    C('Open a review', 'You signed out what was kept. The conviction stands while it is reviewed.', 'review:open'),
+    C('Leave it for the conviction review unit', 'Someone else may take it up.', 'review:leave')]),
+  Q('inv_familiar_name', 'In court on {case}, the lawyer for the other side is {name}, who was in your academy class years ago.', [
+    C('Nod hello, and keep it professional', 'Afterward, in the corridor, you caught up for five minutes.', 'familiar:nod'),
+    C('Avoid them', 'You took the other staircase.', 'familiar:avoid')]),
+
+  Q('inv_partner_romance', 'You and {partner} are together now, and you also work every case side by side. The department\'s rules say a relationship between partners must be declared.', [
+    C('Declare it to your supervisor', 'You told your sergeant. One of you will move to another partnership; the relationship is your own business.', 'romance:declare'),
+    C('Keep it quiet', 'Nobody knows. For now.', 'romance:hide')]),
+
+  Q('inv_ancestor_case', 'In the archive you find {case}, from {year}. The investigating officer was {name}: your own family.', [
+    C('Read what they wrote', 'Their handwriting is in the margins. They had a question they never answered.', 'ancestor:read'),
+    C('Reopen it, if something new can be tested', 'You signed out the box they packed.', 'ancestor:reopen')]),
+
   // ---------- Across careers ----------
   Q('inv_reporter', 'A reporter, {reporter}, calls about {case}, which is in court. They have questions.', [
     C('Refer them to the press office', 'You said only what is public: the case is before the court.', 'press:refer'),

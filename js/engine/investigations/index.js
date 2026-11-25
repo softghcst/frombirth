@@ -44,7 +44,7 @@ export function investigationBlock(careerId, p = player()) {
 }
 
 /** Whether My Investigations has anything to show. */
-export const investigationsOpen = (p = player()) => !!rec(p) || p.age >= 16 || INVESTIGATIVE.includes(p.career?.careerId) || ['pi', 'forensics', 'journalist'].includes(p.career?.careerId);
+export const investigationsOpen = (p = player()) => !!rec(p) || p.age >= 16 || (store.state.investigations?.legacies?.length ?? 0) > 0 || INVESTIGATIVE.includes(p.career?.careerId) || ['pi', 'forensics', 'journalist'].includes(p.career?.careerId);
 
 /** Everything with a date that has passed. Safe to call any time: each step happens once. */
 export function settle(p = player()) {

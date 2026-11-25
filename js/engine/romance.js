@@ -12,6 +12,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { remember } from './conditions.js';
 import { spendAction, countAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
+import { supervisionBetween } from './investigations/core.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
 import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
@@ -137,7 +138,8 @@ export function romanceActions(npc) {
   const adults = p.age >= ADULT && npc.age >= ADULT;
   const a = [];
   // Not someone who reports to you: a manager asking is not a free question.
-  if (['friend', 'classmate', 'coworker', 'colleague', 'ex', 'neighbor', 'roommate'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
+  // Nor someone who supervises you, or whom you supervise, in an investigative agency (engine/investigations/core.js).
+  if (['friend', 'classmate', 'coworker', 'colleague', 'ex', 'neighbor', 'roommate'].includes(npc.role) && !npc.flags.report && !supervisionBetween(npc) && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
