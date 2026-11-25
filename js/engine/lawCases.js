@@ -16,6 +16,7 @@ import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
 import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES, skillId } from '../data/law.js';
 import { gain as fameGain } from './fame.js';
 import * as realLaw from './realLaw.js';
+import { policeWitness } from './lawPolice.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -210,7 +211,20 @@ export function createCase(templateId, o = {}) {
   c.evidence = T.evidence.map((e) => ({ ...e, label: fill(e.label, c), reviewed: false, status: e.admissibility === 'ok' ? 'admitted' : 'disputed', reliability: e.reliability }));
   if (c.evidenceFault) c.evidence.push({ id: 'fault', kind: 'witness_statement', label: `Evidence that ${c.vars.other} deserted the marriage, the fault ground pleaded`, favors: 'client', weight: 3, reliability: 55, admissibility: 'ok', status: 'admitted', reviewed: false });
   c.witnesses = (T.witnesses ?? []).map((w) => ({ ...w, npcId: party(countryId, { title: w.role, kind: 'witness' }).id, examined: false }));
-  for (const w of c.witnesses) if (store.state.npcs[w.npcId]) store.state.npcs[w.npcId].flags.justice.caseIds.push(id);
+  // The police in a criminal case are the local department's real officers and detectives (engine/lawPolice.js).
+  if (T.kind === 'criminal') {
+    for (const w of c.witnesses.filter((x) => /detective|officer|police/i.test(x.role))) {
+      const cop = policeWitness(countryId, p.city, /detective/i.test(w.role));
+      if (!cop) continue;
+      w.npcId = cop.id;
+      if (cop.known) {
+        c.knownOfficer = { id: cop.id, role: w.role };
+        note(c, `${nameOf(cop.id)}, the ${w.role.toLowerCase()}, is someone you worked beside on the force.`);
+        if (c.role === 'defense') c.bonus = (c.bonus ?? 0) + 0.03; // you know how they write reports, and where they cut corners
+      }
+    }
+  }
+  for (const w of c.witnesses) { const n = store.state.npcs[w.npcId]; if (n) { n.flags.justice ??= { caseIds: [] }; (n.flags.justice.caseIds ??= []).push(id); } }
   // A filing deadline for the first stage that needs one.
   const fileAt = c.stages.findIndex((s) => ['filing', 'pretrial', 'pleadings', 'drafting', 'review', 'diligence'].includes(s.s));
   if (fileAt >= 0) c.deadlines.push({ id: 'filing', label: fill(T.motion?.name ?? 'Main filing', c), due: c.opened + c.stages.slice(0, fileAt + 1).reduce((s, x) => s + x.months, 0), met: null });
@@ -602,7 +616,7 @@ export function courtroom(c) {
   if (T.objection && !pros) phases.push({ id: 'objection', title: 'An objection?', text: fill(T.objection.text, c), options: T.objection.options.map(([t, v]) => ({ text: t, v })), valid: T.objection.valid });
   if (pros && c.kind === 'criminal') phases.push({ id: 'objection', title: 'An objection?', text: 'Defense counsel asks your witness: "You have hated my client for years, haven\'t you, and you are lying now?"', options: [['Object: argumentative', 'argumentative'], ['Object: hearsay', 'hearsay'], ['Let it go', 'none']].map(([t, v]) => ({ text: t, v })), valid: 'argumentative' });
   const crossW = T.cross && !pros ? c.witnesses.find((w) => w.id === T.cross.witness) : null;
-  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(T.cross.text, c), options: T.cross.options.map(([t, v]) => ({ text: fill(t, c), v })), good: crossW.weakness });
+  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(T.cross.text, c) + (c.knownOfficer?.id === crossW.npcId ? ' You rode with them for years. They know you know their habits.' : ''), options: T.cross.options.map(([t, v]) => ({ text: fill(t, c), v })), good: crossW.weakness });
   else if (pros && c.kind === 'criminal') phases.push({ id: 'direct', title: 'Direct examination of your witness', text: `${nameOf(c.witnesses[0]?.npcId)} takes the stand.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   else if (c.witnesses.some((w) => w.side === 'client')) phases.push({ id: 'direct', title: 'Direct examination', text: `${nameOf(c.witnesses.find((w) => w.side === 'client').npcId)} takes the stand for your side.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   // A second moment to object, from the run of a trial: sometimes the question is perfectly proper.

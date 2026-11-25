@@ -47,6 +47,7 @@ function overview() {
   const lines = [];
   if (o.title) lines.push(kv('Position', `${o.title}${o.trackName ? `, ${o.trackName.toLowerCase()}` : ''}`));
   if (o.specialty) lines.push(kv('Practice', o.specialty.name));
+  if (p.law?.policeYears > 0) lines.push(kv('Before law', `${p.law.policeYears} year${p.law.policeYears === 1 ? '' : 's'} in law enforcement`));
   lines.push(kv('Admitted to practice', o.admitted ? (p.law.bar.admitted.legacy ? 'Yes (before records were kept)' : String(p.law.bar.admitted.year)) : 'Not yet'));
   if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.termsFor(p)}${S.probation ? ' · on probation' : ''}`));
   if (o.track) lines.push(kv('Open cases', `${o.workload.open}`), kv('Years of legal work', String(Math.round(o.years))));
@@ -211,6 +212,7 @@ function casePage(c) {
       ${c.clientId ? `<button type="button" class="tree-row" data-npcperson="${c.clientId}"><strong>${esc(nameOf(c.clientId))}</strong><small>Client${c.clientAccount ? ` · ${esc(c.clientAccount)}` : ''}</small></button>` : kv('Client', c.role === 'prosecution' ? 'The government (the people of the state)' : c.role === 'agency' ? 'The agency' : '—')}
       ${c.parties.otherId ? `<button type="button" class="tree-row" data-npcperson="${c.parties.otherId}"><strong>${esc(nameOf(c.parties.otherId))}</strong><small>Other party</small></button>` : c.vars.otherOrg && c.kind !== 'criminal' ? kv('Other party', c.vars.otherOrg) : ''}
       ${c.role === 'prosecution' ? `<button type="button" class="tree-row" data-npcperson="${c.parties.defendantId}"><strong>${esc(nameOf(c.parties.defendantId))}</strong><small>Defendant · not guilty unless proved</small></button>` : ''}
+      ${c.knownOfficer ? `<p class="muted">${esc(nameOf(c.knownOfficer.id))}, the ${esc(c.knownOfficer.role.toLowerCase())}, is someone you worked beside on the force.</p>` : ''}
       ${c.judgeId ? `<button type="button" class="tree-row" data-npcperson="${c.judgeId}"><strong>${esc(nameOf(c.judgeId))}</strong><small>Judge</small></button>` : ''}
       ${c.otherCounselId ? `<button type="button" class="tree-row" data-npcperson="${c.otherCounselId}"><strong>${esc(nameOf(c.otherCounselId))}</strong><small>Opposing counsel</small></button>` : ''}
       ${c.supervisorId ? `<button type="button" class="tree-row" data-npcperson="${c.supervisorId}"><strong>${esc(nameOf(c.supervisorId))}</strong><small>${c.clinic ? 'Clinic supervisor' : 'Supervising attorney'}</small></button>` : ''}`)}

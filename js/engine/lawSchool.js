@@ -34,6 +34,12 @@ export function lawOf(p = player()) {
       caseIds: [], history: [], seen: {}, specialty: null };
   }
   if (!('courtroom' in p.law.skills)) groupSkills(p.law);
+  // Years on the police force come with a lawyer into court: testifying, reports, and how cases are built.
+  if (p.law.policeYears == null && p.investigator) {
+    const yrs = p.investigator.stats?.years ?? 0;
+    p.law.policeYears = yrs;
+    if (yrs > 0) { p.law.skills.courtroom = clamp(p.law.skills.courtroom + Math.min(10, yrs * 1.5)); p.law.skills.research = clamp(p.law.skills.research + Math.min(6, yrs)); }
+  }
   return p.law;
 }
 /** Older saves kept twenty skills: each group starts at the average of what it gathers. */
