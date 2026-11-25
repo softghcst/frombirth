@@ -48,7 +48,8 @@ for (const h of AVATAR_MANIFEST.heads) {
   if (!f) { check(false, `${h.id} has not been measured`); continue; }
   check(f.top < f.earTop && f.earTop < f.lobe && f.lobe < f.chin + 10 && f.chin < f.neck + 1, `${h.id}: measurements out of order ${JSON.stringify(f)}`);
   check(f.w > 150 && f.w < 340 && f.earL < f.cx - f.w / 2 + 12 && f.earR > f.cx + f.w / 2 - 12 && Math.abs(f.cx - 256) < 8, `${h.id}: implausible width or ears`);
-  for (const stage of ['baby', 'toddler', 'kid', 'adult']) {
+  // Each stage on the heads it is drawn on: a baby, toddler or child always has a young head (STAGE_HEAD), a grown-up their own.
+  for (const stage of h.id.startsWith('head_00') ? ['baby', 'toddler', 'kid', 'adult'] : ['adult']) {
     const t = fitTransforms(h.id, stage);
     const y = (k) => Number(t[k].match(/translate\(\S+ (\S+)\)/)[1]);
     const sc = Number(t.nose.match(/scale\((\S+)\)/)[1]);
@@ -577,10 +578,13 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(!face(3, 'female').includes('pacifier') && /lips\/lips_/.test(face(3, 'female')), 'a three-year-old still has a binky, or no mouth');
   // Round, open eyes until thirteen: a heavy-lidded shape is drawn as the round one it maps to.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
-  check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
+  check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10', 'female')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10', 'female')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
   // Children (to 13) keep the toddler eyes; their own eyes come back at fourteen, with the grown-up head.
-  for (const age of [5, 9, 13]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  for (const age of [5, 9, 13]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10', 'female')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
   check(eyed(14).includes('eyes/eyes_10.svg'), 'a fourteen-year-old does not have the eyes they were born with');
+  // A girl has the round eyes with lashes, a boy eyes_22, whatever eyes they were born with.
+  const eyedAs = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender });
+  for (const age of [1, 5, 10]) check(eyedAs(age, 'female').includes('baby_eyes_6.svg') && eyedAs(age, 'male').includes('eyes/eyes_22.svg'), `a ${age}-year-old girl has baby_eyes_6 and a boy eyes_22`);
   // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
   for (const skin of ['porcelain', 'umber', 'ebony']) {
     const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });

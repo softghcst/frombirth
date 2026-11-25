@@ -147,9 +147,9 @@ export function dressFor(look, ctx = {}) {
     out.eyebrows = BABY_BROWS;
     // A baby (under 3): a binky in place of the mouth, blue for a boy and pink for a girl (--binkie-color).
     if (stage === 'baby') { out.pacifier = PACIFIER.id; out.lips = null; }
-    out.eyes = babyEyes(out.eyes);  // and round, open eyes (curation.BABY_EYES)
+    out.eyes = babyEyes(out.eyes, gender);  // and round, open eyes: a girl's with lashes, a boy's without (curation.BABY_EYES_BY_GENDER)
   } else if (stage === 'kid') {
-    out.eyes = babyEyes(out.eyes);  // children keep the round toddler eyes (curation.BABY_EYES) until the grown-up head at 14
+    out.eyes = babyEyes(out.eyes, gender);  // children keep the round toddler eyes (curation.BABY_EYES) until the grown-up head at 14
     // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
     if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
@@ -245,8 +245,8 @@ const EYE_APART = 3;
  * sets each eye further out; browUp (template units) lifts the brows clear of the big eyes.
  */
 const STAGE_FEATURES = {
-  baby: { k: 0.74, eye: 1.2, brow: 0.9, nose: 0.6, mouth: 1.25, drop: 0.07, apart: 9, browUp: 11 },
-  toddler: { k: 0.82, eye: 1.12, brow: 0.92, nose: 0.66, mouth: 1.15, drop: 0.05, apart: 7, browUp: 8 },
+  baby: { k: 0.74, eye: 1.2, brow: 0.9, nose: 0.75, mouth: 1.25, drop: 0.07, apart: 9, browUp: 11 },
+  toddler: { k: 0.82, eye: 1.12, brow: 0.92, nose: 0.8, mouth: 1.15, drop: 0.05, apart: 7, browUp: 8 },
   kid: { k: 0.94, eye: 1.08, brow: 0.9, nose: 0.82, mouth: 0.9, drop: 0.03, apart: 2, browUp: 5 },
   // Thirteen to seventeen: their own face, still a little young (fitTransforms is given 'teen' for these years).
   teen: { k: 1, eye: 1.04, brow: 0.96, nose: 0.93, drop: 0.01 },
