@@ -9,7 +9,7 @@ import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
-import { rec, I, reputationOf, dateWords, now, working } from '../engine/investigations/core.js';
+import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
 import * as W from '../engine/investigations/casework.js';
@@ -17,6 +17,8 @@ import * as V from '../engine/investigations/views.js';
 import * as PI from '../engine/investigations/private.js';
 import * as O from '../engine/investigations/oversight.js';
 import * as X from '../engine/investigations/crossover.js';
+import * as FM from '../engine/investigations/forensicMed.js';
+import * as PO from '../engine/investigations/policing.js';
 import { settle, investigationsOpen } from '../engine/investigations/index.js';
 
 export { investigationsOpen };
@@ -38,13 +40,17 @@ function sectionsFor(p, r) {
   if (police && !(r?.job && r.family === 'federal')) out.push(['agency', r?.job ? 'My Agency' : 'Departments']);
   if (p.countryId === 'us' && p.age >= 21) out.push(['federal', 'Federal agencies']);
   if (r?.caseIds?.length) out.push(['cases', 'Active Cases'], ['archive', 'Case Archive']);
-  if (r?.job?.detective || r?.family === 'federal') out.push(['cold', 'Cold Cases']);
+  if (r?.job?.detective || r?.family === 'federal') out.push(['cold', 'Cold Cases'], ['reviews', 'Conviction Reviews']);
   if (r && Object.values(r.people).some((v) => (Array.isArray(v) ? v.length : v))) out.push(['team', 'Team']);
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
-  if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections']);
+  if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections'], ['stories', 'My Stories']);
+  if (FM.examinerNow(p) || FM.referrals('death', p).length) out.push(['death', 'Death Investigations']);
+  if (FM.evaluatorNow(p) || FM.referrals('competency', p).length) out.push(['competency', 'Competency Evaluations']);
+  if (r?.family !== 'federal' && (A.agency(r?.job?.agencyId)?.chiefId === p.id || ['council', 'mayor'].includes(p.politics?.officeId) || (r?.stats.years ?? 0) >= 8)) out.push(['policy', 'Public Safety']);
+  if (legacies().length) out.push(['legacy', 'Family Legacy']);
   return out;
 }
 
@@ -112,7 +118,7 @@ const VIEWS = {
     }).join('');
   },
   cases(p, r) {
-    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome && W.caseStatus(inv) !== 'cold');
+    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && ((!inv.file.outcome && W.caseStatus(inv) !== 'cold') || inv.file.review?.status === 'open'));
     if (!list.length) return muted('No active cases. New cases are assigned as the year turns, within a manageable caseload.');
     return list.map((inv) => { const v = V.view(inv, 'investigator'); return card(v.title, kv([['Kind', v.kind], ['Status', v.status], ['Agency', v.agency], ['Opened', v.opened], ['Hours left this year', String(W.workLeft(inv))]]) + stack(btn('openCase', 'Open the case file', { arg: inv.id }))); }).join('');
   },
@@ -124,6 +130,15 @@ const VIEWS = {
     const list = W.coldCandidates(p.countryId);
     return list.length ? list.map(({ inv, newer }) => card(inv.file.title, kv([['First investigated', dateWords(inv.file.opened)], ['What is new', newer.map((n) => n.discipline).join(', ')]]) + stack(btn('reopen', 'Reopen the case', { arg: inv.id })))).join('')
       : muted('No cold case has anything new that could be tested yet.');
+  },
+  reviews(p) {
+    const list = W.reviewCandidates(p.countryId);
+    return card('About reviews', muted('A conviction can be looked at again when kept evidence could be tested in a way it was not. The conviction stands while it is reviewed; only a court can set it aside.'))
+      + (list.length ? list.map(({ inv, newer }) => card(inv.file.title, kv([['Investigated', dateWords(inv.file.opened)], ['Could now be tried', [...new Set(newer.map((n) => n.discipline))].join(', ')]]) + stack(btn('openReview', 'Open a review', { arg: inv.id })))).join('') : muted('No conviction here has kept evidence that could be tested in a new way.'));
+  },
+  legacy() {
+    return legacies().map((x) => card(`${x.name}${x.died ? ` (died ${x.died})` : ''}`, kv([['Years of service', String(x.years ?? '—')], ['Units', (x.units ?? []).map((u) => SPECIALTIES[u]?.name ?? u).join(', ') || '—'], ...(x.license ? [['License', x.license]] : []), ...(x.retired ? [['Retired', String(x.retired)]] : [])])
+      + x.history.slice(-10).map((h) => kv([[String(h.year), h.text]])).join('') + muted('The public career only. Case files and witness statements are not part of a family\'s record.'))).join('');
   },
   team(p, r) {
     const rows = [['partnerId', 'Partner'], ['supervisorId', 'Supervisor'], ['ftoId', 'Field training officer'], ['mentorId', 'Mentor'], ['prosecutorId', 'Prosecutor'], ['rivalId', 'Rival']]
@@ -179,6 +194,41 @@ const VIEWS = {
       + work.map((c) => card(`Complaint about ${nm(c.subjectId)}`, muted(c.text) + kv(c.evidence.map((e) => [O.IA_STEPS[e.step].label, e.text]))
         + stack(Object.entries(O.IA_STEPS).map(([id, d]) => btn('ia', d.label, { arg: `${c.id}|${id}` })).join('') + ['substantiated', 'unsubstantiated', 'insufficient evidence', 'training issue'].map((f) => btn('iaDecide', `Find: ${f}`, { arg: `${c.id}|${f}` })).join('')))).join('');
   },
+  death(p) {
+    const list = FM.referrals('death', p);
+    return list.length ? list.slice().reverse().map((d) => { const inv = W.investigation(d.invId); const tox = FM.toxicology(d.id);
+      return card(inv.file.title, kv([['Referred by', nm(d.detectiveId)], ['Status', d.status === 'signed' ? `Signed: cause, ${FM.CAUSES[d.report.cause].toLowerCase()}; manner, ${FM.MANNERS[d.report.manner].toLowerCase()}` : 'Open'], ['Done', d.steps.join(', ') || 'nothing yet'], ...(d.tox ? [['Toxicology', tox ?? `Expected ${dateWords(d.tox.due)}`]] : [])])
+        + muted('Cause of death and manner of death are different findings. An examination cannot say who was involved.')
+        + (d.status === 'open' ? stack(Object.entries(FM.DEATH_STEPS).map(([id, x]) => btn('death', x.label, { arg: `${d.id}|${id}` })).join('') + btn('signDeath', 'Sign the report', { arg: d.id })) : '')); }).join('')
+      : muted('No referrals yet. They come from the investigating agencies as the year turns.');
+  },
+  competency(p) {
+    const list = FM.referrals('competency', p);
+    return list.length ? list.slice().reverse().map((e) => { const c = store.state.justice.cases[e.caseId];
+      return card(`Competency: ${nm(c.defendantId)}`, kv([['Court', c.court], ['Status', e.status === 'reported' ? `Reported: ${e.opinion.replace('_', ' ')}` : 'Open'], ['Done', e.steps.join(', ') || 'nothing yet']])
+        + muted('You work for the court, not as their therapist. A diagnosis is not evidence of guilt or danger; the question is only whether they can follow the proceedings and help their lawyer.')
+        + (e.status === 'open' ? stack(Object.entries(FM.EVAL_STEPS).map(([id, x]) => btn('evalStep', x.label, { arg: `${e.id}|${id}` })).join('') + ['competent', 'not_competent', 'more_time'].map((o) => btn('evalReport', `Report: ${o.replace('_', ' ')}`, { arg: `${e.id}|${o}` })).join('')) : '')); }).join('')
+      : muted('No court referrals yet.');
+  },
+  policy(p, r) {
+    const a = r?.job?.agencyId ? A.agency(r.job.agencyId) : A.agencyOf(A.kindsIn(p.countryId)[0], p.countryId, p.city);
+    const b = PO.budgetOf(a);
+    const focus = PO.priorityOf(a);
+    let out = card(a.name, kv([['Budget this year', b.words], ['Priority', focus ? PO.FOCUS[focus].name : 'none set'], ['Civilian oversight board', a.oversight?.board ? `Yes, since ${a.oversight.since}` : 'No'], ['Chief', a.chiefId === p.id ? 'You' : nm(a.chiefId)]])
+      + muted('The budget is set by the mayor and the country\'s policy (Politics). A chief runs the department; neither commands the courts or the prosecutor.'));
+    if (a.chiefId === p.id) out += card('Set this year\'s priority', stack(Object.entries(PO.FOCUS).map(([id, x]) => btn('focus', `${x.name}: ${x.sub}`, { arg: id })).join('')));
+    if (['council', 'mayor'].includes(p.politics?.officeId)) out += card('A civilian oversight board', '<p><b>For:</b></p>' + PO.BOARD_ARGUMENTS.for.map((x) => `<p>• ${esc(x)}</p>`).join('') + '<p><b>Against:</b></p>' + PO.BOARD_ARGUMENTS.against.map((x) => `<p>• ${esc(x)}</p>`).join('')
+      + stack(btn('board', a.oversight?.board ? 'Propose ending the board' : 'Propose creating a board', { arg: a.oversight?.board ? 'end' : 'create' })));
+    if (p.countryId === 'us' && r?.family === 'police') { const why = PO.sheriffBlock(p); out += card('Run for sheriff', why ? muted(why) : stack(btn('sheriff', 'Stand for election as sheriff'))); }
+    return out;
+  },
+  stories(p) {
+    const open = X.publicCases(p).filter((c) => !X.myStories(p).some((s) => s.caseId === c.caseId));
+    return X.myStories(p).slice().reverse().map((s) => card(`Story: ${W.investigation(s.invId).file.title}`, kv([['Done', s.steps.join(', ') || 'nothing yet'], ['Status', s.published ? `Published (${s.accuracy})${s.correction ? ', corrected' : ''}` : 'In progress']])
+      + s.claims.map((cl) => `<p>• ${esc(cl.text)} <span class="muted">${cl.sourced ? '(sourced)' : '(one person\'s account)'}</span></p>`).join('')
+      + stack(s.published ? (s.accuracy === 'contains an error' && !s.correction ? btn('correct', 'Run a correction', { arg: s.id }) : '') : Object.entries(X.STORY_STEPS).map(([id, x]) => btn('storyStep', x.label, { arg: `${s.id}|${id}`, cls: x.restricted ? 'danger' : '' })).join('') + btn('publish', 'Publish', { arg: s.id })))).join('')
+      + (open.length ? card('Cases in court you could cover', open.map((c) => kv([[c.title, c.outcome]]) + stack(btn('startStory', 'Work on a story', { arg: c.caseId }))).join('')) : '');
+  },
   press(p) {
     const list = X.publicCases(p);
     return list.length ? card('Cases in the public record', list.map((c) => kv([[c.title, `${c.defendant}: ${c.outcome}`]])).join('') + muted('Only what happened in open court. Case files, witness statements and sealed records are not public.')) : muted('No cases in court here yet.');
@@ -214,6 +264,7 @@ const CASE_VIEWS = {
       for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
+    if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
     return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
   },
@@ -251,6 +302,7 @@ function openCaseFile(api, invId, refreshHub) {
       if (pick) await say(W.act(id, x, { question: pick }));
     } else if (act === 'step') await say(W.act(id, x));
     else if (act === 'writeReport') await say(W.writeReport(id, x));
+    else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
     else if (act === 'suspend') { if (await confirmModal({ title: 'Set the case aside?', body: 'It stays open, inactive. After three years with nothing new, it becomes a cold case.', yes: 'Set it aside' })) await say(W.suspend(id)); }
@@ -279,6 +331,18 @@ const ACTIONS = {
   promote: (a, x) => x.say(C.seekPromotion(a)),
   openCase: (a, x) => openCaseFile(x.api, a, x.render),
   reopen: (a, x) => x.say(W.reopen(a)),
+  death: (a, x) => { const [d, s2] = a.split('|'); return x.say(FM.deathStep(d, s2)); },
+  signDeath: async (a, x) => { const cause = await pickModal({ title: 'Cause of death', options: Object.entries(FM.CAUSES).map(([v, l]) => ({ value: v, label: l })) }); if (!cause) return; const manner = await pickModal({ title: 'Manner of death', body: 'A separate finding from the cause.', options: Object.entries(FM.MANNERS).map(([v, l]) => ({ value: v, label: l })) }); if (manner) await x.say(FM.signDeathReport(a, cause, manner)); },
+  evalStep: (a, x) => { const [e, s2] = a.split('|'); return x.say(FM.evalStep(e, s2)); },
+  evalReport: (a, x) => { const [e, o] = a.split('|'); return x.say(FM.reportCompetency(e, o)); },
+  focus: (a, x) => x.say(PO.setPriority(a)),
+  board: (a, x) => x.say(PO.proposeBoard(a === 'create')),
+  sheriff: (a, x) => x.say(PO.runForSheriff()),
+  startStory: (a, x) => x.say(X.startStory(a)),
+  storyStep: (a, x) => { const [s2, st] = a.split('|'); return x.say(X.storyStep(s2, st)); },
+  publish: (a, x) => x.say(X.publishStory(a)),
+  correct: (a, x) => x.say(X.correctStory(a)),
+  openReview: (a, x) => x.say(W.openReview(a)),
   profile: async (a, x) => { const { openNpc } = await import('./tabs/people.js'); openNpc(store.state.npcs[a], x.api); },
   applyLicense: (a, x) => x.say(C.applyLicense()),
   openAgency: (a, x) => x.say(PI.openAgency()),
