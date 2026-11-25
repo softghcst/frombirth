@@ -322,7 +322,7 @@ section('Health');
 {
   const { mortalityChance } = await import('../js/engine/death.js');
   const { ensureLife } = await import('../js/engine/npcLives.js');
-  const med = await import('../js/engine/medical.js');
+  const med = await import('../js/engine/health/visits.js');
   const at = (year) => { store.state.year = year; H.syncWorld(year); };
   life({ born: 1900, age: 0 });
   at(1900);
@@ -354,12 +354,16 @@ section('Health');
   check(H.treatmentIn('flu', 1930).chance < H.treatmentIn('flu', 1950).chance, 'infections were harder to treat before antibiotics');
   check(H.treatmentIn('cancer', 2026).chance === 1 && H.treatmentIn('depression', 2026).chance === 1, 'today\'s treatments are as before');
   const r = life({ born: 1880, age: 35 });
-  r.conditions.push({ id: 'diabetes', name: 'diabetes', severity: 40, chronic: true, sinceAge: 30, treated: false });
   r.finance.cash = 1e6;
-  const t = med.treatable().find((x) => x.id === 'diabetes');
-  check(t && t.limited && !t.manage, 'in 1915 a doctor can do little for diabetes, and the screen says so');
-  med.seeDoctor('diabetes');
-  check(!r.conditions.find((c) => c.id === 'diabetes').treated, 'and it cannot be brought under control');
+  // One health record: diabetes from a scene is a long-term condition in it, and in 1915 there is no medicine for it.
+  const { addCondition } = await import('../js/engine/health/ailments.js');
+  const rules = await import('../js/engine/health/rules.js');
+  const { MED_BY_ID } = await import('../js/data/health/medications.js');
+  addCondition('diabetes', r);
+  check(r.health.conditions.some((c) => c.conditionId === 'type2_diabetes') && !rules.medAvailable(MED_BY_ID.metformin, 1915), 'in 1915 diabetes goes into the health record, with no medicine for it yet');
+  addCondition('flu', r);
+  const t = med.treatable().find((x) => x.id === 'flu');
+  check(t && t.limited, 'in 1915 a doctor can do less for the flu (no antibiotics), and the screen says so');
   check(!med.surgeryOptions().some((s) => s.id === 'lipo') && /no such thing/.test(med.therapy().text) === false, 'no liposuction in 1915; talking therapy existed by then');
   // Outcomes do not change on reload: the dice are saved with the life.
   const s = life({ born: 1910, age: 30 });

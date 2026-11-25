@@ -26,6 +26,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS } from '../data/epitaphs.js';
 import { estateTax, relationOf } from './inheritance.js';
 import { settleOnDeath as settleAnimals } from './animals.js';
+import { ailmentsOf } from './health/ailments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -55,7 +56,7 @@ function careShift(p) {
   if (p.flags.funActs?.gym && p.flags.funActs.age >= p.age - 1) s += 1; // keeps active
   if (p.stats.mood >= 60) s += 1;
   if (p.stats.mood < 25) s -= 2;
-  if (p.conditions.some((c) => c.chronic && !c.treated)) s -= 2; // an untreated long-term illness
+  if (ailmentsOf(p).some((c) => c.chronic && !c.treated)) s -= 2; // an untreated long-term illness
   s += (careQuality() - 84) / 7; // the standard of care within reach, which money can buy
   return s;
 }
@@ -72,8 +73,8 @@ export const deathRoll = { spared: false };
 export function rollDeath() {
   const p = player();
   if (deathRoll.spared) return null;
-  // The most serious condition, from the older illness list or the health record.
-  const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
+  // The most serious condition in the health record: an ailment, or a long-term condition.
+  const worst = [...ailmentsOf(p), ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }

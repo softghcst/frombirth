@@ -60,6 +60,9 @@ SOURCES = {
 
 # Where the game's value stands although the source reads differently, and why.
 DECIDED = {
+    ('pf', 'sameSexMarriage'): 'French Polynesia is not listed on its own; as part of France, French marriage law (same-sex marriage since 2013) applies there.',
+    ('mv', 'taxTop'): "The table gives 0% for expatriates; resident individuals have paid a progressive income tax of up to 15% since 2020, which the game uses.",
+    ('mv', 'taxShape'): "The table gives 0% for expatriates; residents' income tax runs in bands from 0% to 15%.",
     ('ru', 'lgbt'): 'Legal in the code, but the "international LGBT movement" was banned as extremist in 2023; the game treats the law as hostile.',
     ('lb', 'lgbt'): 'The source calls it ambiguous: Article 534 of the penal code criminalises it, though some courts have declined to apply it.',
     ('hu', 'lgbt'): 'Registered partnerships and anti-discrimination law exist, but a 2021 law restricts LGBT content and a 2025 law banned Pride marches.',

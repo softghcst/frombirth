@@ -22,9 +22,10 @@ export function practiceOptions(m = med(), p = player()) {
   const q = new Set(qualified(m));
   return Object.entries(PRACTICE_TYPES).map(([id, t]) => {
     let block = '';
-    if (!t.needs.some((s) => q.has(s))) block = `Needs completed training in ${t.needs.slice(0, 2).map((s) => s.replace('_', ' ')).join(' or ')}.`;
+    const needs = t.needs === 'any' ? [...q] : t.needs;
+    if (!needs.some((s) => q.has(s))) block = `Needs completed training in ${(t.needs === 'any' ? ['any specialty'] : t.needs).slice(0, 2).map((s) => s.replace('_', ' ')).join(' or ')}.`;
     else if (m.license.status !== 'full') block = 'Needs a full license to practice.';
-    return { id, ...t, block, specialtyId: t.needs.find((s) => q.has(s)) ?? null };
+    return { id, ...t, block, specialtyId: needs.find((s) => q.has(s)) ?? null };
   });
 }
 

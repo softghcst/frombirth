@@ -106,7 +106,7 @@ export const NAMES = {
   ve: {
     male: 'José Luis Carlos Jesús Juan Miguel Ángel Rafael Pedro Francisco Antonio Alejandro Daniel David Gabriel Samuel Santiago Sebastián Diego Andrés Simón Leonardo Ricardo Eduardo Víctor Gustavo Wilmer Yorman Jhon Jeison Ender Freddy Nelson Ramón Argenis Omar Moisés Isaac',
     female: 'María Valentina Camila Isabella Sofía Victoria Daniela Gabriela Andrea Mariana Carolina Alejandra Paola Génesis Oriana Yuliana Yusleidy Mayerlin Dayana Rosmary Maryori Norelys Carmen Rosa Ana Luisa Josefina Milagros Coromoto Fabiola Verónica Patricia Adriana Estefanía Nathaly Wilmary Yoselin Bárbara',
-    last: 'González Rodríguez Pérez Hernández García Martínez López Sánchez Ramírez Díaz Torres Rojas Medina Mendoza Castillo Romero Moreno Gutiérrez Suárez Contreras Colmenares Chacón Parra Márquez Briceño Guerrero Salazar Blanco Fernández Rivas Marcano Figueroa Bolívar Urdaneta Quintero Araujo Zambrano Rondón Villalobos Delgado Carrasquel Monsalve Uzcátegui Peña Velásquez Acosta Useche',
+    last: 'Subero González Rodríguez Pérez Hernández García Martínez López Sánchez Ramírez Díaz Torres Rojas Medina Mendoza Castillo Romero Moreno Gutiérrez Suárez Contreras Colmenares Chacón Parra Márquez Briceño Guerrero Salazar Blanco Fernández Rivas Marcano Figueroa Bolívar Urdaneta Quintero Araujo Zambrano Rondón Villalobos Delgado Carrasquel Monsalve Uzcátegui Peña Velásquez Acosta Useche',
   },
   co: {
     male: 'Juan Santiago Samuel Matías Sebastián Nicolás Alejandro Daniel David Andrés Felipe Camilo Carlos Luis Jorge Diego Esteban Mauricio Julián Cristian Fabián Óscar Jhon Brayan Yeison Duván Wilson Germán Hernán Iván Jairo Fredy Edwin Gustavo Emiliano Tomás',

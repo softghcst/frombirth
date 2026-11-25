@@ -8,7 +8,7 @@ const { advanceYear } = await import('../js/engine/yearProcessor.js');
 const { deathRoll } = await import('../js/engine/death.js');
 const cars = await import('../js/engine/vehicles.js');
 const martial = await import('../js/engine/martial.js');
-const { addCondition, ailmentChoice } = await import('../js/engine/health.js');
+const { addCondition, ailmentChoice } = await import('../js/engine/health/ailments.js');
 const { ENCOUNTERS } = await import('../js/data/rides.js');
 const { STYLES } = await import('../js/data/martial.js');
 
@@ -62,12 +62,13 @@ const bike = (p) => { const a = { id: `asset_test_${p.assets.length}`, kind: 've
   check(martial.fightEdge(p) > before && martial.bestMove(p), `training counts in a fight (${martial.fightEdge(p).toFixed(2)}, ${martial.bestMove(p)})`);
   check(!martial.takeCourse('kravmaga').ok, 'krav maga is for twelve and up');
   const q = life(30);
+  q.finance.cash = 1e6; // fourteen years of courses, whatever else the years cost
   for (let y = 0; y < 14; y++) { martial.takeCourse('karate'); martial.takeCourse('karate'); advanceYear(); store.state.pendingEvents = []; }
   check(martial.styles().find((x) => x.id === 'karate').black && q.milestones.some((m) => /black belt in karate/i.test(m.text)), 'years of karate: a black belt, and a milestone');
   // A ride's snatch: the move shows as a way to handle it, for someone who knows one.
   const a = bike(q);
   let seen = false;
-  for (let i = 0; i < 60 && !seen; i++) { const b = bike(q); for (let j = 0; j < 3 && !seen; j++) { const r = cars.ride(b.id, 'cruising', 30); if (r.encounter?.id === 'snatch') seen = r.encounter.options.some((o) => /Use your/.test(o.label)); } }
+  for (let i = 0; i < 200 && !seen; i++) { const b = bike(q); for (let j = 0; j < 3 && !seen; j++) { const r = cars.ride(b.id, 'cruising', 30); if (r.encounter?.id === 'snatch') seen = r.encounter.options.some((o) => /Use your/.test(o.label)); } }
   check(seen, 'someone with a move gets to use it when a thief grabs their bike');
   void a;
 }
@@ -77,7 +78,7 @@ const bike = (p) => { const a = { id: `asset_test_${p.assets.length}`, kind: 've
   const p = life(30);
   addCondition('flu');
   const said = ailmentChoice('doctor', { words: { illnessId: 'flu' } });
-  check(said && (!p.conditions.some((c) => c.id === 'flu') || /slow to clear/.test(said)), `seeing a doctor sees to it (${said})`);
+  check(said && (!p.health.ailments.some((c) => c.id === 'flu') || /slow to clear/.test(said)), `seeing a doctor sees to it (${said})`);
 }
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }

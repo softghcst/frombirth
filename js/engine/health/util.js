@@ -2,7 +2,7 @@
 // randomness that belongs to one person and never changes on reload.
 import { uid } from '../../util.js';
 import { store, player, country } from '../../state.js';
-import { careCost } from '../medical.js';
+import { careCost } from './visits.js';
 import { claim } from './insurance.js';
 
 export const WEEKS = 52;

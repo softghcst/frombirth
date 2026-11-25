@@ -50,6 +50,8 @@ export const SPECIALTIES = [
   S('ent', 'Otolaryngology (ENT)', 'ENT surgeon', { years: 5, play: 'or', dept: 'ent', surgical: true, compete: 0.75, procedures: ['ent_surgery', 'office_minor'] }),
   S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor'] }),
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
+  // General practice: a hospital internship, then practice (before residency was the usual route; see ERA.gpEra).
+  S('general', 'General Practice', 'general practitioner', { kind: 'gp', years: 1, play: 'panel', dept: 'family', compete: 0, procedures: ['office_minor', 'ob_delivery'], practice: 'family_clinic', minYear: 1800, maxYear: 1968 }),
   // Integrated surgical residencies (entered straight from medical school, in the US)
   S('ct_integrated', 'Integrated Thoracic Surgery', 'cardiothoracic surgeon', { years: 6, play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.9, grants: 'ctsurg',
     procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta', 'gs_hernia'], minYear: 2008 }),
@@ -241,7 +243,7 @@ export const RESIDENT_TITLES = ['Intern', 'Junior resident', 'Resident', 'Senior
 // What a physician-owner can open, and who may open it. `needs`: specialties (any) the owner must be
 // qualified in. Figures are game economics (local money is scaled by engine/business.js).
 export const PRACTICE_TYPES = {
-  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal'], demand: 1, equipment: 40000 },
+  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal', 'general'], demand: 1, equipment: 40000 },
   internal_clinic: { name: 'Internal medicine practice', needs: ['internal'], demand: 0.95, equipment: 40000 },
   pediatric_clinic: { name: 'Pediatric clinic', needs: ['pediatrics'], demand: 1, equipment: 35000 },
   dermatology_clinic: { name: 'Dermatology clinic', needs: ['dermatology'], demand: 1.15, equipment: 70000 },
@@ -251,6 +253,8 @@ export const PRACTICE_TYPES = {
   cardiology_clinic: { name: 'Cardiology practice', needs: ['cardiology'], demand: 1.1, equipment: 110000 },
   eye_clinic: { name: 'Eye clinic', needs: ['ophthalmology'], demand: 1.05, equipment: 130000 },
   obgyn_clinic: { name: "Women's health practice", needs: ['obgyn', 'mfm'], demand: 1, equipment: 60000 },
+  // A group of physicians in different specialties under one roof: any qualified physician may found one.
+  specialty_group: { name: 'Specialty group practice', needs: 'any', demand: 1.05, equipment: 90000 },
   plastic_clinic: { name: 'Plastic and reconstructive surgery practice', needs: ['plastic', 'plastic_integrated'], demand: 1.1, equipment: 120000 },
 };
 
@@ -261,9 +265,14 @@ export const ERA = {
   residencyMatch: 1952, // a national match for residency places (US); before it, places were offered and accepted directly
   boards: 1930, // specialty board certification becomes usual
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
+  doFullRights: 1973, // by about here every US state licensed osteopathic physicians to practice fully; before, they trained largely in their own (community) hospitals
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
-  womenWidelyAdmitted: 1920, // by about here most medical schools take women, if often in small numbers
+  womenWidelyAdmitted: 1920,
+  // Before about 1940 most doctors (in the US, and in the game everywhere) did a hospital internship and went into
+  // general practice; residency was for the minority who specialized. General practice as its own route lasts until
+  // family medicine replaces it (1969, the year Family Medicine's residency begins in data/medicine.js).
+  gpEra: 1940, gpUntil: 1969, // by about here most medical schools take women, if often in small numbers
 };
 
 /**

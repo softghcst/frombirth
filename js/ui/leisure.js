@@ -8,7 +8,7 @@ import { fmtMoney, theCountry, esc } from '../util.js';
 import { propertyTaxLabel, COUNTRIES } from '../data/countries.js';
 import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
-import * as med from '../engine/medical.js';
+import * as med from '../engine/health/visits.js';
 import { MENTAL_CARE_AGE } from '../engine/health/care.js';
 import * as fun from '../engine/activities.js';
 import { CHARM_ACTIVITIES } from '../data/activities.js';

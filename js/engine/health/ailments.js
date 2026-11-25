@@ -1,43 +1,56 @@
-// Yearly body upkeep: natural stat drift, new conditions, recoveries.
-import { rng } from '../rng.js';
-import { clamp } from '../util.js';
-import { player, log, store, country } from '../state.js';
-import { ILLNESSES, ILLNESS_BY_ID } from '../data/illnesses.js';
-import { LEGACY_IDS, CONDITION_BY_ID } from '../data/health/conditions.js';
-import { begin } from './health/course.js';
-import { hasCondition } from './health/record.js';
-import { PHYSICAL_LEGACY } from '../data/health/conditions.js';
-import { foundByDoctor } from './health/care.js';
-import { admit } from './health/hospital.js';
+// The Health Engine's ailments: the body's yearly upkeep (natural drift, new ailments, recoveries), and the one way
+// anything in the game gives someone a condition or clears one. A long-term condition (depression, asthma, heart
+// disease and the rest) goes to the health record's conditions, with its course and care (engine/health/course.js);
+// an ailment (a flu, a broken arm, a sports injury, exhaustion) goes to the same record's ailments. There is no
+// other list: older saves' player.conditions are moved here when they load (absorbLegacy, engine/health/record.js).
+//
+//   player.health.ailments = [{ id, name, severity, chronic, sinceAge, treated }]
+import { rng } from '../../rng.js';
+import { clamp } from '../../util.js';
+import { player, log, store, country } from '../../state.js';
+import { ILLNESSES, ILLNESS_BY_ID } from '../../data/health/ailments.js';
+import { LEGACY_IDS, CONDITION_BY_ID } from '../../data/health/conditions.js';
+import { begin } from './course.js';
+import { hasCondition, healthOf } from './record.js';
+import { PHYSICAL_LEGACY } from '../../data/health/conditions.js';
+import { foundByDoctor } from './care.js';
+import { admit } from './hospital.js';
 
-export function addCondition(id) {
-  const p = player();
+/** A person's ailments, in their health record. */
+export const ailmentsOf = (p = player()) => (healthOf(p).ailments ??= []);
+export const hasAilment = (id, p = player()) => ailmentsOf(p).some((c) => c.id === id);
+/** Long-term conditions and ailments together, by id (for events that ask "does this person have..."). */
+export const conditionIdsOf = (p = player()) => [...ailmentsOf(p).map((c) => c.id), ...(p.health?.conditions ?? []).filter((c) => c.status === 'active' || c.status === 'in_remission').map((c) => c.conditionId)];
+
+
+export function addCondition(id, p = player()) {
   // Mental health conditions belong to the health engine: an event can start one, never diagnose it.
   if (LEGACY_IDS[id] || CONDITION_BY_ID[id]) {
     const cid = LEGACY_IDS[id] ?? id;
-    if (hasCondition(cid)) return false;
+    if (hasCondition(cid, healthOf(p))) return false;
     const rec = begin(CONDITION_BY_ID[cid], p, { attack: cid === 'heart_disease' });
     // A scene that brings on a physical condition is one where a doctor found it (the tests, the ambulance).
     if (PHYSICAL_LEGACY.includes(cid)) foundByDoctor(rec, cid === 'heart_disease' ? 'hospital' : 'primary', cid === 'heart_disease' ? 'cardiologist' : 'gp', p);
     return true;
   }
   const def = ILLNESS_BY_ID[id];
-  if (!def || p.conditions.some((c) => c.id === id)) return false;
-  p.conditions.push({ id, name: def.name, severity: def.severity, chronic: !!def.chronic,
+  if (!def || hasAilment(id, p)) return false;
+  ailmentsOf(p).push({ id, name: def.name, severity: def.severity, chronic: !!def.chronic,
     sinceAge: p.age, treated: false });
   if (id === 'broken_hip') admit('hip', {}, p);
   return true;
 }
 
-export function cureCondition(id) {
-  const p = player();
-  const before = p.conditions.length;
-  p.conditions = p.conditions.filter((c) => c.id !== id);
-  return p.conditions.length < before;
+export function cureCondition(id, p = player()) {
+  const h = healthOf(p);
+  const before = ailmentsOf(p).length;
+  h.ailments = h.ailments.filter((c) => c.id !== id);
+  return h.ailments.length < before;
 }
 
 const bump = (stats, key, delta) => { stats[key] = clamp(stats[key] + delta); };
 
+/** The body's year: natural drift, ailments taking their toll or clearing, new ones. */
 export function tickHealth() {
   const p = player();
   const s = p.stats;
@@ -56,7 +69,7 @@ export function tickHealth() {
   p.hidden.fertility = clamp(p.hidden.fertility - (age > 35 ? rng.int(2, 6) : 0));
 
   // Existing conditions take their toll, then may clear up.
-  for (const cond of [...p.conditions]) {
+  for (const cond of [...ailmentsOf(p)]) {
     const def = ILLNESS_BY_ID[cond.id];
     if (!def) continue;
     if (cond.sinceAge < age) {
@@ -91,7 +104,7 @@ export function tickHealth() {
 export function ailmentChoice(value, cast = {}) {
   const p = player();
   const id = cast.words?.illnessId;
-  if (!id || !p.conditions.some((c) => c.id === id)) return '';
+  if (!id || !hasAilment(id, p)) return '';
   if (value === 'doctor') {
     const fee = Math.round(80 * (country().currency?.scale ?? 1));
     if (p.age >= 18) p.finance.cash -= fee;

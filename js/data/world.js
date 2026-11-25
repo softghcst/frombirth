@@ -156,6 +156,13 @@ const ROWS = {
 
   // ---------- Beyond the reference list ----------
   gh: ['GH', 'GHA', 'country', null, AF, 'Africa', 'Accra', ['English', 'Akan'], 'Africa/Accra', 'Presidential republic'],
+  // Islands of the Pacific and the Indian Ocean, for honeymoons and everything else.
+  fj: ['FJ', 'FJI', 'country', null, OC, 'Oceania', 'Suva', ['English', 'Fijian', 'Fiji Hindi'], 'Pacific/Fiji', 'Parliamentary republic'],
+  pf: ['PF', 'PYF', 'territory', 'fr', OC, 'Oceania', 'Papeete', ['French', 'Tahitian'], 'Pacific/Tahiti', 'Parliamentary democracy within France',
+    'An overseas collectivity of France with its own government and assembly: France handles defense, foreign affairs and justice. Its people hold French nationality.'],
+  mv: ['MV', 'MDV', 'country', null, AS, 'Asia', 'Malé', ['Divehi'], 'Indian/Maldives', 'Presidential republic'],
+  mu: ['MU', 'MUS', 'country', null, AF, 'Africa', 'Port Louis', ['English', 'French', 'Mauritian Creole'], 'Indian/Mauritius', 'Parliamentary republic'],
+  sc: ['SC', 'SYC', 'country', null, AF, 'Africa', 'Victoria', ['Seychellois Creole', 'English', 'French'], 'Indian/Mahe', 'Presidential republic'],
 };
 
 /** The 102 reference places every build must contain, by group. Places outside this list are allowed (see `extra`). */

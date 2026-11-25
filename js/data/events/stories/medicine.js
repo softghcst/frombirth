@@ -302,6 +302,11 @@ export default [
     ['Clear the air', 'You both remember it differently. You agree it does not matter now.', 'reconcile:yes', 'good'],
     ['Keep it professional and no more', 'You work together, correctly and coolly.', 'reconcile:no'],
   ]),
+  scene('med_family_patient', '{who} has been diagnosed with {condition}, and turns to the doctor in the family: you. "What should I do? Will you look after me?"', [
+    ['Find them the right colleague, and stay family', 'You make the calls. You stay at their side, not at the end of the bed.', 'familyPatient:colleague', 'good'],
+    ['Be there with them, and let their doctors be the doctors', 'You go to the appointments and ask the questions they forget.', 'familyPatient:family', 'good'],
+    ['Take on their care yourself', 'You say yes before you have thought it through.', 'familyPatient:self', 'bad'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],
