@@ -48,7 +48,7 @@ function sectionsFor(p, m) {
 
 function stageWords(m, p) {
   if (!m) return train.premedOpen(p) ? 'Premedical' : 'Not on the medical route';
-  if (m.training) return `${m.training.kind === 'fellowship' ? 'Fellow' : m.training.kind === 'internship' ? 'Intern' : 'Resident'}, PGY-${m.training.pgy} of ${m.training.years}`;
+  if (m.training) return `${m.training.kind === 'fellowship' ? 'Fellow' : m.training.kind === 'internship' ? 'Intern' : p.countryId === 'us' ? 'Resident' : 'Specialty trainee'}, ${p.countryId === 'us' ? 'PGY-' : 'year '}${m.training.pgy} of ${m.training.years}`;
   if (m.job) return RANKS[m.job.rank]?.title ?? 'Physician';
   if (m.clinicIds.length) return 'In private practice';
   return { school: `Medical school, year ${m.school?.year ?? 1}`, graduate: 'Graduate, without a training place', none: 'Premedical' }[m.stage] ?? m.stage;

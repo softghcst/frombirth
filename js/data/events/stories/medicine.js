@@ -71,11 +71,11 @@ export default [
     ['Ask the residents what they would change', 'Some deflect. One tells you exactly, and you trust that program more for it.', 'skill:reasoning:1', 'good'],
     ['Focus on impressing the faculty', 'They seem impressed. You learn less about where you would be happy.', null],
   ]),
-  scene('med_match_day', 'Match Day. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
+  scene('med_match_day', '{day}. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
     ['Call home', 'Someone on the other end cries before you finish the sentence.', null, 'good', st('mood', 10)],
     ['Find your friends and compare', 'The room is shouting. Some of them got their first choice, some did not, and you hold on to each other either way.', null, 'good', st('mood', 6)],
   ]),
-  scene('med_match_day_unmatched', 'Match Day. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
+  scene('med_match_day_unmatched', '{day}. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
     ['Step outside and breathe', 'It is not the end. It is a year you did not plan. Tomorrow you will make a plan.', null, 'neutral', st('mood', 2)],
     ['Go straight to the dean\'s office', 'They have seen this before. They walk you through the options, calmly, and you leave with a list.', 'skill:professionalism:1'],
   ]),

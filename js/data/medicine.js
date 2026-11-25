@@ -279,7 +279,7 @@ export const JURISDICTIONS = {
     selection: 'the residency Match', ownership: 'physician', detail: 'detailed' },
   ca: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD'], exams: [{ id: 'mccqe1', name: 'MCCQE Part I', year: 4 }],
     license: { name: 'provincial licensure', afterTraining: 2 }, internship: 0, selection: 'the national residency match', ownership: 'physician' },
-  gb: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
+  uk: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
     license: { name: 'full GMC registration', afterTraining: 1 }, internship: 2, selection: 'specialty training recruitment' },
   au: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD / MBBS'], exams: [{ id: 'finals', name: 'Final examinations', year: 4 }],
     license: { name: 'general registration', afterTraining: 1 }, internship: 1, selection: 'specialty college selection' },

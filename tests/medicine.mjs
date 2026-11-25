@@ -489,6 +489,25 @@ section('research and teaching, wellbeing, and an offer from another city');
 }
 section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');
 
+// 8f. Another country is not the US: an internship first, its own words, a simplified profile.
+{
+  rng.seed(8642);
+  const q = life('uk', 26);
+  const gm = core.M(q);
+  strong(gm);
+  gm.route = 'md'; gm.stage = 'graduate'; gm.school = { name: 'medical school', year: 4, rotations: [], exams: { finals: { pass: true, score: 80 } }, interest: { internal: 5 }, apply: ['internal', 'family'], graduated: true, countryId: 'uk' };
+  store.state.pendingEvents = [];
+  gm.local = true;
+  // The year after graduating: the supervised years every graduate here works first.
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startTraining('internship', 'internal', site.e.id);
+  check(gm.training.kind === 'internship' && gm.training.years === 2, 'in the UK profile, two supervised years come before specialty training');
+  for (let i = 0; i < 6 && (gm.training?.kind ?? 'internship') === 'internship'; i++) { strong(gm); year(); }
+  if (gm.training) check(/^Specialty trainee/.test(q.career.title) && !/PGY/.test(q.career.title), `UK titles are not US ones (${q.career.title})`);
+  check(gm.license.status === 'full' && /GMC/.test(gm.license.name), `registration follows the UK profile (${gm.license.name})`);
+}
+section('another country: its own route, words and license, marked simplified');
+
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {
   rng.seed(31337);
