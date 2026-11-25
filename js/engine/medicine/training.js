@@ -592,6 +592,8 @@ export function tickTraining() {
 /** After school: an internship first where the country has one, otherwise straight to residency applications. */
 function startAfterSchool(p, m) {
   const j = jurisdiction(p.countryId);
+  // Where the license comes with graduation (afterTraining 0), it is sat now, before any training place.
+  if (j.license.afterTraining === 0 && m.route !== 'dpm') licenseCheck(p, m, null);
   if (m.route !== 'dpm' && j.internship > 0 && !m.completed.length && !(m.evaluations ?? []).some((x) => x.kind === 'internship')) {
     const site = trainingSites('internal', p.countryId, p.city)[0];
     log(`Every graduate here works ${j.internship === 1 ? 'a supervised year' : `${j.internship} supervised years`} before specialty training.`, 'system', 'neutral');
