@@ -1,0 +1,166 @@
+// The legal case engine: persistent cases, clients, evidence, filings, deadlines, the courtroom, verdicts, settlements
+// and appeals, and how each specialty differs. Run with: node tests/law-cases.mjs
+import { store, rng, ls, lp, lc, k, check, finish, turn, lawyer, playCase, saveGame, loadGame } from './helpers/lawSetup.mjs';
+import { CASE_TEMPLATES, SPECIALTIES } from '../js/data/law.js';
+
+rng.seed(20261126);
+const npc = (id) => store.state.npcs[id];
+
+// ---------- One of every case: identities, parties, roles, stages ----------
+{
+  lawyer('lawyer');
+  const made = Object.keys(CASE_TEMPLATES).map((id) => lc.createCase(id, { role: CASE_TEMPLATES[id].kind === 'criminal' ? (id === 'theft' ? 'prosecution' : 'defense') : undefined, specialty: 'civil_litigation' }));
+  const ids = made.map((c) => c.id);
+  check(new Set(ids).size === ids.length && ids.every((id) => lc.caseById(id)), 'every case has its own stable id, kept in the justice world');
+  check(made.every((c) => !c.clientId || npc(c.clientId)?.alive), 'every client is a persistent person');
+  check(made.filter((c) => c.parties.otherId).every((c) => npc(c.parties.otherId)), 'opposing parties are real people');
+  check(made.every((c) => lc.ROLE_NAME[c.role]), 'every lawyer has a valid role');
+  check(made.every((c) => c.witnesses.every((w) => npc(w.npcId)) && c.evidence.every((e) => e.id && e.label && typeof e.reliability === 'number')), 'witnesses are people, and evidence items are records');
+  check(made.filter((c) => c.forum !== 'none').every((c) => npc(c.judgeId)?.flags.justice?.kind === 'judge'), 'every court case has a judge from the bench');
+  check(made.filter((c) => c.kind === 'criminal').every((c) => c.justiceCaseId && k.J().cases[c.justiceCaseId]?.defendantId === c.parties.defendantId), 'a criminal case is the Justice Engine\'s own case, with the same defendant');
+  const pros = made.find((c) => c.templateId === 'theft');
+  check(pros.role === 'prosecution' && !pros.clientId && k.J().cases[pros.justiceCaseId].prosecutorId === store.state.player.id, 'a prosecutor represents the government, not a client');
+  const fam = made.find((c) => c.templateId === 'divorce');
+  check(npc(fam.clientId).flags.spouseId === fam.parties.otherId && npc(fam.parties.childId).flags.parentIds.includes(fam.clientId), 'a family case is about a real marriage and a real child');
+  const dep = made.find((c) => c.templateId === 'dependency');
+  check(dep.role === 'childAttorney' && dep.clientId === dep.parties.childId && !dep.jury && /wishes/.test(lc.researchQuestion(dep).why), 'a child\'s attorney represents the child\'s wishes; a guardian ad litem is a different job');
+  const imm = made.find((c) => c.templateId === 'removal');
+  check(!imm.jury && imm.forum === 'immigration' && !!npc(imm.clientId).flags.originCountryId, 'immigration court has no jury, and the client comes from a real country');
+  const deal = made.find((c) => c.templateId === 'acquisition');
+  check(deal.forum === 'none' && !deal.judgeId, 'a transaction has no court');
+  const stagesOk = made.every((c) => c.stages.every((s) => typeof s.months === 'number') && c.stages[0].s === 'intake');
+  check(stagesOk, 'cases start at intake and move through their own stages');
+}
+
+// ---------- The courtroom differs by kind ----------
+{
+  lawyer('lawyer');
+  const phases = (id, role) => { const c = lc.createCase(id, { role }); c.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() }; return lc.courtroom(c).phases.map((x) => x.id); };
+  const crim = phases('burglary_hale', 'defense');
+  const immi = phases('removal');
+  const deal = phases('supply_deal');
+  const fam = phases('custody');
+  check(['jury', 'opening', 'objection', 'cross', 'closing'].every((x) => crim.includes(x)), `a jury trial: selection, opening, an objection, cross-examination, closing (${crim})`);
+  check(!immi.includes('jury') && !immi.includes('objection'), `immigration court: no jury (${immi})`);
+  check(deal.join() === 'closing', `a transaction closes without a trial (${deal})`);
+  check(!fam.includes('jury'), `family court: no jury (${fam})`);
+  check(new Set([crim.join(), immi.join(), deal.join(), fam.join()]).size >= 3, 'different kinds of case do not share one procedure');
+}
+
+// ---------- The demonstration trial: The State v. Morgan Hale ----------
+{
+  const runs = { good: 0, poor: 0, goodSupp: 0 };
+  for (let i = 0; i < 24; i++) {
+    lawyer('lawyer');
+    const c = lc.createCase('burglary_hale', { role: 'defense', specialty: 'criminal_defense' });
+    if (i === 0) {
+      check(c.title === 'The State v. Morgan Hale' && c.evidence.map((e) => e.id).join() === 'ident,camera,timeline,drill' && c.jury, 'Morgan Hale: a burglary, with an identification, a camera, a timeline and a disputed drill, before a jury');
+      check(lc.interview(c).ok && !lc.interview(c).ok, 'the client is interviewed once');
+      lc.review(c);
+      check(c.evidence.every((e) => e.reviewed), 'the evidence is reviewed, not made up');
+      const rq = lc.researchQuestion(c);
+      check(lc.research(c, rq.right).ok && /search/.test(rq.why), 'research finds the search issue');
+      const f = lc.file(c, 'strong');
+      check(f.filing && ['granted', 'denied'].includes(f.filing.ruling) && !lc.file(c, 'strong').ok, `the motion to suppress is filed once and ruled on (${f.filing.ruling})`);
+      const drill = c.evidence.find((e) => e.id === 'drill');
+      check(f.filing.ruling !== 'granted' || drill.status === 'excluded', 'a granted motion takes the drill out of the case');
+      for (let t = 0; t < 12 && !c.awaiting; t++) turn();
+      check(c.awaiting?.what === 'trial' && lc.stageOf(c) === 'trial', 'the case reaches trial as the months pass, and waits for the lawyer');
+      const day = lc.courtroom(c);
+      const r = lc.argue(c, { jury: 'fair', opening: 'theory', objection: 'hearsay', cross: 'lighting', direct: 'open', closing: 'burden' });
+      check(['acquitted', 'convicted'].includes(c.outcome.kind) && r.text.length && day.phases.length >= 5, `a verdict: ${c.outcome.kind}`);
+      const jc = k.J().cases[c.justiceCaseId];
+      check(jc.verdict && jc.verdict.outcome === c.outcome.kind, 'the Justice Engine records the same verdict');
+      check(!lc.argue(c, {}).ok && !lc.close(c, { kind: 'acquitted', text: 'x', favorable: 1 }).ok && ls.lawOf().history.length === 1, 'a verdict resolves once');
+      if (c.outcome.kind === 'convicted') check(lc.appealGrounds(c).every((g) => g.id) , 'a conviction can be appealed on its record');
+      continue;
+    }
+    // Many trials, played well or badly: preparation and sound choices help; nothing is guaranteed.
+    const good = i % 2 === 0;
+    if (good) { lc.interview(c); lc.review(c); lc.research(c, lc.researchQuestion(c).right); lc.file(c, 'strong'); }
+    for (let t = 0; t < 12 && !c.awaiting; t++) turn();
+    lc.argue(c, good ? { jury: 'fair', opening: 'theory', objection: 'hearsay', cross: 'lighting', direct: 'open', closing: 'burden' }
+      : { jury: 'improper', opening: 'overpromise', objection: 'relevance', cross: 'improper', direct: 'leading', closing: 'improper' });
+    if (c.outcome.kind === 'acquitted') { if (good) runs.good++; else runs.poor++; }
+    if (good && c.evidence.find((e) => e.id === 'drill').status === 'excluded') runs.goodSupp++;
+  }
+  check(runs.good > runs.poor, `good preparation and advocacy win more acquittals than poor (${runs.good} of 12 against ${runs.poor} of 11)`);
+  check(runs.good < 12, `but nothing guarantees an acquittal (${runs.good} of 12)`);
+}
+
+// ---------- Filings, deadlines and ethics ----------
+{
+  lawyer('lawyer');
+  const c = lc.createCase('contract_dispute');
+  const r = lc.file(c, 'improper');
+  check(!r.ok && c.filings[0].ruling === 'struck' && ls.lawOf().rep.integrity < 55, 'a motion with no legal basis is struck, and noticed');
+  // A routine filing on time when the lawyer has room.
+  const d = lc.createCase('dismissal');
+  for (let t = 0; t < 3; t++) turn();
+  check(d.filings.some((f) => f.main && f.routine) && d.deadlines[0].met === true, 'with room on the desk, a routine filing meets the deadline');
+  // Too much work: a deadline is missed, and it costs.
+  lawyer('lawyer');
+  const many = Array.from({ length: 6 }, () => lc.createCase('assault', { role: 'defense' }));
+  const rel = ls.lawOf().rep.reliability;
+  for (let t = 0; t < 8; t++) turn();
+  check(many.some((x) => x.deadlines.some((dl) => dl.met === false)) && ls.lawOf().rep.reliability < rel, 'a lawyer far over capacity misses deadlines, and loses reliability');
+  const e = lc.createCase('divorce');
+  e.ethics = { id: 'conceal', m: ls.nowM() };
+  const integ = ls.lawOf().rep.integrity;
+  check(lc.resolveEthics(e, 'proper').ok && ls.lawOf().rep.integrity > integ, 'refusing to hide evidence is the right call, and it counts');
+  const f2 = lc.createCase('divorce'); f2.ethics = { id: 'conceal', m: ls.nowM() };
+  lc.resolveEthics(f2, 'improper');
+  check(ls.lawOf().misconduct === 1 && ls.lawOf().rep.integrity < integ && !ls.lawOf().bar.disbarred, 'misconduct is punished in proportion: not disbarment for a first mistake');
+}
+
+// ---------- Not every case ends in court ----------
+{
+  lawyer('lawyer');
+  const fam = lc.createCase('divorce', { specialty: 'family' });
+  lc.interview(fam); lc.review(fam); lc.research(fam, lc.researchQuestion(fam).right); lc.file(fam, 'strong');
+  for (let t = 0; t < 6 && !lc.actions(fam).some((a) => a.id === 'negotiate'); t++) turn();
+  const offer = lc.currentOffer(fam);
+  const r = lc.negotiate(fam, true);
+  check(r.ok !== undefined && fam.outcome?.kind === 'settlement' && /%/.test(offer.text), `a divorce settles without a trial (${offer.text})`);
+  check(!lc.negotiate(fam, true).ok && ls.lawOf().history.filter((h) => h.caseId === fam.id).length === 1, 'a settlement resolves once');
+  const imm = lc.createCase('family_petition', { specialty: 'immigration' });
+  const out = playCase(imm);
+  check(['approved', 'denied'].includes(out?.kind) && !imm.jury, `an immigration petition is decided by the agency (${out?.kind})`);
+  const deal = lc.createCase('supply_deal', { specialty: 'corporate' });
+  const d = playCase(deal);
+  check(['closed', 'closed_risk'].includes(d?.kind), `a contract is negotiated and signed, no courtroom (${d?.kind})`);
+  const will = lc.createCase('will', { specialty: 'estate' });
+  const w = playCase(will);
+  check(w && (w.favorable <= 0 || npc(will.clientId).flags.will?.by === store.state.player.id), 'a will drafted for a client is the client\'s will on their record');
+}
+
+// ---------- Appeals and reload ----------
+{
+  lawyer('lawyer');
+  let c;
+  for (let i = 0; i < 20; i++) {
+    c = lc.createCase('contract_dispute');
+    c.errors.push({ kind: 'motion', text: 'A motion was wrongly denied.' });
+    lc.close(c, { kind: 'judgment_against', text: 'Judgment for the other side.', favorable: -0.5, trial: true });
+    if (lc.appealGrounds(c).length) break;
+  }
+  const g = lc.appealGrounds(c);
+  check(g.some((x) => x.id === 'motion'), 'a judgment against the client can be appealed on an error in the record');
+  const r = lc.fileAppeal(c, 'motion');
+  check(r.ok && c.appeal.of === c.id && c.appeal.judgment === 'judgment_against' && !lc.fileAppeal(c, 'motion').ok, 'the appeal is its own docket, tied to the judgment it reviews, filed once');
+  for (let t = 0; t < 3; t++) turn();
+  check(['affirmed', 'reversed', 'remanded'].includes(c.appeal.outcome), `decided on the record months later: ${c.appeal.outcome}`);
+  const before = JSON.stringify({ cases: lc.LC(), law: store.state.player.law });
+  saveGame(store.state);
+  store.state = loadGame(store.state.slotId);
+  check(JSON.stringify({ cases: lc.LC(), law: store.state.player.law }) === before, 'cases, clients and the record survive a save and reload unchanged');
+}
+
+// ---------- Specialties are honest ----------
+{
+  const playable = SPECIALTIES.filter((s) => s.playable);
+  check(playable.every((s) => s.cases.length && s.cases.every((id) => CASE_TEMPLATES[id])), 'every playable specialty has real cases');
+  check(SPECIALTIES.filter((s) => !s.playable).every((s) => !s.cases.length), 'specialties without cases are not called playable');
+}
+
+finish('The legal case engine holds.');

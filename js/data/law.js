@@ -353,7 +353,7 @@ export const CASE_TEMPLATES = {
     closing: [['The bartender and the video show who started it', 'evidence'], ['Sympathy', 'sympathy'], ['Attack the complainant', 'improper'], ['Self-defense was not disproved', 'burden']],
   },
   homicide: {
-    kind: 'criminal', offense: 'murder', level: 5, title: 'The State v. {client}',
+    kind: 'criminal', offense: 'homicide', level: 5, title: 'The State v. {client}',
     summary: '{client} is charged with the death of a business partner. The case rests on a motive, a phone location record and a disputed confession.',
     stages: [['intake', 0], ['discovery', 4], ['pretrial', 4], ['trial', 4], ['verdict', 0]], forum: 'trial', jury: true,
     evidence: [E('motive', 'financial_record', 'Records of a bitter dispute over money', 'other', 2, 85), E('location', 'phone_record', 'Phone records place {client} near the scene', 'other', 4, 75),

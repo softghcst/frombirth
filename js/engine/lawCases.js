@@ -57,6 +57,7 @@ export function createCase(templateId, o = {}) {
   const p = player();
   const countryId = o.countryId ?? p.countryId;
   const prof = profileFor(countryId);
+  LC(); // the store and its counter exist before the first id is drawn
   const id = `lc_${++k.J().lawSeq}`;
   const role = o.role ?? (T.kind === 'criminal' ? 'defense' : T.role ?? (T.gov ? 'agency' : ROLE_FOR[T.kind]));
   const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: nowM(), openedYear: store.state.year, role, lawyerId: o.lawyerId ?? p.id,
@@ -181,8 +182,11 @@ export function actions(c) {
   if (c.ethics && !c.ethics.resolved) out.push({ id: 'ethics', label: 'A difficult request' });
   return out;
 }
-const canNegotiate = (c) => !c.done && !c.negotiation.accepted && !c.awaiting?.done && (template(c).settle || c.kind === 'criminal')
-  && ['negotiation', 'pretrial', 'discovery', 'disclosure', 'evaluation', 'review', 'diligence', 'inventory', 'services'].includes(stageOf(c)) && !c.negotiation.offers.some((o) => o.m === nowM());
+// A deal can be struck in the stages for it, and right up to the door of the court: however long the turns, the chance
+// to settle or plead is there before a hearing or trial.
+const canNegotiate = (c) => !c.done && !c.negotiation.accepted && (template(c).settle || c.kind === 'criminal')
+  && (['negotiation', 'pretrial', 'discovery', 'disclosure', 'evaluation', 'review', 'diligence', 'inventory', 'services'].includes(stageOf(c)) || !!c.awaiting)
+  && !c.negotiation.offers.some((o) => o.m === nowM());
 
 // ---------- Working a case ----------
 
@@ -235,11 +239,13 @@ export function file(c, kind, o = {}) {
   const T = template(c);
   const L = lawOf(player());
   const quality = clamp((kind === 'strong' ? 0.55 : kind === 'weak' ? 0.25 : kind === 'concede' ? 0.4 : 0.1) + (c.research?.right ? 0.15 : 0) + skillIn(['writing', 'research']) / 300 + (o.routine ? -0.1 : 0), 0, 1);
-  const f = { id: `f${c.filings.length + 1}`, main: true, name: fill(T.motion.name, c), kind, quality: Math.round(quality * 100) / 100, m: nowM(), routine: !!o.routine, ruling: null };
+  // Routine work is done in the months it was due, not on the day the turn ends.
+  const when = o.at ?? nowM();
+  const f = { id: `f${c.filings.length + 1}`, main: true, name: fill(T.motion.name, c), kind, quality: Math.round(quality * 100) / 100, m: when, routine: !!o.routine, ruling: null };
   if (c.supervisorId) f.reviewedBy = c.supervisorId; // a supervisor read it first
   c.filings.push(f);
   const dl = c.deadlines.find((d) => d.id === 'filing' && d.met == null);
-  if (dl) dl.met = nowM() <= dl.due;
+  if (dl) dl.met = when <= dl.due;
   gain(player(), { writing: 2, drafting: c.kind === 'transaction' ? 2 : 0, procedure: 1 });
   let text;
   const target = c.evidence.find((e) => e.id === T.motion.target);
@@ -503,6 +509,8 @@ export function close(c, out, lines = []) {
   c.outcome = { ...out, m: nowM(), year: store.state.year };
   c.stageIdx = c.stages.length;
   note(c, `Outcome: ${out.text}`);
+  // A will drafted and signed is the client's will from now on, on their own record.
+  if (c.templateId === 'will' && out.favorable > 0 && c.clientId && store.state.npcs[c.clientId]) store.state.npcs[c.clientId].flags.will = { year: store.state.year, by: p.id, caseId: c.id, guardianNamed: true };
   // The client remembers how they were treated as much as how it ended.
   const n = store.state.npcs[c.clientId];
   if (n) { n.meters.relationship = clamp(n.meters.relationship + (out.favorable > 0 ? 12 : out.favorable > -0.6 ? 2 : -6) + (c.tasks.interview ? 4 : -4)); n.flags.formerClientOf = p.id; n.flags.lastCaseId = c.id; }
@@ -605,7 +613,7 @@ function advanceStage(c, load, p) {
     const swamped = load > capacity(p) * 1.4;
     if (!c.filings.some((f) => f.main) && T.motion) {
       if (swamped) { dl.met = false; L.rep.reliability = clamp(L.rep.reliability - 5); c.bonus = (c.bonus ?? 0) - 0.08; note(c, `Missed the deadline: ${dl.label}.`); log(`You missed a filing deadline in ${c.title}. The client is not happy.`, 'system', 'bad'); }
-      else file(c, 'strong', { routine: true }); // the routine version of the main argument, less sharp than the player's own
+      else file(c, 'strong', { routine: true, at: dl.due }); // the routine version of the main argument, less sharp than the player's own, done on time
     }
     if (dl.met == null) dl.met = true;
   }
