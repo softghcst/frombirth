@@ -1,5 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
@@ -50,6 +51,13 @@ function occupationLine(p) {
  * @param {HTMLElement} app
  * @param {{onExit:Function, onDeath:Function, onRestore:(state:object)=>void}} hooks
  */
+/** The date `months` after a birthday: the age's own birthday, or a few months on ("March 14, 2026", "September 14"). */
+function dayOfLife(p, age, months, withYear = true) {
+  const b = birthdayOf(p);
+  const m = b.m + months;
+  return longDate(isoDate(p.birthYear + age + Math.floor(m / 12), m % 12, b.d), withYear);
+}
+
 export function mountGame(app, hooks) {
   watchTitles();
   let activeTab = null;
@@ -153,7 +161,7 @@ export function mountGame(app, hooks) {
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
     syncMeters($('[data-meters]'), [['Mood', p.stats.mood], ['Health', p.stats.health], ['Intellect', p.stats.intellect], ['Charm', p.stats.charm]]);
-    $('[data-dock-age]').textContent = `${ageNow} · ${store.state.year}`;
+    $('[data-dock-age]').textContent = `${ageNow} · ${dateNow().slice(0, 4)}`;
     // Age up: an arrow, the words, and a badge with what comes next (the next age, or the season for shorter turns).
     const turn = nextTurnText();
     const next = turn.sub.replace(/^→\s*/, '');
@@ -202,12 +210,12 @@ export function mountGame(app, hooks) {
         month = 0;
         memories = 0;
         usedArt = new Set();
-        html += `<section class="age-block${i >= fresh ? ' fresh' : ''}"><h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
+        html += `<section class="age-block${i >= fresh ? ' fresh' : ''}"><h2 class="age-head">Age ${age} <small>${esc(dayOfLife(p, age, 0))}</small></h2>`;
       }
       // Turns shorter than a year: each part of the year under its own heading.
       if ((entry.month ?? 0) !== month) {
         month = entry.month ?? 0;
-        if (month) html += `<h3 class="season-head">${month} months <small>${esc(entry.kind === 'season' ? entry.text.replace(/\.$/, '') : '')}</small></h3>`;
+        if (month) html += `<h3 class="season-head">${month} months <small>${esc(dayOfLife(p, age, month, false))}${entry.kind === 'season' ? ` · ${esc(entry.text.replace(/\.$/, ''))}` : ''}</small></h3>`;
       }
       if (entry.kind === 'season') return; // the heading says it
       const enter = i >= fresh ? ` fresh" style="--i:${Math.min(i - fresh, 8)}` : '';

@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { giveBirthday, yearSpan } from './birthday.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
@@ -286,7 +287,8 @@ export function continueAs(npcId) {
   // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
-  next.today = `${old.year}-01-01`;
+  giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
+  next.today = yearSpan(next).start;
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
     languages: Object.entries(op.skills ?? {}).filter(([k, v]) => ['spanish', 'french', 'japanese', 'mandarin', 'german', 'korean', 'portuguese', 'arabic', 'sign_language'].includes(k) && v >= 40).map(([k]) => k) } });

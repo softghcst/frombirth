@@ -120,7 +120,7 @@ function inTime(t) {
   // A scene about the weather comes only when that weather really reached the player (engine/disasters.js).
   if (t.weather && !feltRecently(t.weather, t.minSeverity ?? 0, state, month === 0)) return false;
   if (t.seasons && step !== 12) {
-    const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId);
+    const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId, player().birthday?.m ?? 0);
     if (!t.seasons.some((x) => now.includes(x))) return false;
   }
   return true;
