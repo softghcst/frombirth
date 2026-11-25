@@ -5,7 +5,7 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum',
+//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum', 'instruction', 'punitive', 'certiorari',
 //          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
@@ -72,6 +72,12 @@ export const REAL_LAWS = [
   L('uk_pfea', ['uk'], 'eviction', 'Protection from Eviction Act 1977', 1977, 'It is a crime to evict a residential occupier without a court order, or to harass them into leaving.'),
   L('us_refugee', ['us'], 'asylum', 'Refugee Act of 1980', 1980, 'Asylum for anyone with a well-founded fear of persecution for race, religion, nationality, political opinion or membership of a particular social group.'),
   L('uk_refugee', ['uk'], 'asylum', 'Convention Relating to the Status of Refugees (1951)', 1954, 'A refugee with a well-founded fear of persecution may not be returned to the country they fled.'),
+  // Appeals: a jury told the wrong standard, punitive damages out of all proportion, and how a case reaches the top court.
+  L('us_sullivan', ['us'], 'instruction', 'Sullivan v. Louisiana (1993)', 1993, 'A jury instruction that misstates reasonable doubt can never be harmless: the conviction must be reversed.'),
+  L('us_gore', ['us'], 'punitive', 'BMW of North America v. Gore (1996)', 1996, 'Punitive damages that are grossly excessive violate due process; courts weigh reprehensibility, the ratio to actual harm, and comparable penalties.'),
+  L('us_campbell', ['us'], 'punitive', 'State Farm v. Campbell (2003)', 2003, 'Few awards with a ratio of punitive to actual damages above single digits will satisfy due process.'),
+  L('us_judges_bill', ['us'], 'certiorari', 'Judiciary Act of 1925', 1925, 'Most cases reach the Supreme Court only if it grants certiorari: it chooses which cases to hear.'),
+  L('uk_cra05', ['uk'], 'certiorari', 'Constitutional Reform Act 2005', 2009, 'Created the Supreme Court of the United Kingdom, replacing the House of Lords as the final court of appeal; an appeal needs permission.'),
   L('uk_children', ['uk'], 'custody', 'Children Act 1989, section 1', 1991, 'The child\'s welfare is the court\'s paramount consideration.'),
   L('uk_dra1969', ['uk'], 'divorce', 'Divorce Reform Act 1969 (in force 1971)', 1971, 'Divorce for irretrievable breakdown, shown by one of five facts: adultery, behavior or desertion, or two or five years\' separation.', { nofault: 'facts', until: 2021, note: 'Before 1971, divorce in England required proof of a matrimonial offense such as adultery or cruelty.' }),
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),
@@ -105,6 +111,7 @@ export const REAL_LAWS = [
 
 /** Court names that changed with the law. */
 export const COURT_HISTORY = {
-  uk: { trial: [[1972, 'Crown Court'], [0, 'Assizes (or Quarter Sessions)']], family: [[2014, 'Family Court'], [1971, 'Family Division of the High Court'], [0, 'Probate, Divorce and Admiralty Division']] },
-  us: { immigration: [[1983, 'Immigration Court'], [0, 'Immigration hearing before a special inquiry officer']] },
+  uk: { trial: [[1972, 'Crown Court'], [0, 'Assizes (or Quarter Sessions)']], family: [[2014, 'Family Court'], [1971, 'Family Division of the High Court'], [0, 'Probate, Divorce and Admiralty Division']],
+    supreme: [[2009, 'Supreme Court of the United Kingdom'], [0, 'Appellate Committee of the House of Lords']] },
+  us: { immigration: [[1983, 'Immigration Court'], [0, 'Immigration hearing before a special inquiry officer']], supreme: [[0, 'Supreme Court of the United States']] },
 };

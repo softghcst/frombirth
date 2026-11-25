@@ -131,9 +131,10 @@ export function leadCap(p = player()) {
 
 /** What a case would pay a private practice, before it is taken. */
 const feeFor = (level) => localCost([0, 1500, 4000, 9000, 22000, 60000][level], country());
-const pickTemplate = (specialtyId, maxLevel) => {
+const pickTemplate = (specialtyId, maxLevel, track = trackOf()) => {
   const s = SPECIALTY_BY_ID[specialtyId];
-  const pool = (s?.cases ?? []).filter((id) => CASE_TEMPLATES[id] && CASE_TEMPLATES[id].level <= maxLevel);
+  // A prosecutor or government lawyer argues for the State: never a convicted person's appeal against it.
+  const pool = (s?.cases ?? []).filter((id) => CASE_TEMPLATES[id] && CASE_TEMPLATES[id].level <= maxLevel && !(CASE_TEMPLATES[id].criminal && ['prosecutor', 'gov_counsel'].includes(track)));
   return pool.length ? rng.pick(pool) : null;
 };
 

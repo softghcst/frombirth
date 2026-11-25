@@ -232,7 +232,7 @@ export function createCase(templateId, o = {}) {
 export function contingencyRule(templateId, countryId) {
   const T = CASE_TEMPLATES[templateId];
   const r = CONTINGENCY[countryId];
-  if (NO_CONTINGENCY_KINDS.includes(T.kind)) return { allowed: false, why: 'Never allowed in criminal, family or child matters.' };
+  if (NO_CONTINGENCY_KINDS.includes(T.kind) || T.criminal) return { allowed: false, why: 'Never allowed in criminal, family or child matters.' };
   if (!r) return { allowed: false, why: 'Not modeled for this country: billed by the hour instead.' };
   if (!r.allowed) return { allowed: false, why: r.note };
   return { allowed: true, share: r.byTemplate?.[templateId] ?? r.cap, why: r.note };
@@ -258,6 +258,7 @@ const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judg
 export function forumName(c) {
   const era = c.forum === 'trial' && c.kind === 'criminal' ? realLaw.courtName(c.countryId, 'trial') : c.forum === 'family' ? realLaw.courtName(c.countryId, 'family') : c.forum === 'immigration' ? realLaw.courtName(c.countryId, 'immigration') : null;
   if (era) return era;
+  if (template(c)?.supreme) return realLaw.courtName(c.countryId, 'supreme') ?? 'The highest court';
   return { trial: 'Trial court', family: 'Family court', juvenile: 'Juvenile court', agency: 'Agency review', immigration: 'Immigration court', tribunal: 'Employment tribunal', probate: 'Probate court', tax: 'Tax tribunal', appeal: 'Court of Appeal', none: 'No court: a transaction' }[c.forum] ?? 'Court';
 }
 /** Strength of each side's case from the evidence still in it: weight × reliability, for what is admitted. */
@@ -386,7 +387,8 @@ export function file(c, kind, o = {}) {
     f.law = rule?.law?.name ?? null;
     // Where the law of the time gives no way to leave the evidence out, no judge does it.
     const barred = !!(rule && !rule.allowed && target);
-    const granted = !barred && rng.chance(clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
+    // The Supreme Court takes few of the cases it is asked to hear: a strong petition is still a long shot.
+    const granted = !barred && rng.chance(T.cert ? (merit ? 0.1 + quality * 0.2 : 0.01) : clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
     f.ruling = granted ? 'granted' : 'denied';
     if (merit && !granted && rng.chance(0.5 + (75 - jskill) / 100)) c.errors.push({ kind: 'motion', text: `The ${f.name.toLowerCase()} was denied though it had merit.` });
     if (granted && target) {
@@ -398,6 +400,14 @@ export function file(c, kind, o = {}) {
     text = granted ? (target && target.status === 'excluded' ? `Granted. The ${thing} is out of the case.${rule ? ` (${rule.law.name})` : ''}` : 'Granted.') : `Denied.${rule && !rule.allowed ? ` ${rule.why}` : ''}`;
   }
   c.hearings.push({ m: nowM(), kind: 'motion', result: f.ruling });
+  if (T.cert && kind !== 'delay') {
+    if (f.ruling !== 'granted') {
+      note(c, `${f.name}: denied.`);
+      const out = close(c, { kind: 'cert_denied', text: 'The Supreme Court declined to hear the case. The lower court\'s decision stands.', favorable: -0.3, trial: false });
+      return result(false, 'Review denied. The Court takes only a small share of the cases it is asked to hear; the decision below stands.', 'neutral', { filing: f, outcome: out?.outcome });
+    }
+    text = 'Review granted. The case will be briefed on the merits and argued before the full Court.';
+  }
   note(c, `${f.name}: ${text}`);
   return result(f.ruling === 'granted' || f.ruling === 'n/a', text, f.ruling === 'struck' ? 'bad' : f.ruling === 'granted' ? 'good' : 'neutral', { filing: f });
 }
@@ -556,9 +566,11 @@ export function courtroom(c) {
   const phases = [];
   if (c.forum === 'appeal') {
     // An appeal is argued on the record before a panel of judges: no witnesses, no jury, and questions from the bench.
-    phases.push({ id: 'opening', title: 'Oral argument', options: [['Lead with the error in the record, and why it changed the result', 'evidence'], ['Argue the jury got the facts wrong', 'merits'], ['Keep it short and rely on the brief', 'brief']].map(([t, v]) => ({ text: t, v })) });
-    phases.push({ id: 'bench', title: 'A question from the bench', text: 'A judge interrupts: "Counsel, the jury heard other evidence. Why would the email have changed anything?"', options: [['Answer directly: point to what only the email showed', 'strong'], ['Steer back to your outline', 'dodge'], ['Say the judge has misread the record', 'rude']].map(([t, v]) => ({ text: t, v })) });
-    phases.push({ id: 'closing', title: 'Rebuttal', options: [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']].map(([t, v]) => ({ text: t, v })) });
+    // Each appeal words its own argument and the question from the bench (data/law.js); the first appeal's are the default.
+    const A = T.argument ?? {};
+    phases.push({ id: 'opening', title: 'Oral argument', options: (A.opening ?? [['Lead with the error in the record, and why it changed the result', 'evidence'], ['Argue the jury got the facts wrong', 'merits'], ['Keep it short and rely on the brief', 'brief']]).map(([t, v]) => ({ text: fill(t, c), v })) });
+    phases.push({ id: 'bench', title: A.benchTitle ?? 'A question from the bench', text: fill(A.bench ?? 'A judge interrupts: "Counsel, the jury heard other evidence. Why would the email have changed anything?"', c), options: (A.answers ?? [['Answer directly: point to what only the email showed', 'strong'], ['Steer back to your outline', 'dodge'], ['Say the judge has misread the record', 'rude']]).map(([t, v]) => ({ text: fill(t, c), v })) });
+    phases.push({ id: 'closing', title: 'Rebuttal', options: (A.rebuttal ?? [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']]).map(([t, v]) => ({ text: fill(t, c), v })) });
     return { title: c.title, what: 'hearing', jury: false, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
   }
   if (c.jury) phases.push({ id: 'jury', title: 'Jury selection', text: 'Twelve people from the community, questioned by both sides and the judge.', options: [['Ask about experience with the police and with eyewitnesses', 'fair'], ['Try to keep off anyone who looks like a homeowner', 'improper'], ['Strike jurors because of their race', 'race'], ['Accept the first twelve', 'quick']].map(([t, v]) => ({ text: t, v })) });

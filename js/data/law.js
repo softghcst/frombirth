@@ -307,8 +307,8 @@ export const BAR_PASS = 0.62;
  * a government legal office, or a practice of one's own.
  */
 export const SPECIALTIES = [
-  { id: 'criminal_defense', name: 'Criminal Defense', tracks: ['lawyer', 'own'], cases: ['burglary_hale', 'burglary', 'theft', 'assault', 'homicide', 'fraud', 'drug_supply'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['flat', 'hourly'] },
-  { id: 'public_defense', name: 'Public Defense', tracks: ['defender'], cases: ['burglary', 'theft', 'assault', 'homicide', 'drug_supply'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['salary'] },
+  { id: 'criminal_defense', name: 'Criminal Defense', tracks: ['lawyer', 'own'], cases: ['burglary_hale', 'burglary', 'theft', 'assault', 'homicide', 'fraud', 'drug_supply', 'criminal_appeal'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['flat', 'hourly'] },
+  { id: 'public_defense', name: 'Public Defense', tracks: ['defender'], cases: ['burglary', 'theft', 'assault', 'homicide', 'drug_supply', 'criminal_appeal'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['salary'] },
   { id: 'prosecution', name: 'Criminal Prosecution', tracks: ['prosecutor'], cases: ['burglary', 'theft', 'assault', 'homicide', 'fraud', 'drug_supply'], playable: true, skills: ['evidence', 'examination', 'ethics'], fees: ['salary'] },
   { id: 'family', name: 'Family Law', tracks: ['lawyer', 'own'], cases: ['custody', 'custody', 'divorce', 'protective_order', 'adoption', 'guardianship'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
   { id: 'divorce', name: 'Divorce Law', tracks: ['lawyer', 'own'], cases: ['divorce', 'divorce', 'custody', 'prenup', 'support_change'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
@@ -320,7 +320,7 @@ export const SPECIALTIES = [
   { id: 'corporate', name: 'Corporate Law', tracks: ['lawyer', 'own'], cases: ['acquisition', 'supply_deal'], playable: true, skills: ['drafting', 'business', 'negotiation'], fees: ['hourly'] },
   { id: 'employment', name: 'Employment Law', tracks: ['lawyer', 'own'], cases: ['dismissal', 'wage_claim'], playable: true, skills: ['negotiation', 'interpretation'], fees: ['hourly', 'contingency'] },
   { id: 'estate', name: 'Estate Planning & Probate', tracks: ['lawyer', 'own'], cases: ['will', 'probate'], playable: true, skills: ['drafting', 'counseling'], fees: ['flat', 'hourly'] },
-  { id: 'appellate', name: 'Appellate Practice', tracks: ['lawyer', 'defender', 'prosecutor', 'gov_counsel', 'own'], cases: ['appeal_brief'], playable: true, skills: ['appellate', 'oral'], fees: ['hourly', 'salary'] },
+  { id: 'appellate', name: 'Appellate Practice', tracks: ['lawyer', 'defender', 'prosecutor', 'gov_counsel', 'own'], cases: ['appeal_brief', 'criminal_appeal', 'criminal_appeal', 'verdict_appeal', 'supreme_court'], playable: true, skills: ['appellate', 'oral'], fees: ['hourly', 'salary'] },
   { id: 'civil_rights', name: 'Civil Rights', tracks: ['lawyer', 'own'], cases: ['police_conduct', 'housing_bias'], playable: true, skills: ['interpretation', 'oral'], fees: ['contingency', 'hourly'] },
   { id: 'real_estate', name: 'Real Estate Law', tracks: ['lawyer', 'own'], cases: ['closing_defect', 'boundary'], playable: true, skills: ['drafting'], fees: ['flat'] },
   { id: 'ip', name: 'Intellectual Property', tracks: ['lawyer', 'own'], cases: ['trademark', 'license_deal'], playable: true, skills: ['interpretation', 'business'], fees: ['hourly'] },
@@ -738,6 +738,53 @@ Object.assign(CASE_TEMPLATES, {
     witnesses: [],
     research: q('What will the appeal court ask about the ruling that kept the email out?', ['Whether it was an error, and whether the error affected the result', 'Whether the jury liked {client}', 'What new witnesses would say', 'Whether the trial judge was experienced'], 0, 'An appeal reviews errors on the record and asks whether they mattered. It does not hear new witnesses.'),
     motion: { name: 'Appellate brief', target: 'harmless', options: [['Argue the ruling was wrong and changed the outcome, citing the record', 'strong'], ['Argue the jury got the facts wrong', 'weak'], ['Ask for a new trial with new witnesses', 'improper'], ['Delay', 'delay']] },
+  },
+  criminal_appeal: {
+    kind: 'civil', criminal: true, level: 3, title: '{client} v. The State: appeal', jury: false, forum: 'appeal', appeal: true,
+    summary: '{client} was convicted of robbery and is in prison. Reading the transcript, you find the judge told the jury that reasonable doubt means "more likely than not".',
+    stages: [['intake', 0], ['record', 2], ['briefing', 3], ['argument', 2], ['decision', 0]],
+    evidence: [E('transcript', 'document', 'The transcript of the judge\'s instructions to the jury', 'client', 5, 95), E('objection', 'document', 'The trial lawyer\'s objection to the instruction, on the record', 'client', 3, 90), E('proof', 'document', 'The evidence against {client} at trial', 'other', 3, 80)],
+    witnesses: [],
+    research: q('The judge misstated reasonable doubt. Can the State argue the mistake made no difference?', ['Usually not: a wrong standard of proof undermines the whole verdict', 'Yes, if the evidence was strong', 'Only if {client} testified', 'Yes, if the jury took long to decide'], 0, 'A jury told the wrong standard of proof has not found guilt beyond a reasonable doubt at all, whatever the evidence.'),
+    motion: { name: 'Appellate brief', target: 'proof', options: [['Argue the instruction lowered the standard of proof, citing the transcript', 'strong'], ['Argue {client} is innocent', 'weak'], ['Ask the appeal court to hear new witnesses', 'improper'], ['Delay', 'delay']] },
+    argument: {
+      opening: [['Read the instruction aloud, then the standard the law requires', 'evidence'], ['Say {client} never got a fair chance in life', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A judge asks: "Counsel, the evidence was substantial. Why isn\'t this harmless?"',
+      answers: [['A jury given the wrong standard never found guilt beyond reasonable doubt: there is no verdict to measure', 'strong'], ['Say the evidence was weak after all', 'dodge'], ['Tell the judge they have not read the brief', 'rude']],
+    },
+    won: 'Reversed: the conviction is set aside, and {client} gets a new trial with a proper instruction.', lost: 'Affirmed: the appeal court held the instruction, read as a whole, did not mislead the jury.',
+  },
+  verdict_appeal: {
+    kind: 'civil', level: 4, title: '{otherOrg} v. {client}: appeal', jury: false, forum: 'appeal', appeal: true,
+    summary: 'A jury awarded {client} a million in damages against {otherOrg}, which you represent, and forty times that in punitive damages. You appeal the punitive award.',
+    stages: [['intake', 0], ['record', 2], ['briefing', 3], ['argument', 2], ['decision', 0]],
+    evidence: [E('verdict', 'document', 'The verdict form: one million actual, forty million punitive', 'client', 4, 95), E('conduct', 'document', 'Evidence of how {otherOrg} treated {client}', 'other', 4, 85), E('comparable', 'document', 'Penalties set by law for the same conduct', 'client', 3, 90)],
+    witnesses: [],
+    research: q('What will the appeal court weigh in a punitive award forty times the actual harm?', ['How bad the conduct was, the ratio to the actual harm, and the penalties the law sets for it', 'How rich the company is', 'Whether the jury was angry', 'How long the trial took'], 0, 'Punitive damages must be reasonable and proportionate; a very high ratio to the actual harm needs special justification.'),
+    motion: { name: 'Appellate brief', target: 'conduct', options: [['Argue the ratio is out of all proportion, comparing the penalties set by law', 'strong'], ['Argue the company did nothing wrong at all', 'weak'], ['Attack the jurors', 'improper'], ['Delay', 'delay']] },
+    argument: {
+      opening: [['Set the forty-to-one ratio against the penalties the law sets for the same conduct', 'evidence'], ['Argue the jury was biased against big companies', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A judge asks: "The jury found your client acted badly. Why shouldn\'t it pay for that?"',
+      answers: [['It should, in proportion: the actual award stands; the punitive one must bear some relation to it', 'strong'], ['Insist the company did nothing wrong', 'dodge'], ['Say juries cannot be trusted with these cases', 'rude']],
+    },
+    settle: true, offer: '{client} offers to accept a lower punitive award to end the appeal.',
+    won: 'The punitive award was cut to a sum in proportion to the harm. The actual damages stand.', lost: 'Affirmed: the award stands in full.',
+  },
+  supreme_court: {
+    kind: 'civil', level: 5, title: '{client} v. {otherOrg}', jury: false, forum: 'appeal', appeal: true, supreme: true, cert: true,
+    summary: 'Two appeal courts have decided the same question in opposite ways: whether an employer may read a worker\'s private messages on a personal phone used for work. {client} lost below. You ask the highest court to hear it.',
+    stages: [['intake', 0], ['briefing', 3], ['argument', 3], ['decision', 0]],
+    evidence: [E('split', 'document', 'The two appeal court decisions that disagree', 'client', 4, 95), E('record', 'document', 'The record of {client}\'s case', 'client', 3, 90), E('policy', 'document', '{otherOrg}\'s phone policy, which {client} signed', 'other', 3, 85)],
+    witnesses: [],
+    research: q('What makes the highest court most likely to take a case?', ['A question of wide importance on which lower courts disagree', 'That the case was unfair to {client}', 'That the amount of money is large', 'That the lawyer is well known'], 0, 'The highest court chooses its cases. A split between lower courts on an important question is the classic reason to take one.'),
+    motion: { name: 'Petition for review', target: null, options: [['Show the split between the courts and why the question matters to everyone', 'strong'], ['Argue {client} was treated unfairly', 'weak'], ['File a hundred pages', 'concede'], ['Delay', 'delay']] },
+    argument: {
+      benchTitle: 'Questions from the justices',
+      opening: [['Frame the question for every worker and employer, not only for {client}', 'evidence'], ['Tell {client}\'s story at length', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A justice asks: "If we rule for you, what line do employers draw tomorrow morning?"',
+      answers: [['Give a clear rule: work accounts yes, private messages only with a warrant-like reason', 'strong'], ['Say that is for employers to work out', 'dodge'], ['Say the question misunderstands the case', 'rude']],
+    },
+    won: 'The Court ruled for {client}: the decision sets the rule for the whole country.', lost: 'The Court ruled against {client}, settling the question the other way for everyone.',
   },
 });
 
