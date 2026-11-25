@@ -156,6 +156,7 @@ async function openCase(id, api) {
     const open = v.status === 'open';
     root.innerHTML = `<h2 style="margin-top:0">${esc(v.label)}</h2>
       <p class="muted">Confidential${v.supervised ? ' · supervised' : ''}${v.guardian ? ' · with a parent or guardian' : ''}</p>
+      ${v.teams.length ? `<p class="muted">One emergency, several teams: ${esc(v.teams.join(', '))} are working on this patient too.</p>` : ''}
       <p>${esc(v.intro)}</p><p><strong>History.</strong> ${esc(v.history)}</p><p><strong>Examination.</strong> ${esc(v.exam)}</p>
       ${v.triage ? `<div class="section-label">Who first?</div><p>${esc(v.triage.text)}</p>${v.triage.options.map((o) => btn('triage', o.label, { arg: o.id })).join('')}` : ''}
       <div class="section-label">Tests</div>${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}

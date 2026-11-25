@@ -138,6 +138,8 @@ export function caseView(id) {
     id: c.id, status: c.status, role: c.role, label: fx.label, tier: fx.tier, supervised: supervised(c.role),
     patient: patient ? { name: `${patient.firstName} ${patient.lastName}`, first: patient.firstName, age: patient.age, gender: patient.gender } : null,
     guardian: !!fx.guardian, household: !!fx.household, followUp: !!c.followOf,
+    // One emergency, several teams: who else is working on the same patient (data/medicineCases.js `episode`).
+    teams: fx.episode ? [...new Set(CASES.filter((x) => x.episode === fx.episode && x.id !== fx.id).map((x) => SPECIALTY_BY_ID[x.specialty[0]]?.name).filter(Boolean))] : [],
     intro: fill(fx.intro, c, patient), history: fill(fx.history, c, patient), exam: fill(fx.exam, c, patient),
     tests: fx.tests.filter((t) => (TEST_BY_ID[t.test]?.minYear ?? 0) <= now).map((t) => {
       const done = c.tests.find((x) => x.test === t.test);
