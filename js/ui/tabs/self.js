@@ -17,7 +17,7 @@ import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
-import { openSalonVisit } from '../salonVisit.js';
+import { openSalonVisit, shopLabel } from '../salonVisit.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
@@ -53,7 +53,7 @@ export default {
           navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
           navRow({ attrs: 'data-health', label: 'My Health' }),
           ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
-          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty Salon' })] : []),
+          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: shopLabel(p) })] : []),
         ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>

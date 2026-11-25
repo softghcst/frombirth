@@ -34,7 +34,7 @@ await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 const setUp = () => page.evaluate(async () => {
   const { store } = await import('/js/state.js');
-  const p = store.state.player; p.age = 28; p.finance.cash = 1e10;  // enough in any currency p.legal.incarceration = null;
+  const p = store.state.player; p.age = 28; p.finance.cash = 1e10; p.gender = 'female';  // enough in any currency p.legal.incarceration = null;
   const { normalize } = await import('/js/avatar/catalog.js');
   p.appearance = normalize(p.appearance, p.id); p.appearance.style.treatment = null;
   return { cash: p.finance.cash, hair: p.appearance.style.hair };
@@ -77,6 +77,27 @@ await page.locator('.av-opt[data-key="hairDye"]:not(.on)').nth(2).click();
 await page.click('[data-leave]');
 const after2 = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.finance.cash; });
 check(after2 === before2.cash && !(await page.locator('.salon-screen').count()), 'walking out before paying changes nothing');
+// Men go to the barbershop; women, trans women included once they live as women, to the salon.
+const shops = await page.evaluate(async () => {
+  const { store } = await import('/js/state.js'); const { shopFor, openSalonVisit } = await import('/js/ui/salonVisit.js');
+  const p = store.state.player; const out = {};
+  p.gender = 'female'; p.flags = { ...(p.flags ?? {}), bornAs: 'male' }; out.transWoman = shopFor(p);
+  p.gender = 'male'; p.flags.bornAs = 'female'; out.transMan = shopFor(p);
+  p.flags.bornAs = 'male';
+  const v = openSalonVisit({ changed() {} }, { intro: true });
+  out.sub = document.querySelector('.sv-logo-sub')?.textContent; v.close();
+  openSalonVisit({ changed() {} }, { intro: false });
+  out.barberClass = !!document.querySelector('.salon-screen.sv-barber'); out.bulbs = document.querySelectorAll('.sv-bulbs i').length;
+  out.hello = document.querySelector('.sv-bubble')?.textContent;
+  document.querySelector('[data-leave]').click();
+  p.gender = 'female'; openSalonVisit({ changed() {} }, { intro: false });
+  out.salonBulbs = document.querySelectorAll('.sv-bulbs i').length; out.salonClass = !!document.querySelector('.sv-barber');
+  document.querySelector('[data-leave]').click();
+  return out;
+});
+check(shops.transWoman === 'salon' && shops.transMan === 'barber', `the shop follows the gender lived as (${JSON.stringify(shops)})`);
+check(shops.sub === 'Barbershop' && shops.barberClass && !shops.bulbs && /Grab a chair/.test(shops.hello), 'a man\'s visit is to the barbershop');
+check(shops.salonBulbs > 0 && !shops.salonClass, 'a woman\'s is to the beauty salon, bulbs round the mirror');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();

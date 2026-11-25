@@ -1327,4 +1327,14 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .sv-sparkles i:nth-child(3) { top: 60%; left: -10%; animation-delay: .4s; } .sv-sparkles i:nth-child(4) { top: 4%; right: 10%; animation-delay: .6s; }
 .sv-sparkles i:nth-child(5) { bottom: 30%; right: -12%; animation-delay: .8s; }
 @keyframes sv-twinkle { 0%, 100% { transform: scale(.4) rotate(0); opacity: .3; } 50% { transform: scale(1.2) rotate(30deg); opacity: 1; } }
+/* The barbershop (.sv-barber): dark green and wood, brass trim, and a square wood-framed mirror. */
+.sv-barber .sv-intro { background: radial-gradient(circle at 50% 45%, #3B6B5E 0%, #24433B 60%, #162A25 100%); }
+.sv-barber .sv-logo-art { filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35)); }
+.sv-barber .sv-logo-name { color: #F3EEE4; }
+.sv-barber .sv-logo-sub { color: #D8B25A; }
+.sv-barber .sv-sign { background: #1F2B38; color: #F3EEE4; border-color: #D8B25A; letter-spacing: .04em; }
+.sv-barber .sv-mirror { border-radius: 10px; background: #8A5A3B; padding: 10px;
+  box-shadow: 0 0 0 4px #D8B25A inset, 0 10px 24px rgba(0, 0, 0, .35); }
+.sv-barber .sv-glass { border-radius: 4px; background: linear-gradient(160deg, #EEF3F2 0%, #D2E1DF 55%, #BFD3D0 100%); }
+.sv-barber .sv-leave { background: #F3EEE4; }
 @media (prefers-reduced-motion: reduce) { .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
