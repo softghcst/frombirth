@@ -116,9 +116,14 @@ const enrolled = (p) => p.education.enrolled && p.education.stage === 'law';
 export function school(p = player()) {
   const L = lawOf(p);
   if (enrolled(p) && (!L.school || L.school.done)) {
-    L.school = { start: nowM(), terms: [], electives: [], probation: false, done: false, schoolName: p.education.schoolName ?? null };
-    canon(`law:start:${aid()}:${L.school.start}`, 'Started law school', `Began a ${profileFor(p.countryId).degree} at ${p.education.schoolName ?? 'law school'}.`);
-    openTerm(p, L.school.start);
+    // A student already part-way through when this record began (an older save) keeps the years done: those terms are
+    // on record, graded at the GPA they had, and only the rest are left.
+    const before = Math.max(0, p.education.yearInStage ?? 0) * 2;
+    const start = nowM() - before * 6;
+    L.school = { start, terms: [], electives: [], probation: false, done: false, schoolName: p.education.schoolName ?? null, carried: before || undefined };
+    for (let n = 0; n < Math.min(before, termsFor(p) - 1); n++) L.school.terms.push({ n, start: start + n * 6, end: start + (n + 1) * 6, courses: [], exam: { qs: [], answers: [], right: [] }, grades: {}, gpa: p.education.gpa || 3, carried: true });
+    if (!before) canon(`law:start:${aid()}:${L.school.start}`, 'Started law school', `Began a ${profileFor(p.countryId).degree} at ${p.education.schoolName ?? 'law school'}.`);
+    openTerm(p, start + L.school.terms.length * 6);
   }
   return L.school;
 }

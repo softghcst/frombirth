@@ -90,6 +90,9 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   const offers = lp.offers();
   const a = lp.accept(offers[0].id);
   const c = lc.caseById(a.caseId);
+  const cap0 = lc.capacity();
+  lp.ownFirm().others += 2;
+  check(lc.capacity() === cap0 + 6, 'staff at your own firm let you carry more cases');
   const cash = lp.ownFirm().cash;
   playCase(c);
   turn();

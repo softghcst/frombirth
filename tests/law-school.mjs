@@ -146,6 +146,15 @@ rng.seed(20261125);
   setYear(2026);
 }
 
+// An older save with a student already in their third year: the years done are kept, not started again.
+{
+  const p = graduate();
+  p.education.stage = 'law'; p.education.enrolled = true; p.education.yearInStage = 2; p.education.gpa = 3.3;
+  delete p.law;
+  const S = ls.school();
+  check(S.terms.filter((t) => t.carried).length === 4 && S.terms.length === 5 && ls.lawGpa() === 3.3, 'a third-year student from an older save keeps four terms done, at their GPA, and starts the fifth');
+}
+
 // 12. Older saves: a lawyer already working is not sent back to law school, and no cases are invented.
 {
   const p = graduate();

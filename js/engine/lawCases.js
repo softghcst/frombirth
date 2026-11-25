@@ -681,7 +681,11 @@ function advanceStage(c, load, p) {
 /** How many complexity points of open cases a lawyer can carry well: more with experience and staff. */
 export function capacity(p = player()) {
   const L = lawOf(p);
-  return 6 + Math.min(6, L.history.length / 8) + (L.firm?.staff?.length ?? 0) * 3;
+  // Your own firm's people (engine/business.js: named staff and others), and, in a job, the team that comes with seniority.
+  const firm = (p.businesses ?? []).find((b) => b.typeId === 'law_firm' && b.status === 'open');
+  const staff = firm ? (firm.staff ?? []).filter((s) => store.state.npcs[s.id]?.alive).length + (firm.others ?? 0) : 0;
+  const team = LEGAL_CAREERS.includes(p.career?.careerId) ? (p.career.level ?? 0) * 1.5 : 0;
+  return 6 + Math.min(6, L.history.length / 8) + staff * 3 + team;
 }
 /** Open complexity points against capacity. */
 export function workload(p = player()) {
