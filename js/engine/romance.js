@@ -54,11 +54,14 @@ export const WEDDING_PLAN = {
     { id: 'ballroom', name: 'A grand ballroom', icon: '✨', cost: 22000, joy: 8, sub: 'Chandeliers and a dance floor' },
     { id: 'castle', name: 'A castle', icon: '🏰', cost: 60000, joy: 10, sub: 'A fairytale, turrets and all' },
   ],
+  // How many come. Each guest is invited, seated and sent home with a favor (GUEST_COST), and fed (food's perGuest).
   guests: [
-    { id: 'elope', name: 'Just the two of us', icon: '💞', count: 2, joy: 1, sub: 'And whoever signs as witness' },
-    { id: 'small', name: 'Close family', icon: '👨‍👩‍👧', count: 20, joy: 3, sub: 'About 20 guests' },
-    { id: 'medium', name: 'Family and friends', icon: '🎉', count: 80, joy: 5, sub: 'About 80 guests' },
-    { id: 'big', name: 'Everyone we know', icon: '🥳', count: 200, joy: 6, sub: 'About 200 guests' },
+    { id: 'elope', name: 'Elope, just the two of us', icon: '💞', count: 2, joy: 1, sub: 'No guests, no fuss, two witnesses' },
+    { id: 'intimate', name: 'An intimate gathering', icon: '🕯️', count: 12, joy: 3, sub: 'About 12: the ones who matter most' },
+    { id: 'small', name: 'Close family and friends', icon: '👨‍👩‍👧', count: 40, joy: 4, sub: 'About 40 guests' },
+    { id: 'medium', name: 'Family and friends', icon: '🎉', count: 100, joy: 5, sub: 'About 100 guests' },
+    { id: 'big', name: 'A big celebration', icon: '🥳', count: 200, joy: 6, sub: 'About 200 guests' },
+    { id: 'huge', name: 'Everyone we have ever met', icon: '🏟️', count: 350, joy: 6, sub: 'About 350: cousins of cousins' },
   ],
   theme: [
     { id: 'blush', name: 'Blush', hex: '#F6B8C8', cost: 0, joy: 0 },
@@ -101,6 +104,10 @@ export const WEDDING_PLAN = {
     { id: 'world', name: 'Around the world', icon: '✈️', cost: 25000, joy: 6, sub: 'A month, six countries' },
   ],
 };
+/** Invitations, a seat and a favor, for each guest (base units). Two people eloping invite no one. */
+export const GUEST_COST = 20;
+/** What a guest list costs, before food (local money). */
+export const guestCost = (count, c = country()) => (count > 2 ? localMoney(GUEST_COST, c) * count : 0);
 /** The steps of the plan, in the order they are planned. */
 export const PLAN_STEPS = ['venue', 'guests', 'theme', 'flowers', 'attire', 'cake', 'music', 'food', 'honeymoon'];
 const planPick = (key, id) => WEDDING_PLAN[key].find((o) => o.id === id) ?? WEDDING_PLAN[key][0];
@@ -120,13 +127,14 @@ export function planTotals(plan, npc = null, c = country()) {
   const guests = planPick('guests', plan.guests);
   for (const key of PLAN_STEPS) {
     const o = planPick(key, plan[key]);
-    const each = key === 'food' ? localMoney(o.perGuest, c) * guests.count : localMoney(o.cost ?? 0, c);
+    const each = key === 'food' ? localMoney(o.perGuest, c) * guests.count : key === 'guests' ? guestCost(guests.count, c) : localMoney(o.cost ?? 0, c);
     cost += each; joy += o.joy ?? 0;
-    if (key !== 'guests' && key !== 'theme') lines.push({ key, label: key === 'food' ? `${o.name}, for ${guests.count}` : o.name, cost: each });
+    if (key === 'guests') { if (guests.count > 2) lines.push({ key, label: `Invitations and seating for ${guests.count}`, cost: each }); }
+    else if (key !== 'theme') lines.push({ key, label: key === 'food' ? `${o.name}, for ${guests.count}` : o.name, cost: each });
   }
   const dream = npc ? dreamOf(npc) : null;
   const dreamVenue = !!dream && plan.venue === dream.venue;
-  const dreamSize = !!dream && (dream.big ? guests.count >= 80 : guests.count <= 20);
+  const dreamSize = !!dream && (dream.big ? guests.count >= 100 : guests.count <= 40);
   if (dreamVenue) joy += 4;
   if (dreamSize) joy += 2;
   return { cost, joy, lines, guests: guests.count, dreamVenue, dreamSize };

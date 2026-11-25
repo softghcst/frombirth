@@ -8,6 +8,7 @@ import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
 import { player, country } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
+import { openModal, confirmModal, messageModal } from './modals.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const PLANNERS = ['Odette', 'Giselle', 'Bianca', 'Celeste', 'Theo', 'Rafael', 'Imani', 'Noor'];
@@ -151,7 +152,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
 
     const LINES = {
       venue: `First things first: where? ${npc.firstName} once told me about ${dream.venue === 'castle' ? 'a castle' : dreamVenue.name.toLowerCase()}, you know. Just saying.`,
-      guests: dream.big ? `Now, the guest list. ${npc.firstName} wants everyone there, I can tell.` : `Now, the guest list. ${npc.firstName} strikes me as someone who'd like it small.`,
+      guests: `Now, the guest list: how big a day? Each guest is an invitation, a seat and a favor, and dinner comes later. ${dream.big ? `${npc.firstName} wants everyone there, I can tell.` : `${npc.firstName} strikes me as someone who'd like it small.`}`,
       theme: 'Pick a color. It goes on everything: the flowers, the napkins, the ribbon on the cake.',
       flowers: 'Flowers! Watch the arch.',
       attire: `What are you wearing? ${npc.firstName} has been very secretive about theirs.`,
@@ -166,8 +167,8 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       const key = love.PLAN_STEPS[i];
       const opts = love.WEDDING_PLAN[key];
       const guests = love.WEDDING_PLAN.guests.find((g) => g.id === chosen('guests')).count;
-      const price = (o) => (key === 'guests' ? `${o.count} people` : key === 'food' ? fmtMoney(localMoney(o.perGuest, c) * guests, c) : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'Free');
-      const dreamTag = (o) => (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 80 : o.count <= 20)) ? '<em class="wp-dream">♥ dream</em>' : '';
+      const price = (o) => (key === 'guests' ? (o.count > 2 ? fmtMoney(love.guestCost(o.count, c), c) : 'Free') : key === 'food' ? fmtMoney(localMoney(o.perGuest, c) * guests, c) : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'Free');
+      const dreamTag = (o) => (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 100 : o.count <= 40)) ? '<em class="wp-dream">♥ dream</em>' : '';
       // In the game's own list style: a row each, its picture, what it is, and its price (or a check, once chosen).
       // The colors are the salon's round swatches, named underneath.
       const tiles = key === 'theme'
@@ -192,7 +193,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
           step(i);
           const o = opts.find((x) => x.id === plan[key]);
           // The planner reacts when a choice meets the dream.
-          if ((key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 80 : o.count <= 20))) {
+          if ((key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 100 : o.count <= 40))) {
             root.querySelector('.sv-bubble p').textContent = key === 'venue' ? `${o.name}! Oh, ${npc.firstName} is going to cry.` : `Perfect. That's exactly what ${npc.firstName} wanted.`;
           }
         };
@@ -278,4 +279,120 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       setTimeout(go, reduced ? 350 : 1500);
     } else hello();
   });
+}
+
+// ---------- With the scenes turned off (Settings) ----------
+
+/** Whether weddings are planned and lived as scenes. Kept in this browser for every life, like Haptics; on by default. */
+export const WEDDING_SCENES_KEY = 'pathways.weddingScenes';
+export function weddingScenesOn() {
+  try { return localStorage.getItem(WEDDING_SCENES_KEY) !== 'off'; } catch { return true; }
+}
+export function setWeddingScenes(on) {
+  try { if (on) localStorage.removeItem(WEDDING_SCENES_KEY); else localStorage.setItem(WEDDING_SCENES_KEY, 'off'); } catch { /* storage unavailable */ }
+}
+
+/** Ready-made plans, for a quick choice: eloping, city hall, or the partner's dream. */
+const PRESETS = {
+  elope: { venue: 'courthouse', guests: 'elope', theme: 'ivory', flowers: 'wild', attire: 'borrowed', cake: 'cupcakes', music: 'playlist', food: 'potluck', honeymoon: 'home' },
+  cityhall: { venue: 'courthouse', guests: 'intimate', theme: 'ivory', flowers: 'roses', attire: 'rack', cake: 'tiered', music: 'playlist', food: 'buffet', honeymoon: 'roadtrip' },
+};
+const STEP_LABELS = { venue: 'Venue', guests: 'Guest list', theme: 'Colors', flowers: 'Flowers', attire: 'What you wear', cake: 'Cake', music: 'Music', food: 'Food', honeymoon: 'Honeymoon' };
+
+/**
+ * The wedding on one page, for those who turned the scenes off: a ready-made plan (elope, city hall, their dream) or
+ * each piece picked from a list, the total, the prenup; then a "Just married!" card. Resolves like openWeddingPlanner.
+ */
+export function openQuickWedding(api, npc) {
+  return new Promise((resolve) => {
+    const p = player();
+    const c = country();
+    const dream = love.dreamOf(npc);
+    const plan = { ...PRESETS.cityhall };
+    const blocked = love.weddingBlock(npc.id);
+    const label = (key, o) => {
+      if (key === 'theme') return o.name;
+      const price = key === 'guests' ? (o.count > 2 ? fmtMoney(love.guestCost(o.count, c), c) : 'free')
+        : key === 'food' ? `${fmtMoney(localMoney(o.perGuest, c), c)} a plate` : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'free';
+      const isDream = (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 100 : o.count <= 40));
+      return `${o.name} · ${price}${isDream ? ' ♥' : ''}`;
+    };
+    const fields = () => love.PLAN_STEPS.map((key) => `<label class="wq-field"><span>${esc(STEP_LABELS[key])}</span>
+      <select data-key="${key}">${love.WEDDING_PLAN[key].map((o) => `<option value="${o.id}" ${plan[key] === o.id ? 'selected' : ''}>${esc(label(key, o))}</option>`).join('')}</select></label>`).join('');
+    const m = openModal(`
+      <h2>Plan the wedding</h2>
+      ${blocked ? `<p class="body">${esc(blocked)}</p><button class="btn primary" data-no>OK</button>` : `
+      <p class="body">You and ${esc(npc.firstName)}. ♥ marks what ${esc(npc.firstName)} has always dreamed of.</p>
+      <div class="wq-presets">
+        <button type="button" class="chip" data-preset="elope">Elope</button>
+        <button type="button" class="chip" data-preset="cityhall">City hall</button>
+        <button type="button" class="chip" data-preset="dream">${esc(npc.firstName)}'s dream</button>
+      </div>
+      <div class="wq-fields" data-fields>${fields()}</div>
+      <div class="kv wq-total"><span>Total</span><strong data-total></strong></div>
+      <label class="wq-prenup"><input type="checkbox" data-prenup> Ask for a prenup</label>
+      <div class="btn-row"><button class="btn" data-no>Not yet</button><button class="btn primary" data-yes>Get married</button></div>`}`,
+    { dismissable: true, back: false, onDismiss: () => resolve({}) });
+    const el = m.el;
+    const done = (r = {}) => { m.close(); resolve(r); };
+    el.querySelector('[data-no]').onclick = () => done();
+    if (blocked) return;
+    const refresh = () => {
+      const t = love.planTotals(plan, npc, c);
+      const cash = player().finance.cash;
+      el.querySelector('[data-total]').textContent = fmtMoney(t.cost, c);
+      const yes = el.querySelector('[data-yes]');
+      yes.disabled = cash < t.cost;
+      yes.textContent = cash < t.cost ? `You have ${fmtMoney(cash, c)}` : 'Get married';
+    };
+    const bind = () => el.querySelectorAll('select[data-key]').forEach((s) => { s.onchange = () => { plan[s.dataset.key] = s.value; refresh(); }; });
+    el.querySelectorAll('[data-preset]').forEach((b) => {
+      b.onclick = () => {
+        const base = b.dataset.preset === 'dream'
+          ? { ...PRESETS.cityhall, venue: dream.venue, guests: dream.big ? 'big' : 'intimate', flowers: 'peonies', cake: 'tiered', music: 'band', honeymoon: 'resort' }
+          : PRESETS[b.dataset.preset];
+        Object.assign(plan, base);
+        el.querySelector('[data-fields]').innerHTML = fields();
+        bind(); refresh();
+      };
+    });
+    bind(); refresh();
+    el.querySelector('[data-yes]').onclick = async () => {
+      let prenup = el.querySelector('[data-prenup]').checked;
+      m.close();
+      if (prenup) {
+        const answer = love.askForPrenup(npc.id);
+        api?.changed?.();
+        prenup = answer.ok;
+        if (!answer.ok && !await confirmModal({ title: 'Marry without a prenup?', body: answer.text, yes: 'Marry anyway', no: 'Put it on hold' })) { resolve({}); return; }
+      }
+      const res = love.marry(npc.id, { ...plan }, prenup);
+      api?.changed?.();
+      if (!res.ok) { await messageModal({ body: res.text, tone: 'neutral' }); resolve({}); return; }
+      await justMarried(p, npc, plan);
+      resolve({ married: true });
+    };
+  });
+}
+
+/** The "Just married!" card: the two of you, where, and who came. */
+function justMarried(p, npc, plan) {
+  return new Promise((resolve) => {
+    const venue = love.WEDDING_PLAN.venue.find((v) => v.id === plan.venue);
+    const guests = love.WEDDING_PLAN.guests.find((g) => g.id === plan.guests);
+    const hex = love.WEDDING_PLAN.theme.find((t) => t.id === plan.theme)?.hex ?? '#F6B8C8';
+    const face = (who, gender, appearance, seed, extra = {}) => avatarSvg({ appearance, age: who.age, gender, seed, mood: 98, label: who.firstName, ...extra });
+    const m = openModal(`<div class="wq-married" style="--wp-theme:${hex}">
+      <p class="wp-just">Just married!</p>
+      <div class="wp-pair"><div class="wp-frame">${face(p, p.gender, p.appearance, p.id, { face: faceGenderOf(p) })}</div><span class="wp-heart" aria-hidden="true">♥</span><div class="wp-frame">${face(npc, npc.gender, npc.appearance, npc.id)}</div></div>
+      <p class="wp-names">${esc(p.firstName)} &amp; ${esc(npc.firstName)}</p>
+      <p class="body">${esc(`${venue.icon} ${guests.count > 2 ? `${venue.name}, with ${guests.count} of the people you love most.` : `${venue.name}, just the two of you.`}`)}</p>
+      <button class="btn primary" data-ok>Aww</button></div>`, { tone: 'good' });
+    m.el.querySelector('[data-ok]').onclick = () => { m.close(); resolve(); };
+  });
+}
+
+/** Planning the wedding: as scenes, or on one page if they are turned off in Settings. */
+export function openWedding(api, npc) {
+  return weddingScenesOn() ? openWeddingPlanner(api, npc) : openQuickWedding(api, npc);
 }

@@ -15,7 +15,7 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
-import { openWeddingPlanner } from '../weddingPlanner.js';
+import { openWedding } from '../weddingPlanner.js';
 import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
@@ -164,8 +164,9 @@ async function planWedding(api, npc) {
     const go = await confirmModal({ title: 'Leave the royal family?', body: `By the law of your house, a princess who marries outside it gives up her title and her place in the family. If you marry ${npc.firstName}, you will be a private citizen.`, yes: 'I understand', no: 'Not yet' });
     if (!go) return;
   }
-  // The wedding is planned with a wedding planner, piece by piece, and then it happens (js/ui/weddingPlanner.js).
-  await openWeddingPlanner(api, npc);
+  // The wedding is planned with a wedding planner, piece by piece, and then it happens; or, with those scenes turned off
+  // in Settings, on one page with a "Just married!" card (js/ui/weddingPlanner.js).
+  await openWedding(api, npc);
   api.changed();
 }
 

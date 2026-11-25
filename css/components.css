@@ -1425,3 +1425,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
   flex: none; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; accent-color: var(--accent); }
 .dl-checks label { padding: 6px 12px 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); max-width: 100%; line-height: 1.25; }
 .dl-checks label:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
+
+/* The wedding on one page, with the scenes turned off in Settings (openQuickWedding in js/ui/weddingPlanner.js). */
+.wq-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.wq-fields { display: grid; gap: 8px; }
+.wq-field { display: grid; gap: 3px; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.wq-field select { width: 100%; font-weight: 400; color: var(--ink); }
+.wq-total { margin-top: 10px; font-size: 1.05rem; }
+.wq-prenup { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
+.wq-prenup input { width: 18px; height: 18px; min-height: 0; accent-color: var(--accent); -webkit-appearance: auto; appearance: auto; }
+.wq-married { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.wq-married .wp-frame { width: min(30vw, 110px); }
+.wq-married .wp-just { font-size: 1.9rem; color: var(--ink); }
+.wq-married .wp-names { color: var(--ink); }

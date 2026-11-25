@@ -96,6 +96,34 @@ await page.click('[data-leave]');
 await page.click('.sv-reply:has-text("Leave")');
 const after = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const n = store.state.npcs[id]; return { cash: store.state.player.finance.cash, role: n.role, engaged: n.flags.engaged }; }, again.id);
 check(after.cash === again.cash && after.role === 'partner' && after.engaged && !(await page.locator('.wp-screen').count()), 'stopping part-way changes nothing');
+// Guest lists, from eloping to everyone: a bigger list costs more.
+const lists = await page.evaluate(async () => {
+  const love = await import('/js/engine/romance.js');
+  const base = { venue: 'garden', theme: 'blush', flowers: 'wild', attire: 'rack', cake: 'tiered', music: 'playlist', food: 'buffet', honeymoon: 'home' };
+  return love.WEDDING_PLAN.guests.map((g) => ({ id: g.id, count: g.count, cost: love.planTotals({ ...base, guests: g.id }).cost }));
+});
+check(lists.length >= 5 && lists.some((g) => g.id === 'intimate') && lists.every((g, i) => !i || g.cost > lists[i - 1].cost), `guest lists from eloping to everyone, each costing more (${lists.map((g) => `${g.id} ${g.count}`).join(', ')})`);
+// With the scenes turned off in Settings: one page, a ready-made plan, then a "Just married!" card.
+const third = await setUp();
+await page.evaluate(async (id) => {
+  const { store } = await import('/js/state.js'); const w = await import('/js/ui/weddingPlanner.js');
+  w.setWeddingScenes(false); window.__scenesOff = !w.weddingScenesOn();
+  window.__quick = w.openWedding({ changed() {} }, store.state.npcs[id]).then((r) => { window.__quickDone = r; });
+}, third.id);
+check(await page.evaluate(() => window.__scenesOff) && !(await page.locator('.wp-screen').count()) && await page.locator('.modal select[data-key="guests"]').count() === 1, 'with the scenes off, the wedding is planned on one page, guest list and all');
+const cityHall = await page.locator('[data-total]').innerText();
+await page.click('[data-preset="elope"]');
+const eloped = await page.locator('[data-total]').innerText();
+check(eloped !== cityHall, `eloping costs less than city hall (${eloped} against ${cityHall})`);
+await page.selectOption('select[data-key="guests"]', 'huge');
+check(await page.locator('[data-total]').innerText() !== eloped, 'and the guest list changes the price');
+await page.click('[data-preset="elope"]');
+await page.click('[data-yes]');
+check(/Just married/.test(await page.locator('.wq-married').innerText()), 'then a "Just married!" card');
+await page.click('.wq-married [data-ok]'); await page.waitForTimeout(50);
+const q = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const n = store.state.npcs[id]; return { role: n.role, venue: n.flags.wedding?.venue, done: window.__quickDone }; }, third.id);
+check(q.role === 'spouse' && q.venue === 'courthouse' && q.done?.married, 'married, at city hall');
+await page.evaluate(async () => { (await import('/js/ui/weddingPlanner.js')).setWeddingScenes(true); });
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();
