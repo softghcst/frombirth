@@ -135,6 +135,17 @@ export function nameBabyModal(baby, { twinOf } = {}) {
     const p = store.state.player;
     const lasts = surnameChoices(baby, p);
     const pool = COUNTRIES[p.countryId]?.names?.[baby.gender === 'male' ? 'male' : baby.gender === 'female' ? 'female' : Math.random() < 0.5 ? 'male' : 'female'] ?? [baby.firstName];
+    // Ideas come from a shuffled deck of the country's names, each once (a common name is listed more than once in the
+    // country's list, to be drawn more often for strangers; here it is one idea among many), and never a name someone in
+    // the family already has. When the deck runs out, it is shuffled again.
+    const family = new Set([p.firstName, ...Object.values(store.state.npcs).filter((n) => n?.lastName === p.lastName || p.npcIds?.includes(n?.id)).map((n) => n.firstName)]);
+    const unique = [...new Set(pool.map((x) => x.replace(/_/g, ' ')))].filter((x) => !family.has(x));
+    let deck = [];
+    const ideas = () => {
+      if (!deck.length) { deck = [...(unique.length ? unique : [baby.firstName])]; for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; } }
+      const n = deck.pop();
+      return n === q('[data-first]').value && deck.length ? deck.pop() : n;
+    };
     const kind = baby.gender === 'male' ? 'a Boy' : baby.gender === 'female' ? 'a Girl' : 'a Baby';
     const m = openModal(`
       <h2 class="pick-title btag-title">${twinOf ? 'And Another One! ' : ''}It's ${kind}!</h2>
@@ -153,7 +164,7 @@ export function nameBabyModal(baby, { twinOf } = {}) {
     const q = (s) => m.el.querySelector(s);
     const lastNow = () => { const r = m.el.querySelector('input[name="bname-last"]:checked'); return r?.dataset.own != null ? q('[data-ownlast]').value : r?.value ?? ''; };
     const preview = () => { q('[data-preview]').innerHTML = `<span class="btag-ink">${esc(`${q('[data-first]').value.trim()} ${lastNow().trim()}`.trim() || ' ')}</span>`; q('[data-why]').textContent = ''; };
-    q('[data-idea]').addEventListener('click', () => { let n = q('[data-first]').value; for (let i = 0; i < 6 && n === q('[data-first]').value; i++) n = pool[Math.floor(Math.random() * pool.length)].replace(/_/g, ' '); q('[data-first]').value = n; preview(); });
+    q('[data-idea]').addEventListener('click', () => { q('[data-first]').value = ideas(); preview(); });
     m.el.addEventListener('input', (e) => { if (e.target.matches('[data-ownlast]')) q('[data-own]').checked = true; preview(); });
     m.el.addEventListener('change', preview);
     q('[data-ok]').addEventListener('click', () => {
