@@ -169,7 +169,7 @@ export const KID_HAIR = {
 export const KID_OUTFITS = { any: [],
   female: ['outfit_kid_16_girl_rainbow_tee', 'outfit_kid_17_girl_striped_top', 'outfit_kid_18_girl_denim_jacket', 'outfit_kid_19_girl_cat_hoodie', 'outfit_kid_20_girl_strawberry_sweatshirt', 'outfit_kid_21_girl_gingham_dress', 'outfit_kid_22_girl_cardigan_dress', 'outfit_kid_23_girl_daisy_top', 'outfit_kid_24_girl_overall_dress', 'outfit_kid_25_girl_party_dress',
     'outfit_kid_26_girl_hearts_sweater', 'outfit_kid_27_girl_butterfly_tee', 'outfit_kid_28_girl_ballet_wrap', 'outfit_kid_29_girl_bunny_hoodie', 'outfit_kid_30_girl_peasant_top'],
-  male: ['outfit_kid_31_boy_track_jacket', 'outfit_kid_32_boy_puffer_jacket', 'outfit_kid_33_boy_rocket_sweatshirt', 'outfit_kid_34_boy_shark_hoodie', 'outfit_kid_35_boy_soccer_jersey', 'outfit_kid_36_boy_school_uniform', 'outfit_kid_37_boy_lightning_tee', 'outfit_kid_38_boy_raincoat', 'outfit_kid_39_boy_sweater_vest', 'outfit_kid_40_boy_basketball_tank'] };
+  male: ['outfit_kid_31_boy_track_jacket', 'outfit_kid_32_boy_puffer_jacket', 'outfit_kid_33_boy_rocket_sweatshirt', 'outfit_kid_34_boy_shark_hoodie', 'outfit_kid_35_boy_soccer_jersey', 'outfit_kid_36_boy_school_uniform', 'outfit_kid_37_boy_lightning_tee', 'outfit_kid_38_boy_raincoat', 'outfit_kid_39_boy_sweater_vest', 'outfit_kid_40_boy_basketball_tank', 'outfit_kid_41_boy_denim_hoodie', 'outfit_kid_42_boy_dino_tee', 'outfit_kid_43_boy_plaid_flannel', 'outfit_kid_44_boy_striped_longsleeve', 'outfit_kid_45_boy_polo'] };
 
 export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],

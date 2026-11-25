@@ -286,6 +286,11 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_38_boy_raincoat", "file": "avatars/clothes/outfit_kid_38_boy_raincoat.svg", "label": "Kid raincoat"},
     {"id": "outfit_kid_39_boy_sweater_vest", "file": "avatars/clothes/outfit_kid_39_boy_sweater_vest.svg", "label": "Kid sweater vest"},
     {"id": "outfit_kid_40_boy_basketball_tank", "file": "avatars/clothes/outfit_kid_40_boy_basketball_tank.svg", "label": "Kid basketball tank"},
+    {"id": "outfit_kid_41_boy_denim_hoodie", "file": "avatars/clothes/outfit_kid_41_boy_denim_hoodie.svg", "label": "Kid denim hoodie"},
+    {"id": "outfit_kid_42_boy_dino_tee", "file": "avatars/clothes/outfit_kid_42_boy_dino_tee.svg", "label": "Kid dino tee"},
+    {"id": "outfit_kid_43_boy_plaid_flannel", "file": "avatars/clothes/outfit_kid_43_boy_plaid_flannel.svg", "label": "Kid plaid flannel"},
+    {"id": "outfit_kid_44_boy_striped_longsleeve", "file": "avatars/clothes/outfit_kid_44_boy_striped_longsleeve.svg", "label": "Kid striped longsleeve"},
+    {"id": "outfit_kid_45_boy_polo", "file": "avatars/clothes/outfit_kid_45_boy_polo.svg", "label": "Kid polo"},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
