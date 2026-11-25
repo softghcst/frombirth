@@ -75,7 +75,7 @@ const connections = (p = player()) => p.npcIds.map((id) => store.state.npcs[id])
  */
 const CAREER_TABS = {
   acting: [['casting', 'Auditions'], ['work', 'Current Work'], ['representation', 'Agent'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['connections', 'People'], ['archive', 'Credits']],
-  music: [['music', 'My Music'], ['releases', 'Releases & Tours'], ['representation', 'Manager'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Discography']],
+  music: [['music', 'Overview'], ['releases', 'Releases & Tours'], ['representation', 'Manager'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Discography']],
   dance: [['dance', 'Dance'], ['work', 'Current Work'], ['representation', 'Agent'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Credits']],
   modeling: [['modeling', 'Modeling'], ['overview', 'Fame'], ['image', 'Public Image']],
   writing: [['writing', 'Writing'], ['overview', 'Fame'], ['image', 'Public Image'], ['awards', 'Awards'], ['archive', 'Bibliography']],
@@ -372,7 +372,7 @@ const VIEWS = {
   releases(p) {
     const a = music.myAct(p);
     const disc = music.discography(p);
-    if (!a && !disc.length) return '<p class="empty">Nothing released yet. Form an act and record something on My Music.</p>';
+    if (!a && !disc.length) return '<p class="empty">Nothing released yet. Form an act and record something from the Overview.</p>';
     const rels = a ? a.releases.map(music.release).filter(Boolean) : [];
     const pending = rels.filter((r) => r.released == null);
     const out = (a ? rels.filter((r) => r.released != null) : disc).slice().reverse();
