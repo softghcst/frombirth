@@ -53,8 +53,11 @@ check(!music.formAct('solo').ok, 'one act at a time');
 section('a band is real people, who stay in your life');
 
 // 2. Songs, a release, its reception, once.
-check(music.writeSong().ok && music.writeSong().ok && !music.writeSong().ok, 'two songs a year, no more');
-check(!music.record('album').ok, 'an album needs ten songs');
+{ let n = 0; while (music.writeSong().ok && n < 40) n++;
+  check(n === 12 && music.musicOf().songs.length === 12, `a working act writes an album's worth of songs in a year (${n}), no more`); }
+{ const keep = music.musicOf().songs; music.musicOf().songs = keep.slice(0, 2);
+  check(!music.record('album').ok, 'an album needs ten songs');
+  music.musicOf().songs = keep.slice(0, 2); }
 const cash0 = p.finance.cash;
 check(music.record('single').ok && p.finance.cash < cash0, 'a self-released single is paid for');
 check(!music.record('single').ok, 'one recording a year');
