@@ -1,0 +1,483 @@
+// A legal career: the practice on top of the career engine (engine/career.js), which still owns hiring, salary,
+// reviews and promotions. This adds what a lawyer's working life is made of: a specialty, cases offered or assigned
+// in a way that fits the job (a firm takes clients, a prosecutor and a public defender are assigned cases), conflict
+// checks, a workload that can be too much, supervision for juniors, promotions that need more than years (a
+// partnership vote, being chosen as District Attorney), a practice of one's own (a law firm in the business engine),
+// and the paths to the bench and to Attorney General, which are elections and appointments, never rewards for wins.
+//
+// Opportunities come by the half-year on the World Clock, so a player taking three-month turns sees no more of them
+// than one taking a year at a time.
+import { rng } from '../rng.js';
+import { clamp, localCost, fmtMoney } from '../util.js';
+import { store, player, country, log } from '../state.js';
+import { CAREER_BY_ID } from '../data/careers.js';
+import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION } from '../data/law.js';
+import { lawOf, nowM, profileFor, canon, admitted, progressSchool, keepPerson, gain, school } from './lawSchool.js';
+import * as cases from './lawCases.js';
+import { currentCareer, hire, promote, adjustPerformance, PROMOTION_GATES } from './career.js';
+import { businesses } from './business.js';
+import { convictionsOf } from './records.js';
+import { finishLawSchool } from './education.js';
+
+const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
+export const WINDOW = 6;
+const LEGAL = new Set(['lawyer', 'prosecutor', 'defender', 'gov_counsel', 'judiciary', 'attorney_general']);
+
+// ---------- Where the player stands ----------
+
+/** An open law practice of the player's own (the business engine's law firm), or null. */
+export const ownFirm = (p = player()) => businesses(p).find((b) => b.typeId === 'law_firm' && b.status === 'open') ?? null;
+/**
+ * The kind of legal work the player does now: a firm ('lawyer'), the prosecutor's office, the public defender's office,
+ * a government legal office, the bench, the Attorney General's office, a practice of their own ('own'), or null.
+ */
+export function trackOf(p = player()) {
+  const id = p.career?.careerId;
+  if (LEGAL.has(id)) return id;
+  if (ownFirm(p)) return 'own';
+  return null;
+}
+/** Years of legal work, from the career engine's record of experience. */
+export function legalYears(p = player()) {
+  const ex = p.career?.experience ?? {};
+  return [...LEGAL].reduce((s, id) => s + (ex[id] ?? 0), 0);
+}
+/** Licensed, not suspended or disbarred, and able to take a client's case. */
+export function mayPractice(p = player()) {
+  const L = lawOf(p);
+  if (!admitted(p)) return 'You are not admitted to practice. A law degree alone does not allow it.';
+  if (L.bar.disbarred) return 'You were disbarred.';
+  if ((L.suspendedUntil ?? 0) > nowM()) return 'You are suspended from practice.';
+  if (trackOf(p) === 'judiciary') return 'A judge does not represent clients.';
+  return '';
+}
+/** The specialties open on the current track. Only playable ones can be chosen as the main practice. */
+export function specialtyOptions(p = player()) {
+  const t = trackOf(p);
+  return SPECIALTIES.map((s) => ({ ...s, open: !!t && s.tracks.includes(t === 'own' ? 'own' : t), current: lawOf(p).specialty === s.id }));
+}
+export function chooseSpecialty(id, p = player()) {
+  const s = specialtyOptions(p).find((x) => x.id === id);
+  if (!s) return result(false, 'There is no such practice area.', 'neutral');
+  if (!s.open) return result(false, 'That is not practiced where you work.', 'neutral');
+  if (!s.playable) return result(false, `${s.name} is not yet playable in Pathways.`, 'neutral');
+  const L = lawOf(p);
+  if (L.specialty === id) return result(false, 'That is already your practice.', 'neutral');
+  const had = L.specialty;
+  L.specialty = id;
+  L.specialtySince = nowM();
+  if (had) { L.rep.recognition = clamp(L.rep.recognition - 3); return result(true, `You moved your practice to ${s.name.toLowerCase()}. Some of your name does not carry over.`, 'neutral'); }
+  return result(true, `Your practice: ${s.name}.`, 'good');
+}
+const defaultSpecialty = (t) => ({ prosecutor: 'prosecution', defender: 'public_defense', gov_counsel: 'government' }[t] ?? 'civil_litigation');
+
+/** The hardest case the player leads on their own: by job and level, or for a practice of their own, by its standing. */
+export function leadCap(p = player()) {
+  const t = trackOf(p);
+  if (t === 'own') { const b = ownFirm(p); return clamp(Math.floor(2 + legalYears(p) / 5 + (b?.reputation ?? 30) / 50), 2, 5); }
+  return TRACKS[t]?.cases[p.career.level] ?? 1;
+}
+
+// ---------- Cases offered and assigned ----------
+
+/** What a case would pay a private practice, before it is taken. */
+const feeFor = (level) => localCost([0, 1500, 4000, 9000, 22000, 60000][level], country());
+const pickTemplate = (specialtyId, maxLevel) => {
+  const s = SPECIALTY_BY_ID[specialtyId];
+  const pool = (s?.cases ?? []).filter((id) => CASE_TEMPLATES[id] && CASE_TEMPLATES[id].level <= maxLevel);
+  return pool.length ? rng.pick(pool) : null;
+};
+
+/**
+ * The half-year's opportunities. A firm or a practice of one's own is offered clients; a prosecutor, a public defender
+ * and government counsel are assigned cases by their office, opened straight onto their desk.
+ */
+export function refreshOpportunities(p = player()) {
+  const L = lawOf(p);
+  const t = trackOf(p);
+  const w = Math.floor(nowM() / WINDOW);
+  if (L.window === w) return;
+  L.window = w;
+  L.offers = [];
+  if (!t || mayPractice(p) || t === 'attorney_general') return;
+  L.specialty ??= defaultSpecialty(t);
+  const cap = leadCap(p);
+  const load = cases.workload(p);
+  if (['prosecutor', 'defender', 'gov_counsel'].includes(t)) {
+    // Assigned by the office: a public defender's caseload is heavy; nobody chooses their clients.
+    const n = t === 'defender' ? 3 : t === 'prosecutor' ? 2 : 1;
+    for (let i = 0; i < n && cases.workload(p).points < load.capacity * (t === 'defender' ? 1.3 : 1.1); i++) {
+      const second = rng.chance(0.25) && cap < 5;
+      const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
+      if (!tid) break;
+      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, second: CASE_TEMPLATES[tid].level > cap });
+    }
+    return;
+  }
+  const n = t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) : 2;
+  for (let i = 0; i < n; i++) {
+    const second = t === 'lawyer' && rng.chance(0.3) && cap < 5;
+    const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
+    if (!tid) continue;
+    const T = CASE_TEMPLATES[tid];
+    L.offers.push({ id: `of${w}_${i}`, templateId: tid, level: T.level, second: T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
+      summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? '…')) });
+  }
+  // A former client may come back with something new: the same person, their history with the player intact.
+  const former = Object.values(store.state.npcs).filter((n) => n.alive && n.flags.formerClientOf === p.id && n.meters.relationship >= 55);
+  if (former.length && rng.chance(0.35)) {
+    const back = rng.pick(former);
+    const tid = pickTemplate(L.specialty, cap) ?? 'contract_dispute';
+    L.offers.push({ id: `of${w}_back`, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: feeFor(CASE_TEMPLATES[tid].level), kind: CASE_TEMPLATES[tid].kind, clientId: back.id, returning: true,
+      summary: `${back.firstName} ${back.lastName}, whose case you handled in ${store.state.npcs[back.id].flags.lastCaseYear ?? 'the past'}, is back with a new matter.` });
+  }
+  // A prominent client, only for an experienced lawyer whose name is known in the right field. Not a reward for wins.
+  if (L.rep.recognition >= 40 && cap >= 4 && legalYears(p) >= 10 && rng.chance(0.25)) {
+    const tid = pickTemplate(L.specialty, 5);
+    if (tid && CASE_TEMPLATES[tid].level >= 3) {
+      const who = rng.pick(['a professional athlete', 'a television actor', 'a large company', 'a city council', 'a well-known chef']);
+      L.offers.push({ id: `of${w}_major`, templateId: tid, level: Math.max(4, CASE_TEMPLATES[tid].level), fee: feeFor(5), kind: CASE_TEMPLATES[tid].kind, prominent: who,
+        summary: `${who.charAt(0).toUpperCase()}${who.slice(1)} wants you, and only you. ${CASE_TEMPLATES[tid].summary.replace(/\{\w+\}/g, 'the client')}` });
+    }
+  }
+}
+/** Offers waiting for an answer this half-year. */
+export function offers(p = player()) { refreshOpportunities(p); return lawOf(p).offers ?? []; }
+
+/** Opens a case on the player's desk, with a supervisor when it is above their level. */
+function openCase(p, templateId, o = {}) {
+  const L = lawOf(p);
+  const t = trackOf(p);
+  const sup = o.second ? supervisor(p) : null;
+  const c = cases.createCase(templateId, { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId });
+  c.track = t;
+  c.second = !!o.second;
+  if (o.prominent) { c.prominent = o.prominent; c.level = Math.max(c.level, o.level ?? c.level); }
+  if (!L.firstClient && !c.clinic) { L.firstClient = c.id; queue('law_first_client', { client: c.vars.client }); }
+  return c;
+}
+/** The senior lawyer a junior works under. One per employer, and they stay. */
+export function supervisor(p = player()) {
+  const t = trackOf(p);
+  const title = { lawyer: 'Supervising partner', prosecutor: 'Lead prosecutor', defender: 'Chief defender', gov_counsel: 'Supervising attorney', own: 'Of counsel' }[t] ?? 'Senior attorney';
+  return keepPerson(p, `supervisor_${p.career?.employerId ?? t}`, 'mentor', title, rng.int(42, 64));
+}
+
+/** Who a case would pit the player against: former clients on the other side, or family. */
+function conflictIn(o, p) {
+  if (!o.clientId) return '';
+  const n = store.state.npcs[o.clientId];
+  if (n && p.npcIds.includes(n.id) && ['spouse', 'parent', 'child', 'sibling'].includes(n.role)) return 'You cannot act for your own family in a matter like this.';
+  return '';
+}
+/** Accepts an offered case: licensed, no conflict, room on the desk. */
+export function accept(offerId, p = player()) {
+  const why = mayPractice(p);
+  if (why) return result(false, why, 'neutral');
+  const L = lawOf(p);
+  const o = (L.offers ?? []).find((x) => x.id === offerId);
+  if (!o) return result(false, 'That offer has gone.', 'neutral');
+  const conflict = conflictIn(o, p);
+  if (conflict) return result(false, `Conflict of interest: ${conflict}`, 'neutral');
+  const load = cases.workload(p);
+  if (load.points + o.level > load.capacity * 1.6) return result(false, 'You have no room on your desk for it. Finish or refer a case first.', 'neutral');
+  L.offers = L.offers.filter((x) => x !== o);
+  const c = openCase(p, o.templateId, { fee: SPECIALTY_BY_ID[o.specialty]?.fees?.[0], clientId: o.clientId, second: o.second, prominent: o.prominent, level: o.level });
+  if (o.prominent) canon(`law:prominent:${c.id}`, 'A prominent client', `Took on ${o.prominent} as a client.`, { privacy: 'public', sig: 2, milestone: false });
+  return result(true, `You took the case: ${c.title}.${c.supervisorId ? ` ${store.state.npcs[c.supervisorId].firstName} ${store.state.npcs[c.supervisorId].lastName} leads; you are second chair.` : ''}`, 'good', { caseId: c.id });
+}
+export function decline(offerId, refer = false, p = player()) {
+  const L = lawOf(p);
+  const o = (L.offers ?? []).find((x) => x.id === offerId);
+  if (!o) return result(false, 'That offer has gone.', 'neutral');
+  L.offers = L.offers.filter((x) => x !== o);
+  if (refer) { L.rep.clients = clamp(L.rep.clients + 0.5); return result(true, 'You referred the client to a colleague who handles this well.', 'neutral'); }
+  return result(true, 'You declined.', 'neutral');
+}
+/** Hands a case on: to cut a workload, or because it should not stay. No fee, no outcome of the player's. */
+export function referOut(caseId, p = player()) {
+  const c = cases.caseById(caseId);
+  if (!c || c.done || c.lawyerId !== p.id) return result(false, 'Not your open case.', 'neutral');
+  c.done = true; c.awaiting = null;
+  c.outcome = { kind: 'referred', text: 'Handed to a colleague.', favorable: 0, m: nowM(), year: store.state.year };
+  c.history.push({ m: nowM(), year: store.state.year, text: 'Referred to a colleague.' });
+  lawOf(p).history.push({ caseId: c.id, title: c.title, kind: c.kind, role: c.role, outcome: 'referred', favorable: 0, trial: false, level: c.level, year: store.state.year, track: c.track, referred: true });
+  return result(true, 'You handed the case to a colleague.', 'neutral');
+}
+
+// ---------- Law student clinic ----------
+
+/** A supervised clinic case for a law student in their second year or later. The student is not a lawyer, and says so. */
+export function clinicCase(p = player()) {
+  if (p.education.enrolled && p.education.stage === 'law') school(p);
+  const S = lawOf(p).school;
+  if (!S || S.done || !(p.education.enrolled && p.education.stage === 'law')) return result(false, 'Clinics are for law students.', 'neutral');
+  const y = Math.floor((nowM() - S.start) / 12);
+  if (y < 1) return result(false, 'Clinics start in the second year.', 'neutral');
+  const L = lawOf(p);
+  if (L.acts[`clinic:${y}`]) return result(false, 'You have a clinic case this year.', 'neutral');
+  L.acts[`clinic:${y}`] = nowM();
+  const sup = keepPerson(p, 'clinicDirector', 'mentor', 'Clinic director', rng.int(40, 64));
+  const c = cases.createCase(rng.pick(['will', 'family_petition']), { role: 'clinic', clinic: true, supervisorId: sup.id });
+  c.track = 'clinic';
+  gain(p, { counseling: 1 });
+  canon(`law:clinic:${p.id}:${y}`, 'A legal clinic case', `Helped a client under the supervision of ${sup.firstName} ${sup.lastName}.`, { milestone: false, sig: 1 });
+  return result(true, `The clinic assigns you ${c.vars.client}'s case. ${sup.firstName} ${sup.lastName} will check every step: you are a student, not yet a lawyer.`, 'good', { caseId: c.id });
+}
+
+// ---------- The record ----------
+
+/** Statistics, counted from the cases actually closed: nothing made up. */
+export function stats(p = player()) {
+  const H = lawOf(p).history.filter((h) => !h.clinic && !h.referred);
+  const n = (f) => H.filter(f).length;
+  return { completed: n((h) => h.kind !== 'appeal'), trials: n((h) => h.trial), trialsWon: n((h) => h.trial && h.favorable > 0), trialsLost: n((h) => h.trial && h.favorable <= 0),
+    settlements: n((h) => h.outcome === 'settlement'), pleas: n((h) => h.outcome === 'plea'), dismissals: n((h) => h.outcome === 'dismissed'),
+    appeals: n((h) => h.kind === 'appeal'), approvals: n((h) => h.outcome === 'approved'), deals: n((h) => ['closed', 'closed_risk'].includes(h.outcome)),
+    legacyUnknown: !!lawOf(p).legacy };
+}
+const completedIn = (p, track) => lawOf(p).history.filter((h) => !h.clinic && !h.referred && h.kind !== 'appeal' && (!track || h.track === track)).length;
+
+// ---------- Promotions and selection ----------
+
+const GATE_TEXT = { partnership: 'a vote of the partners', managing: 'election by the partners as managing partner', da: 'selection as District Attorney (an election or appointment)',
+  chief_defender: 'appointment as head of the office', general_counsel: 'appointment as general counsel', ag: 'election or appointment as Attorney General' };
+/** What the career engine also needs before a legal promotion: real experience in cases, standing, and for some posts a selection. */
+function gate(careerId, at) {
+  const t = TRACKS[careerId];
+  const p = player();
+  if (!t) return [];
+  const L = lawOf(p);
+  const out = [];
+  if (!admitted(p) && careerId !== 'judiciary') out.push('admission to the bar');
+  const need = t.minDone[at] ?? 0;
+  const done = completedIn(p, careerId);
+  if (!L.legacy && done < need) out.push(`${need} completed cases (you have ${done})`);
+  if (L.rep.integrity < 40) out.push('a better name for integrity');
+  const g = t.gates[at];
+  if (g && L.selected?.[g] !== p.career.employerId + ':' + at) out.push(GATE_TEXT[g]);
+  return out;
+}
+PROMOTION_GATES.push(gate);
+const select = (p, g) => { (lawOf(p).selected ??= {})[g] = `${p.career.employerId}:${p.career.level + 1}`; };
+
+/** The selections the player could seek now, with why not where they cannot. */
+export function opportunities(p = player()) {
+  const t = trackOf(p);
+  const L = lawOf(p);
+  const c = p.career;
+  const yrs = legalYears(p);
+  const prof = profileFor(p.countryId);
+  const out = [];
+  const cool = (id, months) => (L.tried?.[id] != null && nowM() - L.tried[id] < months ? `You tried recently. Again in ${months - (nowM() - L.tried[id])} months.` : '');
+  const career = currentCareer();
+  if (t === 'lawyer') {
+    const nextAt = c.level + 1;
+    const g = TRACKS.lawyer.gates[nextAt];
+    if (g) {
+      const served = c.yearsInRole >= (career.levels[c.level]?.years ?? 99);
+      const done = completedIn(p, 'lawyer');
+      const why = !served ? `After ${career.levels[c.level].years} years as ${c.title.toLowerCase()}` : !L.legacy && done < TRACKS.lawyer.minDone[nextAt] ? `${TRACKS.lawyer.minDone[nextAt]} completed cases first (${done})` : cool(g, 24);
+      out.push({ id: g, name: g === 'partnership' ? 'Seek partnership' : 'Stand for managing partner', why });
+    }
+  }
+  if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da });
+  if (t === 'defender' && c.level >= 1) out.push({ id: 'chief_defender', name: `Seek appointment as ${prof.titles.defenderChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('chief_defender', 24) });
+  if (t === 'gov_counsel' && c.level >= 2) out.push({ id: 'general_counsel', name: 'Seek appointment as agency general counsel', why: yrs < 8 ? 'After eight years of legal work' : cool('general_counsel', 24) });
+  if (admitted(p) && t && t !== 'judiciary') {
+    const clean = !convictionsOf(p).length;
+    out.push({ id: 'judge', name: 'Apply for a judicial vacancy', why: p.age < 35 ? 'From age 35' : yrs < 8 ? 'After eight years of legal work' : !clean ? 'A judge needs a clean record' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('judge', 24), how: prof.judges });
+  }
+  if (admitted(p) && t && t !== 'attorney_general') {
+    const senior = (t === 'lawyer' && c.level >= 2) || (['prosecutor', 'gov_counsel'].includes(t) && c.level >= 2) || (t === 'defender' && c.level >= 2) || t === 'judiciary' || !!p.politics;
+    out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal });
+  }
+  return out;
+}
+
+/** The chance a selection goes the player's way: their standing, never their win count alone, and luck. */
+function standing(p) {
+  const L = lawOf(p);
+  const s = stats(p);
+  return (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
+}
+/**
+ * Seeks a post by its own process: a partnership vote, an election or an appointment. It may fail; trying again waits.
+ * Elections here are simplified (a campaign and a result), not the full politics simulation.
+ */
+export function seek(id, p = player()) {
+  const o = opportunities(p).find((x) => x.id === id);
+  if (!o) return result(false, 'That is not open to you.', 'neutral');
+  if (o.why) return result(false, o.why, 'neutral');
+  const L = lawOf(p);
+  (L.tried ??= {})[id] = nowM();
+  const prof = profileFor(p.countryId);
+  const s = standing(p);
+  const luck = rng.next();
+  if (id === 'partnership' || id === 'managing') {
+    const billed = Math.min(0.1, (L.billed ?? 0) / localCost(400000, country()));
+    const yes = luck < clamp((id === 'partnership' ? 0.3 : 0.18) + s + billed, 0.05, 0.85);
+    if (!yes) { log(`The partners voted. Not this time: they want to see another year or two.`, 'system', 'bad'); return result(false, 'The partners voted no, this time.', 'bad'); }
+    select(p, id); promote();
+    canon(`law:${id}:${p.id}`, id === 'partnership' ? 'Made partner' : 'Elected managing partner', `Elected by the partners of the firm.`, { privacy: 'public', sig: 3 });
+    return result(true, id === 'partnership' ? 'The partners voted you in. You are a partner.' : 'The partners chose you to lead the firm.', 'good');
+  }
+  if (id === 'da' || id === 'chief_defender' || id === 'general_counsel') {
+    const elected = id === 'da' && prof.da === 'elected';
+    const cost = elected ? localCost(30000, country()) : 0;
+    if (cost && p.finance.cash < cost) return result(false, `A campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
+    p.finance.cash -= cost;
+    const chance = clamp(0.25 + s + (elected ? (p.hidden.fame ?? 0) / 400 + (p.stats.charm - 50) / 300 : 0.05), 0.05, 0.8);
+    const name = id === 'da' ? prof.titles.prosecutorChief : id === 'chief_defender' ? prof.titles.defenderChief : 'General Counsel';
+    if (luck >= chance) {
+      log(elected ? `You ran for ${name} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
+      return result(false, elected ? `You ran for ${name}. The voters chose your opponent.` : `Another candidate was appointed ${name}.`, 'bad');
+    }
+    select(p, id);
+    while (p.career.level < currentCareer().levels.length - 1) { if (!promote()) break; select(p, id); }
+    canon(`law:${id}:${p.id}`, `${elected ? 'Elected' : 'Appointed'} ${name}`, `${elected ? 'Won the election' : 'Was appointed'} as ${name}.`, { privacy: 'public', sig: 3 });
+    return result(true, elected ? `You won the election. You are the ${name}.` : `You were appointed ${name}.`, 'good');
+  }
+  if (id === 'judge') {
+    const chance = clamp(0.2 + s + (lawOf(p).rep.integrity - 55) / 150, 0.05, 0.7);
+    if (luck >= chance) return result(false, `The vacancy went to another candidate. Judgeships are ${o.how}, and there are few of them.`, 'bad');
+    becomeJudge(p);
+    return result(true, 'You were selected for the bench. From now on you rule on cases; you do not argue them.', 'good');
+  }
+  if (id === 'ag') {
+    const elected = prof.depth === 'full';
+    const cost = elected ? localCost(250000, country()) : 0;
+    if (cost && p.finance.cash < cost) return result(false, `A statewide campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
+    p.finance.cash -= cost;
+    const chance = clamp(0.12 + s + (elected ? (p.hidden.fame ?? 0) / 300 + (p.stats.charm - 50) / 250 : 0.03), 0.03, 0.6);
+    if (luck >= chance) return result(false, elected ? 'You ran for Attorney General and lost the statewide vote.' : 'The government appointed someone else.', 'bad');
+    withdrawAll(p, 'You left private practice for public office.');
+    hire(CAREER_BY_ID.attorney_general, 1, 65, elected ? 'elected' : 'appointed');
+    select(p, 'ag');
+    canon(`law:ag:${p.id}`, `${elected ? 'Elected' : 'Appointed'} Attorney General`, `${elected ? 'Won a statewide election' : 'Was appointed'} as Attorney General.`, { privacy: 'public', sig: 3 });
+    return result(true, elected ? 'You won the statewide vote. You are Attorney General.' : 'You were appointed Attorney General.', 'good');
+  }
+  return result(false, 'Nothing happened.', 'neutral');
+}
+/** Becomes a judge: the old cases go to colleagues, because a judge cannot be counsel in any of them. */
+function becomeJudge(p) {
+  withdrawAll(p, 'You left practice for the bench.');
+  hire(CAREER_BY_ID.judiciary, 0, 65, 'appointed');
+  canon(`law:judge:${p.id}`, 'Appointed a judge', `Selected for the ${profileFor(p.countryId).name === 'United States' ? 'trial court' : 'bench'}.`, { privacy: 'public', sig: 3 });
+}
+function withdrawAll(p, why) {
+  for (const c of lawOf(p).caseIds.map(cases.caseById).filter((x) => x && !x.done)) referOut(c.id, p);
+  log(why);
+}
+
+/** A professional rival from the other side of a case may sit as a judge one day; then the player must disclose it. */
+export function mustRecuse(judgeId, p = player()) {
+  const n = store.state.npcs[judgeId];
+  return !!n && (n.flags.formerClientOf === p.id || p.npcIds.includes(n.id) && ['spouse', 'parent', 'child', 'sibling', 'partner'].includes(n.role));
+}
+
+// ---------- Your own practice ----------
+
+/** The business engine's law firm, if any, with what it can carry. Opening one is done there (engine/business.js). */
+export function firmView(p = player()) {
+  const b = ownFirm(p);
+  if (!b) return null;
+  return { id: b.id, name: b.name, founded: b.founded, reputation: b.reputation, staff: b.staff?.length ?? 0, cash: b.cash };
+}
+
+// ---------- Time ----------
+
+/** Called on every turn and at the turn of the year: school, cases, opportunities, and the toll of the work. */
+export function tickLaw(o = {}) {
+  const p = player();
+  if (!p?.alive) return;
+  migrate(p);
+  if (!p.law && !(p.education.stage === 'law' && p.education.enrolled)) return;
+  const L = lawOf(p);
+  if (p.education.stage === 'law' && p.education.enrolled) { progressSchool(p); finishLawSchool(); }
+  cases.progressCases(p);
+  if (trackOf(p)) refreshOpportunities(p);
+  // Closed cases count toward the review once, and the firm's fees go to the firm.
+  for (const h of L.history.filter((x) => !x.counted)) {
+    h.counted = true;
+    if (h.clinic || h.referred) continue;
+    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.favorable < -0.4 ? -1 : 1);
+    const c = cases.caseById(h.caseId);
+    const firm = ownFirm(p);
+    if (c && firm && h.track === 'own' && c.fee.amount && !c.fee.toFirm) { c.fee.toFirm = true; firm.cash += c.fee.amount; firm.reputation = clamp((firm.reputation ?? 30) + (h.favorable > 0 ? 2 : 0)); }
+  }
+  // The toll of too much work, counted once per half-year whatever the turn length.
+  const half = Math.floor(nowM() / WINDOW);
+  if (L.tollHalf !== half) {
+    L.tollHalf = half;
+    const w = cases.workload(p);
+    if (w.points > w.capacity) {
+      p.stats.health = clamp(p.stats.health - 2);
+      p.stats.mood = clamp(p.stats.mood - 3);
+      L.rep.reliability = clamp(L.rep.reliability - 1);
+      if (!L.seen.burnout || nowM() - L.seen.burnout >= 24) { L.seen.burnout = nowM(); queue('law_burnout', {}); }
+    }
+    // A judicial vacancy, or an offer from government, now and then for someone who could take it.
+    const ops = opportunities(p);
+    if (ops.some((x) => x.id === 'judge' && !x.why) && (!L.seen.vacancy || nowM() - L.seen.vacancy >= 36) && rng.chance(0.3)) { L.seen.vacancy = nowM(); queue('law_vacancy', { place: p.city }); }
+    if (ops.some((x) => x.id === 'partnership' && !x.why) && (!L.seen.partnership || nowM() - L.seen.partnership >= 24)) { L.seen.partnership = nowM(); queue('law_partnership', {}); }
+  }
+  void o;
+}
+/** Older saves: a lawyer already working keeps their job and is treated as admitted; past cases are unknown, not invented. */
+export function migrate(p = player()) {
+  if (p.law || !p.career?.careerId || !LEGAL.has(p.career.careerId)) return;
+  const L = lawOf(p);
+  L.bar.admitted = { year: null, m: null, where: null, legacy: true };
+  L.legacy = { since: store.state.year, note: 'Cases before this save was updated are not on record.' };
+  L.specialty = defaultSpecialty(p.career.careerId);
+  if (!(p.flags.licenses ?? []).includes('law') && p.career.careerId !== 'judiciary') (p.flags.licenses ??= []).push('law');
+  // Experience shows in the skills, without inventing a single case.
+  const yrs = legalYears(p);
+  for (const s of LEGAL_SKILLS) L.skills[s.id] = clamp(L.skills[s.id] + yrs * 2.5);
+  L.rep.recognition = clamp(L.rep.recognition + yrs);
+}
+
+// ---------- Story scenes ----------
+
+const queue = (id, words) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast: { words } }); };
+/** What a choice in one of the legal scenes does (data/events/stories/law.js). */
+export function lawChoice(value) {
+  const p = player();
+  const L = lawOf(p);
+  const [scene, choice] = value.split(':');
+  switch (scene) {
+    case 'first': {
+      if (choice === 'listen') { gain(p, { counseling: 3 }); L.rep.clients = clamp(L.rep.clients + 2); return 'You let them tell it all, and take notes. They leave calmer than they came.'; }
+      if (choice === 'promise') { L.rep.integrity = clamp(L.rep.integrity - 3); return 'You promise them a win. Nobody can promise that, and part of you knows it.'; }
+      gain(p, { counseling: 1, ethics: 1 }); return 'You explain how the case will go, and what nobody can know yet.';
+    }
+    case 'partner': {
+      if (choice === 'ask') { const r = seek('partnership', p); return r.text; }
+      return 'You decide to give it another year.';
+    }
+    case 'vacancy': {
+      if (choice === 'apply') { const r = seek('judge', p); return r.text; }
+      return 'You let the vacancy pass. There will be others.';
+    }
+    case 'burnout': {
+      const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done && !c.awaiting).sort((a, b) => b.level - a.level);
+      if (choice === 'refer' && open[0]) { referOut(open[0].id, p); return `You hand ${open[0].title} to a colleague. The weight on your desk lifts a little.`; }
+      if (choice === 'leave') { p.stats.health = clamp(p.stats.health + 4); p.stats.mood = clamp(p.stats.mood + 6); return 'You take two weeks off and do not open your email.'; }
+      p.stats.health = clamp(p.stats.health - 3); return 'You push through. The work gets done. You do not sleep much.';
+    }
+    default: return '';
+  }
+}
+
+// ---------- For the hub ----------
+
+/** Everything the Legal Career screen shows, from saved state. */
+export function overview(p = player()) {
+  const L = lawOf(p);
+  const t = trackOf(p);
+  return { track: t, trackName: t === 'own' ? 'Your own practice' : TRACKS[t]?.name ?? null, title: p.career?.careerId && LEGAL.has(p.career.careerId) ? p.career.title : t === 'own' ? 'Principal' : null,
+    specialty: SPECIALTY_BY_ID[L.specialty] ?? null, years: legalYears(p), stats: stats(p), skills: LEGAL_SKILLS.map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
+    rep: REPUTATION.map((r) => ({ ...r, v: Math.round(L.rep[r.id] ?? 0) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
+    admitted: admitted(p), legacy: L.legacy ?? null, discipline: L.discipline ?? [], why: mayPractice(p) };
+}

@@ -2,6 +2,7 @@
 // and interactions all describe what happens as Effect[] and send it here.
 import { funeral } from './passing.js';
 import { militaryChoice } from './military.js';
+import { lawChoice } from './lawPractice.js';
 import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
@@ -245,6 +246,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'funeral': funeral(ctx.cast?.words?.goneId, e.value === 'skip' ? false : e.value === 'speak' ? 'speak' : true); break;
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
+      case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }

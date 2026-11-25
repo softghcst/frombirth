@@ -616,6 +616,33 @@ function convict(c, offenseId, how, defer = false) {
   if (!defer) sentence(c, offenseId, how);
 }
 
+/**
+ * A verdict reached in a trial the player argued (engine/lawCases.js), recorded through the same steps as any other:
+ * the record, bail, the sentence. Once only: a case that already has a verdict keeps it.
+ */
+export function verdictFrom(c, convicted, how = 'verdict at trial') {
+  if (c.verdict) return c.verdict;
+  for (const st of ['pretrial', 'plea', 'trial']) if (c.stage !== 'trial' && CASE_FLOW[c.stage]?.includes(st)) move(c, st, st === 'trial' ? 'The case went to trial.' : 'Pretrial hearing.');
+  if (convicted) convict(c, c.charges[0].offenseId, how);
+  else { move(c, 'acquitted', 'Found not guilty.'); closeAcquitted(c, 'acquitted', []); }
+  return c.verdict;
+}
+/** A plea agreement the player negotiated: a conviction by agreement, sentenced with credit for the plea. */
+export function pleaFrom(c) {
+  if (c.verdict) return c.verdict;
+  for (const st of ['pretrial', 'plea']) if (c.stage !== 'plea' && CASE_FLOW[c.stage]?.includes(st)) move(c, st, st === 'plea' ? 'Plea discussions.' : 'Pretrial hearing.');
+  convict(c, c.charges[0].offenseId, 'plea agreement');
+  return c.verdict;
+}
+/** Charges withdrawn: by a prosecutor who finds the case no longer holds, or on a successful motion. */
+export function dismissFrom(c, why = 'The charges were dropped.') {
+  if (c.verdict) return c.verdict;
+  if (c.stage === 'charged') move(c, 'pretrial', 'Pretrial hearing.');
+  move(c, 'dismissed', why);
+  closeAcquitted(c, 'dismissed', []);
+  return c.verdict;
+}
+
 /** Sentences a case left waiting after its verdict (a player judge's sentencing hearing). */
 export function passSentence(c, ruling) {
   if (c.stage !== 'convicted') return null;

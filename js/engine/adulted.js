@@ -43,7 +43,8 @@ export function grandfather() {
 export function examOptions() {
   const p = player();
   const c = country();
-  return p.education.degrees.map((d) => licenseFor(d.type)).filter((l, i, all) => l && !licensed(l) && all.indexOf(l) === i)
+  // Law has its own route to admission: the bar exam, then character and fitness (engine/lawSchool.js).
+  return p.education.degrees.map((d) => licenseFor(d.type)).filter((l, i, all) => l && l !== 'law' && !licensed(l) && all.indexOf(l) === i)
     .map((l) => ({ id: l, name: examName(l), profession: LICENSES[l].name, fee: localMoney(LICENSES[l].fee, c), sat: p.flags.examAge === p.age, affordable: p.finance.cash >= localMoney(LICENSES[l].fee, c) }));
 }
 /** How the weeks before an exam can be spent. */

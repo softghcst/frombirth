@@ -520,10 +520,19 @@ export const scaleSalary = (m) => {
 };
 
 /** Thresholds the next level demands that the player does not yet meet. */
+/**
+ * Extra conditions some careers put on a promotion, beyond years and reviews: a law firm's partnership vote, an
+ * election to District Attorney (engine/lawPractice.js registers its own). Each gate: (careerId, nextLevel) → [why].
+ */
+export const PROMOTION_GATES = [];
 function missingFor(level) {
-  return Object.entries(level?.needs ?? {})
+  const c = player().career;
+  const career = currentCareer();
+  const at = career?.levels.indexOf(level) ?? -1;
+  return [...Object.entries(level?.needs ?? {})
     .filter(([path, min]) => (Number(resolve(path)) || 0) < min)
-    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`);
+    .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`),
+  ...(at > 0 && c.careerId ? PROMOTION_GATES.flatMap((g) => g(c.careerId, at) ?? []) : [])];
 }
 
 /** What stands between the player and the next level, for display. */
