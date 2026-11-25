@@ -4,8 +4,6 @@
 // the creases where they fall. Sized by how long the baby was. Used on the hospital tag (ui/birthTag.js).
 
 let serial = 0;
-/** How much shorter than the drawing a baby's foot is (the drawing's toes stay where they are). */
-const SHORT = 0.74;
 
 /** Draws from a string: the same every time. */
 function seeded(key) {
@@ -15,10 +13,10 @@ function seeded(key) {
   return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-// A baby's right foot, in a 42 × 76 box: slim, the ball wider than the heel, a gentle waist, the big toe on the left
-// (the inside); the toes are separate little dots above the ball.
-const SOLE = 'M20 74C14 74 11.5 69 12 63c.5-6 2-10 2-15 0-5-4-9-4.5-16C9 23 14 17.5 21 17.5c7.5 0 12 5.5 11.5 13.5-.5 8-4 14-5 21-1 7 .5 22-7.5 22Z';
-const TOES = [[13.4, 10.6, 4.1, 4.7], [20.4, 7.8, 2.4, 2.6], [25.4, 8.3, 2.1, 2.3], [29.5, 10.6, 1.9, 2.1], [32.5, 14, 1.7, 1.8]];
+// A baby's right foot, in a 44 × 72 box: chubby and short, a round full ball, a soft round heel, a slight waist on the
+// inside, the big toe on the left (the inside); the toes are little round pads tucked close above the ball.
+const SOLE = 'M21 70C14.5 70 11.5 65 12 58.5 12.5 53 15 50 14.5 45 14 40 7.5 37 7.5 29.5 7.5 21.5 14 17 22 17 30.5 17 36.5 22 36.5 29.5 36.5 36.5 32 40.5 31.2 46 30.5 51.5 32 57 31.3 62 30.6 67 26.5 70 21 70Z';
+const TOES = [[13.8, 10.6, 5.2, 5.6], [21.4, 7.6, 3, 3.2], [26.8, 8, 2.7, 2.9], [31.4, 10.2, 2.4, 2.6], [35, 13.6, 2.1, 2.2]];
 
 /** Fine white creases, where they fall on this foot: curving lines across the sole, some branching off at a slant. */
 function creases(r) {
@@ -30,7 +28,7 @@ function creases(r) {
     return `${d} Q${px.toFixed(1)} ${py.toFixed(1)} ${((px + x) / 2).toFixed(1)} ${((py + y) / 2).toFixed(1)}`;
   }, '') + ` L${pts.at(-1)[0].toFixed(1)} ${pts.at(-1)[1].toFixed(1)}`;
   for (let i = 0; i < 9; i++) {
-    let y = 21 + r() * 50;
+    let y = 20 + r() * 46;
     const slope = (r() - 0.5) * 0.5;
     const pts = [];
     for (let x = 7 + r() * 6; x < 35 - r() * 6; x += 2.5 + r() * 2.5) { pts.push([x, y]); y += slope * 2.5 + (r() - 0.5) * 2.2; }
@@ -55,21 +53,20 @@ export function inkFeet({ lengthIn = 19.7, seed = 'x', width = 110, ink = '#1617
   const n = ++serial;
   const r = seeded(`feet:${seed}`);
   const k = Math.max(0.86, Math.min(1.14, lengthIn / 19.7));
-  const slim = 0.9 + r() * 0.16; // some babies' feet are slimmer than others
+  const slim = 0.88 + r() * 0.14; // some babies' feet are slimmer than others
   const foot = (left) => {
-    const tilt = (left ? -1 : 1) * (4 + r() * 7);
-    const dy = r() * 5;
+    const tilt = (left ? -1 : 1) * (3 + r() * 6);
+    const dy = r() * 3;
     const lines = creases(r).map((c) => `<path d="${c.d}" stroke-width="${c.w.toFixed(2)}" opacity="${c.o.toFixed(2)}"/>`).join('');
-    const place = left ? `translate(46 ${(2 + dy).toFixed(1)}) scale(-1 1)` : `translate(50 ${dy.toFixed(1)})`;
-    // A baby's foot is short: the drawing is squashed to about three quarters of its height, from the toes down.
-    const shape = `translate(21 8) scale(${slim.toFixed(3)} ${SHORT}) translate(-21 -8)`;
-    return `<g transform="${place} rotate(${tilt.toFixed(1)} 21 42) ${shape}">
+    const place = left ? `translate(47 ${(1 + dy).toFixed(1)}) scale(-1 1)` : `translate(49 ${dy.toFixed(1)})`;
+    const shape = `translate(22 0) scale(${slim.toFixed(3)} 1) translate(-22 0)`;
+    return `<g transform="${place} rotate(${tilt.toFixed(1)} 22 40) ${shape}">
       <g filter="url(#ink-${n})" fill="${ink}"><path d="${SOLE}"/>${TOES.map(([x, y, rx, ry]) => `<ellipse cx="${(x + (r() - 0.5) * 0.8).toFixed(1)}" cy="${(y + (r() - 0.5) * 0.8).toFixed(1)}" rx="${rx}" ry="${ry}"/>`).join('')}</g>
       <g clip-path="url(#sole-${n})" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">${lines}</g></g>`;
   };
   const w = Math.round(width * k);
   const s = Math.floor(r() * 999);
-  return `<svg class="ink-feet" viewBox="0 2 96 66" width="${w}" height="${Math.round(w * 66 / 96)}" role="img" aria-label="Footprints">
+  return `<svg class="ink-feet" viewBox="2 1 92 76" width="${w}" height="${Math.round(w * 76 / 92)}" role="img" aria-label="Footprints">
     <defs>
       <clipPath id="sole-${n}"><path d="${SOLE}"/></clipPath>
       <filter id="ink-${n}" x="-12%" y="-12%" width="124%" height="124%">
