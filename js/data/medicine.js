@@ -258,6 +258,7 @@ export const ERA = {
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
+  womenWidelyAdmitted: 1920, // by about here most medical schools take women, if often in small numbers
 };
 
 /**

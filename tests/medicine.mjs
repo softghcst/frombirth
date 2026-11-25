@@ -130,6 +130,23 @@ for (const id of Object.keys(JURISDICTIONS).filter((k) => k !== 'default')) {
   check(!!COUNTRIES[id], `country profile ${id} is a country the game knows`);
   check(id === 'us' || JURISDICTIONS[id].detail === 'simplified', `country profile ${id} is marked simplified`);
 }
+// Historical access: before about 1870 almost no school took women; until about 1920, fewer did.
+{
+  const q = life('us', 22);
+  const was = store.state.year;
+  q.gender = 'female';
+  store.state.year = 1860;
+  check(/admits women/.test(edu.programOptions().find((x) => x.id === 'medical').reason), 'in 1860 medical school is closed to women');
+  store.state.year = 1900;
+  const her = edu.admissionChance('medical');
+  q.gender = 'male';
+  const his = edu.admissionChance('medical');
+  store.state.year = 2000;
+  const now = edu.admissionChance('medical');
+  q.gender = 'female';
+  check(her < his && edu.admissionChance('medical') === now, `in 1900 fewer places for women; today the same (${her.toFixed(2)} vs ${his.toFixed(2)})`);
+  store.state.year = was;
+}
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
 for (const id of ['med_rotation', 'med_mentor', 'med_rival', 'med_romance', 'med_disclosure', 'med_grateful', 'med_leadership_offer']) check(!!EVENT_BY_ID[id], `scene ${id} registered`);

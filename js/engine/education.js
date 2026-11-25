@@ -25,7 +25,7 @@ import * as campus from './campus.js';
 import * as adult from './adulted.js';
 import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
-import { jurisdiction } from '../data/medicine.js';
+import { jurisdiction, ERA } from '../data/medicine.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
@@ -750,6 +750,8 @@ export function programOptions() {
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
     else if (prog.minYear && store.state.year < prog.minYear) reason = `There is no such school in ${store.state.year}.`;
     else if (prog.id === 'podiatric' && !jurisdiction(p.countryId).dpm) reason = 'The game models the podiatric (DPM) route in the United States only.';
+    // Historical Eras: before about 1870 almost no medical school took women (data/medicine.js ERA).
+    else if (['medical', 'podiatric'].includes(prog.id) && (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenInMedicine) reason = `Almost no medical school admits women in ${store.state.year}.`;
     else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
     else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
     else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
@@ -803,7 +805,9 @@ export function admissionChance(progId, subjectId) {
   const pm = p.medicine?.premed;
   const calling = p.flags.medCalling && ['medical', 'podiatric'].includes(progId) ? 0.04 : 0;
   const premed = calling + (pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0);
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
+  // Until about 1920 many schools took few women, or none (data/medicine.js ERA): fewer places, not less ability.
+  const barrier = (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenWidelyAdmitted ? 0.55 : 1;
+  if (progId === 'medical') return clamp((0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed) * barrier, 0.03, 0.95);
   if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
   if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMS[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);

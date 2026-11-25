@@ -144,7 +144,7 @@ function schoolYear(p, m, y) {
       : y === 3 ? ROTATIONS.slice(0, 6) : [ROTATIONS[6], ROTATIONS[7], ROTATIONS.find((r) => r.id === m.school.elective) ?? ROTATIONS[8 + (m.school.startYear % 2)]];
     const done = list.map((r) => rotate(p, m, r));
     const best = done.filter((d) => d.grade === 'Honors').map((d) => d.rot.name);
-    log(`Clinical rotations this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
+    log(`${year() < 1950 ? 'Clinical clerkships' : 'Clinical rotations'} this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
     store.state.pendingEvents.push({ id: 'med_rotation', cast: { words: { rotation: done[0].rot.name, shows: done[0].rot.shows } } });
   }
   const exams = dpm ? [{ id: 'apmle1', name: 'the first podiatric board exam', year: 2 }, { id: 'apmle2', name: 'the second podiatric board exam', year: 4 }] : j.exams;
