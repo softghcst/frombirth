@@ -1337,7 +1337,28 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
   box-shadow: 0 0 0 4px #D8B25A inset, 0 10px 24px rgba(0, 0, 0, .35); }
 .sv-barber .sv-glass { border-radius: 4px; background: linear-gradient(160deg, #EEF3F2 0%, #D2E1DF 55%, #BFD3D0 100%); }
 .sv-barber .sv-leave { background: #F3EEE4; }
-@media (prefers-reduced-motion: reduce) { .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
+/* The way out, after paying (outro in js/ui/salonVisit.js): the new look, a goodbye, a fade back to the game. */
+.sv-outro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px 16px; text-align: center; cursor: pointer; color: #4A1F35;
+  background: radial-gradient(circle at 50% 42%, #FFF1F6 0%, #F9D0DF 55%, #EDB4CC 100%);
+  animation: sv-fade-in .35s ease both, sv-fade-out .45s ease 2.25s forwards; }
+.sv-outro.sv-still { animation: none; }
+.sv-outro-sign { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; animation: sv-drop .5s var(--ease) both; }
+.sv-outro-sign svg { width: 40px; height: 40px; }
+.sv-outro-sign .sv-blade-a, .sv-outro-sign .sv-blade-b { animation: none; }
+.sv-outro-frame { position: relative; width: min(52vw, 210px); aspect-ratio: 1; margin: 6px 0; animation: sv-pop .6s var(--ease) .15s both; }
+.sv-outro-face { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 5px solid #23140f; background: #FFF6F0;
+  box-shadow: 0 0 0 8px #FFE07A, 0 14px 30px rgba(120, 40, 80, .28); }
+.sv-outro-face svg { width: 100%; height: 100%; display: block; }
+.sv-outro-line { margin: 4px 0 0; font-family: var(--serif); font-weight: 700; font-size: 1.6rem; line-height: 1.15; animation: sv-rise .5s var(--ease) .45s both; }
+.sv-outro-sub { margin: 0; font-size: .95rem; opacity: .8; animation: sv-rise .5s var(--ease) .65s both; }
+.sv-barber .sv-outro { color: #F3EEE4; background: radial-gradient(circle at 50% 42%, #3B6B5E 0%, #24433B 60%, #162A25 100%); }
+.sv-barber .sv-outro-face { background: #EEF3F2; box-shadow: 0 0 0 8px #D8B25A, 0 14px 30px rgba(0, 0, 0, .35); }
+.sv-barber .sv-outro-sign span { color: #D8B25A; }
+@keyframes sv-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sv-drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sv-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sv-outro, .sv-outro *, .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
 
 /* The salon's or barbershop's row on the Self tab: its badge for a picture (shopRow in js/ui/salonVisit.js). */
 /* Drawn a little larger than its 30px tile, so the row's words line up with the rows below. */
