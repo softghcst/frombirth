@@ -55,12 +55,14 @@ const result = await page.evaluate(async ({ HEAD, MARGIN }) => {
     const hairBottom = (hair.length - 1 - [...hair].reverse().findIndex(Boolean)) / K;
     const lo = headTop + 18; const hi = Math.min(fit.earTop, hairBottom - 6);
     const rowsAt = (rows, y) => rows[Math.round(y * K)];
-    // Column tops: where the outside of the head and of the hair begin, either side of the middle (a curl or a puff
-    // may stand up in the middle, so it is left out), so the hair's top edge sits on the crown as its sides sit on
-    // the temples.
+    // Column tops: where the outside of the head and of the hair begin, across the crown, so the hair's top edge covers
+    // the crown as its sides cover the temples.
     const top = (rows, x) => { for (let i = 0; i < rows.length; i++) { const r = rows[i]; if (r && r[0] <= x && r[1] >= x) return i / K; } return null; };
-    const COLS = [-100, -85, -70, -55, -40, 40, 55, 70, 85, 100].map((o) => cx + o);
+    const COLS = Array.from({ length: 23 }, (_, i) => cx - 110 + i * 10);
     const headTops = COLS.map((x) => top(head, x));
+    // Hair short of the outline (scalp or outline showing, d > 0) counts far more than hair a little past it: a style with
+    // a jagged edge is fitted so the dips between its tufts still cover the head, not so its edge is right on average.
+    const gap = (d) => (d > 0 ? 12 * d * d : d * d);
     // Scaled by sx across and sy down about (cx, ay), where the hair ends at the ears.
     const ay = hi;
     const err = (sx, sy) => {
@@ -70,13 +72,14 @@ const result = await page.evaluate(async ({ HEAD, MARGIN }) => {
         const r = rowsAt(hair, ay + (y - ay) / sy); if (!r) { e += 400; n++; continue; }
         const L = cx + (r[0] - cx) * sx; const R = cx + (r[1] - cx) * sx;
         const dl = (hr[0] - MARGIN) - L; const dr = R - (hr[1] + MARGIN);
-        e += dl * dl + dr * dr; n += 2;
+        e += gap(-dl) + gap(-dr); n += 2;
       }
       COLS.forEach((x, i) => {
         const t = top(hair, cx + (x - cx) / sx); const h = headTops[i];
         if (t == null || h == null) return;
         const d = (ay + (t - ay) * sy) - (h - MARGIN);
-        e += 2 * d * d; n += 2;
+        // Along the top only a gap counts: a curl or a puff standing up off the crown is meant to.
+        e += d > 0 ? gap(d) : Math.min(d * d, 4); n += 1;
       });
       return { e: e / Math.max(1, n) };
     };
