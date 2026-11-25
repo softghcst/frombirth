@@ -3,12 +3,18 @@
 // twice, and pay that is not multiplied by pressing the button more often. Run with: node tests/law-steps.mjs
 import { store, rng, ls, lp, lc, check, finish, lawyer, graduate, edu } from './helpers/lawSetup.mjs';
 import { advanceTurn } from '../js/engine/turns.js';
+import * as em from '../js/engine/employers.js';
 
 /** Lives one year of the save in turns of `step` months. */
 function year(base, step) {
   store.state = structuredClone(base);
   store.state.settings = { ...(store.state.settings ?? {}), step };
-  rng.seed(20261128);
+  // A layoff is a chance of its own each year, nothing to do with turn length: keep it out of the comparison.
+  const e = em.employer(store.state.player.career?.employerId);
+  if (e) e.health = 90;
+  if (store.state.world?.places) (store.state.world.places[store.state.player.countryId] ??= {}).phase = 'boom';
+  store.state.player.career && (store.state.player.career.performance = Math.max(80, store.state.player.career.performance ?? 0));
+  rng.seed(20261129);
   for (let i = 0; i < 12 / step; i++) { store.state.pendingEvents = []; advanceTurn(); }
   const p = store.state.player;
   const L = p.law;
