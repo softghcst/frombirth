@@ -175,7 +175,8 @@ export const ROYAL = {
     // A royal child of 7 to 13 (the kid head), drawn on its template: princes and princesses; an empty list is plain children's clothes.
     // The heir to the throne, at that age, wears their own (kidHeir), whichever of the others they were given.
     // A noble child of 7 to 13: the plainer of the royal kids' outfits, with no crown, royal sash, epaulettes or ermine.
-    nobleKid: { male: ['outfit_kid_01_royal_tunic', 'outfit_kid_03_royal_blazer'], female: ['outfit_kid_08_princess_sailor'] },
+    nobleKid: { male: ['outfit_kid_01_royal_tunic', 'outfit_kid_03_royal_blazer', 'outfit_kid_15_noble_riding_jacket'],
+      female: ['outfit_kid_08_princess_sailor', 'outfit_kid_13_noble_velvet_dress', 'outfit_kid_14_noble_ribbon_waistcoat'] },
     kidHeir: { male: 'outfit_kid_06_heir_jacket', female: 'outfit_kid_12_heir_princess_starry' },
     kid: { male: ['outfit_kid_01_royal_tunic', 'outfit_kid_02_royal_sailor', 'outfit_kid_03_royal_blazer', 'outfit_kid_04_royal_ceremonial', 'outfit_kid_05_royal_velvet_cape'],
       female: ['outfit_kid_07_princess_dress', 'outfit_kid_08_princess_sailor', 'outfit_kid_09_princess_pinafore', 'outfit_kid_10_princess_ceremonial', 'outfit_kid_11_princess_capelet'] }, monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
