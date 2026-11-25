@@ -35,7 +35,7 @@ import { HAIR_TOPS } from './data/hairTops.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { FITTED_CLOTHES } from './avatar/fittedClothes.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, ELDER_HAIR, ELDER_HAIR_AGE, HAIR_TYPE, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyEyes, PACIFIER, ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, ELDER_HAIR, ELDER_HAIR_AGE, HAIR_TYPE, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -51,9 +51,6 @@ const headName = (headId) => PART_BY_ID[headId]?.file.replace(/^.*\/|\.svg$/g, '
  * to is given the base head's version.
  */
 export function fittedHairFile(hairId, headId) {
-  // Baby hair: made for each young head (assets/hair_baby/, scripts/make_baby_hair.py).
-  const baby = babyHairStyle(hairId);
-  if (baby) return `hair_baby/${baby}_${BABY_HAIR.heads.includes(headName(headId)) ? headName(headId) : 'baby'}.svg`;
   const style = FITTED_HAIR[hairId];
   if (!style) return null;
   // An older style anchored to the adult heads is drawn from its older file anywhere else (a child's head).
@@ -178,7 +175,7 @@ export function dressFor(look, ctx = {}) {
     const minor = age < 18;
     const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
     // A royal child (under 14, the kid head) wears children's clothes too (none drawn yet); royal dress begins at 14.
-    const dress = young ? ROYAL.outfits.baby : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
+    const dress = young ? look.royalBabyClothes ?? ROYAL.outfits.baby[0] ?? null : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
       : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
     // No royal dress drawn for their age (a royal teen, while all of it is grown-up dress): their own clothes.
     out.clothes = dress === undefined ? out.clothes : dress;
@@ -218,6 +215,8 @@ const clothesLayer = (id, headId, extra = '') => {
  */
 /** Children's clothes, drawn on a template of the child's own head (assets/clothes_templates/): already in place, drawn as they are. */
 const ASDRAWN = /^outfit_(baby|kid)_/;
+/** A baby's hair, drawn on the baby template: placed as drawn. */
+const BABY_HAIR_DRAWN = /^hair_baby_/;
 /** A child's outfit worn a little wider or taller than drawn, to cover the shoulders (scripts/fit-child-clothes.mjs). */
 const childFit = (id) => {
   const k = CHILD_CLOTHES_FIT[id];
@@ -399,7 +398,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
   // Hair in front of the face ends at this head's own chin (in the hair's coordinates), so a lock that
   // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
-  const hf = d.hair && !fitted ? hairFit(d.hair, d.head) : null;
+  const hf = d.hair && !fitted && !BABY_HAIR_DRAWN.test(d.hair) ? hairFit(d.hair, d.head) : null;
   const chin = PART_BY_ID[d.head]?.fit?.chin;
   // An anchored older style is already in the head's own coordinates: it is cut at the chin as it is.
   const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : fitted && legacy && chin ? Math.round(chin - 2) : FRONT_HAIR_CUT;
@@ -422,7 +421,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const faceStage = ageStage(ctx.age ?? 25) === 'adult' && (ctx.age ?? 25) < 18 ? 'teen' : ageStage(ctx.age ?? 25);
   const f = fitTransforms(d.head, faceStage, look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
-  const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
+  // A baby's hair is drawn on the baby template, where it belongs: as it is (BABY_HAIR_DRAWN).
+  const hairAt = BABY_HAIR_DRAWN.test(d.hair ?? '') ? '' : hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {

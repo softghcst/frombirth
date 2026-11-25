@@ -149,6 +149,12 @@ export const ELDER_HAIR = { female: [], male: [] };
  * What a child of 7 to 13 (the kid head) wears: children's clothes, never a grown-up's (from 14, their own style). Empty for now:
  * the children's clothes are being redrawn, and until they are added here a child is drawn with no outfit.
  */
+/**
+ * A baby's hair (under 3), by hair texture: drawn on the baby template (assets/clothes_templates/baby_head_template.png)
+ * and placed as drawn. Being redrawn: until styles are added here, a baby has no hair drawn.
+ */
+export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fringe', 'hair_baby_straight_02_side_swoop', 'hair_baby_straight_03_fuzzy_crop'], wavy: ['hair_baby_wavy_01_wave_on_top', 'hair_baby_wavy_02_tousled', 'hair_baby_wavy_03_side_ripple'], curly: ['hair_baby_curly_01_curl_fringe', 'hair_baby_curly_02_soft_curls', 'hair_baby_curly_03_curl_tuft'], coily: ['hair_baby_coily_01_afro', 'hair_baby_coily_02_tiny_coils', 'hair_baby_coily_03_little_puff'] };
+
 export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
@@ -156,13 +162,14 @@ export const OUTFITS = {
   female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
   male: ['outfit_64_flannel_shirt', 'outfit_66_denim_shirt', 'outfit_67_varsity_jacket'],
   // What a baby or toddler wears (0 to 6, one head): drawn on its template, assets/clothes_templates/baby_head_template.png.
-  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest'],
+  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest', 'outfit_baby_05_star_pajamas', 'outfit_baby_07_cable_sweater', 'outfit_baby_09_yellow_collar',
+    'outfit_baby_10_suspenders_bowtie'],
 };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
   outfits: { female: ['outfit_45_princess_sweetheart', 'outfit_52_princess_starlight'],
-    male: ['outfit_46_prince_epaulettes'], baby: null, monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+    male: ['outfit_46_prince_epaulettes'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'], monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.
@@ -183,15 +190,6 @@ export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, cro
 export const CAREER_DRESS = {
   // The work uniforms (police, firefighter, military, doctor, suit) are being redrawn: until then, people wear their own clothes at work.
 };
-/**
- * Baby hair, for babies and toddlers: made for each young head from its own outline (scripts/make_baby_hair.py),
- * drawn from assets/hair_baby/<style>_<head>.svg. Which styles a baby may have depends on their natural texture;
- * null is a baby who is still bald.
- */
-export const BABY_HAIR = { styles: ['fuzz', 'wisps', 'curl', 'curls', 'fringe'], heads: ['baby', 'toddler'],
-  byTexture: { straight: ['fuzz', 'wisps', 'curl', 'fringe', null], wavy: ['fuzz', 'wisps', 'curl', 'fringe', null], curly: ['curl', 'curls', 'fuzz', null], coily: ['curls', 'fuzz', null] } };
-/** A baby hair id ('babyhair_fuzz') -> its style ('fuzz'), or null for any other hair. */
-export const babyHairStyle = (id) => (typeof id === 'string' && id.startsWith('babyhair_') && BABY_HAIR.styles.includes(id.slice(9)) ? id.slice(9) : null);
 
 /** A baby (under 3) has a binky in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
 export const PACIFIER = { id: 'pacifier_01', boy: '#5aa7f0', girl: '#f48cc4' };

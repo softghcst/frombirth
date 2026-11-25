@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR as BABY_HAIR_STYLES, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -273,12 +273,14 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const st = a.style;
   const skin = part('skin', g.skin);
   const natural = INDEX.anyHair[g.hairColor].hex;
+  // A baby's hair, by texture (js/avatar/curation.js BABY_HAIR_BY_TEXTURE): being redrawn; until then, none.
+  const babyHair = BABY_HAIR_BY_TEXTURE[g.hairTexture] ?? BABY_HAIR_BY_TEXTURE.straight;
   const sex = gender === 'female' ? 'female' : 'male';
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
-    hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
+    hair: st.hair === 'bald' ? null : st.hair, babyHair: babyHair.length ? seeded(babyHair, seed, 'babyhair') : null,
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
     // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
@@ -286,6 +288,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: OUTFITS.baby.length ? seeded(OUTFITS.baby, seed, 'babyclothes') : null,
+    royalBabyClothes: ROYAL.outfits.baby.length ? seeded(ROYAL.outfits.baby, seed, 'royalbaby') : null,
     kidClothes: KID_OUTFITS.any.length + KID_OUTFITS[sex].length ? seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes') : null, royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
     // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.
     royalOutfitYoung: seeded(ROYAL.outfits[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'royal'),

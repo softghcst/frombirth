@@ -633,7 +633,7 @@ def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
     # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
     # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
-    if folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name) and vb:
+    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and name.startswith('hair_baby_'))) and vb:
         s = 512 / vb[2]
         transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
         return 'as drawn on the child template'
