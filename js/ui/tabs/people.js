@@ -1,6 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
-import { openBirthTag } from '../birthTag.js';
+import { openBirthTag, openAdoptionCard } from '../birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -62,6 +62,16 @@ const GROUPS = [
 export const portrait = (npc) => (npc.role === 'pet'
   ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank, npc.flags.royal?.consort, player().royal?.countryId), label: npc.firstName })}</div>`);
+
+/** The people a child was adopted by, as they were on the day. */
+const adoptiveParents = (child) => (child.adoptionInfo?.by ?? []).map((id) => (id === player().id ? player() : store.state.npcs[id])).filter(Boolean);
+/** Adopts a child and, when it goes through, shows the day they came home. */
+async function adoptAndWelcome(api) {
+  const r = kids.adopt();
+  await report(api, r);
+  const child = r.childId ? store.state.npcs[r.childId] : null;
+  if (child?.adoptionInfo) { child.flags.adoptionCard = 'seen'; api.changed(); await openAdoptionCard(child, { title: `Welcome Home, ${child.firstName}!`, parents: adoptiveParents(child), button: `Hello, ${child.firstName}` }); }
+}
 
 async function report(api, r) {
   api.changed();
@@ -382,6 +392,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
@@ -425,7 +436,8 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
-      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [player(), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
@@ -524,7 +536,7 @@ export async function openLoveFamily(id, api) {
   if (id === 'love') return lookForLove(api);
   if (id === 'adopt') {
     const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-    if (yes) return report(api, kids.adopt());
+    if (yes) return adoptAndWelcome(api);
   }
   return undefined;
 }
@@ -590,7 +602,7 @@ export default {
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-        if (yes) return report(api, kids.adopt());
+        if (yes) return adoptAndWelcome(api);
       }
       return undefined;
     };

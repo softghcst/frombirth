@@ -1,14 +1,15 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
-import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo } from './birthTag.js';
+import { birthdayFor, dateNow } from './birthday.js';
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo, adoptionInfoFor } from './birthTag.js';
 import { announce } from './pregnancyChoice.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { noteBirth } from './globalLife.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
-import { store, player, country, npcsByRole, log, milestone } from '../state.js';
+import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, addedTalents } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
@@ -175,6 +176,11 @@ export function adopt() {
   const child = addNpc(makeNpc({ role: 'child', countryId: p.countryId, lastName: p.lastName, age: rng.int(0, 8),
     relationship: rng.int(45, 70) }));
   child.adopted = true;
+  // The day they came home (ui/birthTag.js adoption card).
+  const partner = livingNpcs().find((n) => ['spouse', 'partner'].includes(n.role));
+  child.birthday ??= birthdayFor(child.id);
+  child.adoptionInfo = adoptionInfoFor(child, { date: dateNow(), countryId: c.id, city: p.city, by: [p.id, ...(partner ? [partner.id] : [])] });
+  child.flags.adoptionCard = 'new';
   child.stats = { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
   child.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60),
     singing: rng.int(0, 60), dance: rng.int(0, 60) };
@@ -184,7 +190,7 @@ export function adopt() {
   const text = `After a year of forms and home visits, you adopted ${child.firstName}, age ${child.age}. The fees came to ${fmtMoney(fee, c)}.`;
   log(text, 'system', 'good');
   milestone(`Adopted ${child.firstName}.`, 'family');
-  return result(true, text);
+  return { ...result(true, text), childId: child.id };
 }
 
 /** How long a name may be, and what it may be made of: letters (any alphabet, accents too), spaces, hyphens, apostrophes. */

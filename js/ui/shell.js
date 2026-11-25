@@ -407,16 +407,34 @@ export function mountGame(app, hooks) {
     const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
       .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
     for (const b of babies) {
-      const kind = b.gender === 'male' ? 'brother' : b.gender === 'female' ? 'sister' : 'sibling';
+      const kind = b.gender === 'male' ? 'Brother' : b.gender === 'female' ? 'Sister' : 'Sibling';
+      if (b.birthInfo) {
+        // A new brother or sister: their hospital tag, named by the parents.
+        b.flags.birthTag = 'seen';
+        persist();
+        const parents = (b.parentIds ?? []).map((id) => store.state.npcs[id]).filter(Boolean);
+        await openBirthTag(b, { title: `A Baby ${kind}!`, parents, button: `Hello, ${b.firstName}` });
+        continue;
+      }
       const mom = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.role === 'parent' && n.gender === 'female' && n.alive);
       await new Promise((resolve) => {
         const m = openModal(`
-          <div class="notice-head">${portrait(b)}<div class="notice-who"><strong>${esc(b.firstName)} ${esc(b.lastName)}</strong><small>Your ${esc(kind)}</small></div></div>
-          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">👶</span>A Baby ${kind.charAt(0).toUpperCase()}${kind.slice(1)}</h2>
-          <p class="body pick-body">${mom ? 'Your mother gave birth to' : 'The family welcomes'} a baby ${esc(kind)}, ${esc(b.firstName)}. ${player().age < 6 ? 'Everyone is looking at the baby now.' : `You hold ${b.gender === 'male' ? 'him' : b.gender === 'female' ? 'her' : 'them'} for the first time.`}</p>
+          <div class="notice-head">${portrait(b)}<div class="notice-who"><strong>${esc(b.firstName)} ${esc(b.lastName)}</strong><small>Your ${esc(kind.toLowerCase())}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">👶</span>A Baby ${kind}</h2>
+          <p class="body pick-body">${mom ? 'Your mother gave birth to' : 'The family welcomes'} a baby ${esc(kind.toLowerCase())}, ${esc(b.firstName)}.</p>
           <button class="btn primary" data-ok style="width:100%">Welcome, ${esc(b.firstName)}</button>`, { tone: 'good' });
         m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
       });
+    }
+    // A grandchild: their tag, the first time with a word about it.
+    const grand = player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.flags?.birthTag === 'new' && n.role !== 'child' && n.role !== 'sibling' && n.birthInfo);
+    for (const g of grand) {
+      g.flags.birthTag = 'seen';
+      const first = !player().flags.grandTagSeen;
+      player().flags.grandTagSeen = true;
+      persist();
+      const parents = (g.parentIds ?? []).map((id) => store.state.npcs[id]).filter(Boolean);
+      await openBirthTag(g, { title: first ? "You're a Grandparent!" : `A New Grandchild: ${g.firstName}`, parents, button: `Hello, ${g.firstName}` });
     }
   }
 

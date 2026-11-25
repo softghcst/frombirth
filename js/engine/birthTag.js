@@ -212,3 +212,25 @@ function takesAfter(person, parents, r) {
   if (!found.length) return 'Looks like nobody else: all their own!';
   return `Has ${found.map((f) => `${f.who}'s ${WORDS[f.key]}`).join(' & ')}`;
 }
+
+// ---------- Adoption day ----------
+
+const AGENCIES = {
+  us: ['{city} Family Services', 'Bright Futures Adoption Agency', 'Hope House Adoptions', 'Children’s Home Society of {city}'],
+  uk: ['{city} Adoption Service', 'Barnardo’s, {city}', 'Coram Adoption'],
+  ca: ['{city} Children’s Aid Society', 'Adoption Council of {city}'],
+  au: ['{city} Adoption Services', 'Barnardos Australia'],
+};
+const AGENCY_ANY = ['{city} Adoption Service', '{city} Children’s Services', 'Family Ties Adoption Agency', 'Little Harbor Children’s Agency'];
+
+/** The day a child came home: the date, their age then, the agency and the caseworker. Kept on the child. */
+export function adoptionInfoFor(child, { date, countryId, city, by = [] }) {
+  const r = seeded(`adopt:${child.id}`);
+  const last = COUNTRIES[countryId]?.names?.last?.length ? COUNTRIES[countryId].names.last : ['Harper'];
+  return { date, ageThen: child.age, countryId, city, by,
+    agency: r.pick(AGENCIES[countryId] ?? AGENCY_ANY).replace('{city}', city ?? COUNTRIES[countryId]?.name ?? ''),
+    caseworker: `${r.pick(['Ms.', 'Mr.', 'Mrs.'])} ${r.pick(last).replace(/_/g, ' ')}`,
+    stamp: r.pick(['Officially Family', 'Home At Last', 'Forever Family', 'Loved Already']), tilt: r.int(-10, 8),
+    note: r.pick(child.age < 2 ? ['They slept the whole way home.', 'Tiny, warm, and already yours.', 'They held on to your finger and would not let go.']
+      : ['The first night, they fell asleep holding your hand.', 'They walked in and asked which room was theirs.', 'They brought one small bag and a very big smile.', 'They were shy at first, then not shy at all.']) };
+}
