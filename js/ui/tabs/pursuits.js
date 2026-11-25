@@ -183,8 +183,8 @@ export default {
         <div class="section-label">Fun and hobbies</div>
         ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
         ${/* At school, every club (the school's and those outside it) is under School › Activities: not here as well. */ ''}
-        ${inSchool ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
-        ${!inSchool && p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
+        ${inSchool || p.age > clubLife.CLUB_AGE_LIMIT ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
+        ${!inSchool && p.age >= 6 && p.age <= clubLife.CLUB_AGE_LIMIT && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
           <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(clubTitle(m.club))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
             <button class="btn primary" data-club="find">Find a Club or Class</button></div>
