@@ -1,45 +1,64 @@
 # Women's hairstyles: ChatGPT picture prompts
 
-These are drawn as **pictures** (ChatGPT's image tool), the way every good-looking style in the game was made, then
-traced into game hair by `npm run trace-hair` (`scripts/trace_hair_png.py`; see `assets/hair_png/README.md`).
-Asking ChatGPT to write SVG code instead gives much plainer hair.
+Drawn the way the baby hairstyles are: as **pictures** on a template of the head at the image tool's own size
+(1254 x 1254) with exact pixel positions, then traced into game hair by `npm run trace-hair`
+(`scripts/trace_hair_png.py`) and fitted to every adult head. Asking ChatGPT for SVG code gives much plainer hair.
+
+**Template images** (`assets/hair_templates/`, 1254 x 1254, the game's 512 frame x 2.45, the same framing as every
+hair picture):
+
+- `adult_head_template.png`: the bare adult base head (`athletic`, with the shared neck), on a transparent background.
+  Upload this one.
+- `adult_head_guide.png`: the same with the top of the skull, hairline, eyebrows, temples, ears and the face area to
+  keep clear marked. For you to check results against; don't upload it.
+
+Measurements (512 frame -> 1254 image): top of skull y 150 -> 367; hairline y 212 -> 519; eyebrows y 254 -> 622;
+temples x 142 / 367 -> 348 / 898; ears join x 145 / 364 at y 276 -> 355 / 892 at 675; face x 175-335, y 262-415 ->
+x 429-820, y 642-1016; neck x 209-302 -> 512-740; shoulders at the bottom x 110-402 -> 269-985.
 
 ## How to use
 
-1. Start a **new ChatGPT chat**. Attach three pictures from `assets/hair_png/`: `TEMPLATE_base_head.png`,
-   `storybook_waves.png` and `cloud_curls.png`. Paste the setup message below and send. ChatGPT replies "Ready."
+1. Start a **new ChatGPT chat**. Attach `assets/hair_templates/adult_head_template.png` and two styles from
+   `assets/hair_png/`: `storybook_waves.png` and `cloud_curls.png`. Paste the setup message and send. ChatGPT replies "Ready."
 2. Send the style messages **one at a time**, in the same chat. Each reply is one picture of the hair alone.
-3. Download each picture and name it as given (e.g. `blunt_bob_bangs.png`). Put them in `assets/hair_png/`, or send them
-   to Claude to trace, tag and fit.
-4. If one comes out wrong, reply in the same chat, e.g. "Same hair, but remove the face and head completely" or
-   "Keep it exactly the same size and position as the template" or "Lift the bangs above the eyebrows".
+3. Download each picture, name it as given (e.g. `blunt_bob_bangs.png`), and put it in `assets/hair_png/` (or send it
+   to Claude to trace, tag and fit). Check it against `adult_head_guide.png` if in doubt.
+4. If one comes out wrong, reply in the same chat, e.g. "Same hair, but remove the head completely", "Keep it at
+   exactly 1254 x 1254 in the same position as the template", or "Lift the bangs above y = 610".
 
 After tracing, each style is tagged on its traced SVG (`assets/hair_raw/<name>.svg`) with the attributes listed
 under it, so the game knows who it is for.
 
-## Setup message (attach the three pictures)
+## Setup message (attach the template and the two example styles)
 
 ````text
-I'm making hairstyles for a cute 2D cartoon avatar game. I've attached:
-- TEMPLATE_base_head.png: the bald base head every hairstyle must fit.
-- Two hairstyles already in the game (storybook_waves.png and cloud_curls.png): match their art style exactly.
+This image is a cartoon adult's bare, bald head, ears, neck and shoulders, on a transparent background, from a
+2D life-simulation game. I've also attached two hairstyles already in the game (storybook_waves.png and
+cloud_curls.png): match their art style exactly. For each hairstyle I describe after this message, draw ONE
+hairstyle for this head.
 
-THE ART STYLE (copy the examples):
-- Flat cartoon colouring: one medium warm-brown main colour, plus one darker shadow tone and one lighter highlight tone
-  as solid, clean-edged shapes (like the swooshes in the examples). No gradients, no airbrush, no texture, no shine dots.
+EXACT SIZE AND POSITION (the image is 1254 x 1254 pixels; x is from the left, y is from the top; the head is
+centered on x = 626):
+- Output a PNG exactly 1254 x 1254 pixels, fully transparent background, with the hair in exactly the spot it sits
+  on this head, so it lines up when laid on top of my image. Do not move, resize, crop or re-frame anything.
+- The top of the skull is at y = 367: the hair covers it completely (volume may rise above it).
+- The natural hairline is at about y = 519 in the middle.
+- At the temples (x = 348 and x = 898, at y = 622) the hair wraps the skull closely, about 10 pixels outside its
+  outline: no gap of bare scalp between hair and head anywhere.
+- The ears join the head at x = 355 and x = 892, at y = 675. Hair may cover the ears or stop in front of them.
+- The eyebrows are at y = 622: bangs stop above y = 610.
+- Keep the face clear: nothing inside x = 429 to 820, y = 642 to 1016 (eyes, nose and mouth), except a fringe above
+  the brows or a thin strand that falls at the very edge of the face.
+- Long hair may fall past the jaw and over or behind the shoulders, down to the bottom edge (y = 1254). The neck is
+  x = 512 to 740; the shoulders reach x = 269 to 985 at the bottom edge.
+
+STYLE (copy the two example hairstyles):
+- Draw ONLY the hair. No head, face, ears, neck, shoulders or skin: leave all of that transparent.
+- Flat cartoon colouring: one medium warm-brown main colour, plus one darker shadow tone and one lighter highlight
+  tone as solid, clean-edged shapes (like the swooshes in the examples). No gradients, no airbrush, no texture.
 - Flowing dark-brown strand lines inside the hair that follow its shape, a few per section, clearly visible.
-- One bold, smooth, near-black outline around the outside of the hair, as thick as the head's own outline.
+- One bold, smooth, near-black outline (#23140f) around the outside of the hair, about as thick as the head's outline.
 - Always draw the hair in that same brown, whatever colour the style would normally be: the game re-colours it.
-
-FOR EACH HAIRSTYLE I DESCRIBE AFTER THIS MESSAGE:
-1. Draw it on the template head so it fits that exact head: the same square canvas, with the head in exactly the same
-   position and size as in the template. Do not move, resize, crop or re-frame anything.
-2. The hair must cover the top of the skull completely and wrap closely around it at the temples, with no gap of bare
-   scalp between hair and head. The ears may be covered or show, as the style needs.
-3. Keep the face clear: nothing over the eyes. Bangs stop just above the eyebrows.
-4. Long hair may fall past the jaw and over or behind the shoulders, down to the bottom edge of the canvas.
-5. Then output the HAIR ONLY: remove the head, face, ears, neck and shoulders completely, on a fully transparent
-   background (plain white if transparency isn't possible). Nothing else in the image: no face, no text, no guides.
 
 Reply to this first message only with: Ready.
 ````
