@@ -227,7 +227,8 @@ const VIEWS = {
     const c = p.career;
     if (c.careerId) out += card('Wellbeing', `${meterHtml('Stress', c.stress ?? 0, true)}<p class="muted">A demanding career does not have to cost your health. Asking for help is part of the job.</p>
       ${btn('support', 'Ask for support')}${m.training ? '' : btn('hours', 'Ask for fewer hours')}${btn('leave', 'Take your vacation')}`);
-    out += card('Hospital drama', `<p class="muted">How often the people of hospital life bring you scenes. It never changes how patients fare.</p>${Object.keys(drama.DRAMA).map((l) => btn('drama', l[0].toUpperCase() + l.slice(1), { arg: l, cls: m.drama === l ? 'primary' : '' })).join('')}`);
+    const level = store.state.settings?.drama ?? 'balanced';
+    out += card('Story drama', `<p class="muted">How many of the stories that are true of your life are told each year, hospital life among them (the same setting as in Settings). It never changes how patients fare, and consequences always play.</p>${Object.keys(drama.DRAMA).map((l) => btn('drama', l[0].toUpperCase() + l.slice(1), { arg: l, cls: level === l ? 'primary' : '' })).join('')}`);
     return out;
   },
   clinic(p, m) { return clinicView(p, m); },

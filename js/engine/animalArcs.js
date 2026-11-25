@@ -16,6 +16,7 @@ import { clamp, cap } from '../util.js';
 import * as zoo from './animals.js';
 import * as care from './animalCare.js';
 import * as horse from './equestrian.js';
+import { storyBeat } from './storyDirector.js';
 
 const T = zoo.tools;
 const say = (state, text, tone = 'neutral') => { const e = { age: state.player.age, text, kind: 'system', tone }; state.journal.push(e); return e; };
@@ -45,7 +46,7 @@ export function tickArcs(state = store.state) {
   const all = arcs(state);
   const waiting = new Set(state.pendingEvents.map((e) => e.id));
   let budget = 2;
-  const queue = (id, cast) => { if (budget > 0 && !waiting.has(id)) { state.pendingEvents.push({ id, cast }); waiting.add(id); budget -= 1; return true; } return false; };
+  const queue = (id, cast) => { if (budget > 0 && !waiting.has(id)) { storyBeat(id, cast, { source: 'animals' }, state); waiting.add(id); budget -= 1; return true; } return false; };
   const me = T.ref(state, p.id);
 
   for (const a of zoo.allAnimals(state)) {
