@@ -1470,7 +1470,7 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
   background: radial-gradient(circle at 50% 30%, #FFFDF8 0%, #F3E6D3 100%); }
 .wp-pc-eyebrow { margin: 0; font-family: var(--serif); font-style: italic; color: #5A3A1E; }
 .wp-postcard { width: min(100%, 420px); display: grid; gap: 0; transform: rotate(-1.5deg); animation: sv-pop .55s var(--ease) both; filter: drop-shadow(0 12px 20px rgba(60, 40, 20, .28)); }
-.wp-pc-front { border: 6px solid #FFFFFF; border-bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden; line-height: 0; background: #FFFFFF; }
+.wp-pc-front { border: 8px solid #FFFFFF; border-radius: 10px; overflow: hidden; line-height: 0; background: #FFFFFF; }
 .wp-pc-front svg { width: 100%; height: auto; }
 .wp-pc-back { position: relative; background: #FFFDF6; border-radius: 0 0 10px 10px; padding: 14px 16px 16px; color: #3B2A20;
   background-image: repeating-linear-gradient(transparent 0 27px, #E8DCC8 27px 28px); background-position: 0 44px; }

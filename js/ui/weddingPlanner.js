@@ -369,20 +369,12 @@ export function openWedding(api, npc) {
 }
 
 /**
- * The honeymoon postcard: the picture on the front ("Greetings from…"), and the back, written home, with a stamp and
- * a postmark. Shown after the wedding, in the scene or (with the scenes off) as a card.
+ * The honeymoon postcard: a cartoon of where they went, "Greetings from…" across it, stamped. Shown after the wedding,
+ * in the scene or (with the scenes off) as a card.
  */
 function postcardHtml(card, honeymoon, hex, still = false, extra = '') {
   return `<div class="wp-postcard-screen ${extra}${still ? ' sv-still' : ''}">
-    <p class="wp-pc-eyebrow">A few weeks later, in the mailbox at home…</p>
-    <div class="wp-postcard">
-      <div class="wp-pc-front">${postcardFront(honeymoon, card.place, hex)}</div>
-      <div class="wp-pc-back">
-        <div class="wp-pc-stamp" style="--wp-theme:${hex}" aria-hidden="true">♥</div><div class="wp-pc-mark" aria-hidden="true">${esc(card.place.toUpperCase())}</div>
-        <p class="wp-pc-to">Dear ${esc(card.to)},</p>
-        <p class="wp-pc-body">${esc(card.body)} Wish you were here (well, almost).</p>
-        <p class="wp-pc-from">Love, ${esc(card.from)}</p>
-      </div>
-    </div>
+    <p class="wp-pc-eyebrow">A postcard from the honeymoon</p>
+    <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(honeymoon, card.place, hex)}</div></div>
     <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
 }

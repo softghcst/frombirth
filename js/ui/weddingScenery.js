@@ -346,30 +346,120 @@ export function bandArt(music) {
   return `<svg viewBox="12 18 76 100" aria-hidden="true">${floor}${person(30, 64, '#E8B48C', '#22202A', '#4A2C1A')}${person(70, 64, '#6E4630', '#22202A', '#120C08')}${violin(38, 62, false)}${violin(62, 62, true)}${note(50, 34, 0.8)}</svg>`;
 }
 
-/** The front of the honeymoon postcard (300 x 190): where they went, drawn, with "Greetings from" across it. */
+// ---------- The honeymoon postcard ----------
+
+/** The little car the couple drive away in, "Just married" on the back, cans trailing, in their color. */
+const car = (x, y, s, hex) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="12" rx="30" ry="4" fill="#000" opacity=".18"/>
+  <path d="M-28 4 q0 -12 10 -13 l8 -10 q3 -3 8 -3 h16 q5 0 8 4 l6 9 q8 1 8 12 v4 h-64z" fill="${hex}" stroke="#23140f" stroke-width="1.6"/>
+  <path d="M-8 -9 l5 -8 h10 v8z M9 -9 v-8 h6 l6 8z" fill="#CFE6F7" stroke="#23140f" stroke-width="1.2"/>
+  <circle cx="-16" cy="8" r="6" fill="#2A2A30"/><circle cx="-16" cy="8" r="2.4" fill="#B9B9C2"/><circle cx="18" cy="8" r="6" fill="#2A2A30"/><circle cx="18" cy="8" r="2.4" fill="#B9B9C2"/>
+  <rect x="-27" y="-1" width="14" height="5" rx="1" fill="#FFFFFF" stroke="#23140f" stroke-width=".6"/><text x="-20" y="2.8" text-anchor="middle" font-size="3.6" font-family="Georgia, serif" font-weight="700" fill="#C2456A">JUST MARRIED</text>
+  <path d="M-28 4 l-10 6 M-28 6 l-14 10" stroke="#8A8A92" stroke-width=".8"/><rect x="-42" y="8" width="4" height="5" rx="1" fill="#C9CDD6" stroke="#23140f" stroke-width=".5"/><rect x="-47" y="14" width="4" height="5" rx="1" fill="#C9CDD6" stroke="#23140f" stroke-width=".5"/>
+  <path d="M-4 -19 q4 -5 8 0 q-4 4 -8 0z" fill="#E2557A"/></g>`;
+
+const sky = (id, a, b) => `${lin(`${id}-sky`, [[0, a], [1, b]])}`;
+const sea = (id, a, b) => `${lin(`${id}-sea`, [[0, a], [1, b]])}`;
+const hut = (x, y) => `<path d="M${x - 2} ${y + 13} v11 M${x + 12} ${y + 13} v11" stroke="#7A5233" stroke-width="2"/><rect x="${x - 4}" y="${y}" width="20" height="13" fill="#E9C48B" stroke="#23140f" stroke-width="1"/><rect x="${x + 3}" y="${y + 4}" width="6" height="9" fill="#8C6239"/><path d="M${x - 9} ${y + 1} L${x + 6} ${y - 12} L${x + 21} ${y + 1}z" fill="#C8963E" stroke="#23140f" stroke-width="1"/>`;
+const sparkleSea = (y, n = 8) => Array.from({ length: n }, (_, i) => `<path d="M${18 + i * 37} ${y + (i % 3) * 9} h${10 + (i % 2) * 6}" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity=".55"/>`).join('');
+const pine = (x, y, h, c = '#3F6E45') => `<path d="M${x} ${y - h} l${h * 0.28} ${h * 0.45} h-${h * 0.12} l${h * 0.2} ${h * 0.35} h-${h * 0.14} l${h * 0.16} ${h * 0.2} h-${h * 0.8} l${h * 0.16} -${h * 0.2} h-${h * 0.14} l${h * 0.2} -${h * 0.35} h-${h * 0.12}z" fill="${c}" stroke="#23421F" stroke-width=".8"/>`;
+
+/** Each place's picture (300 x 200), with what it is known for. */
+const POSTCARDS = {
+  'Bora Bora': (id, hex) => `<defs>${sky(id, '#6FB8EC', '#D8F0FF')}${sea(id, '#5FD6D2', '#1C8FB0')}${lin(`${id}-mtn`, [[0, '#4E8F4A'], [1, '#2F6A3A']])}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#7CC46E'], [1, '#3F8A45']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(60, 96, 50)}${cloud(240, 84, 40)}
+    <path d="M110 140 L140 70 L150 52 L160 64 L168 58 L188 110 L210 140z" fill="url(#${id}-mtn)" stroke="#23421F" stroke-width="1.2"/><path d="M150 52 L156 86 L146 120" fill="none" stroke="#3E7A3E" stroke-width="2"/>
+    <rect y="138" width="300" height="62" fill="url(#${id}-sea)"/><ellipse cx="160" cy="142" rx="70" ry="5" fill="#9BEBE2" opacity=".8"/>${sparkleSea(160)}
+    ${hut(40, 148)}${hut(70, 152)}${hut(100, 150)}<path d="M36 172 H124" stroke="#7A5233" stroke-width="3"/>${palm(id, 270, 200, 90, -18)}`,
+  'the Maldives': (id, hex) => `<defs>${sky(id, '#7CC8F2', '#E6F7FF')}${sea(id, '#7FE3D8', '#1E9BC0')}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#7CC46E'], [1, '#3F8A45']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(70, 100, 46)}${cloud(230, 92, 56)}
+    <rect y="128" width="300" height="72" fill="url(#${id}-sea)"/><ellipse cx="200" cy="150" rx="70" ry="14" fill="#B8F2EA"/><ellipse cx="200" cy="150" rx="52" ry="9" fill="#FFF4D8" stroke="#E8D3A8" stroke-width="1"/>
+    ${palm(id, 186, 150, 54, -10)}${palm(id, 214, 152, 46, 12)}${sparkleSea(176)}
+    ${hut(30, 132)}${hut(62, 136)}${hut(94, 132)}<path d="M26 156 H120 M118 156 L150 146" stroke="#7A5233" stroke-width="3"/>
+    <g transform="translate(250 186)"><path d="M0 0 q8 -6 16 0 q-8 6 -16 0z M16 0 l6 -4 v8z" fill="${hex}" stroke="#23140f" stroke-width=".8"/></g>`,
+  Bali: (id, hex) => `<defs>${sky(id, '#F7A774', '#FFE6C2')}${lin(`${id}-rice`, [[0, '#9ED36E'], [1, '#5A9E3E']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="230" cy="92" r="24" fill="#FFE08A"/>
+    <path d="M40 130 L110 64 L180 130z" fill="#8E86B0" stroke="#5E5680" stroke-width="1"/><path d="M96 78 l14 -14 14 14 -6 4 -8 -4 -8 6z" fill="#FFFFFF" opacity=".7"/>
+    ${[0, 1, 2, 3, 4].map((i) => `<path d="M-10 ${132 + i * 15} Q${80 + i * 10} ${118 + i * 15} 160 ${130 + i * 15} T310 ${126 + i * 15} V200 H-10z" fill="url(#${id}-rice)" stroke="#3F7A2E" stroke-width="1.2" opacity="${0.75 + i * 0.05}"/>`).join('')}
+    ${[[188, 1], [248, -1]].map(([x, d]) => `<path d="M${x} 150 V112 h${d * 4} v-10 h${d * 4} v-10 h${d * 4} v-10 h${d * 4} v-10 h${d * 6} V150z" fill="#8A6A55" stroke="#23140f" stroke-width="1.2"/>
+      <path d="M${x + d * 2} 124 h${d * 18} M${x + d * 6} 104 h${d * 12} M${x + d * 10} 86 h${d * 8}" stroke="#5E4636" stroke-width="1.2"/>`).join('')}
+    <path d="M182 150 h72" stroke="#23140f" stroke-width="1.2"/><rect x="196" y="150" width="44" height="6" fill="#B8A27E" stroke="#23140f" stroke-width="1"/>
+    ${[[178, 146], [258, 146]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="${hex}" stroke="#23140f" stroke-width=".8"/>`).join('')}`,
+  Santorini: (id, hex) => `<defs>${sky(id, '#6FB0EA', '#E3F2FF')}${sea(id, '#2F7FC0', '#1A4F8A')}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(240, 70, 50)}
+    <rect y="120" width="300" height="80" fill="url(#${id}-sea)"/>${sparkleSea(140, 6)}<path d="M200 128 l10 -14 v14z M210 128 h18 l-4 6 h-14z" fill="#FFFFFF" stroke="#23140f" stroke-width=".8"/>
+    <path d="M0 200 V96 Q60 84 130 110 Q150 140 160 200z" fill="#B8876A" stroke="#23140f" stroke-width="1"/>
+    ${[[8, 92, 30, 22], [40, 100, 28, 20], [70, 106, 26, 20], [16, 118, 32, 22], [50, 124, 30, 20], [84, 128, 26, 22], [28, 146, 30, 22], [64, 150, 30, 20], [98, 154, 24, 20]].map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#FFFFFF" stroke="#C9C1B8" stroke-width="1"/><rect x="${x + w / 2 - 3}" y="${y + h - 9}" width="6" height="9" fill="#3E6FB8"/>`).join('')}
+    ${[[22, 92], [62, 124], [92, 128]].map(([x, y]) => `<path d="M${x - 10} ${y} a10 10 0 0 1 20 0z" fill="#2E66C8" stroke="#23140f" stroke-width="1"/><path d="M${x} ${y - 10} v-5 M${x - 3} ${y - 13} h6" stroke="#23140f" stroke-width="1"/>`).join('')}
+    ${[[120, 150], [126, 158], [114, 160], [132, 168]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="${hex === '#FFFFFF' ? '#E2557A' : '#E2557A'}"/>`).join('')}`,
+  Mauritius: (id, hex) => `<defs>${sky(id, '#82C6F0', '#EAF7FF')}${sea(id, '#5FD6D2', '#1C80B0')}${lin(`${id}-mtn`, [[0, '#4E8F4A'], [1, '#2F6A3A']])}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#7CC46E'], [1, '#3F8A45']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(80, 86, 48)}
+    <path d="M150 140 Q190 132 206 78 Q214 64 226 70 L250 108 Q262 126 300 132 V140z" fill="url(#${id}-mtn)" stroke="#23421F" stroke-width="1.2"/>
+    <rect y="138" width="300" height="62" fill="url(#${id}-sea)"/>${sparkleSea(156)}<path d="M0 176 Q80 166 160 176 T300 172 V200 H0z" fill="#FFF0CC"/>
+    <g transform="translate(90 150)"><path d="M0 0 h30 l-4 8 h-22z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/><path d="M14 0 v-26 l14 22z" fill="${hex}" stroke="#23140f" stroke-width="1"/></g>${palm(id, 34, 200, 76, 14)}`,
+  'the Seychelles': (id, hex) => `<defs>${sky(id, '#7CC8F2', '#EAF8FF')}${sea(id, '#6FE0D4', '#1E9BC0')}${lin(`${id}-rock`, [[0, '#D7B8A8'], [1, '#9C7E74']])}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#7CC46E'], [1, '#3F8A45']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(200, 80, 60)}
+    <rect y="124" width="300" height="76" fill="url(#${id}-sea)"/>${sparkleSea(140)}<path d="M0 168 Q100 156 200 166 T300 160 V200 H0z" fill="#FFF6E0"/>
+    <ellipse cx="60" cy="150" rx="46" ry="34" fill="url(#${id}-rock)" stroke="#6E5A54" stroke-width="1.2"/><ellipse cx="104" cy="160" rx="28" ry="22" fill="url(#${id}-rock)" stroke="#6E5A54" stroke-width="1.2"/><ellipse cx="236" cy="164" rx="32" ry="18" fill="url(#${id}-rock)" stroke="#6E5A54" stroke-width="1.2"/>
+    <path d="M40 136 q10 -6 20 0 M80 152 q8 -4 16 0" stroke="#FFFFFF" stroke-width="1.5" opacity=".5" fill="none"/>${palm(id, 150, 172, 92, 30)}`,
+  Fiji: (id, hex) => `<defs>${sky(id, '#F48C6C', '#FFD9A0')}${sea(id, '#E89A82', '#2A6E98')}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#4E8A45'], [1, '#2F5E33']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="150" cy="128" r="30" fill="#FFD36E"/>
+    <rect y="128" width="300" height="72" fill="url(#${id}-sea)"/>${sparkleSea(150, 6)}<ellipse cx="200" cy="132" rx="46" ry="8" fill="#3E5A3A"/>${palm(id, 196, 132, 44, -6)}${palm(id, 212, 132, 36, 10)}
+    <path d="M60 170 q30 6 60 0 l-6 6 h-48z" fill="#7A5233" stroke="#23140f" stroke-width="1"/><path d="M90 170 v-24 l16 20z" fill="#FFF4E0" stroke="#23140f" stroke-width="1"/>
+    <g transform="translate(262 168)">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="0" cy="-12" rx="9" ry="13" fill="${hex}" stroke="#23140f" stroke-width="1" transform="rotate(${a})"/>`).join('')}<circle r="5" fill="#FFD36E" stroke="#23140f" stroke-width="1"/></g>`,
+  Tulum: (id, hex) => `<defs>${sky(id, '#7CC8F2', '#EAF8FF')}${sea(id, '#6FE0D4', '#1E9BC0')}${lin(`${id}-stone`, [[0, '#E2D2B4'], [1, '#B8A27E']])}${lin(`${id}-trunk`, [[0, '#9A6A43'], [1, '#6E4A2E']], 1, 0)}${lin(`${id}-leaf`, [[0, '#7CC46E'], [1, '#3F8A45']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(240, 74, 50)}
+    <rect y="130" width="300" height="70" fill="url(#${id}-sea)"/>${sparkleSea(150)}
+    <path d="M0 200 V122 Q60 112 150 128 L190 200z" fill="#C8B48A" stroke="#23140f" stroke-width="1"/><path d="M0 140 Q60 128 150 140" stroke="#7DBA68" stroke-width="10" fill="none"/>
+    <g fill="url(#${id}-stone)" stroke="#6E5A44" stroke-width="1"><rect x="40" y="104" width="90" height="16"/><rect x="50" y="90" width="70" height="14"/><rect x="62" y="74" width="46" height="16"/><rect x="72" y="62" width="26" height="12"/></g>
+    <rect x="79" y="66" width="12" height="8" fill="#5A4A3A"/><rect x="62" y="108" width="8" height="12" fill="#5A4A3A"/><rect x="100" y="108" width="8" height="12" fill="#5A4A3A"/>${palm(id, 160, 200, 86, -16)}`,
+  'the Coast Road': (id, hex) => `<defs>${sky(id, '#8AC4EE', '#EAF6FF')}${sea(id, '#4E9FCF', '#2A6E98')}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(70, 90, 50)}${cloud(220, 84, 40)}
+    <rect y="120" width="300" height="80" fill="url(#${id}-sea)"/>${sparkleSea(136)}
+    <path d="M140 200 L170 120 Q200 100 300 104 V200z" fill="#B8A07E" stroke="#23140f" stroke-width="1"/><path d="M180 200 Q200 150 230 132 Q260 116 300 116" fill="none" stroke="#5A5A62" stroke-width="14"/><path d="M180 200 Q200 150 230 132 Q260 116 300 116" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <path d="M300 104 Q270 96 250 106" stroke="#7DBA68" stroke-width="6" fill="none"/>${car(206, 154, 0.9, hex)}<path d="M40 112 l8 -16 l8 16z" fill="#FFFFFF" stroke="#C8324A" stroke-width="1"/><rect x="42" y="112" width="12" height="16" fill="#FFFFFF" stroke="#C8324A" stroke-width="1"/>`,
+  'the Mountains': (id, hex) => `<defs>${sky(id, '#7FB2E6', '#E3EFFB')}${lin(`${id}-mtn`, [[0, '#8E9CC2'], [1, '#5E6E9A']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(240, 74, 44)}
+    <path d="M0 150 L60 80 L110 130 L170 62 L240 128 L300 92 V200 H0z" fill="url(#${id}-mtn)" stroke="#3E4E7A" stroke-width="1"/><path d="M50 92 l10 -12 10 12 -6 -2 -4 4 -4 -4z M160 74 l10 -12 10 12 -5 -2 -5 4 -5 -4z M290 100 l10 -8 v10z" fill="#FFFFFF"/>
+    <path d="M0 160 Q150 140 300 160 V200 H0z" fill="#7DB86E"/>${[20, 40, 250, 272, 290].map((x, i) => pine(x, 174 - (i % 2) * 6, 34)).join('')}
+    <path d="M90 200 Q140 170 160 150" fill="none" stroke="#5A5A62" stroke-width="16"/><path d="M90 200 Q140 170 160 150" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="5 5"/>${car(130, 172, 0.85, hex)}`,
+  'the Lakes': (id, hex) => `<defs>${sky(id, '#F6B48C', '#FFE6C8')}${lin(`${id}-lake`, [[0, '#F2C2A0'], [1, '#4E86B8']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="150" cy="108" r="22" fill="#FFE08A"/>
+    <path d="M0 118 L50 84 L100 110 L160 80 L220 112 L300 90 V124 H0z" fill="#8E86B0"/>
+    <rect y="122" width="300" height="50" fill="url(#${id}-lake)"/>${sparkleSea(134, 7)}
+    ${[10, 28, 46, 252, 270, 288].map((x, i) => pine(x, 128, 34 + (i % 2) * 8, '#2F5A3A')).join('')}
+    <path d="M0 170 Q150 160 300 170 V200 H0z" fill="#6FA85C"/><path d="M60 200 Q120 180 240 178" fill="none" stroke="#5A5A62" stroke-width="12"/>${car(160, 180, 0.8, hex)}`,
+  'the Desert Highway': (id, hex) => `<defs>${sky(id, '#F7B26A', '#FFE4B8')}${lin(`${id}-mesa`, [[0, '#D0703E'], [1, '#A04E2C']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="230" cy="100" r="26" fill="#FFE08A"/>
+    <path d="M20 130 V100 h60 v30z M200 130 V92 h56 v38z" fill="url(#${id}-mesa)" stroke="#6E3A22" stroke-width="1"/><path d="M0 130 H300 V200 H0z" fill="#E8B878"/>
+    <path d="M140 200 L148 130 H152 L160 200z" fill="#5A5A62"/><path d="M150 132 V200" stroke="#FFE08A" stroke-width="1.2" stroke-dasharray="4 5"/>
+    ${[[60, 176, 1], [250, 170, 0.8], [96, 150, 0.6]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 20 V-20 a6 6 0 0 1 12 0 V20z M0 0 h-8 v-12 a4 4 0 0 1 8 0 M12 4 h8 v-14 a4 4 0 0 0 -8 0" fill="#5E9C4A" stroke="#2F5E33" stroke-width="1"/></g>`).join('')}${car(150, 178, 0.75, hex)}`,
+  'Wine Country': (id, hex) => `<defs>${sky(id, '#F4B36A', '#FFF1D6')}${lin(`${id}-hill`, [[0, '#B9C77E'], [1, '#93A85E']])}${lin(`${id}-cyp`, [[0, '#2F5A2C'], [1, '#4E7E45']], 1, 0)}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="70" cy="110" r="24" fill="#FFE08A"/>
+    <path d="M0 130 Q80 100 160 124 T300 116 V200 H0z" fill="url(#${id}-hill)"/>${Array.from({ length: 8 }, (_, i) => `<path d="M${-20 + i * 44} 200 Q${60 + i * 30} 150 ${120 + i * 22} 128" fill="none" stroke="#5E7D3A" stroke-width="4" stroke-dasharray="7 5"/>`).join('')}
+    <path d="M208 120 l14 -10 14 10z" fill="#C8643E" stroke="#23140f" stroke-width="1"/><rect x="211" y="120" width="22" height="12" fill="#F3E2C6" stroke="#23140f" stroke-width="1"/>
+    ${[[246, 132, 30], [256, 134, 22]].map(([x, y, h]) => `<path d="M${x} ${y} q-${h / 6} -${h * 0.5} 0 -${h} q${h / 6} ${h * 0.5} 0 ${h}z" fill="url(#${id}-cyp)"/>`).join('')}${car(110, 178, 0.85, hex)}`,
+  'Around the World': (id, hex) => `<defs>${sky(id, '#4A6AB0', '#A9CDF0')}${rad(`${id}-globe`, [[0, '#7FC6E8'], [1, '#2E7BB8']], 0.4, 0.35, 0.7)}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${[[30, 70], [270, 66], [90, 92], [210, 96]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#FFF"/>`).join('')}
+    <circle cx="150" cy="188" r="74" fill="url(#${id}-globe)" stroke="#23140f" stroke-width="1.5"/><path d="M104 150 q16 -10 26 4 q6 12 -6 20 q-14 4 -18 -8z M166 140 q18 2 24 16 q2 14 -12 20 q-12 -2 -10 -16z" fill="#7DBA68" stroke="#3F7A3A" stroke-width="1"/>
+    <path d="M40 200 V150 M34 160 h12 M36 175 h8 M40 150 l-4 -20 h8z" stroke="#5A4A3A" stroke-width="2" fill="none"/><path d="M28 200 L40 130 L52 200z" fill="none" stroke="#5A4A3A" stroke-width="2"/>
+    <path d="M240 200 L262 160 L284 200z" fill="#E2C27A" stroke="#8A6A3A" stroke-width="1"/>
+    <g transform="translate(76 140)"><path d="M-12 0 h24 l-4 -6 h-16z M-9 -6 h18 l-3 -6 h-12z M-6 -12 h12 l-6 -8z" fill="#C8324A" stroke="#23140f" stroke-width=".8"/><rect x="-3" y="0" width="6" height="12" fill="#C8324A"/></g>
+    <g transform="translate(220 150)"><rect x="-6" y="-26" width="12" height="40" fill="#E9D9B8" stroke="#8A6A3A" stroke-width="1"/><circle cx="0" cy="-16" r="4" fill="#FFF" stroke="#8A6A3A" stroke-width="1"/><path d="M-7 -26 l7 -10 7 10z" fill="#5E7D8A"/></g>
+    <path d="M30 120 Q150 60 270 110" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 6"/><g transform="translate(256 104) rotate(24)"><path d="M-14 0 h26 l6 -3 v6 l-6 -3z M-2 0 l-8 -12 h5 l10 12z M-2 0 l-8 12 h5 l10 -12z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/></g>`,
+};
+
+/**
+ * The honeymoon postcard (300 x 200): a cartoon of where they went, "Greetings from" across the sky, a stamp in the
+ * corner in the couple's color.
+ */
 export function postcardFront(honeymoon, place, hex) {
   const id = 'pc';
-  const greet = `<text x="150" y="40" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width=".6">Greetings from</text>
-    <text x="150" y="${place.length > 14 ? 70 : 74}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${place.length > 14 ? 24 : 32}" fill="${hex}" stroke="#23140f" stroke-width="1.4" paint-order="stroke">${place.replace(/&/g, '&amp;')}</text>`;
-  if (honeymoon === 'roadtrip') {
-    return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#7FB2E6'], [1, '#FFE2B8']])}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
-      <path d="M0 120 L60 70 L110 110 L170 60 L230 105 L300 75 V190 H0z" fill="#9AA9CC"/><path d="M0 140 Q80 112 160 130 T300 126 V190 H0z" fill="#8CC775"/>
-      <path d="M120 190 Q140 150 150 128 Q156 118 168 116" fill="none" stroke="#5A5A62" stroke-width="22"/><path d="M120 190 Q140 150 150 128 Q156 118 168 116" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="6 6"/>
-      <g transform="translate(128 150)"><rect x="-22" y="-12" width="44" height="16" rx="5" fill="${hex}" stroke="#23140f" stroke-width="1.5"/><path d="M-12 -12 l5 -9 h16 l5 9z" fill="#CFE6F7" stroke="#23140f" stroke-width="1.5"/><circle cx="-12" cy="5" r="5" fill="#2A2A30"/><circle cx="12" cy="5" r="5" fill="#2A2A30"/></g>
-      ${greet}</svg>`;
-  }
-  if (honeymoon === 'world') {
-    return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#3E5A9A'], [1, '#9DC3EC']])}${rad(`${id}-globe`, [[0, '#7FC6E8'], [1, '#2E7BB8']], 0.4, 0.35, 0.7)}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
-      ${[[30, 30], [270, 40], [250, 160], [40, 150], [90, 100]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#FFF"/>`).join('')}
-      <circle cx="150" cy="128" r="52" fill="url(#${id}-globe)" stroke="#23140f" stroke-width="1.5"/><path d="M120 104 q14 -8 22 4 q6 10 -4 18 q-12 4 -16 -6z M156 96 q16 2 20 14 q2 14 -10 18 q-10 -2 -8 -14z M140 150 q12 -4 18 6 q-2 10 -14 8z" fill="#7DBA68" stroke="#3F7A3A" stroke-width="1"/>
-      <path d="M60 150 Q150 40 250 120" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 6"/><g transform="translate(232 104) rotate(30)"><path d="M-14 0 h26 l6 -3 v6 l-6 -3z M-2 0 l-8 -12 h5 l10 12z M-2 0 l-8 12 h5 l10 -12z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/></g>
-      ${greet}</svg>`;
-  }
-  // The resort: overwater huts on a turquoise lagoon at sunset.
-  return `<svg viewBox="0 0 300 190" aria-hidden="true"><defs>${lin(`${id}-sky`, [[0, '#F79B7A'], [1, '#FFE3B3']])}${lin(`${id}-sea`, [[0, '#4FC3C8'], [1, '#1E8FA8']])}</defs><rect width="300" height="190" fill="url(#${id}-sky)"/>
-    <circle cx="210" cy="112" r="26" fill="#FFD36E"/><rect y="112" width="300" height="78" fill="url(#${id}-sea)"/><path d="M0 128 h300 M0 146 h300" stroke="#FFFFFF" stroke-width="1" opacity=".4"/>
-    ${[[60, 118], [104, 122], [148, 118]].map(([x, y]) => `<path d="M${x - 2} ${y + 14} v12 M${x + 12} ${y + 14} v12" stroke="#7A5233" stroke-width="2"/><rect x="${x - 4}" y="${y}" width="20" height="14" fill="#E9C48B" stroke="#23140f" stroke-width="1"/><path d="M${x - 8} ${y} L${x + 6} ${y - 12} L${x + 20} ${y}z" fill="#C8963E" stroke="#23140f" stroke-width="1"/>`).join('')}
-    <path d="M58 140 H176" stroke="#7A5233" stroke-width="3"/>
-    <path d="M270 190 c2 -40 0 -70 -8 -98" stroke="#7A5233" stroke-width="6" fill="none"/><path d="M262 94 c-24 -6 -34 4 -38 12 14 -6 26 -6 38 -12z M262 94 c22 -12 36 -6 42 2 -16 -4 -28 -2 -42 -2z M262 94 c-8 -18 0 -30 8 -34 -2 14 -4 24 -8 34z" fill="#5FAE5A" stroke="#2F5E33" stroke-width="1"/>
-    ${greet}</svg>`;
+  const draw = POSTCARDS[place] ?? POSTCARDS['Around the World'];
+  const name = place.replace(/^the /, 'The ');
+  const big = name.length > 14 ? 24 : 32;
+  return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
+    <text x="20" y="34" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width="3" paint-order="stroke">Greetings from</text>
+    <text x="18" y="${34 + big}" font-family="Georgia, serif" font-weight="700" font-size="${big}" fill="${hex}" stroke="#23140f" stroke-width="4" paint-order="stroke" letter-spacing=".5">${name.replace(/&/g, '&amp;')}</text>
+    <g transform="translate(256 10) rotate(6)"><rect width="34" height="40" fill="${hex}" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="3 2"/><rect width="34" height="40" fill="none" stroke="#23140f" stroke-width="1"/><path d="M17 27 c-9 -6 -10 -12 -6 -15 c3 -2 6 0 6 3 c0 -3 3 -5 6 -3 c4 3 3 9 -6 15z" fill="#FFFFFF"/></g>
+    <g fill="none" stroke="#23140f" stroke-width="1" opacity=".35"><circle cx="246" cy="44" r="14"/><path d="M228 50 q8 -4 16 0 t16 0 t16 0 M228 56 q8 -4 16 0 t16 0 t16 0"/></g></svg>`;
 }
