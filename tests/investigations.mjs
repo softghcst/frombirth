@@ -393,6 +393,8 @@ section('outcomes: people cleared, missing persons found by choice, errors not f
     }
   }
   const fr = life('fr', 30, { degree: 'law' });
+  // A French life can be born with a second, American citizenship: this one is French only.
+  fr.citizenships = (fr.citizenships ?? [{ jurisdictionId: 'fr' }]).filter((c) => c.jurisdictionId !== 'us'); if (fr.flags.citizenOf) fr.flags.citizenOf = fr.flags.citizenOf.filter((x) => x !== 'us');
   check(C.federalUnmet('fbi').some((x) => /US citizens/.test(x)), 'an FBI post needs US eligibility');
   void fr;
 }

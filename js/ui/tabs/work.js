@@ -29,6 +29,7 @@ import { navRow, icon, lockedRow, fromAge } from '../kit.js';
 import { workLaw } from '../../engine/worklife.js';
 import * as military from '../../engine/military.js';
 import { openMilitary } from '../military.js';
+import { openLawCareer, lawRowSub, showLawRow } from '../lawCareer.js';
 import * as career from '../../engine/career.js';
 import { FAME_MIN_AGE } from '../../data/careers.js';
 
@@ -415,6 +416,8 @@ function findWork(p, list) {
   const mil = military.joinOptions();
   rows.push(military.serving() || mil.some((o) => !o.why) ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: military.serving() ? `${p.career.title}, ${military.serving().branch}` : '' })
     : lockedRow('Military', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 18) || mil[0].why));
+  // Law: school, the bar and practice in one place (ui/lawCareer.js), for anyone with a first degree or more.
+  if (showLawRow(p)) rows.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
   if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
   return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
 }
@@ -516,7 +519,7 @@ export default {
       if (!id) return;
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
-        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api),
+        club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api), law: () => openLawCareer({ changed: () => api.changed(), openNpc: async (n) => { const { openNpc } = await import('./people.js'); openNpc(n, { changed: () => api.changed() }); } }),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();

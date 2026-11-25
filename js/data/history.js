@@ -111,6 +111,14 @@ export const LAW_HISTORY = {
     ['mx', 1953], ['co', 1954], ['pe', 1955], ['eg', 1956], ['gh', 1954], ['ke', 1963], ['ng', 1976], ['ch', 1971], ['pt', 1976],
     ['kw', 2005], ['sa', 2015], ['*', 1950],
   ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
+  // [fact] The year women could first be admitted to practice law (simplified to one year per country): US 1869
+  // (Arabella Mansfield, Iowa; other states later), Canada 1897 (Clara Brett Martin, Ontario), France 1900 (law of
+  // 1 December 1900), Australia 1905 (Flos Greig, Victoria), UK 1919 (Sex Disqualification (Removal) Act), Germany
+  // 1922, India 1923 (Legal Practitioners (Women) Act), Japan 1933 (Lawyers Act; first admitted 1940).
+  // [default] 1920 where not recorded.
+  womenInLaw: Object.fromEntries([
+    ['us', 1869], ['ca', 1897], ['fr', 1900], ['au', 1905], ['uk', 1919], ['de', 1922], ['in', 1923], ['jp', 1933], ['*', 1920],
+  ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
   // [fact] Voting age lowered to 18: UK 1969 (in force 1970), US 1971 (26th Amendment), West Germany 1970,
   // France 1974, Canada 1970, Australia 1973, Italy 1975, Spain 1978; Japan 20 until 2016; Switzerland 20
   // until 1991. [default] 21 before 1970.

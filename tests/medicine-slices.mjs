@@ -228,6 +228,8 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
       check(p.city === away2.city && p.city !== was && peer.life.job.employerId === away2.id && !m.partnerOffer, 'E. a partner\'s offer elsewhere: the move made together');
     }
   }
+  // Following a partner does not always come with a post (it is a chance); the rest needs one, so find one there.
+  if (!m.job || !p.career.careerId) { const there = trainingSites('gensurg', p.countryId, p.city)[0] ?? trainingSites('gensurg', p.countryId)[0]; train.startPost('gensurg', there.e.id, 'attending'); }
   // H. A disagreement in the operating room rewards speaking up with evidence, not arguing.
   const r0 = m.skills.reasoning; drama.medicineChoice('talk:speak');
   const p0 = m.skills.professionalism; drama.medicineChoice('talk:argue');
