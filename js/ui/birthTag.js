@@ -37,7 +37,7 @@ export function swaddleHtml(person, look) {
 }
 
 /** Two inked footprints, left foot then right, sized by the baby's length (ui/footprints.js). */
-const footprintsHtml = (info, id) => inkFeet({ lengthIn: info.lengthIn, seed: id, width: 96 });
+const footprintsHtml = (info, id) => inkFeet({ lengthIn: info.lengthIn, seed: id, width: 78 });
 
 /** A hospital wristband: the baby's name, a number and a little barcode. */
 function braceletHtml(person, ks) {

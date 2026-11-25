@@ -4,6 +4,8 @@
 // the creases where they fall. Sized by how long the baby was. Used on the hospital tag (ui/birthTag.js).
 
 let serial = 0;
+/** How much shorter than the drawing a baby's foot is (the drawing's toes stay where they are). */
+const SHORT = 0.74;
 
 /** Draws from a string: the same every time. */
 function seeded(key) {
@@ -53,20 +55,21 @@ export function inkFeet({ lengthIn = 19.7, seed = 'x', width = 110, ink = '#1617
   const n = ++serial;
   const r = seeded(`feet:${seed}`);
   const k = Math.max(0.86, Math.min(1.14, lengthIn / 19.7));
-  const slim = 0.86 + r() * 0.2; // some babies' feet are slimmer than others
+  const slim = 0.9 + r() * 0.16; // some babies' feet are slimmer than others
   const foot = (left) => {
     const tilt = (left ? -1 : 1) * (4 + r() * 7);
     const dy = r() * 5;
     const lines = creases(r).map((c) => `<path d="${c.d}" stroke-width="${c.w.toFixed(2)}" opacity="${c.o.toFixed(2)}"/>`).join('');
     const place = left ? `translate(46 ${(2 + dy).toFixed(1)}) scale(-1 1)` : `translate(50 ${dy.toFixed(1)})`;
-    const shape = `translate(21 0) scale(${slim.toFixed(3)} 1) translate(-21 0)`;
+    // A baby's foot is short: the drawing is squashed to about three quarters of its height, from the toes down.
+    const shape = `translate(21 8) scale(${slim.toFixed(3)} ${SHORT}) translate(-21 -8)`;
     return `<g transform="${place} rotate(${tilt.toFixed(1)} 21 42) ${shape}">
       <g filter="url(#ink-${n})" fill="${ink}"><path d="${SOLE}"/>${TOES.map(([x, y, rx, ry]) => `<ellipse cx="${(x + (r() - 0.5) * 0.8).toFixed(1)}" cy="${(y + (r() - 0.5) * 0.8).toFixed(1)}" rx="${rx}" ry="${ry}"/>`).join('')}</g>
       <g clip-path="url(#sole-${n})" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">${lines}</g></g>`;
   };
   const w = Math.round(width * k);
   const s = Math.floor(r() * 999);
-  return `<svg class="ink-feet" viewBox="0 0 96 84" width="${w}" height="${Math.round(w * 84 / 96)}" role="img" aria-label="Footprints">
+  return `<svg class="ink-feet" viewBox="0 2 96 66" width="${w}" height="${Math.round(w * 66 / 96)}" role="img" aria-label="Footprints">
     <defs>
       <clipPath id="sole-${n}"><path d="${SOLE}"/></clipPath>
       <filter id="ink-${n}" x="-12%" y="-12%" width="124%" height="124%">
