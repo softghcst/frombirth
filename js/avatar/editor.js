@@ -8,7 +8,7 @@ import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance, fitHairToTexture } from './inherit.js';
 import { rng } from '../rng.js';
 import { ELDER_BROWS, ELDER_HAIR_AGE, BABY_HAIR_BY_TEXTURE } from './curation.js';
-import { elderHair, ageStage } from '../CharacterAvatar.js';
+import { elderHair, ageStage, outfitPhoto } from '../CharacterAvatar.js';
 import { kidsMayWear } from './fittedHair.js';
 import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import { icon } from '../ui/kit.js';
@@ -154,7 +154,10 @@ export function mountAppearanceEditor(el, o = {}) {
       const on = isOn(x.id) ? 'on' : '';
       if (c.kind === 'swatch') return `<button type="button" class="av-opt av-swatch ${on}" data-key="${key}" data-id="${x.id}" style="background:${x.hex}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}"></button>`;
       if (c.kind === 'chip') return `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${x.id}" aria-pressed="${!!on}">${esc(x.name)}</button>`;
-      return `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${x.id}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}">${draw(withValue(key, x.id), { viewBox: thumbBox(key), age: shownAge() })}<span>${esc(x.name)}</span></button>`;
+      // A grown-up's outfits are shown on their own, like a photo in a shop, in the color chosen.
+      const pic = key === 'outfit' ? outfitPhoto(x.id, a.style.outfitColor ? part('outfitColor', a.style.outfitColor)?.hex : null, x.name)
+        : draw(withValue(key, x.id), { viewBox: thumbBox(key), age: shownAge() });
+      return `<button type="button" class="av-opt av-thumb ${on}${key === 'outfit' ? ' av-photo' : ''}" data-key="${key}" data-id="${x.id}" aria-label="${esc(x.name)}" title="${esc(x.name)}" aria-pressed="${!!on}">${pic}<span>${esc(x.name)}</span></button>`;
     });
     if (c.none) {
       const on = current == null || current === c.noneId ? 'on' : '';

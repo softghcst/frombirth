@@ -206,6 +206,8 @@ export function dressFor(look, ctx = {}) {
   return out;
 }
 
+/** The part of an outfit's 512 x 512 drawing the clothes fill. */
+const OUTFIT_PHOTO_BOX = '40 420 432 152';
 let serial = 0;
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h}"${extra}/>` : ''; };
@@ -214,6 +216,16 @@ const clothesLayer = (id, headId, extra = '') => {
   const head = headName(headId);
   return id && FITTED_CLOTHES[id]?.includes(head) ? `<use href="${AVATAR_BASE}clothes_fit/${id}__${head}.svg#art"${extra}/>` : use(id, extra);
 };
+/**
+ * A picture of an outfit on its own, as in a shop: the clothes without anyone in them, in the color given (a hex, or
+ * null for the outfit's own). For the outfit choices in the appearance editor and at the salon.
+ */
+export function outfitPhoto(id, hex = null, label = '') {
+  const h = href(id);
+  if (!h) return '';
+  const color = hex ? ` style="--outfit-color:${esc(hex)}"` : '';
+  return `<svg class="outfit-photo" viewBox="${OUTFIT_PHOTO_BOX}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(label || PART_BY_ID[id]?.label || id)}"${color}><use href="${h}"/></svg>`;
+}
 /**
  * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
  * neck, and moved down, on top of the usual placement under the chin.
