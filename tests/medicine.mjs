@@ -225,7 +225,7 @@ if (mine) {
   check(biz.partnerOptions(b).every((n) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')), 'a practice takes physicians as partners');
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
-check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
+check(['attending', 'experienced', 'senior'].includes(m.job?.rank) || !!m.offer || !m.job, 'ranks change only through reviews and offers');
 section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} practice(s)`);
 
 // 5. Drama never touches outcomes; unsafe plans are not rewarded.
