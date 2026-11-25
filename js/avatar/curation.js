@@ -34,7 +34,7 @@ export const SUITS = {
  * buns and the elder styles stay 'any': they read the same on every texture.
  */
 export const FITTED_TEXTURE = {
-  bowl_cut: 'straight', classic_side_part: 'straight', curtain_bangs_90s: 'straight', long_straight_center_part: 'straight', side_swept_bob: 'straight',
+  classic_side_part: 'straight', curtain_bangs_90s: 'straight', long_straight_center_part: 'straight', side_swept_bob: 'straight',
   slicked_back: 'straight', swept_back_pompadour: 'straight', side_part_quiff: 'straight', side_ponytail: 'straight', textured_french_crop: 'straight',
   spiky_crop: 'straight', textured_faux_hawk: 'straight', textured_pixie_cut: 'straight', flipped_half_up: 'straight', layered_feathered_midi: 'straight',
   feathered_flow: 'wavy', center_part_waves: 'wavy', half_up_half_down_waves: 'wavy', messy_wavy_fringe: 'wavy', rocker_waves: 'wavy', storybook_waves: 'wavy',
