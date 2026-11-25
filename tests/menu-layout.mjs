@@ -29,9 +29,19 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
 await page.click('[data-random]'); await page.waitForSelector('[data-year]');
-const settle = async () => { for (let i = 0; i < 25; i++) { const c = page.locator('.modal .choice-btn:not([disabled])'); const o = page.locator('.modal [data-ok], .modal [data-cancel], .modal .modal-back'); if (await c.count()) await c.first().click(); else if (await o.count()) await o.last().click(); else {
-  // Any other pop-up the year brought (a notice with its own buttons): answer it with its last button, so nothing sits over the tabs.
-  const any = page.locator('#modal-root .scrim:last-child .modal button:not([disabled])'); if (await any.count()) await any.last().click(); else break; } await page.waitForTimeout(40); } };
+// Answers or closes whatever is open: a scene's first choice, a notice's OK, a yes/no question (answered no), or else
+// any other pop-up's last button. Notices come one after another (a scene, then a birth, then the year's update), each
+// opening a moment after the last has closed: it stops only once nothing has opened for a while.
+const settle = async () => {
+  let quiet = 0;
+  for (let i = 0; i < 40 && quiet < 3; i++) {
+    const c = page.locator('#modal-root .scrim:last-child .choice-btn:not([disabled])');
+    const o = page.locator('#modal-root .scrim:last-child :is([data-ok], [data-cancel], [data-no], .modal-back)');
+    const any = page.locator('#modal-root .scrim:last-child .modal button:not([disabled])');
+    if (await c.count()) { quiet = 0; await c.first().click(); } else if (await o.count()) { quiet = 0; await o.last().click(); } else if (await any.count()) { quiet = 0; await any.last().click(); } else quiet += 1;
+    await page.waitForTimeout(quiet ? 120 : 60);
+  }
+};
 const tab = async (t) => { await settle(); await page.evaluate((t) => document.querySelector(`.tab-btn[data-tab="${t}"]`).click(), t); await page.waitForTimeout(250); };
 /** The rows of the open tab's list: label, line, locked, has a picture. */
 const rows = () => page.evaluate(() => [...document.querySelectorAll('[data-panel-body] > .nav-group > .nav-row, [data-panel-body] > .nav-group > .sec-row')].filter((r) => r.offsetParent)
