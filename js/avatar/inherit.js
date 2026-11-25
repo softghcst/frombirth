@@ -67,7 +67,9 @@ export function randomAppearance(skinDepthHint, gender) {
   // A man is born with one of the men's mouths, so every one of them turns up (it is drawn to suit a daughter: lipsFor).
   if (gender === 'male') inherited.lips = rng.pick(CATALOG.lips.filter((x) => RESTING.lipsMasc.includes(x.id))).id;
   const style = defaultStyle(inherited, gender);
-  if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses.filter((g) => !/star|visor/.test(g.id))).id;
+  // Glasses, while there are any (they are being redrawn): the roll is made either way, so the rest comes out the same.
+  const frames = CATALOG.glasses.filter((g) => !/star|visor/.test(g.id));
+  if (rng.chance(0.14)) style.glasses = rng.pick(frames.length ? frames : [null])?.id ?? null;
   // Facial hair has been taken out of the game. The roll that used to choose a man's beard is still made, and its result
   // ignored, so everyone else generated from the same random numbers turns out as before.
   if (gender === 'male' && rng.chance(0.3)) rng.pick([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);

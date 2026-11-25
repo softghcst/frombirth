@@ -24,7 +24,7 @@ import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
-import { careWaiting } from '../engine/health/index.js';
+import { careWaiting, checkupDue, answerCheckup } from '../engine/health/index.js';
 import { openMoney, drivingTest } from './tabs/holdings.js';
 import * as vehicles from '../engine/vehicles.js';
 import { bookAction } from '../engine/ledger.js';
@@ -461,9 +461,20 @@ export function mountGame(app, hooks) {
   /** After a year, a care decision that is waiting is put in front of the player, once. */
   async function healthNotice() {
     const w = player().alive ? careWaiting() : null;
-    if (!w?.decision || busy) return;
-    const go = await confirmModal({ title: 'Your care', body: w.text, yes: 'Open My Health', no: 'Later' });
-    if (go) openHealth(tabApi, { section: 'overview' });
+    if (busy) return;
+    if (w?.decision) {
+      const go = await confirmModal({ title: 'Your care', body: w.text, yes: 'Open My Health', no: 'Later' });
+      if (go) openHealth(tabApi, { section: 'overview' });
+      return;
+    }
+    // Something seems off that nobody has named yet: only a doctor can say what it is.
+    const due = checkupDue();
+    if (!due) return;
+    const yes = await confirmModal({ title: 'A check-up?', body: due.text, yes: due.child ? 'Go to the doctor' : 'Book a check-up', no: 'Not now' });
+    const r = answerCheckup(due.recId, yes);
+    persist();
+    renderPanel();
+    if (r?.text) await outcomeModal(r);
   }
 
   yearBtn.addEventListener('click', nextYear);

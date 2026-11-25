@@ -31,6 +31,8 @@ export function rollOnset(p = player()) {
   const h = healthOf(p);
   const g = genomeOf(p);
   const stress = 1 + Math.max(0, h.wellbeing.stress - 50) / 100;
+  // Nobody piles up conditions all at once: with three going on, no new one starts this year.
+  const crowded = presentConditions(h).length >= 3;
   for (const def of CONDITIONS) {
     if (def.onset.kind !== 'hazard') continue;
     const [a, b] = def.onset.ages;
@@ -40,11 +42,13 @@ export function rollOnset(p = player()) {
     // Mood and anxiety conditions are more likely to start in a hard year; most are not "caused" by one.
     const s = MENTAL.includes(def.group) ? stress : 1;
     if (!rng.chance(def.onset.rate * hazardMultiplier(g, def.id) * s)) continue;
+    // (The chance is rolled either way, so everything after it comes out the same.)
+    if (crowded && !def.acquired) continue;
     begin(def, p);
   }
   // Single-gene and birth conditions that are present but only now begin to show.
   for (const rec of h.conditions) {
-    if (rec.showsAge === p.age && rec.status === 'active') noticed(rec, p);
+    if (rec.showsAge != null && rec.showsAge <= p.age && !rec.noticed && rec.status === 'active') noticed(rec, p);
   }
 }
 
@@ -53,6 +57,7 @@ export function begin(def, p = player(), o = {}) {
   const r = seeded('onset', p.id, def.id, store.state.year);
   const sev = o.severity ?? Math.round(r.range(30, 75));
   const rec = startCondition(def.id, { severity: sev, onsetWk: now(p) - r.int(0, 20), ...o }, p);
+  if (rec) rec.noticed = true;
   if (def.id === 'bipolar_1' || def.id === 'bipolar_2') rec.episode = { kind: 'depression', startWk: rec.onsetWk, endWk: rec.onsetWk + r.int(8, 22) };
   // Most conditions are not announced: a person notices how life feels, not a name.
   if (def.group === 'mobility' && def.acquired) {
@@ -70,6 +75,8 @@ export function begin(def, p = player(), o = {}) {
 
 function noticed(rec, p) {
   const def = CONDITION_BY_ID[rec.conditionId];
+  // Something is noticed, but it has no name until a doctor finds it (checkupDue).
+  rec.noticed = true;
   const line = {
     adhd: 'Teachers have started to say you are bright but "all over the place". Homework goes missing; your attention goes where it likes.',
     autism: 'Some things that are easy for other people take you a lot of energy, and some things that fascinate you leave other people puzzled.',
