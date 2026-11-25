@@ -175,6 +175,32 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(!lp.accept('x').ok, 'and cannot accept a case as counsel');
 }
 
+// Judges move up by appointment, and step aside from cases involving people they know.
+{
+  const jobs = await import('../js/engine/legalCareers.js');
+  lawyer('judiciary');
+  p().age = 55; L().rep.integrity = 80;
+  p().career.yearsInRole = 10; p().career.performance = 95;
+  check(career.nextStep().missing.some((x) => /higher court/.test(x)), 'a district judge is not promoted to a higher court by the career engine');
+  let up = false;
+  for (let i = 0; i < 12 && !up; i++) { up = lp.seek('elevation').ok; if (!up) L().tried.elevation -= 36; }
+  check(up && p().career.level === 1, `appointed to the higher court by selection (${p().career.title})`);
+  const friend = k.civilian(p().countryId); friend.flags.formerClientOf = p().id;
+  let c = null;
+  for (let i = 0; i < 60 && !jobs.recusalFor(c); i++) { p().flags.legalActs = null; c = jobs.openBench(); }
+  const con = jobs.recusalFor(c);
+  const known = store.state.npcs[con?.npcId];
+  check(!!con && known && (known.flags.formerClientOf === p().id || p().npcIds.includes(known.id)) && con.why, `someone the judge knows turns up in a case on the list (${con?.name}, ${con?.why})`);
+  const judge = c.judgeId;
+  const r = jobs.recuse(c);
+  check(r.ok && c.judgeId !== judge && c.judgeId !== p().id, 'the judge steps aside, and another judge takes the case');
+  p().flags.legalActs = null;
+  let c2 = null; for (let i = 0; i < 60 && !jobs.recusalFor(c2); i++) { p().flags.legalActs = null; c2 = jobs.openBench(); }
+  const integ = L().rep.integrity;
+  jobs.hearAnyway(c2);
+  check(L().rep.integrity < integ && L().misconduct >= 1 && lp.opportunities().find((x) => x.id === 'elevation')?.why, 'hearing it anyway is misconduct, and blocks the next appointment');
+}
+
 // 15. Retirement keeps the record; a descendant sees the career, not the clients' secrets.
 {
   lawyer('lawyer');

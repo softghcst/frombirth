@@ -251,7 +251,7 @@ const completedIn = (p, track) => lawOf(p).history.filter((h) => !h.clinic && !h
 
 // ---------- Promotions and selection ----------
 
-const GATE_TEXT = { us_attorney: 'nomination by the President and confirmation by the Senate', solicitor_general: 'nomination by the President and confirmation by the Senate', partnership: 'a vote of the partners', managing: 'election by the partners as managing partner', da: 'selection as District Attorney (an election or appointment)',
+const GATE_TEXT = { elevation: 'appointment to the higher court', us_attorney: 'nomination by the President and confirmation by the Senate', solicitor_general: 'nomination by the President and confirmation by the Senate', partnership: 'a vote of the partners', managing: 'election by the partners as managing partner', da: 'selection as District Attorney (an election or appointment)',
   chief_defender: 'appointment as head of the office', general_counsel: 'appointment as general counsel', ag: 'election or appointment as Attorney General' };
 /** What the career engine also needs before a legal promotion: real experience in cases, standing, and for some posts a selection. */
 function gate(careerId, at) {
@@ -291,6 +291,10 @@ export function opportunities(p = player()) {
       const why = !served ? `After ${career.levels[c.level].years} years as ${c.title.toLowerCase()}` : !L.legacy && done < TRACKS.lawyer.minDone[nextAt] ? `${TRACKS.lawyer.minDone[nextAt]} completed cases first (${done})` : cool(g, 24);
       out.push({ id: g, name: g === 'partnership' ? 'Seek partnership' : 'Stand for managing partner', why });
     }
+  }
+  if (t === 'judiciary' && career.levels[c.level + 1]) {
+    const served = c.yearsInRole >= (career.levels[c.level]?.years ?? 99);
+    out.push({ id: 'elevation', name: `Seek appointment as ${career.levels[c.level + 1].title.toLowerCase()}`, why: !served ? `After ${career.levels[c.level].years} years as ${c.title.toLowerCase()}` : L.rep.integrity < 60 ? 'A better name for integrity first' : (L.misconduct ?? 0) > 0 ? 'Not with misconduct on your record' : cool('elevation', 36), how: prof.judges });
   }
   if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da });
   if (t === 'defender' && c.level >= 1) out.push({ id: 'chief_defender', name: `Seek appointment as ${prof.titles.defenderChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('chief_defender', 24) });
@@ -356,6 +360,13 @@ export function seek(id, p = player()) {
     while (p.career.level < currentCareer().levels.length - 1) { if (!promote()) break; select(p, id); }
     canon(`law:${id}:${p.id}`, `${elected ? 'Elected' : 'Appointed'} ${name}`, `${elected ? 'Won the election' : 'Was appointed'} as ${name}.`, { privacy: 'public', sig: 3 });
     return result(true, elected ? `You won the election. You are the ${name}.` : `You were appointed ${name}.`, 'good');
+  }
+  if (id === 'elevation') {
+    const chance = clamp(0.2 + s + ((p.career?.performance ?? 50) - 60) / 200, 0.05, 0.7);
+    if (luck >= chance) return result(false, 'The seat on the higher court went to another judge.', 'bad');
+    select(p, 'elevation'); promote();
+    canon(`law:elevation:${p.id}:${p.career.level}`, `Appointed ${p.career.title.toLowerCase()}`, `Elevated to ${p.career.title.toLowerCase()}.`, { privacy: 'public', sig: 3 });
+    return result(true, `You were appointed ${p.career.title.toLowerCase()}.`, 'good');
   }
   if (id === 'judge') {
     const chance = clamp(0.2 + s + (lawOf(p).rep.integrity - 55) / 150, 0.05, 0.7);

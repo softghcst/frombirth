@@ -264,7 +264,7 @@ export const TRACKS = {
   prosecutor: { name: 'Prosecutor\'s office', gates: { 3: 'da' }, cases: [2, 3, 4, 5], minDone: [0, 8, 25, 40] },
   defender: { name: 'Public defender\'s office', gates: { 2: 'chief_defender' }, cases: [2, 3, 5], minDone: [0, 10, 40] },
   gov_counsel: { name: 'Government legal office', gates: { 3: 'general_counsel' }, cases: [2, 3, 4, 4], minDone: [0, 5, 15, 30] },
-  judiciary: { name: 'The bench', gates: {}, cases: [0, 0, 0], minDone: [0, 0, 0] },
+  judiciary: { name: 'The bench', gates: { 1: 'elevation', 2: 'elevation' }, cases: [0, 0, 0], minDone: [0, 0, 0] },
   attorney_general: { name: 'The Attorney General\'s office', gates: { 1: 'ag' }, cases: [0, 0], minDone: [0, 0] },
   us_attorney: { name: 'United States Attorney\'s office', gates: { 1: 'us_attorney' }, cases: [5, 5], minDone: [0, 0] },
   solicitor_general: { name: 'Office of the Solicitor General', gates: { 1: 'solicitor_general' }, cases: [0, 0], minDone: [0, 0] },
