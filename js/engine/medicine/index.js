@@ -19,6 +19,7 @@ import { caseload, closeYear } from './cases.js';
 import { practiceYear } from './practice.js';
 import { researchYear } from './research.js';
 import { dramaYear, hospitalYear } from './drama.js';
+import { storyYear } from './story.js';
 
 export * from './core.js';
 export const MEDICAL_CAREERS = ['doctor', 'surgery', 'psychiatry', 'podiatrist'];
@@ -74,5 +75,6 @@ export function tickMedicine() {
   m.reputation = reputationOf(m);
   caseload(m, p); // this year's patients, made now so the year's count is fixed
   dramaYear();
+  storyYear(p, m);
   if (p.career.careerId && !CAREER_BY_ID[p.career.careerId]) p.career.careerId = null;
 }

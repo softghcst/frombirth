@@ -14,6 +14,7 @@ import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
 import { migrateMedicine } from './engine/medicine/core.js';
+import { migrateInvestigations } from './engine/investigations/core.js';
 import { ensureEra, alignWorld } from './engine/eras.js';
 import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
@@ -146,6 +147,7 @@ function migrate(state) {
   migrateDigital(state);
   // The medical career (engine/medicine): a doctor keeps their job and level; nothing of their training is invented.
   migrateMedicine(state);
+  migrateInvestigations(state);
   // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
   ensureEra(state, { legacy: true });
   // One sports system: a professional career kept under the old separate system becomes the player's sports record.

@@ -400,7 +400,7 @@ function contacts() {
 /** Work & School actions that open another screen or a list to choose from, and their icons. */
 const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
   clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
-  myfame: 'star', myidol: 'star', fame: 'sparkle' };
+  myfame: 'star', myidol: 'star', fame: 'sparkle', investigations: 'compass' };
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */

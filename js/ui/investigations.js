@@ -1,0 +1,327 @@
+// My Investigations: "Follow the evidence. Find the truth." One place for an investigative life,
+// from preparing to apply to a department to running a private agency: recruitment, the academy,
+// patrol, detective selection, cases (each a file with its own tabs), the team, the career record,
+// federal applications, private work, a forensic scientist's bench, professional standards and the
+// public record. Every section reads the investigations engine (engine/investigations); every case
+// is read through its role-based view (views.js), so nothing here shows what the character cannot know.
+import { player, country, store } from '../state.js';
+import { esc, fmtMoney } from '../util.js';
+import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
+import { meterHtml } from './meter.js';
+import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
+import { rec, I, reputationOf, dateWords, now, working } from '../engine/investigations/core.js';
+import * as C from '../engine/investigations/careers.js';
+import * as A from '../engine/investigations/agencies.js';
+import * as W from '../engine/investigations/casework.js';
+import * as V from '../engine/investigations/views.js';
+import * as PI from '../engine/investigations/private.js';
+import * as O from '../engine/investigations/oversight.js';
+import * as X from '../engine/investigations/crossover.js';
+import { settle, investigationsOpen } from '../engine/investigations/index.js';
+
+export { investigationsOpen };
+const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}</button>`;
+const card = (title, body) => `<div class="card"><h3>${esc(title)}</h3>${body}</div>`;
+const muted = (t) => `<p class="muted">${esc(t)}</p>`;
+const stack = (b) => `<div class="btn-stack" style="margin-top:10px">${b}</div>`;
+const npc = (id) => store.state.npcs[id] ?? null;
+const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : '—');
+
+const STAGE_WORDS = { none: 'Not in the profession', applying: 'Applying', academy: 'At the academy', field: 'In field training', probation: 'On probation', officer: 'Serving officer',
+  detective: 'Detective', federal_training: 'Federal academy', agent: 'Special agent', former: 'Formerly in the profession', retired: 'Retired' };
+
+/** Which sections this person has: a recruit does not see a federal caseload; a private investigator does not see police tools. */
+function sectionsFor(p, r) {
+  const out = [['overview', 'Overview']];
+  const police = !r?.family || r.family === 'police';
+  if (police && !(r?.job && r.family === 'federal')) out.push(['agency', r?.job ? 'My Agency' : 'Departments']);
+  if (p.countryId === 'us' && p.age >= 21) out.push(['federal', 'Federal agencies']);
+  if (r?.caseIds?.length) out.push(['cases', 'Active Cases'], ['archive', 'Case Archive']);
+  if (r?.job?.detective || r?.family === 'federal') out.push(['cold', 'Cold Cases']);
+  if (r && Object.values(r.people).some((v) => (Array.isArray(v) ? v.length : v))) out.push(['team', 'Team']);
+  if (r) out.push(['career', 'Career Progress']);
+  if (p.age >= 21) out.push(['private', 'Private Investigation']);
+  if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
+  if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
+  if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections']);
+  return out;
+}
+
+const VIEWS = {
+  overview(p, r) {
+    const cov = coverageOf(p.countryId);
+    let out = card('Follow the evidence. Find the truth.', kv([
+      ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
+      ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
+      ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
+      ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : 'Simplified: one national or regional police service, no federal careers'],
+    ]) + muted('Investigative careers here are gameplay. Agency rules are simplified and not verified against the agencies themselves.'));
+    if (!r?.job) {
+      out += card('Getting ready', muted('Before applying: study, train, write, and see the work for yourself. Each once a year.')
+        + stack(Object.entries(C.PREP).map(([id, d]) => btn(`prep`, d.label, { arg: id })).join('')));
+    }
+    const pending = (r?.apps ?? []).filter((a) => ['pending', 'offer'].includes(a.status));
+    if (pending.length) out += card('Applications', pending.map((a) => kv([[a.kind === 'federal' ? FEDERAL[a.agency].name : a.kind === 'license' ? 'Private investigator license' : A.ownerName(a.ownerId),
+      a.status === 'offer' ? 'Offer waiting' : `Decision by ${dateWords(a.kind === 'federal' ? a.stages.find((s) => !s.known)?.due ?? a.decisionDue : a.due)}`]])
+      + (a.status === 'offer' ? stack(btn(a.kind === 'federal' ? 'acceptFed' : 'acceptAcademy', 'Accept', { arg: a.id }) + btn('decline', 'Decline', { arg: a.id })) : '')).join(''));
+    if (r?.academy?.status === 'enrolled') {
+      const ac = r.academy;
+      out += card(ac.federal ? FEDERAL[ac.federal].academy : `${A.ownerName(ac.ownerId)} academy`, kv([['Runs to', dateWords(ac.end)], ['Classmate', nm(ac.classmateIds?.[0])]])
+        + Object.entries(ac.marks).map(([k, v]) => meterHtml(k.replace('deescalation', 'De-escalation').replace(/^./, (c) => c.toUpperCase()), Math.min(100, v * 50), true)).join('')
+        + stack(Object.entries(C.ACADEMY).map(([id, d]) => btn('academy', d.label, { arg: id })).join('')));
+    }
+    if (r?.pendingMove) out += card('Your assignment', muted(`You are posted to ${r.pendingMove}.`) + stack(btn('report', `Move to ${r.pendingMove} and report for duty`)));
+    return out;
+  },
+  agency(p, r) {
+    let out = '';
+    if (!r?.job) {
+      for (const a of A.agenciesHere(p)) {
+        const no = C.policeUnmet(a, p);
+        const d = AGENCY_KINDS[a.kind];
+        out += card(a.name, kv([['Kind', d.name], ['Academy', `${d.academyMonths} months`], ['Field training', `${d.fieldMonths} months`], ['Minimum age', String(d.minAge)], ...(d.maxAge ? [['Maximum age', String(d.maxAge)]] : [])])
+          + (a.simplified ? muted('Simplified: this country\'s police recruitment is not modeled in detail.') : '')
+          + (no.length ? muted(no[0]) : stack(btn('applyPolice', 'Submit an application', { arg: a.id }))));
+      }
+      return out || muted('There is no police agency recruiting here.');
+    }
+    const a = A.agency(r.job.agencyId);
+    if (!a) return muted('Your agency record is being set up. It will appear after the next Age Up.');
+    out += card(a.name, kv([['Your rank', p.career.title], ['Chief', nm(a.chiefId)], ['Units', Object.keys(a.units).map((u) => SPECIALTIES[u].name).join(', ')]]));
+    if (['field', 'probation', 'officer'].includes(r.stage) && !r.job.detective) {
+      out += card(r.stage === 'officer' ? 'On patrol' : 'Field training', (r.people.ftoId ? kv([['Field training officer', nm(r.people.ftoId)]]) : '') + kv([...(r.job.probationEnd && r.stage !== 'officer' ? [['Probation ends', dateWords(r.job.probationEnd)]] : [])])
+        + stack(Object.entries(C.PATROL).map(([id, d]) => btn('patrol', d.label, { arg: id })).join('')));
+    }
+    if (r.stage === 'officer' || r.job.detective) {
+      const no = C.detectiveUnmet(p);
+      const vac = A.vacancies(a, 'detective');
+      out += card(r.job.detective ? 'Unit transfers' : 'Detective selection', (no.length ? muted(no[0]) : vac.length ? vac.map((v) => kv([[SPECIALTIES[v.unit].name, SPECIALTIES[v.unit].years ? `Needs ${SPECIALTIES[v.unit].years} years as a detective` : 'Open to qualified officers']])
+        + stack(btn('applyDetective', `Apply for ${SPECIALTIES[v.unit].name.toLowerCase()}`, { arg: v.id }))).join('') : muted('No detective seats are open this year.')));
+    }
+    return out;
+  },
+  federal(p, r) {
+    return Object.entries(FEDERAL).map(([key, d]) => {
+      const no = C.federalUnmet(key, p);
+      const src = SOURCES[d.source];
+      return card(d.name, kv([['Jurisdiction', d.jurisdiction.join(', ').replace(/_/g, ' ')], ['Training', `${d.academy}, about ${d.academyMonths} months`],
+        ['Eligibility (simplified)', `US citizen, ${d.eligibility.minAge}–${d.eligibility.maxAge}, a bachelor's degree${d.eligibility.experienceYears ? `, ${d.eligibility.experienceYears} years of professional work` : ''}`]])
+        + muted(`Modeled on ${src.org} (${src.url}); not verified against it.`)
+        + (no.length ? muted(no[0]) : stack(btn('applyFed', `Apply to the ${d.short}`, { arg: key }))));
+    }).join('');
+  },
+  cases(p, r) {
+    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome && W.caseStatus(inv) !== 'cold');
+    if (!list.length) return muted('No active cases. New cases are assigned as the year turns, within a manageable caseload.');
+    return list.map((inv) => { const v = V.view(inv, 'investigator'); return card(v.title, kv([['Kind', v.kind], ['Status', v.status], ['Agency', v.agency], ['Opened', v.opened], ['Hours left this year', String(W.workLeft(inv))]]) + stack(btn('openCase', 'Open the case file', { arg: inv.id }))); }).join('');
+  },
+  archive(p, r) {
+    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && (inv.file.outcome || W.caseStatus(inv) === 'cold'));
+    return list.length ? list.map((inv) => card(inv.file.title, kv([['Outcome', W.caseStatus(inv) === 'cold' ? 'Cold: kept open, inactive' : inv.file.outcome.kind], ['Opened', dateWords(inv.file.opened)]]) + stack(btn('openCase', 'Read the file', { arg: inv.id })))).join('') : muted('Nothing in the archive yet.');
+  },
+  cold(p) {
+    const list = W.coldCandidates(p.countryId);
+    return list.length ? list.map(({ inv, newer }) => card(inv.file.title, kv([['First investigated', dateWords(inv.file.opened)], ['What is new', newer.map((n) => n.discipline).join(', ')]]) + stack(btn('reopen', 'Reopen the case', { arg: inv.id })))).join('')
+      : muted('No cold case has anything new that could be tested yet.');
+  },
+  team(p, r) {
+    const rows = [['partnerId', 'Partner'], ['supervisorId', 'Supervisor'], ['ftoId', 'Field training officer'], ['mentorId', 'Mentor'], ['prosecutorId', 'Prosecutor'], ['rivalId', 'Rival']]
+      .filter(([k]) => r.people[k]).map(([k, label]) => kv([[label, `${nm(r.people[k])}${npc(r.people[k])?.alive ? '' : ' (died)'}`]]) + (npc(r.people[k])?.alive ? stack(btn('profile', `Open ${npc(r.people[k]).firstName}'s profile`, { arg: r.people[k] })) : ''));
+    const past = [...new Set(r.people.formerPartnerIds)].map((id) => kv([['Former partner', nm(id)]]));
+    const cls = r.people.classmateIds.map((id) => kv([['Academy classmate', nm(id)]]));
+    return card('The people you work with', rows.join('') + past.join('') + cls.join('') || muted('Nobody yet.'));
+  },
+  career(p, r) {
+    const st = r.stats;
+    const promos = C.promotionOptions(p);
+    return card('Professional record', kv([['Reputation', `${reputationOf(r)} / 100`], ['Years of service', String(st.years)], ['Cases assigned', st.unknownBefore ? `${st.assigned} (earlier casework not recorded)` : String(st.assigned)],
+      ['Cases completed', String(st.completed)], ['Referred to a prosecutor', String(st.referred)], ['Charged', String(st.charged)], ['Charges declined', String(st.declined)], ['Convictions', String(st.convicted)],
+      ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
+      ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
+      + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
+      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + card('Career history', r.history.slice().reverse().slice(0, 20).map((h) => kv([[String(h.year), h.text]])).join('') || muted('Nothing yet.'));
+  },
+  private(p, r) {
+    let out = '';
+    const rule = C.piLicenseRule(p.countryId);
+    const no = C.licenseUnmet(p);
+    out += card('License', C.licensed(p) ? kv([['Held', rule.name]]) + muted('A license gives no police powers.') : kv([['Needs', `${rule.experienceYears} years of related work, age ${rule.minAge}, a clean record${rule.exam ? ', an exam' : ''}`]])
+      + (rule.simplified ? muted('Simplified: licensing here is not modeled in detail.') : '') + (no.length ? muted(no[0]) : stack(btn('applyLicense', 'Apply for a license'))));
+    if (C.licensed(p)) {
+      const mine = PI.agencies(p);
+      if (!mine.length) out += card('Your own agency', muted('Open a licensed agency: it is a business, with staff, rent and clients who may say no.') + stack(btn('openAgency', 'Open an investigation agency')));
+      for (const b of mine) {
+        const offers = PI.clientsFor(b);
+        out += card(b.name, kv([['Cash', fmtMoney(b.cash, country())], ['Reputation', String(Math.round(b.reputation))], ['Fees', `${Math.round(b.investigations.rate * 100)}% of the usual rate`]])
+          + offers.map((o) => kv([[nm(o.clientId), `${PI_SERVICES[o.service].name}: ${fmtMoney(o.fee, country())}`]]) + stack(btn('client', 'Take the work', { arg: `${b.id}|${o.id}` }) + btn('noClient', 'Turn it down', { arg: `${b.id}|${o.id}` }))).join('')
+          + stack(btn('rate', 'Set fees', { arg: b.id })));
+      }
+    }
+    for (const q of PI.inquiries(p).filter((x) => x.status === 'open')) {
+      out += card(`${PI_SERVICES[q.service].name} for ${nm(q.clientId)}`, kv([['Fee', fmtMoney(q.fee, country())], ['Done', q.steps.join(', ') || 'nothing yet'], ['Findings', q.findings.join(' ') || 'none yet']])
+        + stack(Object.entries(PI.PI_STEPS).map(([id, d]) => btn('piStep', d.label, { arg: `${q.id}|${id}`, cls: d.restricted ? 'danger' : '' })).join('') + btn('piDone', 'Deliver the findings and close', { arg: q.id })));
+    }
+    return out;
+  },
+  bench(p) {
+    const list = X.bench(p).filter((b) => b.status === 'open');
+    return list.length ? list.map((b) => { const inv = W.investigation(b.invId); const it = inv.file.items.find((x) => x.id === b.itemId);
+      return card(`${it.label} (${inv.file.title})`, kv([['Requested by', nm(b.detectiveId)], ['Done', b.steps.join(', ') || 'nothing yet']])
+        + stack(Object.entries(X.BENCH_STEPS).map(([id, d]) => btn('bench', d.label, { arg: `${b.id}|${id}` })).join('') + btn('benchReport', 'Report the finding as it is', { arg: `${b.id}|careful` }) + btn('benchReport', 'Report it as stronger than it is', { arg: `${b.id}|overstate`, cls: 'danger' }))); }).join('')
+      : muted('Nothing on your bench. Requests arrive as the year turns.');
+  },
+  standards(p) {
+    const mine = O.complaints().filter((c) => c.subjectId === p.id);
+    const work = O.complaints().filter((c) => c.assignedTo === p.id && c.status === 'open');
+    return (mine.length ? card('Complaints about you', mine.map((c) => kv([[c.text, c.status === 'open' ? `Being investigated, decided by ${dateWords(c.due)}` : `${c.finding}${c.action && c.action !== 'none' ? ` (${c.action})` : ''}`]])).join('')) : '')
+      + work.map((c) => card(`Complaint about ${nm(c.subjectId)}`, muted(c.text) + kv(c.evidence.map((e) => [O.IA_STEPS[e.step].label, e.text]))
+        + stack(Object.entries(O.IA_STEPS).map(([id, d]) => btn('ia', d.label, { arg: `${c.id}|${id}` })).join('') + ['substantiated', 'unsubstantiated', 'insufficient evidence', 'training issue'].map((f) => btn('iaDecide', `Find: ${f}`, { arg: `${c.id}|${f}` })).join('')))).join('');
+  },
+  press(p) {
+    const list = X.publicCases(p);
+    return list.length ? card('Cases in the public record', list.map((c) => kv([[c.title, `${c.defendant}: ${c.outcome}`]])).join('') + muted('Only what happened in open court. Case files, witness statements and sealed records are not public.')) : muted('No cases in court here yet.');
+  },
+};
+
+// ---------- The case file ----------
+
+const TABS = [['overview', 'Overview'], ['notebook', 'Notebook'], ['people', 'People'], ['evidence', 'Evidence'], ['statements', 'Witness Statements'], ['lab', 'Laboratory'], ['legal', 'Legal Review'], ['court', 'Court'], ['actions', 'Investigative Actions']];
+function caseTabs(v) {
+  return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
+}
+const CASE_VIEWS = {
+  overview: (v) => card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]])),
+  notebook: (v) => card('Known facts', v.facts.map((f) => `<p>• ${esc(f.text)}</p>`).join('') || muted('Only the report so far.'))
+    + card('Reported claims', v.claims.map((c) => `<p>• ${esc(c.text)} <span class="muted">(${esc(c.by)}${c.confidence != null ? `, says they are ${c.confidence >= 0.8 ? 'sure' : c.confidence >= 0.5 ? 'fairly sure' : 'unsure'}` : ''})</span></p>`).join('') || muted('No statements yet.'))
+    + card('Hypotheses', v.hypotheses.map((h) => kv([[h.text, h.status]])).join('') + muted('These follow what has been found. A strong claim is not a fact.'))
+    + (v.contradictions.length ? card('Contradictions', v.contradictions.map(([a, b]) => `<p>• ${esc(a)} <b>but</b> ${esc(b)}</p>`).join('')) : '')
+    + card('Open questions', muted(v.hypotheses.filter((h) => h.status === 'open').map((h) => `Is it that ${h.text.charAt(0).toLowerCase()}${h.text.slice(1)}`).join(' ') || 'None that the evidence leaves open.')),
+  people: (v) => card('People in the case', v.people.map((x) => kv([[x.name, x.role]])).join('') + muted('A person of interest is not a suspect, and a suspect is not guilty.')),
+  evidence: (v) => card('Items', v.items.map((it) => kv([[it.label, `${it.kind}${it.integrity === 'gap' ? ' · custody gap' : ''}`]]) + (it.custody.length ? `<p class="muted">${it.custody.map(esc).join('<br>')}</p>` : muted('Not yet collected.'))).join('') || muted('No physical items.')),
+  statements: (v) => card('Statements', v.claims.map((c) => kv([[c.by, c.text]])).join('')),
+  lab: (v) => card('Laboratory requests', v.labs.map((l) => kv([[`${l.item}: ${l.discipline}`, l.status === 'reported' ? l.text : `Expected ${l.due}`]])).join('') || muted('Nothing sent yet.')),
+  legal: (v) => card('Authorizations', v.auths.map((a) => kv([[`${a.kind} order (${a.at})`, `${a.decision}, by ${a.judge}`]])).join('') || muted('None requested.'))
+    + card('Report and prosecutor', kv([['Case report', v.report ? (v.report.complete ? `Complete, ${v.report.at}` : `Written, ${v.report.at}`) : 'Not written'], ['Referral', v.referral ? `${v.referral.decision} by ${v.referral.prosecutor}${v.referral.needs?.length ? `: ${v.referral.needs.join('; ')}` : ''}` : 'Not referred']])),
+  court: (v) => card('Court', kv([['Defendant', v.court.defendant], ['Stage', v.court.stage], ...(v.court.due ? [['Court date', v.court.due]] : [])]) + muted('The court decides. The investigator gives evidence; they do not prosecute.')),
+  actions: (v, inv) => {
+    const st = W.steps(inv);
+    const left = W.workLeft(inv);
+    let b = st.map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
+    if (!inv.file.outcome && !inv.file.courtCaseId) {
+      b += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
+      for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
+      b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
+    }
+    if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
+    return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
+  },
+};
+function openCaseFile(api, invId, refreshHub) {
+  const st = { tab: 'overview' };
+  const modal = openModal('<div data-case></div>', { dismissable: true });
+  modal.el.classList.add('world-modal');
+  const root = modal.el.querySelector('[data-case]');
+  const render = () => {
+    const inv = W.investigation(invId);
+    const v = V.view(inv, 'investigator');
+    if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
+    const tabs = caseTabs(v);
+    root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
+      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+  };
+  const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
+  root.addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.closest('[data-close]')) { modal.close(); return; }
+    const tab = t.closest('[data-tab]');
+    if (tab) { st.tab = tab.dataset.tab; render(); return; }
+    const b = t.closest('[data-act]');
+    if (!b || b.disabled) return;
+    const [id, x] = (b.dataset.arg ?? '').split('|');
+    const act = b.dataset.act;
+    if (act === 'interview') {
+      const wid = x.split(':')[1];
+      const inv = W.investigation(id);
+      const asked = inv.file.witnesses[wid]?.asked ?? [];
+      const opts = Object.entries(WITNESS_QUESTIONS).filter(([q]) => !asked.includes(q) && (q !== 'inconsistency' || W.contradictions(inv).length));
+      const pick = await pickModal({ title: `Interview ${nm(wid)}`, body: 'One question at a time. People remember more when they are not rushed.', options: opts.map(([q, d]) => ({ value: q, label: d.label, sub: d.sub })) });
+      if (pick) await say(W.act(id, x, { question: pick }));
+    } else if (act === 'step') await say(W.act(id, x));
+    else if (act === 'writeReport') await say(W.writeReport(id, x));
+    else if (act === 'refer') await say(W.refer(id, x));
+    else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'suspend') { if (await confirmModal({ title: 'Set the case aside?', body: 'It stays open, inactive. After three years with nothing new, it becomes a cold case.', yes: 'Set it aside' })) await say(W.suspend(id)); }
+    else if (act === 'resolve') {
+      const v = V.view(W.investigation(id), 'investigator');
+      const pick = await pickModal({ title: 'Close on which explanation?', body: 'Only one the evidence supports.', options: v.hypotheses.map((h) => ({ value: h.key, label: h.text, sub: h.status, disabled: !h.status.includes('supported') })) });
+      if (pick) await say(W.resolve(id, pick));
+    }
+  });
+  render();
+}
+
+// ---------- The hub ----------
+
+const ACTIONS = {
+  prep: (a, x) => x.say(C.prepare(a)),
+  applyPolice: (a, x) => x.say(C.applyPolice(a)),
+  acceptAcademy: (a, x) => x.say(C.acceptAcademy(a)),
+  acceptFed: (a, x) => x.say(C.acceptFederal(a)),
+  decline: (a, x) => x.say(C.declineOffer(a)),
+  academy: (a, x) => x.say(C.academyAct(a)),
+  patrol: (a, x) => x.say(C.patrol(a)),
+  applyDetective: (a, x) => x.say(C.applyDetective(a)),
+  applyFed: (a, x) => x.say(C.applyFederal(a)),
+  report: (a, x) => x.say(C.reportToOffice()),
+  promote: (a, x) => x.say(C.seekPromotion(a)),
+  openCase: (a, x) => openCaseFile(x.api, a, x.render),
+  reopen: (a, x) => x.say(W.reopen(a)),
+  profile: async (a, x) => { const { openNpc } = await import('./tabs/people.js'); openNpc(store.state.npcs[a], x.api); },
+  applyLicense: (a, x) => x.say(C.applyLicense()),
+  openAgency: (a, x) => x.say(PI.openAgency()),
+  client: (a, x) => { const [b, o] = a.split('|'); return x.say(PI.acceptClient(b, o)); },
+  noClient: (a, x) => { const [b, o] = a.split('|'); return x.say(PI.declineClient(b, o)); },
+  rate: async (a, x) => { const pick = await pickModal({ title: 'Set fees', options: [0.8, 1, 1.25, 1.5].map((v) => ({ value: String(v), label: `${Math.round(v * 100)}% of the usual rate` })) }); if (pick) await x.say(PI.setRate(a, Number(pick))); },
+  piStep: (a, x) => { const [q, s] = a.split('|'); return x.say(PI.inquiryStep(q, s)); },
+  piDone: (a, x) => x.say(PI.completeInquiry(a)),
+  bench: (a, x) => { const [b, s] = a.split('|'); return x.say(X.benchStep(b, s)); },
+  benchReport: (a, x) => { const [b, how] = a.split('|'); return x.say(X.benchReport(b, how)); },
+  ia: (a, x) => { const [c, s] = a.split('|'); return x.say(O.iaStep(c, s)); },
+  iaDecide: (a, x) => { const [c, f] = a.split('|'); return x.say(O.iaDecide(c, f)); },
+};
+
+/** Opens My Investigations. */
+export function openInvestigations(api, start = 'overview') {
+  const st = { section: start };
+  const lines = settle(player()); // anything whose date has come, made known before the page is drawn
+  const modal = openModal('<div data-inv></div>', { dismissable: true });
+  modal.el.classList.add('world-modal');
+  const root = modal.el.querySelector('[data-inv]');
+  const render = () => {
+    const p = player();
+    const r = rec(p);
+    const list = sectionsFor(p, r);
+    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
+    root.innerHTML = `<h2 style="margin-top:0">My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
+      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
+      ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
+  };
+  const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };
+  root.addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.closest('[data-close]')) { modal.close(); return; }
+    const sec = t.closest('[data-sec]');
+    if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
+    const b = t.closest('[data-act]');
+    if (!b || b.disabled) return;
+    const fn = ACTIONS[b.dataset.act];
+    if (fn) await fn(b.dataset.arg, { st, say, render, api });
+  });
+  render();
+  if (lines.length) messageModal({ body: lines.join(' '), tone: 'neutral' });
+  return modal;
+}

@@ -23,6 +23,7 @@ import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
 import { togetherChoice } from './together.js';
+import { invChoice } from './investigations/drama.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -238,6 +239,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
       case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
+      case 'inv': { const note = invChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
