@@ -194,6 +194,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Running for District Attorney/i.test(await trail().innerText()) && await trail().locator('.fit-bars').count() >= 1, `${label}: the campaign is a screen of its own, with the race drawn as bars`);
   check(!/\d+%/.test(await trail().innerText()), `${label}: no percentages on the trail`);
   check(/money/i.test(await trail().innerText()) && /your opponent/i.test(await trail().innerText()), `${label}: what can be done is grouped`);
+  await shot('campaign-start');
   await trail().locator('[data-camp="committee"]').click(); await ok();
   await trail().locator('[data-camp="town_hall"]').click(); await ok();
   await trail().locator('[data-campnext]').click(); await ok();
