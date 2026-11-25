@@ -435,8 +435,9 @@ export function trainingYear() {
     log('You are placed on a remediation plan: closer supervision, and a review at the end of next year.', 'system', 'bad');
   } else t.probation = 0;
   licenseCheck(p, m, t);
-  // Chief resident: chosen in the last year from the strongest residents, never certain.
-  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(0.25 + (score - 60) / 80 + m.skills.leadership / 400)) {
+  // Chief resident: chosen in the last year from the strongest residents, never certain (at best 85%: the faculty
+  // choose among several strong residents).
+  if (t.kind === 'residency' && t.pgy === t.years - 1 && !t.chief && score >= 60 && roll(Math.min(0.85, 0.25 + (score - 60) / 80 + m.skills.leadership / 400))) {
     t.chief = true;
     log(`The faculty chose you as chief resident for your final year in ${s.name}.`, 'system', 'good');
     note(`Chosen as chief resident in ${s.name}.`, 'career', { key: `chief:${t.specialtyId}`, milestone: `Chief resident, ${s.name}.`, log: false });

@@ -29,7 +29,9 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
 await page.click('[data-random]'); await page.waitForSelector('[data-year]');
-const settle = async () => { for (let i = 0; i < 25; i++) { const c = page.locator('.modal .choice-btn:not([disabled])'); const o = page.locator('.modal [data-ok], .modal [data-cancel], .modal .modal-back'); if (await c.count()) await c.first().click(); else if (await o.count()) await o.last().click(); else break; await page.waitForTimeout(40); } };
+const settle = async () => { for (let i = 0; i < 25; i++) { const c = page.locator('.modal .choice-btn:not([disabled])'); const o = page.locator('.modal [data-ok], .modal [data-cancel], .modal .modal-back'); if (await c.count()) await c.first().click(); else if (await o.count()) await o.last().click(); else {
+  // Any other pop-up the year brought (a notice with its own buttons): answer it with its last button, so nothing sits over the tabs.
+  const any = page.locator('#modal-root .scrim:last-child .modal button:not([disabled])'); if (await any.count()) await any.last().click(); else break; } await page.waitForTimeout(40); } };
 const tab = async (t) => { await settle(); await page.evaluate((t) => document.querySelector(`.tab-btn[data-tab="${t}"]`).click(), t); await page.waitForTimeout(250); };
 /** The rows of the open tab's list: label, line, locked, has a picture. */
 const rows = () => page.evaluate(() => [...document.querySelectorAll('[data-panel-body] > .nav-group > .nav-row, [data-panel-body] > .nav-group > .sec-row')].filter((r) => r.offsetParent)

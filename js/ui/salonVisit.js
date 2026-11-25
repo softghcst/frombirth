@@ -195,6 +195,27 @@ export function openSalonVisit(api, { intro = true } = {}) {
   let editor = null;
 
   function close() { root.remove(); }
+  let paid = false;
+
+  /**
+   * After paying, on the way out: the new look in a round frame with sparkles, a goodbye under the shop's sign, then
+   * a fade back to the game. A tap skips it; with reduced motion it is shown still, briefly.
+   */
+  function outro() {
+    const face = avatarSvg({ appearance: draft, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, mood: 92, viewBox: '86 120 340 340', label: 'Your new look' });
+    root.innerHTML = `<div class="sv-outro${reduced ? ' sv-still' : ''}" data-outro role="button" tabindex="0" aria-label="Back to your life">
+      <div class="sv-outro-sign">${barber ? BARBER_LOGO : LOGO}<span>${esc(name)}</span></div>
+      <div class="sv-outro-frame"><div class="sv-outro-face">${face}</div>${reduced ? '' : '<div class="sv-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>'}</div>
+      <p class="sv-outro-line">${esc(barber ? `Looking sharp, ${p.firstName}!` : `Looking gorgeous, ${p.firstName}!`)}</p>
+      <p class="sv-outro-sub">${esc(`${stylist} waves you off. See you next time!`)}</p></div>`;
+    const el = root.querySelector('[data-outro]');
+    let done = false;
+    const finish = () => { if (!done) { done = true; close(); } };
+    el.onclick = finish;
+    el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') finish(); };
+    el.focus?.();
+    setTimeout(finish, reduced ? 1200 : 2700);
+  }
 
   /** The scene: the room, the mirror with the player in it, and below, the stylist's bubble and the replies. */
   function scene({ line, replies = [], body = '', sparkle = false }) {
@@ -214,7 +235,7 @@ export function openSalonVisit(api, { intro = true } = {}) {
           <p class="sv-bill muted" data-bill>${esc(bill())}</p>
         </div>
       </div>`;
-    root.querySelector('[data-leave]').onclick = close;
+    root.querySelector('[data-leave]').onclick = paid ? outro : close;
     root.querySelectorAll('[data-reply]').forEach((b) => { b.onclick = () => replies[Number(b.dataset.reply)].go(); });
   }
 
@@ -268,11 +289,12 @@ export function openSalonVisit(api, { intro = true } = {}) {
       return;
     }
     api?.changed?.();
+    paid = true;
     draft = cloneAppearance(normalize(player().appearance, p.id));
     const tr = draft.style.treatment;
     scene({ sparkle: !reduced,
       line: `${say.paid} ${tr ? `Your hair will be ${hairTextureOf(draft)} for the next ${tr.years} years. ` : ''}Come back anytime.`,
-      replies: [{ label: barber ? 'Leave the barbershop' : 'Leave the salon', primary: true, go: close }] });
+      replies: [{ label: barber ? 'Leave the barbershop' : 'Leave the salon', primary: true, go: outro }] });
   }
 
   function goodbye() {

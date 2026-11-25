@@ -40,6 +40,130 @@ export const WEDDINGS = [
 ];
 export const DIVORCE_FEE = 4000;
 
+/**
+ * A wedding planned piece by piece (js/ui/weddingPlanner.js). Costs in base units; `joy` is how much the day means
+ * to the two of you. Guests are paid for per head, for the food chosen (`perGuest`).
+ */
+export const WEDDING_PLAN = {
+  venue: [
+    { id: 'courthouse', name: 'City hall', icon: '🏛️', cost: 300, joy: 1, sub: 'Quick, sweet and official' },
+    { id: 'backyard', name: 'A backyard party', icon: '🏡', cost: 2500, joy: 4, sub: 'String lights and lawn chairs' },
+    { id: 'chapel', name: 'A little chapel', icon: '⛪', cost: 6000, joy: 6, sub: 'Stained glass and a bell' },
+    { id: 'beach', name: 'On the beach', icon: '🏖️', cost: 9000, joy: 7, sub: 'Barefoot at sunset' },
+    { id: 'garden', name: 'A garden', icon: '🌷', cost: 8000, joy: 7, sub: 'Under a flowering arch' },
+    { id: 'vineyard', name: 'A vineyard', icon: '🍇', cost: 15000, joy: 8, sub: 'Golden hour among the vines' },
+    { id: 'ballroom', name: 'A grand ballroom', icon: '✨', cost: 22000, joy: 8, sub: 'Chandeliers and a dance floor' },
+    { id: 'castle', name: 'A castle', icon: '🏰', cost: 60000, joy: 10, sub: 'A fairytale, turrets and all' },
+  ],
+  // How many come. Each guest is invited, seated and sent home with a favor (GUEST_COST), and fed (food's perGuest).
+  guests: [
+    { id: 'elope', name: 'Elope, just the two of us', icon: '💞', count: 2, joy: 1, sub: 'No guests, no fuss, two witnesses' },
+    { id: 'intimate', name: 'An intimate gathering', icon: '🕯️', count: 12, joy: 3, sub: 'About 12: the ones who matter most' },
+    { id: 'small', name: 'Close family and friends', icon: '👨‍👩‍👧', count: 40, joy: 4, sub: 'About 40 guests' },
+    { id: 'medium', name: 'Family and friends', icon: '🎉', count: 100, joy: 5, sub: 'About 100 guests' },
+    { id: 'big', name: 'A big celebration', icon: '🥳', count: 200, joy: 6, sub: 'About 200 guests' },
+    { id: 'huge', name: 'Everyone we have ever met', icon: '🏟️', count: 350, joy: 6, sub: 'About 350: cousins of cousins' },
+  ],
+  theme: [
+    { id: 'blush', name: 'Blush', hex: '#F6B8C8', cost: 0, joy: 0 },
+    { id: 'ivory', name: 'Ivory and gold', hex: '#F3E3B5', cost: 0, joy: 0 },
+    { id: 'lavender', name: 'Lavender', hex: '#C9B4EA', cost: 0, joy: 0 },
+    { id: 'sage', name: 'Sage', hex: '#B5CDA8', cost: 0, joy: 0 },
+    { id: 'sky', name: 'Something blue', hex: '#A9CDEB', cost: 0, joy: 0 },
+    { id: 'red', name: 'Deep red', hex: '#C9485B', cost: 0, joy: 0 },
+  ],
+  flowers: [
+    { id: 'wild', name: 'Wildflowers', icon: '🌼', cost: 200, joy: 1, sub: 'Picked that morning' },
+    { id: 'roses', name: 'Roses', icon: '🌹', cost: 1500, joy: 2, sub: 'Classic, by the armful' },
+    { id: 'peonies', name: 'Peonies and orchids', icon: '💐', cost: 5000, joy: 3, sub: 'Lush, everywhere you look' },
+  ],
+  attire: [
+    { id: 'borrowed', name: 'Something borrowed', icon: '🧵', cost: 150, joy: 1, sub: 'A family heirloom, altered' },
+    { id: 'rack', name: 'Off the rack', icon: '🛍️', cost: 1200, joy: 2, sub: 'Found it, loved it' },
+    { id: 'designer', name: 'Designer, made to fit', icon: '👑', cost: 9000, joy: 4, sub: 'Three fittings and a gasp' },
+  ],
+  cake: [
+    { id: 'cupcakes', name: 'A tower of cupcakes', icon: '🧁', cost: 300, joy: 1, sub: 'Everyone gets their own' },
+    { id: 'tiered', name: 'A three-tier cake', icon: '🎂', cost: 1200, joy: 2, sub: 'Buttercream and berries' },
+    { id: 'showstopper', name: 'A five-tier showstopper', icon: '🍰', cost: 5000, joy: 3, sub: 'Sugar flowers cascading down' },
+  ],
+  music: [
+    { id: 'playlist', name: 'Our playlist', icon: '🎧', cost: 0, joy: 1, sub: 'Every song means something' },
+    { id: 'dj', name: 'A DJ', icon: '💿', cost: 1500, joy: 2, sub: 'Nobody leaves the dance floor' },
+    { id: 'band', name: 'A live band', icon: '🎷', cost: 3500, joy: 3, sub: 'Brass, and a singer who can really sing' },
+    { id: 'quartet', name: 'A string quartet', icon: '🎻', cost: 4000, joy: 3, sub: 'For the vows; a playlist for after' },
+  ],
+  food: [
+    { id: 'potluck', name: 'Potluck and pizza', icon: '🍕', perGuest: 8, joy: 1, sub: 'Everyone brings a dish' },
+    { id: 'buffet', name: 'A buffet', icon: '🍲', perGuest: 35, joy: 2, sub: 'Seconds encouraged' },
+    { id: 'plated', name: 'A plated dinner', icon: '🍽️', perGuest: 85, joy: 3, sub: 'Three courses, cloth napkins' },
+  ],
+  honeymoon: [
+    { id: 'home', name: 'Home, together', icon: '🛋️', cost: 0, joy: 1, sub: 'A week off and breakfast in bed' },
+    { id: 'roadtrip', name: 'A road trip', icon: '🚗', cost: 1200, joy: 2, sub: 'Windows down, no plans' },
+    { id: 'resort', name: 'A beach resort', icon: '🏝️', cost: 6000, joy: 4, sub: 'Overwater, all inclusive' },
+    { id: 'world', name: 'Around the world', icon: '✈️', cost: 25000, joy: 6, sub: 'A month, six countries' },
+  ],
+};
+/** Invitations, a seat and a favor, for each guest (base units). Two people eloping invite no one. */
+export const GUEST_COST = 20;
+/** What a guest list costs, before food (local money). */
+export const guestCost = (count, c = country()) => (count > 2 ? localMoney(GUEST_COST, c) * count : 0);
+/** The steps of the plan, in the order they are planned. */
+export const PLAN_STEPS = ['venue', 'guests', 'theme', 'flowers', 'attire', 'cake', 'music', 'food', 'honeymoon'];
+const planPick = (key, id) => WEDDING_PLAN[key].find((o) => o.id === id) ?? WEDDING_PLAN[key][0];
+
+const hashOf = (str) => { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+/** What the partner has always dreamed of: a venue, and a big party or a small one. The same every time it is asked. */
+export function dreamOf(npc) {
+  const h = hashOf(`dream:${npc.id}`);
+  const venues = WEDDING_PLAN.venue.filter((v) => v.id !== 'courthouse');
+  return { venue: venues[h % venues.length].id, big: (h >> 8) % 2 === 0 };
+}
+
+/** What a plan costs (local money) and means, with what it does for the partner's dream. */
+export function planTotals(plan, npc = null, c = country()) {
+  const lines = [];
+  let cost = 0; let joy = 0;
+  const guests = planPick('guests', plan.guests);
+  for (const key of PLAN_STEPS) {
+    const o = planPick(key, plan[key]);
+    const each = key === 'food' ? localMoney(o.perGuest, c) * guests.count : key === 'guests' ? guestCost(guests.count, c) : localMoney(o.cost ?? 0, c);
+    cost += each; joy += o.joy ?? 0;
+    if (key === 'guests') { if (guests.count > 2) lines.push({ key, label: `Invitations and seating for ${guests.count}`, cost: each }); }
+    else if (key !== 'theme') lines.push({ key, label: key === 'food' ? `${o.name}, for ${guests.count}` : o.name, cost: each });
+  }
+  const dream = npc ? dreamOf(npc) : null;
+  const dreamVenue = !!dream && plan.venue === dream.venue;
+  const dreamSize = !!dream && (dream.big ? guests.count >= 100 : guests.count <= 40);
+  if (dreamVenue) joy += 4;
+  if (dreamSize) joy += 2;
+  return { cost, joy, lines, guests: guests.count, dreamVenue, dreamSize };
+}
+
+/** Why the player cannot marry this person now, or null. */
+export function weddingBlock(npcId) {
+  const npc = npcOf(npcId);
+  if (!npc?.alive) return 'They are no longer here.';
+  if (!npc.flags.engaged) return 'You are not engaged.';
+  const legal = may('marry', { partner: npc });
+  return legal.ok ? null : legal.why;
+}
+
+/** The vows, said at the altar: how they land. */
+export const VOWS = {
+  heartfelt: { label: 'Vows I wrote myself', bump: 4, line: (n) => `${n} is crying before you reach the second line. So is half the room.` },
+  traditional: { label: 'The traditional vows', bump: 2, line: (n) => `"To have and to hold." ${n} says the words back to you, steady and sure.` },
+  funny: { label: 'Vows that make everyone laugh', bump: 3, line: (n) => `The whole room is laughing, and ${n} is laughing hardest, and then, suddenly, not laughing at all.` },
+};
+export function sayVows(npcId, kind) {
+  const npc = npcOf(npcId);
+  const v = VOWS[kind] ?? VOWS.traditional;
+  bump(npc, v.bump);
+  remember(npc, 'vows', kind === 'heartfelt' ? 'You wrote your own vows.' : kind === 'funny' ? 'Your vows made everyone laugh.' : 'You said the old vows.');
+  return v.line(npc.firstName);
+}
+
 export const spouse = () => npcsByRole('spouse')[0];
 export const partner = () => spouse() ?? npcsByRole('partner')[0];
 export const interest = () => player().flags.interestedIn ?? null;
@@ -264,11 +388,15 @@ export function marry(npcId, weddingId, prenup) {
   const p = player();
   const c = country();
   const npc = npcOf(npcId);
-  const w = WEDDINGS.find((x) => x.id === weddingId);
+  // A wedding chosen from WEDDINGS by id, or planned piece by piece (WEDDING_PLAN).
+  const planned = weddingId && typeof weddingId === 'object' ? weddingId : null;
+  const w = planned ? (() => { const t = planTotals(planned, npc, c); const v = planPick('venue', planned.venue);
+    return { id: 'planned', name: `a wedding at ${v.name.replace(/^A |^An /, 'a ').replace(/^On the /, 'the ').toLowerCase()}`, joy: t.joy, cost: t.cost, local: true, plan: planned }; })()
+    : WEDDINGS.find((x) => x.id === weddingId);
   if (!npc.flags.engaged) return result(false, 'You are not engaged.', 'neutral');
   { const legal = may('marry', { partner: npc }); if (!legal.ok) return result(false, legal.why, 'neutral'); }
   const royalMatch = !!npc.flags.royal;
-  let cost = localMoney(w.cost, c);
+  let cost = w.local ? w.cost : localMoney(w.cost, c);
   if (!royalMatch && p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
   // Marrying into a royal family needs the palace's consent, and the palace can say no.
   const palace = royalMatch ? crown.consent(npc) : null;
@@ -285,7 +413,8 @@ export function marry(npcId, weddingId, prenup) {
   p.stats.mood = clamp(p.stats.mood + 15);
   p.counters.spouses += 1;
   if (p.flags.livesWithParents) p.flags.livesWithParents = false;
-  remember(npc, 'weddingDay', `You married them with ${w.name.toLowerCase()}.`);
+  if (w.plan) npc.flags.wedding = { ...w.plan, year: store.state.year };
+  remember(npc, 'weddingDay', w.plan ? `You married them at ${w.name.replace(/^a wedding at /, '')}.` : `You married them with ${w.name.toLowerCase()}.`);
   const wed = `${crown.npcName(npc)} ${npc.lastName}`;
   const after = palace ? crown.afterWedding(npc, palace.leaves) : crown.afterMarryingOut(npc);
   const text = palace && !palace.leaves
