@@ -38,6 +38,9 @@ rng.seed(20261125);
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
+/** Applies, sits the interview answering well, and says whether an offer came. */
+const seekOffer = (id) => { if (!jobs.applyFor(id).ok) return false; while (jobs.interview()) jobs.answer(0); return jobs.offers().some((o) => o.hospitalId === id); };
+
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'us', age = 22) => {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
@@ -528,18 +531,31 @@ section('research and teaching, wellbeing, and an offer from another city');
   const v = jobs.hospitalProfile(all[0].id);
   check(v && v.ownership && v.departments.length && v.physicians > 0, 'an employer can be reviewed before applying');
   let offered = null;
-  for (const o of all.filter((x) => !x.block)) { const r = jobs.applyFor(o.id); if (r.ok) { offered = o; break; } }
+  for (const o of all.filter((x) => !x.block && !x.locum)) { if (seekOffer(o.id)) { offered = o; break; } }
   check(!!offered && jobs.offers(jm).length === 1 && !jm.job, 'an interview can end in an offer, which waits for an answer');
+  const terms = jobs.offers(jm)[0];
+  check(terms && terms.hours > 0 && ['light', 'regular', 'heavy'].includes(terms.call) && typeof terms.nonCompete === 'number', `an offer has terms: hours, on-call, non-compete (${JSON.stringify(terms)})`);
   if (offered) {
     const before = jobs.offers(jm)[0]?.salary;
-    jobs.negotiate(offered.id);
-    check(!jobs.negotiate(offered.id).ok, 'an offer is negotiated once');
+    jobs.negotiate(offered.id, 'salary');
+    check(!jobs.negotiate(offered.id, 'hours').ok, 'an offer is negotiated once');
     const still = jobs.offers(jm)[0];
     if (still) {
       check(still.salary >= before, 'negotiating never lowers an offer');
       const r = jobs.acceptOffer(offered.id);
       check(r.ok && jm.job?.hospitalId === offered.id && q.city === offered.city && q.career.salary === still.salary, `accepting starts the post where it is (${r.text})`);
     }
+  }
+  // A temporary post at a rural or public facility lasts a year (a family physician, whose department they all have).
+  jm.completed.push({ specialtyId: 'family', kind: 'residency', from: 2004, to: 2007 });
+  jm.job = null; q.career.employerId = null;
+  const locum = jobs.postings('country', q, jm).find((x) => x.locum && !x.block);
+  check(!!locum, 'temporary (locum) posts are offered by rural and public services');
+  if (locum && seekOffer(locum.id)) {
+    jobs.acceptOffer(locum.id);
+    check(jm.job?.contract?.locum && /Locum/.test(q.career.title), `a locum post is taken (${q.career.title})`);
+    year(); year();
+    check(!jm.job || jm.job.hospitalId !== locum.id, 'and it ends with its year');
   }
 }
 section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');

@@ -29,6 +29,9 @@ rng.seed(5150);
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
+/** Applies, sits the interview answering well, and says whether an offer came. */
+const seekOffer = (id) => { if (!jobs.applyFor(id).ok) return false; while (jobs.interview()) jobs.answer(0); return jobs.offers().some((o) => o.hospitalId === id); };
+
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'us', age = 22) => {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
@@ -78,7 +81,7 @@ if (m.job) { p.career.employerId = null; m.job = null; }
 const listings = jobs.postings('country', p, m); // 13
 check(listings.length > 0, '13. actual hospital opportunities to browse');
 let offered = null;
-for (let i = 0; i < 4 && !offered; i++) { for (const o of jobs.postings('country', p, m).filter((x) => !x.block)) { if (jobs.applyFor(o.id).ok) { offered = o; break; } } if (!offered) year(); } // 14
+for (let i = 0; i < 4 && !offered; i++) { for (const o of jobs.postings('country', p, m).filter((x) => !x.block)) { if (seekOffer(o.id)) { offered = o; break; } } if (!offered) year(); } // 14
 check(!!offered && jobs.acceptOffer(offered.id).ok && m.job?.hospitalId === offered.id, '14-15. applied, offered, accepted'); // 15
 const load = cases.caseload(m, p); // 16-17
 check(load.length === cases.CASES_PER_YEAR, '16-17. My Medical Career has this year\'s patients');
@@ -115,7 +118,7 @@ for (let i = 0; i < 4 && m.training?.specialtyId !== 'ctsurg' && !m.completed.so
 for (let i = 0; i < 3 && m.training; i++) { strong(m, 90); year(); }
 check(m.completed.some((c) => c.specialtyId === 'ctsurg'), `A. general surgery, then a cardiothoracic fellowship (${m.completed.map((c) => c.specialtyId).join(', ')})`);
 check(cases.privileges(m).has('ct_bypass'), '5. cardiac surgical privileges, from the completed fellowship');
-if (!m.job) { const o = jobs.postings('country', p, m).find((x) => !x.block); if (o) { jobs.applyFor(o.id); if (jobs.offers(m).length) jobs.acceptOffer(o.id); } }
+if (!m.job) { const o = jobs.postings('country', p, m).find((x) => !x.block); if (o && seekOffer(o.id)) jobs.acceptOffer(o.id); }
 if (!m.job) train.startPost('ctsurg', trainingSites('ctsurg', p.countryId, p.city)[0].e.id, 'attending');
 check(!!m.job && !!employer(m.job.hospitalId) && hospital(m.job.hospitalId).depts.includes('cardiothoracic'), '6-8. a post in a real cardiothoracic department');
 // 12-21: a surgical case through the operating room.

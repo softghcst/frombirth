@@ -219,6 +219,15 @@ export function postYear() {
     return;
   }
   if (m.job.since === year()) return; // taken this year: the first review comes next year
+  // A temporary (locum) post ends with its year; another can be applied for.
+  if (m.job.contract?.locum && m.job.contract.until <= year()) {
+    const e0 = employer(m.job.hospitalId);
+    note(`Finished a temporary post at ${e0?.name ?? 'the hospital'}.`, 'career', { log: false });
+    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from My Medical Career.`, 'system', 'neutral');
+    m.job = null;
+    endJob('temporary post ended');
+    return;
+  }
   teach(p, m);
   const h = hospital(m.job.hospitalId);
   m.experience.years += 1;
