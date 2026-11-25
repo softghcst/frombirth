@@ -469,6 +469,8 @@ export function federalUnmet(key, p = player()) {
   if (p.age < e.minAge) out.push(`Applicants must be at least ${e.minAge}.`);
   if (p.age > e.maxAge && !p.flags.served) out.push(`Applicants must be appointed by ${e.maxAge + 1} (veterans may have more time).`);
   if (!university(p)) out.push('Needs a bachelor\'s degree.');
+  // Some agencies ask for a particular background (IRS Criminal Investigation: accounting coursework).
+  if (e.background && !backgrounds(p).includes(e.background)) out.push(`Needs a background in ${e.background} (coursework or a degree).`);
   const need = advanced(p) && e.advancedDegreeYears != null ? e.advancedDegreeYears : e.experienceYears;
   if (workYears(p) < need) out.push(`Needs ${need} year${need === 1 ? '' : 's'} of full-time professional work.`);
   if (record(p).length) out.push('A criminal record rules this out.');
@@ -526,7 +528,7 @@ export function acceptFederal(appId) {
   app.status = 'accepted';
   if (r.job && r.family === 'police') { note(`Left ${agency(r.job.agencyId)?.name ?? 'the department'} for the ${d.short}.`, 'career', { log: false }); r.people.formerPartnerIds.push(...[r.people.partnerId].filter(Boolean)); }
   hire(CAREER_BY_ID[d.career], 0, 55, 'academy');
-  p.career.title = 'Special agent trainee';
+  p.career.title = `${d.title ?? 'Special agent'} trainee`;
   r.family = 'federal';
   r.stage = 'federal_training';
   const classmates = [0, 1].map(() => staffer('us', 'detective', 'Special agent trainee', { rank: 'trainee', age: Math.max(23, p.age + rng.int(-4, 4)) }).id);
@@ -555,7 +557,7 @@ function federalGraduate(p, r) {
   const moved = city !== p.city;
   r.pendingMove = moved ? city : null;
   p.career.employerId = o.employerId;
-  p.career.title = 'Special agent';
+  p.career.title = d.title ?? 'Special agent';
   const partner = o.agentIds[0];
   r.people.partnerId = partner;
   r.people.supervisorId = o.supervisorIds[0];

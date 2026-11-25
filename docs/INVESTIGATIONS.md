@@ -14,7 +14,7 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Business | `engine/business.js` | Businesses with staff, cash, rent, partners, sale | A private investigation agency is a business type gated by a license |
 | Medical careers | `engine/medicine/` | A model for a deep yearly career engine with migration and a hub | Followed for structure. Forensic pathology for a player physician is **not** built |
 | Time | `engine/turns.js` | 3-, 6- and 12-month turns; the year itself runs once | Anything with a duration is dated in months and released on its date |
-| Story Director | `data/events`, `engine/effects.js` | Queued scenes with effects | 38 queued scenes and an `inv` effect |
+| Story Director | `data/events`, `engine/effects.js` | Queued scenes with effects | 46 queued scenes and an `inv` effect |
 | Canonical events | `engine/chronicle.js` (`recordEvent`) | Public life events | Career milestones are recorded as public events; case files never are |
 | Journalism | `data/careers.js` (journalist) | A career track | A journalist sees the public record of cases in court (partial) |
 
@@ -54,6 +54,8 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | The investigator on the stand | **Playable**: cross-examination on custody, pressure on witnesses, inconclusive laboratory results and other suspects, drawn from the file; a denial the file contradicts is found out, weakens the investigator's evidence at trial and can bring a complaint; owning a weakness keeps their word good |
 | Shared incidents | **Playable**: a fatal collision (careless driving, impairment, or an accident nobody could have avoided) is one incident several careers meet: the person struck dies at a real hospital of the city, and when the investigation ends the family claims against the driver. A civil litigator is offered the claim (`collision_claim`), with the investigation's outcome as its evidence; if no lawyer takes it within a year, the driver's insurer settles it, or refuses it when the investigation found it unavoidable |
 | Corporate investigators | **Playable**: with a license, five years of investigative work or a relevant degree, a post on a real company's investigations team (the private investigation track, salaried); one internal matter a year, lawful steps only, no police powers; a crime is for the company to report |
+| More federal agencies | **Playable** to the same depth as the FBI: the US Marshals Service (deputy US marshals; fugitive inquiries; fugitive, witness security and judicial security squads), the Secret Service (counterfeit currency, financial and cyber fraud; protective detail), Homeland Security Investigations (from 2003; smuggling, drugs, firearms, financial crimes) and IRS Criminal Investigation (asks for an accounting background; tax evasion and money laundering). Each has its own career track, academy, field offices and squads; fugitive, counterfeit and tax cases are federal-only |
+| Homicide scenes | **Playable**: a homicide brings its own scenes, each once and when the file says it is time: telling the family (a real next of kin, kept on the file), the first night at the scene (moving things before they are recorded leaves a custody gap), the first forty-eight hours (naming a suspect early costs integrity), the press conference (an appeal may bring a lead), the vigil, the funeral (a promise of an arrest is heavy), a year unsolved, and the verdict |
 | Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
 | Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
 | Forensic psychology outside the courts, police unions, national police reform | **Not built** |
@@ -92,6 +94,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (18 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (19 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer; a fatal collision's hospital, family claim and insurer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

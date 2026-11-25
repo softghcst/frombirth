@@ -932,6 +932,61 @@ section('the local world: business cases at real employers, real neighbors as wi
 }
 section('corporate investigators: a real company, internal matters, no police powers, a salary not fees');
 
+// ---------- 19. A homicide scene by scene; more federal agencies ----------
+{
+  const p = life('us', 36);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.people.partnerId = null;
+  const inv = W.openCase('homicide', { ownerId: a.id, truth: 'known' });
+  r.caseIds = [inv.id];
+  const STORIES = (await import('../js/data/events/stories/investigations.js')).default;
+  const ids = new Set(STORIES.map((e) => e.id));
+  const seen = [];
+  for (let i = 0; i < 10; i++) { store.state.pendingEvents = []; DR.dramaYear(p); seen.push(...store.state.pendingEvents.map((e) => e.id).filter((x) => x.startsWith('inv_hom_'))); }
+  check(['inv_hom_notify', 'inv_hom_night', 'inv_hom_48', 'inv_hom_funeral'].every((x) => seen.includes(x)) && seen.every((x) => ids.has(x)), `a homicide brings its scenes, in order: ${seen.join(', ')}`);
+  check(new Set(seen).size === seen.length, 'each homicide scene comes once');
+  const kin = store.state.npcs[inv.file.kinId];
+  check(kin && kin.lastName === store.state.npcs[inv.file.victimId].lastName && inv.file.people.some((x) => x.id === kin.id && x.role === 'family'), 'the next of kin is a real person, kept on the file');
+  const words = { invId: inv.id };
+  const ok0 = inv.file.items.filter((x) => x.integrity === 'ok').length;
+  DR.invChoice('hom:night-rush', { words });
+  check(inv.file.items.filter((x) => x.integrity === 'ok').length === ok0 - 1 || !ok0, 'moving things before they are recorded leaves a gap in the custody log');
+  const integ = r.rep.integrity;
+  DR.invChoice('hom:48-name', { words });
+  check(r.rep.integrity < integ, 'naming a suspect before the evidence is in costs integrity');
+  const warm = kin.meters.relationship;
+  DR.invChoice('hom:anniv-call', { words });
+  check(kin.meters.relationship > warm, 'taking the family\'s call keeps their trust');
+  // A year on, unsolved: the anniversary.
+  store.state.year += 1; store.state.pendingEvents = [];
+  for (let i = 0; i < 4; i++) { store.state.pendingEvents = []; DR.dramaYear(p); if (store.state.pendingEvents.some((e) => e.id === 'inv_hom_anniversary')) break; }
+  check(r.scenes[`hom:anniv:${inv.id}`], 'a year unsolved, the family calls');
+}
+{
+  // Four more federal agencies, each with its own rules and its own work.
+  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.verified === false, `${key}: an agency with its own career track, its source named and unverified`);
+  let p = life('us', 27, { degree: 'criminology' });
+  check(C.federalUnmet('irs').some((x) => /accounting/.test(x)) && !C.federalUnmet('usms').some((x) => /accounting/.test(x)), 'IRS Criminal Investigation asks for accounting; the Marshals do not');
+  p = life('us', 27, { degree: 'accounting' });
+  check(!C.federalUnmet('irs').length, `an accountant can apply to IRS-CI (${C.federalUnmet('irs')})`);
+  const store0 = store.state.year; store.state.year = 1995;
+  check(C.federalUnmet('hsi').some((x) => /does not exist/.test(x)), 'HSI does not exist before 2003');
+  store.state.year = store0;
+  // A deputy marshal works fugitive cases; the police never get them.
+  hire(CAREER_BY_ID.usms_deputy, 0, 60, 'test');
+  const r = core.I();
+  const o = A.officeOf('usms', A.federalCities()[0]);
+  r.family = 'federal'; r.stage = 'agent';
+  r.job = { agencyKind: 'usms', officeId: o.id, employerId: o.employerId, rank: 'agent', detective: false, since: store.state.year - 2, rankSince: store.state.year - 2 };
+  const inv = W.assignCase(p);
+  check(inv?.file.template === 'fugitive' && o.name.includes('Marshals'), `a deputy marshal is assigned a fugitive inquiry (${inv?.file.template})`);
+  check(!W.templatesFor('general').some((t) => ['fugitive', 'counterfeit', 'tax'].includes(t)) && !W.templatesFor('fraud').includes('tax'), 'federal-only cases never go to a police unit');
+  check(WP.SQUADS.usms.length && WP.SQUADS.irs.length, 'each new agency has its own squads');
+}
+section('a homicide from the first night to the verdict, scene by scene; the Marshals, the Secret Service, HSI and IRS Criminal Investigation');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

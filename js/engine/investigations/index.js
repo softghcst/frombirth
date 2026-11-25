@@ -31,7 +31,7 @@ import { settleWorkplace, workplaceYear } from './workplace.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
-export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent'];
+export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent', 'usms_deputy', 'usss_agent', 'hsi_agent', 'irs_agent'];
 
 /** Whether this engine reviews the player's job this year. */
 export function investigationRuns(careerId, p = player()) {
