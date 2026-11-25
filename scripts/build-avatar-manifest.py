@@ -989,12 +989,7 @@ def measure_feature(elements, folder):
 # the file itself is moved here, once: (x scale, y scale, shift right, shift down), about the top of
 # the template face. A repaired file carries data-refit="1" and is never moved twice.
 REFIT = {
-    # An arch of braids drawn for a much taller forehead: the opening reached 100 units above the skull,
-    # so the background showed through it. Lowered until the arch sits on the crown, the beads at the jaw.
-    'hair_boy_medium_11': (1.0, 0.85, 0, 94),
-    # Cornrows on one side, drawn far wider than the head: the shaved side hung in the air beside the
-    # face. Brought in until the cornrows lie on the scalp.
-    'hair_girl_long_11': (0.75, 0.75, -13, 0),
+    # (Both styles repaired here, hair_boy_medium_11 and hair_girl_long_11, have since been taken out of the game.)
 }
 
 
@@ -1423,6 +1418,10 @@ def process(path, folder, force=False):
 # ---------- 4. The manifest ----------
 
 
+# Hairstyles whose pack named them for one gender but that are worn by the other.
+HAIR_GENDER = {'hair_boy_long_10': 'female'}
+
+
 def tags_for(folder, name):
     t = {}
     parts = name.split('_')
@@ -1431,6 +1430,8 @@ def tags_for(folder, name):
             t['gender'] = 'female'
         if 'boy' in parts:
             t['gender'] = 'male'
+        if name in HAIR_GENDER:  # sorted by eye rather than by the pack it came in
+            t['gender'] = HAIR_GENDER[name]
         if 'baby' in parts:
             t['age'] = 'baby'
         for length in ('short', 'medium', 'long', 'updo'):
@@ -1506,6 +1507,8 @@ def write_manifest():
     def entry(folder, f, i, rel):
         old = before.get(i)
         tags = old.get('tags') if old else tags_for(folder, i)
+        if folder == 'hair' and i in HAIR_GENDER and tags is not None:  # a re-sort applies to a part already listed too
+            tags = {**tags, 'gender': HAIR_GENDER[i]}
         return {'id': i, 'file': f'{rel}/{f}', 'label': old['label'] if old else label(i), **({'tags': tags} if tags else {})}
     for folder in FOLDERS:
         d = folder_dir(folder)

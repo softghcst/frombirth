@@ -103,7 +103,7 @@ export function mountAppearanceEditor(el, o = {}) {
     return list;
   };
   const tw = () => a.inherited.tweaks;
-  let tab = tabsFor(stageOf(age))[0].id;
+  let tab = tabsFor(stageOf(age))[0]?.id;
 
   const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, face: o.face ?? o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
   const withValue = (key, value) => {
@@ -201,6 +201,13 @@ export function mountAppearanceEditor(el, o = {}) {
   }
 
   function render() {
+    // Embedded (o.keys): only those rows, no portrait or tabs. The salon visit (js/ui/salonVisit.js) shows one at a time.
+    if (o.keys) {
+      const stage = stageOf(age);
+      const keys = o.keys.map((k) => (stage === 'adult' || !STAGES[stage] ? k : STAGES[stage].swap[k] ?? k)).filter((k) => k === 'treatment' || (CONTROLS[k] && usable(k, stage)));
+      el.innerHTML = `<div class="av-panel av-embedded">${keys.map((k) => (k === 'treatment' ? (treatments && stage === 'adult' ? treatmentControl() : '') : control(k))).join('') || '<p class="muted">Nothing here for you today.</p>'}</div>`;
+      return;
+    }
     const tabs = tabsFor(stageOf(shownAge()));
     // A tab that has nothing for this age (Eyes for a baby, say): the first one that has.
     let t = tabs.find((x) => x.id === tab);
