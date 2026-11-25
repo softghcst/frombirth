@@ -167,3 +167,49 @@ export function migrateMedicine(state) {
   state.medicine.v = VERSION;
   return state;
 }
+
+// ---------- Across generations ----------
+
+/**
+ * What the family remembers of a physician's career (the Family Archive): the training, the
+ * hospitals, the highest post, the practices. Nothing about any patient.
+ */
+export function physicianSummary(p) {
+  const m = p?.medicine;
+  if (!m || (!m.completed.length && !m.school?.graduated && !m.legacy)) return null;
+  const jobs = (p.career?.history ?? []).filter((h) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(h.careerId));
+  const hospitals = [...new Set([...m.completed.map((c) => c.hospital), ...jobs.map((h) => h.employer)].filter(Boolean))];
+  const hospitalIds = [...new Set([...m.completed.map((c) => c.hospitalId), ...jobs.map((h) => h.employerId), m.job?.hospitalId].filter(Boolean))];
+  const ranks = ['attending', 'senior', 'director', 'chief', 'chair', 'cmo'];
+  return {
+    route: m.route, school: m.school?.name ?? null,
+    trained: m.completed.map((c) => ({ specialtyId: c.specialtyId, name: specialtyName(c.specialtyId), from: c.from, to: c.to, hospital: c.hospital ?? null, chief: !!c.chief })),
+    as: qualified(m).map((id) => SPECIALTY_BY_ID[id]?.doctor).filter(Boolean),
+    boards: m.boards.filter((b) => b.passed).map((b) => specialtyName(b.specialtyId)),
+    years: m.experience.years, patients: m.experience.cases, hospitals, hospitalIds,
+    topRank: m.topRank ?? (m.job ? m.job.rank : null), topTitle: m.topTitle ?? (m.job ? p.career?.title : null),
+    practices: (p.businesses ?? []).filter((b) => b.medical).map((b) => b.name), legacy: !!m.legacy,
+    rankOrder: ranks,
+  };
+}
+
+const MEDICAL_JOB = /physician|surgeon|doctor|psychiatrist|podiatrist|resident|pediatrician|cardiologist|neurologist|dermatologist|radiologist|anesthesiologist|obstetrician|internist/i;
+
+/**
+ * Family in medicine: a living parent or grandparent who practices (or practiced), or an ancestor
+ * whose medical career is in the Family Archive. The nearest one, for scenes and premed help.
+ */
+export function medicalFamily(p = player(), state = store.state) {
+  const kin = (p.npcIds ?? []).map((id) => state.npcs[id]).filter((n) => n?.alive && ['parent', 'grandparent'].includes(n.role)
+    && (['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || MEDICAL_JOB.test(n.occupation ?? '')));
+  const near = kin.sort((a, b) => (a.role === 'parent' ? 0 : 1) - (b.role === 'parent' ? 0 : 1))[0];
+  if (near) return { name: near.firstName, npcId: near.id, role: near.role, alive: near.alive, what: near.occupation || 'a doctor', archived: false };
+  const anc = Object.values(state.archive?.people ?? {}).filter((a) => a.medicine).sort((a, b) => (b.died ?? 0) - (a.died ?? 0))[0];
+  if (anc) return { name: anc.firstName, npcId: null, role: 'ancestor', alive: false, what: anc.medicine.as?.[0] ?? 'a doctor', archived: true, archiveId: anc.id };
+  return null;
+}
+
+/** An ancestor in the Family Archive who worked at this hospital, if any. */
+export function ancestorAt(hospitalId, state = store.state) {
+  return Object.values(state.archive?.people ?? {}).find((a) => a.medicine?.hospitalIds?.includes(hospitalId)) ?? null;
+}

@@ -24,6 +24,9 @@ import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
+import { makeNpc } from '../js/engine/npcFactory.js';
+import { die } from '../js/engine/death.js';
+import { continueAs } from '../js/engine/legacy.js';
 
 rng.seed(20261125);
 const problems = [];
@@ -283,6 +286,50 @@ section(`turn lengths: PGY ${a12.pgy}, ${a12.cases} cases over two years at ever
   check(gs.player.medicine.reapply === false && !gs.player.medicine.training, 'a graduate in other work is not pulled into residency');
 }
 section('saves: idempotent migration, no duplicate cases, no invented past');
+
+// 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
+{
+  rng.seed(31337);
+  const doc = life('us', 60);
+  const mm = core.M(doc);
+  strong(mm);
+  const site = trainingSites('family', doc.countryId, doc.city)[0];
+  train.startTraining('residency', 'family', site.e.id);
+  cases.caseload(mm, doc);
+  for (let i = 0; i < 4; i++) { strong(mm); year(); }
+  check(mm.completed.length === 1, 'the parent finished residency');
+  const hosp = mm.completed[0].hospitalId;
+  const patients = mm.caseIds.map((id) => store.state.npcs[core.W().cases[id]?.patientId]?.firstName).filter(Boolean);
+  const kid = makeNpc({ role: 'child', countryId: doc.countryId, age: 14 }); store.state.npcs[kid.id] = kid; doc.npcIds.push(kid.id);
+  const name = `${doc.firstName} ${doc.lastName}`;
+  die('old age');
+  const next = continueAs(kid.id);
+  check(!!next, 'a doctor\'s child carries the family on');
+  if (next) {
+    const anc = Object.values(next.archive.people).find((a) => `${a.firstName} ${a.lastName}` === name);
+    check(!!anc?.medicine && anc.medicine.trained[0]?.specialtyId === 'family', 'the Family Archive keeps the physician\'s training');
+    const text = JSON.stringify(anc?.medicine ?? {});
+    check(!patients.some((n) => text.includes(`"${n}"`)) && !('caseIds' in (anc?.medicine ?? {})), 'and nothing about any patient');
+    check(Object.keys(next.medicine?.cases ?? {}).length === 0 && Object.keys(next.medicine?.patients ?? {}).length === 0, 'patient files are not inherited');
+    check(!next.player.medicine, 'a child inherits no medical record or license');
+    const fam = core.medicalFamily(next.player, next);
+    check(fam?.archived && fam.name === anc.firstName, `the heir has a doctor in the family archive (${JSON.stringify(fam)})`);
+    store.state.pendingEvents = [];
+    advanceYear();
+    check(store.state.pendingEvents.some((e) => e.id === 'med_family_calling') || next.player.flags.medFamilyScene, 'a doctor\'s child is asked, once, whether medicine is for them');
+    store.state.pendingEvents = [];
+    const heir = store.state.player;
+    heir.age = 22; heir.education.enrolled = false; heir.education.stage = 'none';
+    heir.education.degrees.push({ type: 'university', majorId: 'biology', gpa: 3.8, age: 22 });
+    check(train.premedOptions().some((o) => o.id === 'family_talk'), 'premed: the family\'s papers can be read');
+    check(train.doPremed('family_talk').ok, 'and reading them counts toward an application');
+    const hm = core.M(heir);
+    strong(hm);
+    train.startTraining('residency', 'internal', hosp);
+    check(events((e) => /had worked before/.test(e.text)).length === 1, 'training where a parent trained is remembered in the family record');
+  }
+}
+section('generations: the archive keeps the career; the family is a pull, not a path');
 
 if (problems.length) {
   console.log(`PROBLEMS (${problems.length}):\n${problems.map((x) => ` - ${x}`).join('\n')}`);

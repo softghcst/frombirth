@@ -139,6 +139,9 @@ export function medicineChoice(value, cast = {}) {
       return '';
     }
     case 'offer': return answerOffer(how === 'yes').text;
+    case 'calling':
+      if (how === 'drawn') p.flags.medCalling = true;
+      return '';
     default: return '';
   }
 }

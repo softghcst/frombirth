@@ -44,6 +44,10 @@ export default [
     ['Pin it to the wall', 'It stays there for years. On bad days you read it again.', 'grateful:yes', 'good'],
     ['Write back', 'You write a short note back. You do not say how much it meant.', 'grateful:yes', 'good'],
   ]),
+  { ...scene('med_family_calling', 'You think of {relative}, {what}, {how}. People keep asking whether you will be a doctor too.', [
+    ['Say you might: you want to understand what they did', 'You start paying attention in biology.', 'calling:drawn', 'good', st('intellect', 1)],
+    ['Say you will find your own way', 'Nobody minds. Whatever you choose, it will be yours.', 'calling:own'],
+  ]), ageRange: [12, 18] },
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

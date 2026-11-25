@@ -12,7 +12,7 @@
 //   drama.js      mentors, rivals, friends, romance, leadership, patients who come back
 import { store, player } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { med, reputationOf, migrateMedicine } from './core.js';
+import { med, reputationOf, migrateMedicine, medicalFamily } from './core.js';
 import { tickTraining } from './training.js';
 import { postYear } from './ladder.js';
 import { caseload, closeYear } from './cases.js';
@@ -45,6 +45,14 @@ export function tickMedicine() {
   if (!p.alive) return;
   let m = med(p);
   // A graduate from before this engine, or someone working as a doctor without a record, gets one (core.migrateMedicine).
+  // A child of a doctor's family wonders, once, whether medicine is for them (data/events/stories/medicine.js).
+  if (p.age >= 13 && p.age <= 17 && !p.flags.medFamilyScene) {
+    const fam = medicalFamily(p);
+    if (fam) {
+      p.flags.medFamilyScene = true;
+      store.state.pendingEvents.push({ id: 'med_family_calling', cast: { words: { relative: fam.name, what: fam.what.toLowerCase(), how: fam.archived ? 'in the photographs in the Family Archive' : 'at the kitchen table, tired after a long shift' } } });
+    }
+  }
   const studying = p.education.enrolled && ['medical', 'podiatric'].includes(p.education.stage);
   if (!m && !studying && !p.education.degrees.some((d) => ['medical', 'podiatric'].includes(d.type))) return;
   if (!m && !studying) { migrateMedicine(store.state); m = med(p); }

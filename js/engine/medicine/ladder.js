@@ -39,6 +39,7 @@ function takeRank(p, m, rank) {
   m.job.rank = rank;
   m.job.rankSince = year();
   retitle(p, m);
+  if (ORDER.indexOf(rank) >= ORDER.indexOf(m.topRank ?? 'attending')) { m.topRank = rank; m.topTitle = p.career.title; }
   const e = employer(m.job.hospitalId);
   const h = hospital(e);
   if (['chief', 'chair'].includes(rank)) {

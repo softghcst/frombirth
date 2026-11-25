@@ -16,7 +16,8 @@ import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
-import { M, med, year, grow, note, once, result, roll, specialtyName, qualified } from './core.js';
+import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily } from './core.js';
+import { recordEvent, archiveIdOf } from '../chronicle.js';
 import { trainingSites, workplacesFor, careerFor, levelFor, hospital, hospitalName } from './hospitals.js';
 
 const avg = (...xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -36,13 +37,16 @@ export function premedOpen(p = player()) {
 /** Premedical activities, each once a year. */
 export function premedOptions() {
   const m = med();
-  return PREMED.map((a) => ({ ...a, done: !!m && m.acted.year === year() && !!m.acted[`premed:${a.id}`] }));
+  const fam = medicalFamily();
+  // Family in medicine: a parent's or grandparent's stories, or an ancestor's papers in the Family Archive.
+  const extra = fam ? [{ id: 'family_talk', name: fam.archived ? `Read ${fam.name}'s papers in the Family Archive` : `Talk about medicine with ${fam.name}`, adds: { exposure: 1, letters: fam.archived ? 0 : 0.5 } }] : [];
+  return [...PREMED, ...extra].map((a) => ({ ...a, done: !!m && m.acted.year === year() && !!m.acted[`premed:${a.id}`] }));
 }
 
 /** Does one premedical activity this year. */
 export function doPremed(id) {
   const p = player();
-  const a = PREMED.find((x) => x.id === id);
+  const a = premedOptions().find((x) => x.id === id);
   if (!a) return result(false, 'There is no such thing to do.', 'neutral');
   if (!premedOpen(p)) return result(false, 'Premedical activities are for university students and graduates who have not yet started medical school.', 'neutral');
   const m = M();
@@ -56,6 +60,8 @@ export function doPremed(id) {
     mentor: 'A professor agreed to advise you, and to write you a letter when the time comes.',
     science_club: 'The science club met on Thursdays. You argued about evolution until the building closed.',
     study_exam: 'You worked through practice papers for the entrance exam, every evening for months.',
+    family_talk: medicalFamily()?.archived ? `You read through ${medicalFamily().name}'s old papers: case notes with every name blacked out, and a letter about why they chose medicine.`
+      : `${medicalFamily()?.name} talked for hours: the nights on call, the patients they still think about, and what they would do differently.`,
   }[id];
   if (id === 'research') grow('research', 3, m);
   if (id === 'volunteer' || id === 'shadow') grow('communication', 1, m);
@@ -246,10 +252,20 @@ export function startTraining(kind, specialtyId, hospitalId) {
   for (const n of peers) { n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6); }
   m.people.colleagueIds = [...new Set([...m.people.colleagueIds, ...peers.map((n) => n.id)])];
   retitle();
+  familyHospital(p, e);
   chronicle(e, `${p.firstName} ${p.lastName} started ${kind === 'fellowship' ? 'a fellowship' : kind === 'internship' ? 'an internship' : 'residency'}${s ? ` in ${s.name}` : ''}.`);
   note(`${kind === 'fellowship' ? 'Began a fellowship' : kind === 'internship' ? 'Began an internship' : 'Began residency'}${s ? ` in ${s.name}` : ''} at ${e.name}.`, 'career',
     { key: `${kind}:${specialtyId ?? 'intern'}:${year()}`, milestone: `${kind === 'fellowship' ? 'Began a fellowship' : kind === 'internship' ? 'Began an internship' : 'Matched into residency'}${s ? ` in ${s.name}` : ''}.`, log: false });
   return m.training;
+}
+
+/** Working where a parent or grandparent once worked: the hospital remembers, and so does the family. */
+function familyHospital(p, e) {
+  const a = ancestorAt(e.id);
+  if (!a || a.id === archiveIdOf(p)) return;
+  const said = `${a.firstName} ${a.lastName} worked at ${e.name} too. ${a.medicine.topTitle ? `Some of the older staff still remember ${a.firstName} as ${a.medicine.topTitle.toLowerCase()}.` : 'There is a photograph of them in the corridor by the old wing.'}`;
+  log(said, 'system', 'good');
+  recordEvent({ key: `med:familyHospital:${archiveIdOf(p)}:${e.id}`, kind: 'medical_career', text: `Worked at ${e.name}, where ${a.firstName} ${a.lastName} had worked before.`, privacy: 'family', people: [a.id], significance: 1 });
 }
 
 /** The job title that goes with a training year or a post. */
@@ -434,6 +450,8 @@ export function startPost(specialtyId, hospitalId, rank = 'attending') {
   m.stage = 'practice';
   hospital(e);
   retitle(p, m);
+  if (!m.topRank) { m.topRank = rank; m.topTitle = p.career.title; }
+  familyHospital(p, e);
   note(`Joined ${e.name} as ${an(p.career.title.toLowerCase())}.`, 'career', { key: `post:${hospitalId}:${year()}`, log: false });
   return m.job;
 }
