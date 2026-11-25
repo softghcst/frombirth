@@ -6,6 +6,7 @@
 import { avatarSvg, faceGenderOf } from '../avatar/render.js';
 import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
+import { venueScene } from './weddingScenery.js';
 import { player, country } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
@@ -25,51 +26,6 @@ const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
 </svg>`;
 
 /**
- * Each venue as a room or a view, drawn like the salon's and the barbershop's (bold outlines, flat colors): a wall or a
- * sky with a pattern, a floor, and a few things at either side, leaving the middle to the couple and the arch.
- * `wall` is a <pattern> body (28 x 28 unless `size` says otherwise), `floor` the floor's color, `left`/`right` the props.
- */
-const INK = 'stroke="#23140f" stroke-width="3" stroke-linejoin="round"';
-const VENUES = {
-  courthouse: { wall: '<rect width="28" height="28" fill="#EDE6DA"/><rect width="28" height="2" fill="#E0D6C6"/>', floor: '#B9A98F',
-    left: `<g ${INK}><rect x="18" y="40" width="34" height="170" fill="#F7F3EC"/><rect x="12" y="30" width="46" height="12" rx="2" fill="#E6DED2"/><rect x="12" y="206" width="46" height="12" rx="2" fill="#E6DED2"/></g><path d="M28 50v150M42 50v150" stroke="#D9CFBF" stroke-width="3"/>`,
-    right: `<g ${INK}><path d="M336 30v120" fill="none"/><path d="M338 34h42v28h-42z" fill="#5C7FB8"/><rect x="318" y="150" width="40" height="56" rx="4" fill="#8A5A3B"/><path d="M322 162h32M322 176h32M322 190h32" stroke-width="2"/></g>` },
-  backyard: { wall: '<rect width="28" height="28" fill="#BFE3F5"/>', floor: '#8CC77D',
-    left: `<g ${INK}><path d="M0 222V168h80v54" fill="#F4EFE6"/><path d="M16 168v54M32 168v54M48 168v54M64 168v54" fill="none" stroke-width="2"/><circle cx="34" cy="96" r="30" fill="#7DB86E"/><path d="M34 126v42" stroke-width="6" stroke="#8A5A3B"/></g>`,
-    right: `<g ${INK}><path d="M320 222V168h80v54" fill="#F4EFE6"/><path d="M336 168v54M352 168v54M368 168v54M384 168v54" fill="none" stroke-width="2"/></g><path d="M300 40 Q340 66 400 44" fill="none" stroke="#23140f" stroke-width="2"/>${[316, 340, 364, 388].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}<path d="M0 40 Q40 64 100 44" fill="none" stroke="#23140f" stroke-width="2"/>${[14, 40, 66, 90].map((x, i) => `<circle cx="${x}" cy="${50 + (i % 2) * 6}" r="6" fill="#FFE59A" stroke="#23140f" stroke-width="2"/>`).join('')}` },
-  chapel: { wall: '<rect width="28" height="28" fill="#F6E9DA"/><rect width="14" height="28" fill="#F1E1CE"/>', floor: '#B98E6A',
-    left: `<g ${INK}><path d="M18 170V80a26 26 0 0 1 52 0v90z" fill="#7FB5E0"/><path d="M44 54v116M18 110h52" stroke-width="2.5" fill="none"/><path d="M30 88l-6 14h12zM58 132l-6 14h12z" fill="#F28CA8" stroke-width="2"/></g>`,
-    right: `<g ${INK}><path d="M330 170V80a26 26 0 0 1 52 0v90z" fill="#F7D774"/><path d="M356 54v116M330 110h52" stroke-width="2.5" fill="none"/><path d="M342 132l-6 14h12zM370 88l-6 14h12z" fill="#7FB5E0" stroke-width="2"/></g>` },
-  beach: { wall: '<rect width="28" height="28" fill="#FFD3A8"/>', floor: '#F3D9A4',
-    left: `<g ${INK}><path d="M46 222c4-50 2-90-8-126" fill="none" stroke-width="7" stroke="#8A5A3B"/><path d="M38 98c-30-8-40 6-44 14 18-8 30-8 44-14zM38 98c26-14 44-8 52 4-20-4-34-4-52-4zM38 98c-10-22 0-36 10-42-2 16-6 28-10 42z" fill="#6DBB7B"/></g>`,
-    right: `<circle cx="350" cy="140" r="34" fill="#FFB65C" stroke="#23140f" stroke-width="3"/><rect x="290" y="160" width="110" height="62" fill="#5FB4D9"/><path d="M290 160h110" stroke="#23140f" stroke-width="3"/><path d="M300 178h30M344 190h40M306 204h24" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>` },
-  garden: { wall: '<rect width="28" height="28" fill="#CDEBF7"/><circle cx="14" cy="14" r="2" fill="#E6F6FC"/>', floor: '#9ACB86',
-    left: `<g ${INK}><rect x="4" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[22, 150], [50, 142], [70, 168], [30, 186], [60, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#F28CA8', '#FFFFFF', '#FFD36E'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}`,
-    right: `<g ${INK}><rect x="312" y="130" width="84" height="92" rx="30" fill="#7DB86E"/></g>${[[330, 150], [358, 142], [378, 168], [338, 186], [368, 200]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="6" fill="${['#FFD36E', '#F28CA8', '#FFFFFF'][i % 3]}" stroke="#23140f" stroke-width="2"/>`).join('')}` },
-  vineyard: { wall: '<rect width="28" height="28" fill="#FFE2B0"/>', floor: '#B8A26A',
-    left: `<path d="M0 170 Q50 140 100 160 V222 H0z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M6 182h80M10 198h84" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><circle cx="40" cy="70" r="22" fill="#FFD36E" stroke="#23140f" stroke-width="3"/>`,
-    right: `<path d="M300 160 Q350 140 400 166 V222 H300z" fill="#A7B86E" stroke="#23140f" stroke-width="3"/><path d="M310 182h84M306 198h88" stroke="#5E7D3A" stroke-width="5" stroke-dasharray="9 7"/><g ${INK}><path d="M346 110v40" fill="none" stroke-width="4" stroke="#8A5A3B"/>${[[340, 112], [352, 112], [346, 122], [340, 132], [352, 132], [346, 142]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#8E5BB5" stroke-width="2"/>`).join('')}</g>` },
-  ballroom: { wall: '<rect width="28" height="28" fill="#5A3A6E"/><path d="M14 4l6 10-6 10-6-10z" fill="#6B4882"/>', floor: '#C9A26B',
-    left: `<g ${INK}><rect x="20" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="14" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="14" y="206" width="50" height="12" rx="3" fill="#F7D774"/></g>`,
-    right: `<g ${INK}><rect x="342" y="30" width="38" height="180" rx="4" fill="#E9D3EE"/><rect x="336" y="22" width="50" height="12" rx="3" fill="#F7D774"/><rect x="336" y="206" width="50" height="12" rx="3" fill="#F7D774"/><path d="M300 0v20" fill="none"/><path d="M282 20h36l-8 16h-20z" fill="#F7D774"/></g>${[290, 300, 310].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}<g ${INK}><path d="M100 0v20" fill="none"/><path d="M82 20h36l-8 16h-20z" fill="#F7D774"/></g>${[90, 100, 110].map((x) => `<circle cx="${x}" cy="40" r="3.5" fill="#FFF6D6" stroke="#23140f" stroke-width="1.5"/>`).join('')}` },
-  castle: { wall: '<rect width="28" height="28" fill="#C9C3D6"/><path d="M0 13h28M14 0v13M0 27h28M7 13v14M21 13v14" stroke="#B4ADC4" stroke-width="2"/>', floor: '#8E7A6A',
-    left: `<g ${INK}><path d="M22 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M44 62v108M22 110h44" stroke-width="2.5" fill="none"/><path d="M74 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>`,
-    right: `<g ${INK}><path d="M334 170V84a22 22 0 0 1 44 0v86z" fill="#3E4E7A"/><path d="M356 62v108M334 110h44" stroke-width="2.5" fill="none"/><path d="M302 30v80l12-10 12 10V30z" fill="#C25B7A"/></g>` },
-};
-
-/** The backdrop for a venue: its wall or sky, its floor and a runner down the aisle, its things at either side. */
-function backdrop(venue) {
-  const v = VENUES[venue] ?? VENUES.garden;
-  return `<svg class="sv-room" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs><pattern id="wp-wall-${venue}" width="28" height="28" patternUnits="userSpaceOnUse">${v.wall}</pattern></defs>
-    <rect width="400" height="300" fill="url(#wp-wall-${venue})"/>
-    <rect y="222" width="400" height="78" fill="${v.floor}"/><path d="M0 222h400" stroke="#23140f" stroke-width="3"/>
-    <path d="M0 262h400M0 284h400" stroke="#23140f" stroke-width="2" opacity=".12"/>
-    <path d="M168 300 L186 222 L214 222 L232 300z" fill="#FFFFFF" opacity=".8" stroke="#23140f" stroke-width="2"/>
-    ${v.left}${v.right}</svg>`;
-}
-
-/**
  * The garland over the couple: a curve of flowers in the theme's color (and white), fuller for grander flowers. Wild
  * flowers are little and few, roses more, peonies and orchids big and many.
  */
@@ -82,7 +38,15 @@ function garland(hex, flowers) {
     const fill = i % 3 === 1 ? '#FFFFFF' : hex;
     return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="${r}" fill="${fill}" stroke="#23140f" stroke-width="2.5"/><circle r="${(r / 3).toFixed(1)}" fill="#FFD36E" stroke="#23140f" stroke-width="1.5"/></g>`;
   }).join('');
-  return `<svg class="wp-garland" viewBox="0 0 300 170" aria-hidden="true"><path d="M24 128 A136 128 0 0 1 276 128" fill="none" stroke="#6DBB7B" stroke-width="6" stroke-linecap="round"/>${blooms}</svg>`;
+  // A leafy vine under the flowers: leaves along the curve, turned with it.
+  const vine = Array.from({ length: 25 }, (_, i) => { const t = Math.PI * (0.04 + 0.92 * (i / 24)); return `${(150 - 136 * Math.cos(t)).toFixed(1)} ${(150 - 128 * Math.sin(t)).toFixed(1)}`; }).join(' L');
+  const leaves = Array.from({ length: 22 }, (_, i) => {
+    const t = Math.PI * (0.06 + 0.88 * (i / 21));
+    const x = 150 - 136 * Math.cos(t); const y = 150 - 128 * Math.sin(t);
+    const ang = (t * 180) / Math.PI + (i % 2 ? 70 : -70);
+    return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="7" ry="3.2" fill="${i % 3 ? '#5E9C4E' : '#7DBA68'}" stroke="#2F5E33" stroke-width=".8" transform="rotate(${ang.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)}) translate(5 0)"/>`;
+  }).join('');
+  return `<svg class="wp-garland" viewBox="0 0 300 170" aria-hidden="true"><path d="M${vine}" fill="none" stroke="#3F7A3A" stroke-width="3" stroke-linecap="round"/>${leaves}${blooms}</svg>`;
 }
 
 /**
@@ -127,7 +91,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const closeUp = { viewBox: '86 120 340 340' };
     const stage = ({ kiss = false } = {}) => `
       <div class="sv-stage wp-stage" style="--wp-theme:${themeHex()}">
-        ${backdrop(chosen('venue'))}
+        ${venueScene(chosen('venue'), themeHex())}
         <div class="sv-sign wp-sign">${esc(studio)}</div>
         <div class="wp-altar${kiss ? ' wp-kiss' : ''}">${garland(themeHex(), chosen('flowers'))}
           <div class="wp-couple"><div class="wp-person">${youFace(90, closeUp)}</div><div class="wp-person">${themFace(90, closeUp)}</div>
