@@ -51,9 +51,12 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
 
 // 6–7. Promotions are not guaranteed: years and reviews are not enough without the cases behind them.
 {
-  lawyer('lawyer');
-  p().career.performance = 95;
-  for (let y = 0; y < 5; y++) { p().career.performance = 95; store.state.pendingEvents = []; turn(); L().offers = []; }
+  // Five strong years (a life that ends in a layoff, the career engine's own risk, is lived again).
+  for (let tries = 0; tries < 4; tries++) {
+    lawyer('lawyer');
+    for (let y = 0; y < 5 && p().career.careerId === 'lawyer'; y++) { p().career.performance = 95; store.state.pendingEvents = []; turn(); L().offers = []; }
+    if (p().career.careerId === 'lawyer') break;
+  }
   const next = career.nextStep();
   check(p().career.level === 0 && next.missing.some((x) => /completed cases/.test(x)), `five strong years with no cases of one's own: no promotion (${next.missing.join('; ')})`);
   const ops = lp.opportunities();
