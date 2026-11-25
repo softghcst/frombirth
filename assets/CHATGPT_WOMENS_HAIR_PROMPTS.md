@@ -24,7 +24,7 @@ RULES (all required):
    Use the head's coordinates directly. No transform attributes anywhere, no <image>, <use>, <text>, filters,
    gradients, masks, clipPaths or <style> blocks. Only <path> elements, inside these four groups, in this order:
      <g id="hair_back">   hair that is BEHIND the head: the back of the hair, and any lengths that fall behind the
-                          neck and shoulders. Slightly darker shade. Drawn behind the head, so it only shows outside it.
+                          neck and shoulders. Drawn behind the head, so it only shows outside it.
      <g id="hair_base">   the main mass in FRONT of the head: the cap over the skull from the crown down to the
                           hairline, and the sideburns or side lengths.
      <g id="hair_bangs">  the fringe/bangs and any locks that fall over the forehead or face (may be empty).
@@ -62,6 +62,7 @@ Here is the base head (`athletic`). Use it only as the reference shape; do not r
 ## The 15 hairstyles
 
 Straight: 4 · Wavy: 3 · Curly: 4 · Coily: 4. Every one is a women's style, from age 13 (as the other grown-up styles are).
+Checked against the 43 women's and unisex styles in the game: none repeats one.
 
 ### 1. Blunt Bob with Bangs (straight, short): `blunt_bob_bangs.svg`
 
@@ -72,13 +73,13 @@ Root attributes: data-name="Blunt Bob with Bangs" data-gender="female" data-leng
 File name: blunt_bob_bangs.svg
 ````
 
-### 2. Tucked Lob (straight, medium): `tucked_lob.svg`
+### 2. Half-Up Top Knot (straight, medium): `half_up_top_knot.svg`
 
 ````text
-HAIRSTYLE: A straight, shoulder-length lob with a deep side part on her left, tucked behind the ear on that side, falling smoothly past the ear on the other side to just above the shoulder.
+HAIRSTYLE: Straight, shoulder-length hair with the top half pulled up into a small, neat knot on the crown; the rest hangs straight and smooth to the shoulders, with a center part showing below the knot.
 
-Root attributes: data-name="Tucked Lob" data-gender="female" data-length="medium" data-type="straight" data-min-age="13"
-File name: tucked_lob.svg
+Root attributes: data-name="Half-Up Top Knot" data-gender="female" data-length="medium" data-type="straight" data-min-age="13"
+File name: half_up_top_knot.svg
 ````
 
 ### 3. Long Curtain Bangs (straight, long): `long_curtain_bangs.svg`
@@ -90,22 +91,22 @@ Root attributes: data-name="Long Curtain Bangs" data-gender="female" data-length
 File name: long_curtain_bangs.svg
 ````
 
-### 4. Sleek High Ponytail (straight, updo): `sleek_high_ponytail.svg`
+### 4. French Twist (straight, updo): `french_twist.svg`
 
 ````text
-HAIRSTYLE: All the hair pulled back smoothly into a high ponytail at the crown, with a sleek, flat top and a long straight tail swinging down behind the head to one side. No loose strands at the front.
+HAIRSTYLE: A smooth, elegant French twist: all the hair swept back and rolled up vertically at the back of the head, the roll showing at one side behind the ear, with a sleek, flat top and no loose strands.
 
-Root attributes: data-name="Sleek High Ponytail" data-gender="female" data-length="updo" data-type="straight" data-min-age="13"
-File name: sleek_high_ponytail.svg
+Root attributes: data-name="French Twist" data-gender="female" data-length="updo" data-type="straight" data-min-age="13"
+File name: french_twist.svg
 ````
 
-### 5. Long Beach Waves (wavy, long): `beach_waves_long.svg`
+### 5. Over-the-Shoulder Waves (wavy, long): `over_shoulder_waves.svg`
 
 ````text
-HAIRSTYLE: Long, loose beach waves with a soft side part, tumbling over the shoulders and down to the bottom of the frame, with a little volume at the crown.
+HAIRSTYLE: Long waves all swept to one side with a deep side part: the hair falls in a full, wavy cascade over one shoulder in front, while the other side is tucked behind the ear and the neck shows.
 
-Root attributes: data-name="Long Beach Waves" data-gender="female" data-length="long" data-type="wavy" data-min-age="13"
-File name: beach_waves_long.svg
+Root attributes: data-name="Over-the-Shoulder Waves" data-gender="female" data-length="long" data-type="wavy" data-min-age="13"
+File name: over_shoulder_waves.svg
 ````
 
 ### 6. Wavy Shag (wavy, medium): `wavy_shag_bangs.svg`
@@ -117,22 +118,22 @@ Root attributes: data-name="Wavy Shag" data-gender="female" data-length="medium"
 File name: wavy_shag_bangs.svg
 ````
 
-### 7. Wavy Low Bun (wavy, updo): `wavy_low_bun.svg`
+### 7. Wavy Low Ponytail (wavy, updo): `wavy_low_ponytail.svg`
 
 ````text
-HAIRSTYLE: Wavy hair gathered loosely into a soft low bun at the nape (showing at one side, behind the neck), with two wavy face-framing tendrils falling at the temples.
+HAIRSTYLE: Wavy hair gathered loosely at the nape into a low ponytail whose wavy tail shows behind the neck at one side, with soft face-framing waves left loose at both temples.
 
-Root attributes: data-name="Wavy Low Bun" data-gender="female" data-length="updo" data-type="wavy" data-min-age="13"
-File name: wavy_low_bun.svg
+Root attributes: data-name="Wavy Low Ponytail" data-gender="female" data-length="updo" data-type="wavy" data-min-age="13"
+File name: wavy_low_ponytail.svg
 ````
 
-### 8. Curly Pixie (curly, short): `curly_pixie.svg`
+### 8. Curly Undercut Pixie (curly, short): `curly_undercut_pixie.svg`
 
 ````text
-HAIRSTYLE: A short, cropped curly cut: close at the sides and back with a crown of defined curls on top, a few curls falling onto the forehead.
+HAIRSTYLE: A short curly pixie with one side buzzed close (the shaved side hugs the skull), and a sweep of defined curls on top falling to the other side and onto the forehead.
 
-Root attributes: data-name="Curly Pixie" data-gender="female" data-length="short" data-type="curly" data-min-age="13"
-File name: curly_pixie.svg
+Root attributes: data-name="Curly Undercut Pixie" data-gender="female" data-length="short" data-type="curly" data-min-age="13"
+File name: curly_undercut_pixie.svg
 ````
 
 ### 9. Curly Shoulder Bob (curly, medium): `curly_shoulder_bob.svg`
@@ -144,22 +145,22 @@ Root attributes: data-name="Curly Shoulder Bob" data-gender="female" data-length
 File name: curly_shoulder_bob.svg
 ````
 
-### 10. Long Spiral Curls (curly, long): `long_spiral_curls.svg`
+### 10. Long Curls with Bangs (curly, long): `long_curls_with_bangs.svg`
 
 ````text
-HAIRSTYLE: Long, voluminous spiral curls past the shoulders with a side part, each ringlet defined, the silhouette wide and full down to the bottom of the frame.
+HAIRSTYLE: Long curly hair past the shoulders with a full fringe of short, springy curly bangs across the forehead (above the eyebrows), the curls framing the face at both sides.
 
-Root attributes: data-name="Long Spiral Curls" data-gender="female" data-length="long" data-type="curly" data-min-age="13"
-File name: long_spiral_curls.svg
+Root attributes: data-name="Long Curls with Bangs" data-gender="female" data-length="long" data-type="curly" data-min-age="13"
+File name: long_curls_with_bangs.svg
 ````
 
-### 11. Curly Pineapple (curly, updo): `curly_pineapple.svg`
+### 11. Curly Faux Hawk (curly, updo): `curly_faux_hawk.svg`
 
 ````text
-HAIRSTYLE: Curly hair gathered high on top of the head in a loose "pineapple": a big burst of curls at the crown, a few short curls framing the forehead and temples, the sides smooth.
+HAIRSTYLE: Curls pinned up into a ridge that runs from the forehead back over the crown, tall and full in the middle, with the sides smoothed flat against the head.
 
-Root attributes: data-name="Curly Pineapple" data-gender="female" data-length="updo" data-type="curly" data-min-age="13"
-File name: curly_pineapple.svg
+Root attributes: data-name="Curly Faux Hawk" data-gender="female" data-length="updo" data-type="curly" data-min-age="13"
+File name: curly_faux_hawk.svg
 ````
 
 ### 12. Tapered Coils (coily, short): `tapered_coils.svg`
@@ -171,22 +172,22 @@ Root attributes: data-name="Tapered Coils" data-gender="female" data-length="sho
 File name: tapered_coils.svg
 ````
 
-### 13. Rounded Afro with Side Part (coily, medium): `rounded_afro_side_part.svg`
+### 13. Coily Frohawk (coily, medium): `coily_frohawk.svg`
 
 ````text
-HAIRSTYLE: A full, rounded medium afro with a clean, defined side part, soft and even all round, wider than the head at the temples but not as big as a full afro.
+HAIRSTYLE: A coily frohawk: a tall, rounded strip of springy coils down the middle of the head from the forehead to the nape, with the sides twisted flat and close to the scalp in neat rows.
 
-Root attributes: data-name="Rounded Afro with Side Part" data-gender="female" data-length="medium" data-type="coily" data-min-age="13"
-File name: rounded_afro_side_part.svg
+Root attributes: data-name="Coily Frohawk" data-gender="female" data-length="medium" data-type="coily" data-min-age="13"
+File name: coily_frohawk.svg
 ````
 
-### 14. Long Twist-Out (coily, long): `long_twist_out.svg`
+### 14. Long Coily Ponytail (coily, long): `long_coily_ponytail.svg`
 
 ````text
-HAIRSTYLE: A long, defined twist-out on coily hair: chunky, springy coiled sections falling past the shoulders, center part, lots of volume at the top and sides.
+HAIRSTYLE: Coily hair brushed back smoothly into a low ponytail with neat, laid edges at the hairline; the ponytail is a long, full, springy coily mass falling behind one shoulder.
 
-Root attributes: data-name="Long Twist-Out" data-gender="female" data-length="long" data-type="coily" data-min-age="13"
-File name: long_twist_out.svg
+Root attributes: data-name="Long Coily Ponytail" data-gender="female" data-length="long" data-type="coily" data-min-age="13"
+File name: long_coily_ponytail.svg
 ````
 
 ### 15. Bantu Knots (coily, updo): `bantu_knots.svg`
