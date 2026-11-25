@@ -13,7 +13,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE } from '../data/law.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 
@@ -142,6 +142,12 @@ export function createCase(templateId, o = {}) {
   // A filing deadline for the first stage that needs one.
   const fileAt = c.stages.findIndex((s) => ['filing', 'pretrial', 'pleadings', 'drafting', 'review', 'diligence'].includes(s.s));
   if (fileAt >= 0) c.deadlines.push({ id: 'filing', label: fill(T.motion?.name ?? 'Main filing', c), due: c.opened + c.stages.slice(0, fileAt + 1).reduce((s, x) => s + x.months, 0), met: null });
+  // The case's other filings, each due by the end of its stage (data/law.js PROCEDURE).
+  for (const pf of procedureFor(c)) {
+    const at = c.stages.findIndex((x) => x.s === stageFor(c, pf));
+    if (at < 0 || c.deadlines.some((d) => d.id === `proc:${pf.id}`)) continue;
+    c.deadlines.push({ id: `proc:${pf.id}`, proc: pf.id, label: pf.name, due: c.opened + c.stages.slice(0, at + 1).reduce((sum, x) => sum + x.months, 0) + (at === 0 ? 1 : 0), met: null });
+  }
   note(c, `Opened: ${c.title}. ${ROLE_NAME[c.role] ?? 'Counsel'}${c.clinic ? ', under supervision' : ''}.`);
   LC()[id] = c;
   lawOf(p).caseIds.push(id);
@@ -201,6 +207,7 @@ export function actions(c) {
   if (!c.research) out.push({ id: 'research', label: 'Research the law' });
   const filed = c.filings.some((f) => f.main);
   if (T.motion && !filed && !DECIDING.includes(st)) out.push({ id: 'file', label: `Prepare: ${fill(T.motion.name, c)}` });
+  for (const pf of proceduralDue(c)) out.push({ id: `proc:${pf.id}`, label: `Prepare: ${pf.name}` });
   if (canNegotiate(c)) out.push({ id: 'negotiate', label: c.kind === 'criminal' ? (c.role === 'defense' ? 'Discuss a plea' : 'Consider a plea offer') : c.kind === 'transaction' ? 'Negotiate terms' : 'Discuss a settlement' });
   if (c.role === 'prosecution' && !c.tasks.charging) out.push({ id: 'charging', label: 'Review the charges' });
   if (c.awaiting) out.push({ id: 'court', label: c.kind === 'transaction' ? 'Close the deal' : c.awaiting.what === 'trial' ? 'Go to trial' : 'Attend the hearing' });
@@ -321,6 +328,81 @@ export function reviewCharges(c, decision) {
   if (s < 0.4) { L.rep.integrity = clamp(L.rep.integrity - 2); c.weakPush = true; }
   note(c, 'Proceeding on the charges as filed.');
   return result(true, s < 0.4 ? 'You go ahead, though the evidence is thin.' : 'The evidence supports the charges. You go ahead.', 'neutral');
+}
+
+// ---------- Procedural filings ----------
+
+/** The kind of procedure a case follows, for its filings. */
+const procKey = (c) => (c.forum === 'appeal' ? 'appeal' : c.kind === 'criminal' ? (c.role === 'prosecution' ? 'prosecution' : 'defense') : c.kind === 'child' ? null : c.kind);
+/** The procedural filings this case has (each once, at the first stage it fits). */
+export function procedureFor(c) {
+  const seen = new Set();
+  return (PROCEDURE[procKey(c)] ?? []).filter((pf) => stageFor(c, pf) && !seen.has(pf.id) && seen.add(pf.id));
+}
+/** The stage a filing is due in: the first of its stages this case has. */
+const stageFor = (c, pf) => [pf.stage].flat().find((st) => c.stages.some((x) => x.s === st)) ?? null;
+/** Filings still to be made, with their deadlines. */
+export function proceduralDue(c) {
+  if (c.done) return [];
+  return procedureFor(c).map((pf) => ({ ...pf, deadline: c.deadlines.find((d) => d.id === `proc:${pf.id}`) })).filter((x) => x.deadline && x.deadline.met == null);
+}
+/**
+ * Makes a procedural filing. Each has its effect on the case: a client released before trial, records found in
+ * discovery, a witness pinned down, disclosure made as the law requires (or not), a notice of appeal in time.
+ */
+export function fileProcedure(c, id, kind, o = {}) {
+  const pf = proceduralDue(c).find((x) => x.id === id);
+  if (!pf) return result(false, 'Nothing of that kind is due.', 'neutral');
+  const L = lawOf(player());
+  const when = o.at ?? nowM();
+  pf.deadline.met = when <= pf.deadline.due;
+  const f = { id: `f${c.filings.length + 1}`, proc: id, name: pf.name, kind, m: when, routine: !!o.routine, ruling: kind === 'improper' ? 'filed' : 'filed',
+    how: store.state.year < 1990 ? 'on paper, by hand at the clerk\'s office' : store.state.year < 2005 ? 'on paper, by post or courier' : 'electronically' };
+  c.filings.push(f);
+  gain(player(), { writing: 1, procedure: 1 }, o.routine ? 0.4 : 1);
+  const client = store.state.npcs[c.clientId];
+  const rel = (d) => { if (client?.meters) client.meters.relationship = clamp(client.meters.relationship + d); };
+  let text = 'Filed.';
+  const theirs = () => c.evidence.filter((e) => !ours(c, e) && e.status !== 'excluded').sort((a, b) => b.weight * b.reliability - a.weight * a.reliability)[0];
+  if (id === 'bail') {
+    const free = kind === 'strong' ? rng.chance(0.75) : kind === 'weak' ? rng.chance(0.25) : false;
+    c.released = free;
+    f.ruling = free ? 'granted' : 'denied';
+    if (free) { rel(5); text = `${first(c.clientId)} is released on conditions until trial.`; } else { rel(-3); c.bonus = (c.bonus ?? 0) - 0.02; text = `${first(c.clientId)} stays in custody until trial. Preparing the defense is harder from a cell.`; }
+  } else if (id === 'discovery') {
+    if (kind === 'strong') {
+      for (const e of c.evidence) e.reviewed = true;
+      if (rng.chance(0.4) && !c.evidence.some((e) => e.id === 'found')) { c.evidence.push({ id: 'found', kind: 'document', label: 'A record turned up in discovery that the other side had not mentioned', favors: c.role === 'prosecution' ? 'other' : 'client', weight: 2, reliability: 75, admissibility: 'ok', status: 'admitted', reviewed: true }); text = 'Discovery turned up a record the other side had not mentioned.'; }
+      else text = 'Discovery came back. Nothing new, but now you know it.';
+    } else if (kind === 'weak') { c.due += 1; text = 'The other side objected to the size of the request. The court narrowed it, a month later.'; }
+    else text = 'You rely on what was handed over.';
+  } else if (id === 'deposition') {
+    const e = theirs();
+    if (kind === 'strong' && e) { e.reliability = Math.round(e.reliability * 0.85); c.bonus = (c.bonus ?? 0) + 0.02; text = 'Under oath, the witness commits to an account the record does not support. It will matter at trial.'; }
+    else text = kind === 'weak' ? 'Two long days of questions. Expensive, and nothing new.' : 'No deposition.';
+  } else if (id === 'disclosure' || id === 'fin_disclosure') {
+    if (kind === 'strong') { L.rep.integrity = clamp(L.rep.integrity + 2); gain(player(), { ethics: 2 }); if (id === 'fin_disclosure') c.bonus = (c.bonus ?? 0) + 0.02; text = 'Full disclosure, on time, as the law requires.'; }
+    else if (kind === 'weak') { L.rep.integrity = clamp(L.rep.integrity - 2); c.errors.push({ kind: 'disclosure', text: 'Disclosure came late.' }); text = 'Disclosure went in late. The other side noticed.'; }
+    else {
+      L.rep.integrity = clamp(L.rep.integrity - 10); L.misconduct = (L.misconduct ?? 0) + 1;
+      c.errors.push({ kind: 'disclosure', text: 'Material was withheld from disclosure.' });
+      text = 'You left it out. If it comes to light, the case and your name will suffer.';
+      if (rng.chance(0.5)) { c.bonus = (c.bonus ?? 0) - 0.08; text = 'You left it out, and the other side found it anyway. The judge is not impressed.'; }
+    }
+  } else if (id === 'evidence_packet') {
+    const gap = c.evidence.find((e) => e.id === 'gap');
+    if (kind === 'strong') { if (gap) gap.reliability = Math.round(gap.reliability * 0.5); c.bonus = (c.bonus ?? 0) + 0.02; text = 'A complete, indexed file. The officer will have little to ask.'; }
+    else text = kind === 'weak' ? 'The file goes in thin.' : 'Nothing more is sent.';
+  } else if (id === 'term_sheet') {
+    if (kind === 'strong') { c.bonus = (c.bonus ?? 0) + 0.03; text = 'Both sides sign a term sheet that names the risks. Drafting goes faster.'; } else text = kind === 'weak' ? 'They mark it up heavily.' : 'Straight to drafting.';
+  } else if (id === 'notice') {
+    text = kind === 'strong' ? 'The notice of appeal is filed, in time.' : 'You wait for the record.';
+    if (kind === 'weak') { pf.deadline.met = null; c.filings.pop(); return result(false, 'You decide to wait. The deadline does not.', 'neutral'); }
+  } else if (id === 'reply') {
+    if (kind === 'strong') { c.bonus = (c.bonus ?? 0) + 0.03; text = 'Your reply answers their best point.'; } else text = kind === 'weak' ? 'Your reply repeats what you said before.' : 'No reply.';
+  }
+  note(c, `${pf.name}: ${text}`);
+  return result(kind === 'strong', text, kind === 'improper' ? 'bad' : kind === 'strong' ? 'good' : 'neutral', { filing: f });
 }
 
 // ---------- Negotiation ----------
@@ -651,15 +733,27 @@ function advanceStage(c, load, p) {
   const st = stageOf(c);
   const T = template(c);
   const L = lawOf(p);
-  // A filing due now is done by routine if the lawyer did not do it, unless they are swamped.
-  const dl = c.deadlines.find((d) => d.met == null && d.due <= c.due);
-  if (dl) {
-    const swamped = load > capacity(p) * 1.4;
-    if (!c.filings.some((f) => f.main) && T.motion) {
-      if (swamped) { dl.met = false; L.rep.reliability = clamp(L.rep.reliability - 5); c.bonus = (c.bonus ?? 0) - 0.08; note(c, `Missed the deadline: ${dl.label}.`); log(`You missed a filing deadline in ${c.title}. The client is not happy.`, 'system', 'bad'); }
-      else file(c, 'strong', { routine: true, at: dl.due }); // the routine version of the main argument, less sharp than the player's own, done on time
+  // Filings due by the end of this stage are made by routine if the lawyer did not make them, unless they are swamped.
+  const swamped = load > capacity(p) * 1.4;
+  for (const dl of c.deadlines.filter((d) => d.met == null && d.due <= c.due)) {
+    if (dl.id === 'filing') {
+      if (!c.filings.some((f) => f.main) && T.motion) {
+        if (swamped) { dl.met = false; L.rep.reliability = clamp(L.rep.reliability - 5); c.bonus = (c.bonus ?? 0) - 0.08; note(c, `Missed the deadline: ${dl.label}.`); log(`You missed a filing deadline in ${c.title}. The client is not happy.`, 'system', 'bad'); }
+        else file(c, 'strong', { routine: true, at: dl.due }); // the routine version of the main argument, less sharp than the player's own, done on time
+      }
+      if (dl.met == null) dl.met = true;
+      continue;
     }
-    if (dl.met == null) dl.met = true;
+    if (!dl.proc) continue;
+    const pf = procedureFor(c).find((x) => x.id === dl.proc);
+    if (swamped && !pf?.duty) {
+      dl.met = false; L.rep.reliability = clamp(L.rep.reliability - 2); c.bonus = (c.bonus ?? 0) - 0.03;
+      note(c, `Missed the deadline: ${dl.label}.`);
+      if (pf?.hard) { close(c, { kind: 'dismissed', text: 'The appeal was dismissed: the notice of appeal was not filed in time.', favorable: -1 }); return; }
+      continue;
+    }
+    // A routine filing is the plain, sound version, done in the months it was due.
+    fileProcedure(c, dl.proc, pf?.options.find(([, k]) => k === 'strong') ? 'strong' : pf?.options[0][1], { routine: true, at: dl.due });
   }
   // Ethics: once, in some cases, early on.
   if (!c.ethics && c.stageIdx === 1 && !c.clinic && rng.chance(0.18)) {

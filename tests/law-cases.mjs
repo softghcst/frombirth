@@ -172,6 +172,34 @@ const npc = (id) => store.state.npcs[id];
   check(lc.forumName(lc.createCase('tax_appeal')) === 'Tax tribunal', 'a tax appeal goes to the tax tribunal');
 }
 
+// ---------- Procedural filings and their deadlines ----------
+{
+  lawyer('lawyer');
+  const d = lc.createCase('burglary_hale', { role: 'defense' });
+  const due = lc.proceduralDue(d).map((x) => x.id);
+  check(due.includes('bail') && due.includes('discovery') && d.deadlines.filter((x) => x.proc).every((x) => x.due > ls.nowM() - 1), `a criminal defense has a release motion and a discovery request, each with a deadline (${due})`);
+  check(lc.actions(d).some((a) => a.id === 'proc:bail'), 'and each is something the lawyer can prepare');
+  const r = lc.fileProcedure(d, 'bail', 'strong');
+  check(r.text && d.filings.some((f) => f.proc === 'bail') && !lc.proceduralDue(d).some((x) => x.id === 'bail') && !lc.fileProcedure(d, 'bail', 'strong').ok, `a release motion is filed once (${r.text})`);
+  const pr = lc.createCase('theft', { role: 'prosecution' });
+  check(lc.proceduralDue(pr).some((x) => x.id === 'disclosure' && x.duty), 'a prosecutor must disclose to the defense');
+  const integ = ls.lawOf().rep.integrity;
+  lc.fileProcedure(pr, 'disclosure', 'improper');
+  check(ls.lawOf().rep.integrity < integ - 5 && pr.errors.some((e) => e.kind === 'disclosure'), 'withholding from disclosure is misconduct, and an error on the record');
+  const civ = lc.createCase('injury');
+  check(['discovery', 'deposition'].every((x) => lc.proceduralDue(civ).some((y) => y.id === x)), 'a civil case has discovery and a deposition');
+  for (let t = 0; t < 3; t++) turn();
+  check(civ.filings.filter((f) => f.proc).length === 2 && civ.deadlines.filter((x) => x.proc).every((x) => x.met === true), 'left alone, routine versions go in on time');
+  check(new Set(civ.filings.map((f) => f.proc ?? 'main')).size === civ.filings.length, 'no filing twice');
+  // An appeal whose notice is missed is dismissed.
+  lawyer('lawyer');
+  const many = Array.from({ length: 7 }, () => lc.createCase('homicide', { role: 'defense' }));
+  const ap = lc.createCase('appeal_brief');
+  for (let t = 0; t < 2; t++) turn();
+  check(ap.done && /not filed in time/.test(ap.outcome.text), 'a notice of appeal missed by a swamped lawyer ends the appeal');
+  void many;
+}
+
 // ---------- Contingency fees follow the law of the country and the kind of case ----------
 {
   const model = (country, tid, fee = 'contingency') => { lawyer('lawyer', { countryId: country }); return lc.createCase(tid, { fee }); };

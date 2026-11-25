@@ -646,6 +646,42 @@ Object.assign(CASE_TEMPLATES, {
   },
 });
 
+// ---------- Procedural filings ----------
+
+/**
+ * The filings a kind of case has besides its main motion, each due by the end of its stage. Each option is
+ * [text, kind]: 'strong' is the sound choice, 'weak' costs something, 'concede' gives the point up, 'improper' breaks a
+ * duty. Left undone, a routine version goes in at the deadline, unless the lawyer is swamped and misses it.
+ */
+const F = (id, name, stage, options, o = {}) => ({ id, name, stage, options, ...o });
+export const PROCEDURE = {
+  defense: [
+    F('bail', 'Motion for pretrial release', 'intake', [['Ask for release with conditions, citing work and family ties', 'strong'], ['Ask for release with no conditions at all', 'weak'], ['Do not ask', 'concede']]),
+    F('discovery', 'Discovery request', ['discovery', 'pretrial'], [['Ask for the specific records that matter: the full footage, the lineup notes', 'strong'], ['Ask for everything the state has ever had', 'weak'], ['Rely on what was handed over', 'concede']]),
+  ],
+  prosecution: [
+    F('disclosure', 'Disclosure to the defense', ['discovery', 'pretrial', 'hearing'], [['Disclose everything, including what helps the defense, on time', 'strong'], ['Disclose late, the week before trial', 'weak'], ['Leave out what hurts your case', 'improper']], { duty: true }),
+  ],
+  civil: [
+    F('discovery', 'Discovery requests', 'discovery', [['Targeted requests for the documents that matter', 'strong'], ['Ask for every document they have', 'weak'], ['Skip discovery', 'concede']]),
+    F('deposition', 'Deposition of the key witness', 'discovery', [['Depose them on the weak point in their account', 'strong'], ['Depose them on everything, for two days', 'weak'], ['Skip it', 'concede']]),
+  ],
+  family: [
+    F('fin_disclosure', 'Financial disclosure', 'disclosure', [['Full and honest disclosure of your client\'s finances', 'strong'], ['Disclose the main accounts only', 'weak'], ['Leave out your client\'s second account', 'improper']], { duty: true }),
+  ],
+  immigration: [
+    F('evidence_packet', 'Supporting evidence', 'review', [['Every document, translated and indexed', 'strong'], ['What the client brought in', 'weak'], ['Nothing more', 'concede']]),
+  ],
+  transaction: [
+    F('term_sheet', 'Term sheet', 'review', [['Set out the key terms and the risks found so far', 'strong'], ['A one-page wish list', 'weak'], ['Skip it and go straight to drafting', 'concede']]),
+    F('term_sheet', 'Term sheet', 'diligence', [['Set out the key terms and the risks found so far', 'strong'], ['A one-page wish list', 'weak'], ['Skip it and go straight to drafting', 'concede']]),
+  ],
+  appeal: [
+    F('notice', 'Notice of appeal', 'intake', [['File the notice now', 'strong'], ['Wait to see the full record first', 'weak']], { hard: true }),
+    F('reply', 'Reply brief', 'briefing', [['Answer their best argument, point by point', 'strong'], ['Repeat the opening brief', 'weak'], ['No reply', 'concede']]),
+  ],
+};
+
 /** Which templates suit a level of experience: complexity 1-5. */
 export const COMPLEXITY = ['', 'Introductory', 'Developing', 'Experienced', 'Senior', 'High stakes'];
 

@@ -211,6 +211,12 @@ async function caseAction(c, id) {
     const a = await pickModal({ title: 'Appeal', body: 'An appeal is decided on the record of what happened, not by hearing the witnesses again.', options: g.map((x) => ({ value: x.id, label: x.text })) });
     return a == null ? undefined : say(lc.fileAppeal(c, a));
   }
+  if (id.startsWith('proc:')) {
+    const pf = lc.proceduralDue(c).find((x) => `proc:${x.id}` === id);
+    if (!pf) return undefined;
+    const a = await pickModal({ title: pf.name, body: `Due in ${Math.max(0, pf.deadline.due - ls.nowM())} month${pf.deadline.due - ls.nowM() === 1 ? '' : 's'}. If you leave it, a routine version goes in, unless you are swamped.`, options: pf.options.map(([t, k]) => ({ value: k, label: t })) });
+    return a == null ? undefined : say(lc.fileProcedure(c, pf.id, a));
+  }
   if (id === 'court') return courtroom(c);
   return undefined;
 }
