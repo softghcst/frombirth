@@ -66,9 +66,17 @@ Reply to this first message only with: Ready.
 ## The 15 hairstyles
 
 Straight: 4 · Wavy: 3 · Curly: 4 · Coily: 4. All women's styles, from age 13. Checked against the 43 women's and
-unisex styles in the game: none repeats one.
+unisex styles in the game and against each other: no two share a silhouette.
 
-### 1. Blunt Bob with Bangs (straight, short): `blunt_bob_bangs.png`
+### 1. Sleek Glass Hair (straight, long): `sleek_glass_hair.png`
+
+````text
+Draw this hairstyle: Sleek Glass Hair. Pin-straight, glossy "glass hair": long, sleek and perfectly smooth, with a deep side part; tucked neatly behind the ear on one side and falling in one silky sheet past the shoulder on the other. A bright highlight band runs across the crown for shine, and the ends are cut blunt. The hair texture is straight.
+````
+
+Tags after tracing: `data-name="Sleek Glass Hair" data-gender="female" data-length="long" data-type="straight" data-min-age="13"`
+
+### 2. Blunt Bob with Bangs (straight, short): `blunt_bob_bangs.png`
 
 ````text
 Draw this hairstyle: Blunt Bob with Bangs. A sleek, chin-length blunt bob, cut straight across at the jaw, with full straight-across bangs that stop just above the eyebrows. Smooth and glossy, tucked neatly at the sides. The hair texture is straight.
@@ -76,21 +84,13 @@ Draw this hairstyle: Blunt Bob with Bangs. A sleek, chin-length blunt bob, cut s
 
 Tags after tracing: `data-name="Blunt Bob with Bangs" data-gender="female" data-length="short" data-type="straight" data-min-age="13"`
 
-### 2. Half-Up Top Knot (straight, medium): `half_up_top_knot.png`
+### 3. Half-Up Top Knot (straight, medium): `half_up_top_knot.png`
 
 ````text
 Draw this hairstyle: Half-Up Top Knot. Straight, shoulder-length hair with the top half pulled up into a small, neat knot on the crown; the rest hangs straight and smooth to the shoulders. A soft center part and a natural hairline at the forehead. The hair texture is straight.
 ````
 
 Tags after tracing: `data-name="Half-Up Top Knot" data-gender="female" data-length="medium" data-type="straight" data-min-age="13"`
-
-### 3. Long Curtain Bangs (straight, long): `long_curtain_bangs.png`
-
-````text
-Draw this hairstyle: Long Curtain Bangs. Long, straight, layered hair that falls well past the shoulders, with soft curtain bangs parted in the middle and sweeping out to frame the cheekbones (the eyes stay clear). The hair texture is straight.
-````
-
-Tags after tracing: `data-name="Long Curtain Bangs" data-gender="female" data-length="long" data-type="straight" data-min-age="13"`
 
 ### 4. French Twist (straight, updo): `french_twist.png`
 
@@ -116,13 +116,13 @@ Draw this hairstyle: Wavy Shag. A choppy, layered shag of shoulder-length waves 
 
 Tags after tracing: `data-name="Wavy Shag" data-gender="female" data-length="medium" data-type="wavy" data-min-age="13"`
 
-### 7. Wavy Low Ponytail (wavy, updo): `wavy_low_ponytail.png`
+### 7. Wavy Side Bun (wavy, updo): `wavy_side_bun.png`
 
 ````text
-Draw this hairstyle: Wavy Low Ponytail. Wavy hair gathered loosely at the nape into a low ponytail whose wavy tail shows at one side of the neck, with soft face-framing waves left loose at both temples. The hair texture is wavy.
+Draw this hairstyle: Wavy Side Bun. Wavy hair swept to one side into a soft, loose bun low behind one ear, with a wavy side-swept fringe across the top of the forehead (above the eyebrows) and a single loose wave by the other cheek. The hair texture is wavy.
 ````
 
-Tags after tracing: `data-name="Wavy Low Ponytail" data-gender="female" data-length="updo" data-type="wavy" data-min-age="13"`
+Tags after tracing: `data-name="Wavy Side Bun" data-gender="female" data-length="updo" data-type="wavy" data-min-age="13"`
 
 ### 8. Curly Undercut Pixie (curly, short): `curly_undercut_pixie.png`
 
@@ -148,13 +148,13 @@ Draw this hairstyle: Long Curls with Bangs. Long curly hair past the shoulders w
 
 Tags after tracing: `data-name="Long Curls with Bangs" data-gender="female" data-length="long" data-type="curly" data-min-age="13"`
 
-### 11. Curly Faux Hawk (curly, updo): `curly_faux_hawk.png`
+### 11. Curly Side Updo (curly, updo): `curly_side_updo.png`
 
 ````text
-Draw this hairstyle: Curly Faux Hawk. Curls pinned up into a ridge that runs from the forehead back over the crown, tall and full in the middle, with the sides smoothed flat against the head. The hair texture is curly.
+Draw this hairstyle: Curly Side Updo. Curls gathered up and pinned high on one side of the crown in a full, romantic cluster, with a few ringlets spilling down toward that ear; the other side smoothed back close to the head. The hair texture is curly.
 ````
 
-Tags after tracing: `data-name="Curly Faux Hawk" data-gender="female" data-length="updo" data-type="curly" data-min-age="13"`
+Tags after tracing: `data-name="Curly Side Updo" data-gender="female" data-length="updo" data-type="curly" data-min-age="13"`
 
 ### 12. Tapered Coils (coily, short): `tapered_coils.png`
 
