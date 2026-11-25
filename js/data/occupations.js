@@ -177,6 +177,9 @@ export const TRACKS = [
     L(['Surgical resident', 70, 85, 4], ['Surgeon', 250, 340, 5], ['Consultant surgeon', 340, 450, 6], ['Chief of surgery', 450, 650, 0])),
   T('psychiatry', 'Psychiatry', 'health', { branchOnly: true, from: [{ career: 'doctor', level: 1 }], req: { program: 'medical' }, hours: 45, stress: 2, values: ['care', 'autonomy'] },
     L(['Psychiatry resident', 65, 80, 4], ['Psychiatrist', 200, 270, 6], ['Consultant psychiatrist', 270, 360, 0])),
+  // A podiatrist (DPM) is trained at a podiatric school and residency (engine/medicine), not as a physician who chose feet.
+  T('podiatrist', 'Podiatry', 'health', { req: { program: 'podiatric' }, hours: 45, stress: 2, values: ['care', 'autonomy'], aliases: ['Podiatric physician'] },
+    L(['Podiatry resident', 50, 62, 3], ['Podiatrist', 120, 170, 5], ['Senior podiatrist', 170, 220, 6], ['Chief of podiatry', 220, 280, 0])),
   T('dental_hyg', 'Dental hygiene', 'health', { req: { ...HIGH, altCert: 'dental_hygiene', altOnly: true }, values: ['care', 'stability'] },
     L(['Dental hygienist', 55, 72, 4], ['Senior dental hygienist', 74, 90, 0])),
   T('physio', 'Physiotherapy', 'health', { req: uni('biology', 'nursing', 'psychology'), values: ['care', 'autonomy'], aliases: ['Physical therapist'] },

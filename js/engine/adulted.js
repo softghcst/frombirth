@@ -43,7 +43,8 @@ export function grandfather() {
 export function examOptions() {
   const p = player();
   const c = country();
-  return p.education.degrees.map((d) => licenseFor(d.type)).filter((l, i, all) => l && !licensed(l) && all.indexOf(l) === i)
+  // A physician's or podiatrist's license comes through training (engine/medicine/training.js), not this exam.
+  return p.education.degrees.map((d) => licenseFor(d.type)).filter((l, i, all) => l && !licensed(l) && all.indexOf(l) === i && !(p.medicine && ['medical', 'podiatric'].includes(l)))
     .map((l) => ({ id: l, name: examName(l), profession: LICENSES[l].name, fee: localMoney(LICENSES[l].fee, c), sat: p.flags.examAge === p.age, affordable: p.finance.cash >= localMoney(LICENSES[l].fee, c) }));
 }
 /** How the weeks before an exam can be spent. */

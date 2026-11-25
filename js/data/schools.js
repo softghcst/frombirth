@@ -34,6 +34,8 @@ export const PROGRAMS = {
     blurb: 'Two more years for a master\'s in your subject.' },
   medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6, science: true, license: 'medical',
     blurb: 'Four gruelling years. Needs a science or health degree.' },
+  podiatric: { id: 'podiatric', label: 'Podiatric medical school', years: 4, tuition: 34000, needs: 'university', minGpa: 3.2, science: true, license: 'podiatric',
+    done: 'podiatric medical school (DPM)', minYear: 1960, blurb: 'Four years to a Doctor of Podiatric Medicine: the foot, the ankle, and everything that walks on them. Its own profession, not a branch of medicine.' },
   law: { id: 'law', label: 'Law school', years: 3, tuition: 32000, needs: 'university', minGpa: 3.4, license: 'law',
     blurb: 'Three years of case law and very little sleep.' },
   // done: how graduating reads, after "You graduated from". partYears: how long it takes alongside a job.
@@ -70,6 +72,7 @@ export const PROGRAMS = {
 /** The right to practice. A degree qualifies someone to sit the exam; passing it is something else. */
 export const LICENSES = {
   medical: { name: 'medicine', people: 'doctors', fee: 900, exam: { default: 'medical licensing exam' } },
+  podiatric: { name: 'podiatric medicine', people: 'podiatrists', fee: 800, exam: { default: 'podiatric licensing exam', us: 'podiatric board exams and a state license' } },
   law: { name: 'law', people: 'lawyers', fee: 700, exam: { default: 'professional qualifying exam', us: 'bar exam', ca: 'bar exam', ph: 'bar exam', in: 'bar exam', ng: 'bar exam', ke: 'bar exam', gh: 'bar exam', jp: 'bar exam', kr: 'bar exam' } },
   dental: { name: 'dentistry', people: 'dentists', fee: 800, exam: { default: 'dental licensing exam' } },
   pharmacy: { name: 'pharmacy', people: 'pharmacists', fee: 500, exam: { default: 'pharmacy registration exam' } },
