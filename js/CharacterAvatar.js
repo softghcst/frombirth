@@ -26,6 +26,7 @@
 //   { head, eyes, eyebrows, nose, lips, hair, makeup: [], jewelry: [], glasses, clothes, hat, crown, emotion,
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
+import { BABY_HAIR_FIT } from './avatar/babyHairFit.js';
 import { CHILD_CLOTHES_FIT, CHILD_NECKLINE } from './avatar/childClothesFit.js';
 import { CLOTHES_SNAP } from './avatar/clothesSnap.js';
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
@@ -422,7 +423,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const f = fitTransforms(d.head, faceStage, look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
   // A baby's hair is drawn on the baby template, where it belongs: as it is (BABY_HAIR_DRAWN).
-  const hairAt = BABY_HAIR_DRAWN.test(d.hair ?? '') ? '' : hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
+  const bf = BABY_HAIR_FIT[d.hair];
+  const hairAt = BABY_HAIR_DRAWN.test(d.hair ?? '') ? (bf ? ` transform="translate(${bf.cx} ${bf.ay}) scale(${bf.sx} ${bf.sy}) translate(${-bf.cx} ${-bf.ay})"` : '') : hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {

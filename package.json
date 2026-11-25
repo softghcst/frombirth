@@ -7,6 +7,7 @@
     "test": "node scripts/test-all.mjs",
     "snap-clothes": "node scripts/snap-clothes.mjs",
     "fit-child-clothes": "node scripts/fit-child-clothes.mjs",
+    "fit-baby-hair": "node scripts/fit-baby-hair.mjs",
     "fit-hair": "python scripts/fit_hair.py",
     "fit-clothes": "node scripts/fit-clothes.mjs",
     "import-outfit": "python3 scripts/import_outfit.py",

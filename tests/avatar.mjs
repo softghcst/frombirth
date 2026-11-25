@@ -805,6 +805,7 @@ const { CHILD_CLOTHES_FIT: CHILD_FIT, CHILD_NECKLINE: CHILD_NECK } = await impor
   }
 }
 
+const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
 // Baby hair, by texture, drawn on the baby template: worn under 3, placed as drawn, in the baby's own hair color.
 {
   for (const [tex, ids] of Object.entries(CUR.BABY_HAIR_BY_TEXTURE)) for (const id of ids) {
@@ -814,7 +815,10 @@ const { CHILD_CLOTHES_FIT: CHILD_FIT, CHILD_NECKLINE: CHILD_NECK } = await impor
     const look = { ...resolveLook({ v: 3, inherited: { hairTexture: tex } }, 'bh', 'female'), babyHair: id };
     check(dressFor(look, { age: 1, gender: 'female' }).hair === id && dressFor(look, { age: 4, gender: 'female' }).hair !== id, `${id} is a baby's (${tex})`);
     const out = characterAvatarSvg(look, { age: 1, gender: 'female' });
-    check(new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is drawn as it was drawn, not moved`);
+    // Snapped onto the head (scripts/fit-baby-hair.mjs): at most a little wider or taller, about where the hair ends.
+    const bf = BABY_FIT[id];
+    check(bf ? out.includes(`scale(${bf.sx} ${bf.sy})`) && bf.sx >= 0.9 && bf.sx <= 1.15 && bf.sy >= 0.9 && bf.sy <= 1.15
+      : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the head (${JSON.stringify(bf)})`);
   }
 }
 
