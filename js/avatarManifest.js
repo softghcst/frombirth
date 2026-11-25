@@ -249,6 +249,8 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_01_royal_tunic", "file": "avatars/clothes/outfit_kid_01_royal_tunic.svg", "label": "Kid royal tunic", "tags": {"royal": true}},
     {"id": "outfit_kid_02_royal_sailor", "file": "avatars/clothes/outfit_kid_02_royal_sailor.svg", "label": "Kid royal sailor", "tags": {"royal": true}},
     {"id": "outfit_kid_03_royal_blazer", "file": "avatars/clothes/outfit_kid_03_royal_blazer.svg", "label": "Kid royal blazer", "tags": {"royal": true}},
+    {"id": "outfit_kid_04_royal_ceremonial", "file": "avatars/clothes/outfit_kid_04_royal_ceremonial.svg", "label": "Kid royal ceremonial", "tags": {"royal": true}},
+    {"id": "outfit_kid_05_royal_velvet_cape", "file": "avatars/clothes/outfit_kid_05_royal_velvet_cape.svg", "label": "Kid royal velvet cape", "tags": {"royal": true}},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
