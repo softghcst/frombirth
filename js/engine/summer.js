@@ -32,9 +32,9 @@ export const SUMMER = [
   { id: 'robotics_comp', name: 'Robotics Competition', emoji: '🤖', ages: [11, 17], cost: 150, blurb: 'Your team, your robot, and a crowded arena where something always breaks.',
     needs: { club: 'robotics', skill: 'robotics' }, contest: { 'skills.robotics': 0.5, 'skills.coding': 0.25, 'stats.intellect': 0.25 }, practice: { skills: { robotics: 3, coding: 1 } } },
   { id: 'math_olympiad', name: 'Math Olympiad', emoji: '➗', ages: [10, 17], cost: 30, blurb: 'Four and a half hours, six problems, and no calculator.',
-    contest: { 'skills.math': 0.55, 'stats.intellect': 0.45 }, practice: { skills: { math: 3 } } },
+    edge: 'math_circle', contest: { 'skills.math': 0.55, 'stats.intellect': 0.45 }, practice: { skills: { math: 3 } } },
   { id: 'debate_tournament', name: 'Debate Tournament', emoji: '🎤', ages: [12, 17], cost: 80, blurb: 'Round after round, both sides of every motion, and a final in front of everyone.',
-    needs: { club: 'debate|mock_trial|model_un', skill: 'public_speaking' }, contest: { 'skills.public_speaking': 0.5, 'stats.charm': 0.25, 'stats.intellect': 0.25 }, practice: { skills: { public_speaking: 3 } } },
+    needs: { club: 'debate|mock_trial|model_un|youth_mock_trial', skill: 'public_speaking' }, contest: { 'skills.public_speaking': 0.5, 'stats.charm': 0.25, 'stats.intellect': 0.25 }, practice: { skills: { public_speaking: 3 } } },
 ];
 export const SUMMER_BY_ID = Object.fromEntries(SUMMER.map((s) => [s.id, s]));
 
@@ -42,6 +42,8 @@ export const SUMMER_BY_ID = Object.fromEntries(SUMMER.map((s) => [s.id, s]));
 const LEVELS = ['City', 'State', 'National'];
 const levelOf = (p, id) => Math.min(2, (p.flags.awards ?? []).filter((a) => a.kind === id && a.place <= 2).length);
 
+/** In a club: the school's (data/schools.js), or one outside school (data/clubs.js, joined in Pursuits). */
+const inClub = (p, id) => !!(p.education?.clubs?.includes(id) || p.clubs?.now?.[id]);
 const costOf = (s) => localMoney(s.cost, country());
 const done = (p) => p.flags.summer?.age === p.age;
 
@@ -52,7 +54,7 @@ export function summerOptions(p = player()) {
     if (p.legal?.incarceration) why = 'Not from where you are.';
     else if (p.age < s.ages[0]) why = `From age ${s.ages[0]}.`;
     else if (done(p)) why = 'You have had your summer this year.';
-    else if (s.needs && !String(s.needs.club).split('|').some((c) => p.education?.clubs?.includes(c)) && val(p, `skills.${s.needs.skill}`) < 25) why = 'Needs the team: join the club first.';
+    else if (s.needs && !String(s.needs.club).split('|').some((c) => inClub(p, c)) && val(p, `skills.${s.needs.skill}`) < 25) why = 'Needs the team: join the club first (at school, or in Pursuits).';
     else if (p.age >= 18 && p.finance.cash < costOf(s)) why = `Costs ${fmtMoney(costOf(s), country())}.`;
     else if (p.age < 18 && costOf(s) > localMoney(300, country()) && wealthTier() === 'poor') why = 'Your family cannot afford it this year.';
     return { id: s.id, name: s.name, emoji: s.emoji, blurb: s.blurb, cost: costOf(s), contest: !!s.contest, level: s.contest ? LEVELS[levelOf(p, s.id)] : null, why };
@@ -77,7 +79,8 @@ export function goToSummer(id, p = player()) {
   }
   applyMods(p, s.practice ?? {});
   const level = levelOf(p, id);
-  const mine = Object.entries(s.contest).reduce((t, [path, w]) => t + val(p, path) * w, 0);
+  // A team behind you (a math circle for the olympiad) is worth a little on the day.
+  const mine = Object.entries(s.contest).reduce((t, [path, w]) => t + val(p, path) * w, 0) + (s.edge && inClub(p, s.edge) ? 3 : 0);
   // The field: stronger at each level. A place needs the score to beat it, with the luck of the day.
   const field = 58 + level * 10;
   const score = mine + rng.around(0, 9);

@@ -138,5 +138,19 @@ check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engine
   check(summer.askForRecommendation([coach], k).ok && coach.flags.wouldRecommend, 'one who does will');
 }
 
+// Out of school: a child who is not at one joins a youth mock trial program (Pursuits) and can enter a debate tournament.
+{
+  const clubLife = await import('../js/engine/clubs.js');
+  const { summerOptions } = await import('../js/engine/summer.js');
+  const k = life();
+  k.age = 13; k.birthYear = store.state.year - 13; k.skills = { ...(k.skills ?? {}), public_speaking: 5 };
+  k.education.stage = 'none'; k.education.enrolled = false; k.education.clubs = [];
+  const dt = () => summerOptions(k).find((o) => o.id === 'debate_tournament');
+  check(/join the club/.test(dt()?.why ?? ''), 'a debate tournament needs a team');
+  const r = clubLife.join('youth_mock_trial');
+  check(r.ok, `a 13-year-old joins youth mock trial (${r.text})`);
+  check(!dt()?.why, `and can then enter the debate tournament (${dt()?.why})`);
+}
+
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Bright, techy and argumentative kids have schools and clubs of their own, and they count.');

@@ -18,6 +18,7 @@ import { migrateInvestigations } from './engine/investigations/core.js';
 import { ensureEra, alignWorld } from './engine/eras.js';
 import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
+import { giveBirthday } from './engine/birthday.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -60,6 +61,9 @@ function migrate(state) {
   // Lives saved before orientation, identity and skills existed.
   const pl = state.player;
   pl.orientation ??= 'straight';
+  // A life saved before birthdays were kept was born on January 1. Between turns of the year (a yearly turn, or the
+  // first month of one), it is given a day of its own now; otherwise at its next turn of the year (engine/turns.js).
+  if (!pl.birthday && !(state.month > 0)) giveBirthday(pl);
   pl.skills ??= {};
   pl.flags.bornAs ??= pl.gender;
   pl.flags.gifts ??= Object.entries(pl.potential ?? pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
