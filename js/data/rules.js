@@ -156,6 +156,9 @@ export const PLACE_RULES = {
   ve: { schoolLeavingAge: 14, retirementAge: 60 },
   vn: { gamblingAge: 21, marriageAge: 20, marriageAgeWomen: 18, schoolLeavingAge: 18, retirementAge: 61 },
   ws: { votingAge: 21, drinkingAge: 21, gamblingAge: 21, marriageAge: 21 },
+  fj: { gamblingAge: 18, drivingAge: 17 },
+  mu: { gamblingAge: 21, retirementAge: 60 },
+  sc: { schoolLeavingAge: 15 },
   za: { schoolLeavingAge: 15 },
   zw: { drivingAge: 16 },
 };
