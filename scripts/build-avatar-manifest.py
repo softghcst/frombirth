@@ -497,7 +497,7 @@ def recolour(folder, name, elements):
     lm = max(lum(main), 0.01)
     mapping = {main: f'var(--{var},{main})'}
     for c in candidates:
-        if folder == 'hair' and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
+        if folder == 'hair' and not name.startswith('hair_kid_') and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
             mapping[c] = f'var(--skin-color,{c})'  # scalp showing at a parting or hairline
             continue
         if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:
