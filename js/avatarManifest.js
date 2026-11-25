@@ -281,6 +281,11 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_33_boy_rocket_sweatshirt", "file": "avatars/clothes/outfit_kid_33_boy_rocket_sweatshirt.svg", "label": "Kid rocket sweatshirt"},
     {"id": "outfit_kid_34_boy_shark_hoodie", "file": "avatars/clothes/outfit_kid_34_boy_shark_hoodie.svg", "label": "Kid shark hoodie"},
     {"id": "outfit_kid_35_boy_soccer_jersey", "file": "avatars/clothes/outfit_kid_35_boy_soccer_jersey.svg", "label": "Kid soccer jersey"},
+    {"id": "outfit_kid_36_boy_school_uniform", "file": "avatars/clothes/outfit_kid_36_boy_school_uniform.svg", "label": "Kid school uniform"},
+    {"id": "outfit_kid_37_boy_lightning_tee", "file": "avatars/clothes/outfit_kid_37_boy_lightning_tee.svg", "label": "Kid lightning tee"},
+    {"id": "outfit_kid_38_boy_raincoat", "file": "avatars/clothes/outfit_kid_38_boy_raincoat.svg", "label": "Kid raincoat"},
+    {"id": "outfit_kid_39_boy_sweater_vest", "file": "avatars/clothes/outfit_kid_39_boy_sweater_vest.svg", "label": "Kid sweater vest"},
+    {"id": "outfit_kid_40_boy_basketball_tank", "file": "avatars/clothes/outfit_kid_40_boy_basketball_tank.svg", "label": "Kid basketball tank"},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
