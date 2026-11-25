@@ -871,7 +871,7 @@ export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   H.byId[story] = yearOf(t);
   H.seen[key] = t;
   H.lastScene = { sort: sceneSort(id), y: yearOf(t) };
-  state.pendingEvents.push({ id, cast });
+  state.pendingEvents.push({ id, cast }); // told in its month (engine/neighborhood.js), so not paced by the Story Director
   return true;
 }
 

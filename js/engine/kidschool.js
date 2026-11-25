@@ -24,6 +24,7 @@ import * as sch from './schooling.js';
 import { catalog, uniOf, teaches } from './university.js';
 import { spendAction } from './relationships.js';
 import { wealthTier } from './living.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcOf = (id) => store.state.npcs[id];
@@ -109,12 +110,12 @@ export function tickKids() {
     const said = (e.said ??= {});
     if (n.age >= 8 && n.age <= 16 && e.gpa < 2.0 && (said.struggling ?? -9) <= n.age - 4 && rng.chance(0.5)) {
       said.struggling = n.age;
-      store.state.pendingEvents.push({ id: 'kid_struggling', cast: { kid: n.id, words: { mark: sch.mark(e.gpa), school: schoolOf(n)?.name ?? 'school' } } });
+      storyBeat('kid_struggling', { kid: n.id, words: { mark: sch.mark(e.gpa), school: schoolOf(n)?.name ?? 'school' } }, { source: 'family' });
     } else if (n.age >= 8 && (said.prize ?? -9) <= n.age - 4) {
       const prize = prizeFor(n);
       if (prize && rng.chance(0.3)) {
         said.prize = n.age;
-        store.state.pendingEvents.push({ id: 'kid_prize', cast: { kid: n.id, words: { prize, school: schoolOf(n)?.name ?? 'school' } } });
+        storyBeat('kid_prize', { kid: n.id, words: { prize, school: schoolOf(n)?.name ?? 'school' } }, { source: 'family' });
       }
     }
   }

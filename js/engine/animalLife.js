@@ -12,6 +12,7 @@ import { speciesOf } from '../data/animals.js';
 import { makeNpc } from './npcFactory.js';
 import * as zoo from './animals.js';
 import * as care from './animalCare.js';
+import { storyBeat } from './storyDirector.js';
 
 const T = zoo.tools;
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -299,7 +300,7 @@ export function tickLife(state = store.state) {
   const p = state.player;
   if (!p.alive || p.legal?.incarceration) return;
   const waiting = new Set(state.pendingEvents.map((e) => e.id));
-  const queue = (id, cast) => { if (!waiting.has(id)) { state.pendingEvents.push({ id, cast }); waiting.add(id); } };
+  const queue = (id, cast) => { if (!waiting.has(id)) { storyBeat(id, cast, { source: 'animals' }, state); waiting.add(id); } };
   for (const a of zoo.allAnimals(state)) {
     if (!mineToRun(a, state) || !zoo.livesWithPlayer(a.id, state)) continue;
     const roll = T.seeded(`${a.id}:behavior:${state.year}`);

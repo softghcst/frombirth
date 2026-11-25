@@ -22,6 +22,7 @@ import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLU
 import * as sch from './schooling.js';
 import { schoolSeason } from './sports.js';
 import { idolOf } from './kpop.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -33,7 +34,7 @@ function pend(id, cast) {
   const words = { ...(cast.words ?? {}) };
   for (const [k, v] of Object.entries(cast)) { const n = typeof v === 'string' ? store.state.npcs[v] : null; if (n && !(k in words)) words[k] = n.firstName; }
   (player().education.sceneAt ??= {})[id] = player().age;
-  store.state.pendingEvents.push({ id, cast: { ...cast, words } });
+  storyBeat(id, { ...cast, words }, { source: 'school' });
 }
 /** Whether a scene has been used too recently to come up again. */
 const fresh = (id, years = 3) => player().age - (player().education.sceneAt?.[id] ?? -99) >= years;
