@@ -130,10 +130,11 @@ for (const [label, saved] of Object.entries(cases)) {
 const fromV2 = normalize(v2, 'x');
 check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_12_sculpted'
   && fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
-// Facial hair has been taken out of the game: a beard in an old save is dropped, and no one is drawn with one.
+// The old facial hair is gone: a beard in an old save is dropped, and no one is drawn with one. Beards come back only
+// as new artwork (assets/avatars/facial_hair/), chosen at the barbershop (style.beard).
 check(!('facialHair' in fromV2.style) && !('facialHair' in normalize({ v: 3, inherited: {}, style: { facialHair: 'facial_hair_04_bushy_full_beard' } }, 'y').style), 'an old save still has facial hair');
-check(!CATALOG.facialHair && !STYLE_KEYS.includes('facialHair') && !AVATAR_MANIFEST.facial_hair, 'facial hair can still be chosen');
-for (let i = 0; i < 200; i++) check(!('facialHair' in randomAppearance(0.5, 'male').style), 'a new man is given facial hair');
+check(!CATALOG.facialHair && !STYLE_KEYS.includes('facialHair') && CATALOG.beard.length === (AVATAR_MANIFEST.facial_hair ?? []).length, 'the old facial hair can still be chosen');
+for (let i = 0; i < 200; i++) { const st = randomAppearance(0.5, 'male').style; check(!('facialHair' in st) && !st.beard, 'a new man is given facial hair'); }
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).

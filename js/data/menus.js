@@ -81,6 +81,7 @@ export const MENU_RULES = [
   [/^my health$/i, '❤️', 'Conditions, care and your record'],
   [/^cosmetic surgery$/i, '💉', 'Change something about how you look'],
   [/^beauty salon$/i, '💅', 'Hair, nails and a new look'],
+  [/^barbershop$/i, '💈', 'A fresh cut and a clean look'],
   [/^talents and skills$/i, '🎨', 'What you are good at, and traits'],
   [/^identity$/i, '🪪', 'Who you are'],
   [/^life in /i, '🗺️', 'Your country, its economy and its times'],

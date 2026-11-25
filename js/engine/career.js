@@ -5,6 +5,7 @@ import { deploy } from './military.js';
 import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
+import { medicineRuns, medicalBlock } from './medicine/index.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
 import { LAW_WORDS } from '../data/history.js';
 import { rule as lawRule } from './rules.js';
@@ -100,6 +101,7 @@ export function unmet(career, o = {}) {
   if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push(residency(p).status === 'retiree' ? 'Your retirement visa does not allow work.' : 'Your student visa does not allow full-time work.');
   // A regulated profession needs its qualification recognized here (engine/credentials.js). A job offer does not do it.
   { const lic = licenseBlock(career.id, p); if (lic) out.push(lic); }
+  { const md = medicalBlock(career.id, p); if (md) out.push(md); }
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);
@@ -738,6 +740,8 @@ export function tickCareer() {
   // (engine/sportsLife.js), not by an annual review. One hired as an athlete with no club yet is signed there too, at the
   // sport's turn in the year, so the review does not let them go first.
   if (career.id === 'athlete') return null;
+  // A physician's year (evaluations, posts, privileges) is reviewed by the medical engine (engine/medicine), which runs next.
+  if (medicineRuns(career.id, p)) return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;

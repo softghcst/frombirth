@@ -34,7 +34,7 @@ await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 const setUp = () => page.evaluate(async () => {
   const { store } = await import('/js/state.js');
-  const p = store.state.player; p.age = 28; p.finance.cash = 1e10;  // enough in any currency p.legal.incarceration = null;
+  const p = store.state.player; p.age = 28; p.finance.cash = 1e10; p.gender = 'female';  // enough in any currency p.legal.incarceration = null;
   const { normalize } = await import('/js/avatar/catalog.js');
   p.appearance = normalize(p.appearance, p.id); p.appearance.style.treatment = null;
   return { cash: p.finance.cash, hair: p.appearance.style.hair };
@@ -77,6 +77,41 @@ await page.locator('.av-opt[data-key="hairDye"]:not(.on)').nth(2).click();
 await page.click('[data-leave]');
 const after2 = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.finance.cash; });
 check(after2 === before2.cash && !(await page.locator('.salon-screen').count()), 'walking out before paying changes nothing');
+// Men go to the barbershop; women, trans women included once they live as women, to the salon.
+const shops = await page.evaluate(async () => {
+  const { store } = await import('/js/state.js'); const { shopFor, openSalonVisit } = await import('/js/ui/salonVisit.js');
+  const p = store.state.player; const out = {};
+  p.gender = 'female'; p.flags = { ...(p.flags ?? {}), bornAs: 'male' }; out.transWoman = shopFor(p);
+  p.gender = 'male'; p.flags.bornAs = 'female'; out.transMan = shopFor(p);
+  p.flags.bornAs = 'male';
+  const v = openSalonVisit({ changed() {} }, { intro: true });
+  out.sub = document.querySelector('.sv-logo-sub')?.textContent; v.close();
+  openSalonVisit({ changed() {} }, { intro: false });
+  out.barberClass = !!document.querySelector('.salon-screen.sv-barber'); out.bulbs = document.querySelectorAll('.sv-bulbs i').length;
+  out.hello = document.querySelector('.sv-bubble')?.textContent;
+  out.barberReplies = [...document.querySelectorAll('.sv-reply')].map((x) => x.textContent);
+  document.querySelector('[data-leave]').click();
+  p.gender = 'female'; openSalonVisit({ changed() {} }, { intro: false });
+  out.salonReplies = [...document.querySelectorAll('.sv-reply')].map((x) => x.textContent);
+  out.salonBulbs = document.querySelectorAll('.sv-bulbs i').length; out.salonClass = !!document.querySelector('.sv-barber');
+  document.querySelector('[data-leave]').click();
+  return out;
+});
+check(shops.transWoman === 'salon' && shops.transMan === 'barber', `the shop follows the gender lived as (${JSON.stringify(shops)})`);
+check(shops.sub === 'Barbershop' && shops.barberClass && !shops.bulbs && /Grab a chair/.test(shops.hello), 'a man\'s visit is to the barbershop');
+check(shops.barberReplies.includes('Beard grooming') && shops.barberReplies.includes('Eyebrows') && !shops.barberReplies.includes('Makeup'), `the barber offers beard grooming and eyebrows, not makeup (${shops.barberReplies})`);
+check(shops.salonReplies.includes('Makeup') && shops.salonReplies.includes('Eyebrows') && !shops.salonReplies.includes('Beard grooming'), `the salon offers makeup and eyebrows (${shops.salonReplies})`);
+// Shaped brows are worn over the ones born with, paid for, and kept.
+const brows = await page.evaluate(async () => {
+  const { store } = await import('/js/state.js'); const { normalize, resolveLook, CATALOG } = await import('/js/avatar/catalog.js'); const salon = await import('/js/engine/salon.js');
+  const p = store.state.player; p.appearance = normalize(p.appearance, p.id);
+  const born = p.appearance.inherited.brows; const shape = CATALOG.browStyle.find((b) => b.id !== born).id;
+  const next = JSON.parse(JSON.stringify(p.appearance)); next.style.browStyle = shape;
+  const q = salon.salonQuote(next); const r = salon.applySalon(next);
+  return { line: q.lines.map((l) => l.label).join(), ok: r.ok, born: p.appearance.inherited.brows === born, worn: resolveLook(p.appearance, p.id, p.gender).eyebrows === shape, shape };
+});
+check(/Eyebrow shaping/.test(brows.line) && brows.ok && brows.born && brows.worn, `shaped brows are bought and worn, the natural ones kept (${JSON.stringify(brows)})`);
+check(shops.salonBulbs > 0 && !shops.salonClass, 'a woman\'s is to the beauty salon, bulbs round the mirror');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();

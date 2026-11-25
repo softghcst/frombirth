@@ -26,6 +26,7 @@ import * as lawSchool from './lawSchool.js';
 import * as adult from './adulted.js';
 import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
+import { jurisdiction } from '../data/medicine.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
@@ -350,13 +351,14 @@ function graduate() {
     community: `community college with an associate degree in ${major?.name}`,
     graduate: `graduate school with a master's in ${major?.name}`,
     medical: 'medical school. You are a doctor',
+    podiatric: 'podiatric medical school. You are a Doctor of Podiatric Medicine',
     law: 'law school',
     cosmetology: 'cosmetology school. You are now licensed in hair and makeup',
     apprenticeship: `your apprenticeship. You are a qualified ${trade?.name.toLowerCase()}`,
     technical: `technical college. You are a qualified ${trade?.name.toLowerCase()}`,
     certificate: `your course with a certificate in ${CERT_BY_ID[e.majorId]?.name.toLowerCase()}`,
   }[e.stage] ?? prog?.done ?? stageLabel(e.stage).toLowerCase();
-  const plain = ['medical', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.license;
+  const plain = ['medical', 'podiatric', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.license;
   log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honors}${['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (${sch.degreeMark(e.gpa)})`}.`, 'system', 'good');
   milestone(e.stage === 'cosmetology' ? 'Earned a license in hair and makeup.'
     : e.stage === 'apprenticeship' || e.stage === 'technical' ? `Qualified as a ${trade?.name.toLowerCase()}.`
@@ -758,6 +760,8 @@ export function programOptions() {
     else if (p.legal.incarceration) reason = 'Not from a cell.';
     else if (p.flags.gapYearAge === p.age) reason = 'You are on a gap year. Apply next year.';
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
+    else if (prog.minYear && store.state.year < prog.minYear) reason = `There is no such school in ${store.state.year}.`;
+    else if (prog.id === 'podiatric' && !jurisdiction(p.countryId).dpm) reason = 'The game models the podiatric (DPM) route in the United States only.';
     else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
     else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
     else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
@@ -808,7 +812,11 @@ export function admissionChance(progId, subjectId) {
   const affinity = MAJOR_BY_ID[b.majorId]?.tracks.includes(progId) ? 0.15 : 0;
   const prof = p.flags.profRec ? 0.2 : 0;
   if (progId === 'graduate') return clamp(0.5 + (b.gpa - 3.0) * 0.5 + (iq - 50) / 200 + prof, 0.05, 0.97);
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2, 0.05, 0.95);
+  // What a premedical student did besides their grades (engine/medicine/training.js) counts for medical and podiatric school.
+  const pm = p.medicine?.premed;
+  const premed = pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0;
+  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
+  if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
   if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMS[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);
   return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2 + lawSchool.entranceEdge(p), 0.05, 0.95); // the LSAT, where there is one
