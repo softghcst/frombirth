@@ -45,7 +45,7 @@ function overview() {
   if (o.title) lines.push(kv('Position', `${o.title}${o.trackName ? `, ${o.trackName.toLowerCase()}` : ''}`));
   if (o.specialty) lines.push(kv('Practice', o.specialty.name));
   lines.push(kv('Admitted to practice', o.admitted ? (p.law.bar.admitted.legacy ? 'Yes (before records were kept)' : String(p.law.bar.admitted.year)) : 'Not yet'));
-  if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.TERMS}${S.probation ? ' · on probation' : ''}`));
+  if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.termsFor(p)}${S.probation ? ' · on probation' : ''}`));
   if (o.track) lines.push(kv('Open cases', `${o.workload.open}`), kv('Years of legal work', String(Math.round(o.years))));
   const s = o.stats;
   const rec = o.track || s.completed ? `<div class="card"><h3>Record</h3>${kv('Cases completed', String(s.completed))}${kv('Trials', `${s.trials} (${s.trialsWon} won, ${s.trialsLost} lost)`)}${kv('Settlements', String(s.settlements))}${kv('Plea agreements', String(s.pleas))}${kv('Dismissals', String(s.dismissals))}${kv('Appeals', String(s.appeals))}
@@ -70,7 +70,7 @@ function education() {
   if (S && !S.done && p.education.enrolled && p.education.stage === 'law') {
     const t = S.terms.at(-1);
     const graded = S.terms.filter((x) => x.gpa != null);
-    parts.push(card(`Law school · term ${S.terms.length} of ${ls.TERMS}`, `${kv('School', p.education.schoolName ?? 'Law school')}${kv('This term', t.courses.map((id) => COURSE_BY_ID[id].name).join(', '))}
+    parts.push(card(`Law school · term ${S.terms.length} of ${ls.termsFor(p)}`, `${kv('School', p.education.schoolName ?? 'Law school')}${kv('This term', t.courses.map((id) => COURSE_BY_ID[id].name).join(', '))}
       ${graded.length ? kv('GPA so far', `${ls.lawGpa(p).toFixed(2)}${S.probation ? ' · academic probation' : ''}`) : ''}
       ${ls.termExam(p) ? btn('Sit This Term\'s Exam', 'data-law="exam"', 'primary') : '<p class="muted">Exam done for this term.</p>'}`));
     if (S.terms.length >= 2) {
@@ -84,7 +84,7 @@ function education() {
     const b = ls.barStatus(p);
     const att = L.bar.attempts;
     parts.push(card(`The ${prof.exam}`, `${kv('Status', b.stage === 'admitted' ? 'Admitted' : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
-      ${b.stage === 'admitted' ? '' : `<div class="btn-stack">${!b.prepared ? `${btn('Take a Bar Course', 'data-law="prepCourse"')}${btn('Study on Your Own', 'data-law="prepSelf"')}` : ''}${b.stage === 'open' ? btn(`Sit the ${prof.exam}`, 'data-law="bar"', 'primary') : ''}</div>`}
+      ${b.stage === 'admitted' || b.stage === 'training' ? '' : `<div class="btn-stack">${!b.prepared ? `${btn('Take a Bar Course', 'data-law="prepCourse"')}${btn('Study on Your Own', 'data-law="prepSelf"')}` : ''}${b.stage === 'open' ? btn(`Sit the ${prof.exam}`, 'data-law="bar"', 'primary') : ''}</div>`}
       <p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`));
   }
   if (!parts.length) parts.push(`<p class="muted">${esc(p.education.degrees.some((d) => d.type === 'university') ? 'Apply to law school from Plan What Comes Next.' : 'Law school comes after a first degree.')}</p>`);

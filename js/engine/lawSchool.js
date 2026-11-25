@@ -14,7 +14,7 @@ import { recordEvent, archiveIdOf } from './chronicle.js';
 import { systemFor, OFFENSE_BY_ID } from '../data/justice.js';
 import { convictionsOf } from './records.js';
 import { COUNTRIES } from '../data/countries.js';
-import { LAW_PROFILES, LEGAL_SKILLS, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
+import { COUNTRY_LAW, LAW_PROFILES, LEGAL_SKILLS, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -34,8 +34,17 @@ export function lawOf(p = player()) {
   }
   return p.law;
 }
-/** How lawyers are trained and admitted where someone lives. */
-export const profileFor = (countryId = player().countryId) => ({ ...LAW_PROFILES[systemFor(countryId).id], family: systemFor(countryId).id });
+/**
+ * How lawyers are trained and admitted where someone lives: the justice family's profile, with the country's own
+ * documented route laid over it where Pathways has one ('documented'), otherwise labeled 'simplified'.
+ */
+export function profileFor(countryId = player().countryId) {
+  const base = LAW_PROFILES[systemFor(countryId).id];
+  const own = COUNTRY_LAW[countryId];
+  const depth = countryId === 'us' ? 'full' : own ? 'documented' : 'simplified';
+  return { ...base, ...(own ?? {}), entrance: own?.entrance ?? (countryId === 'us' ? base.entrance : { id: 'none', name: '', required: false }), training: own?.training ?? 0,
+    depth, family: systemFor(countryId).id, name: own?.name ?? base.name, note: own?.note ?? (depth === 'simplified' ? base.note : own ? 'The route is the documented one; how it plays is simplified.' : base.note) };
+}
 
 /** Raises legal skills, softly: each point is harder to gain the higher it is. */
 export function gain(p, gains, k = 1) {
@@ -193,6 +202,8 @@ function gradeTerm(p, t) {
 }
 /** Terms in a law degree: three years of two terms. */
 export const TERMS = 6;
+/** Terms a law degree takes where the player studies: two a year, for the country's documented length. */
+export const termsFor = (p = player()) => (profileFor(p.countryId).afterBachelor && profileFor(p.countryId).degreeYears ? profileFor(p.countryId).degreeYears * 2 : TERMS);
 /** Terms finished and graded. Law school ends after TERMS of them, however the turns fall. */
 export const termsDone = (p = player()) => (p.law?.school?.terms ?? []).filter((t) => t.gpa != null).length;
 
@@ -349,6 +360,7 @@ export function barStatus(p = player()) {
   const B = L.bar;
   const prof = profileFor(p.countryId);
   if (B.admitted) return { stage: 'admitted', text: `Admitted ${B.admitted.year}, ${B.admitted.where}.`, prof };
+  if (B.training && !B.training.done) return { stage: 'training', text: `In ${B.training.name}: ${Math.max(0, B.training.until - nowM())} months to go before ${prof.admission}.`, prof };
   if (!hasLawDegree(p)) return { stage: 'none', text: 'Taken after a law degree.', prof };
   const last = B.attempts.at(-1);
   const wait = last ? Math.max(0, 6 - (nowM() - last.m)) : 0;
@@ -413,6 +425,19 @@ function fitness(p, examName) {
     return result(false, `You passed the ${examName}, but the ${prof.fitness} put your admission off because of your record. You may ask again in two years.`, 'bad');
   }
   L.bar.fitness = 'cleared';
+  if (prof.training) {
+    // Practical training comes between the exam and admission: articling, pupillage, the Referendariat...
+    L.bar.training = { from: nowM(), until: nowM() + prof.training, name: prof.trainingName };
+    canon(`law:barPass:${aid()}`, `Passed the ${examName}`, `Began ${prof.trainingName}.`, { privacy: 'public', sig: 2 });
+    return result(true, `You passed the ${examName}. Next comes ${prof.trainingName}: ${prof.training} months before ${prof.admission}.`, 'good');
+  }
+  return admit(p, examName);
+}
+/** Admission to practice, at the end of the route. */
+function admit(p, examName) {
+  const L = lawOf(p);
+  const prof = profileFor(p.countryId);
+  L.bar.training = L.bar.training ? { ...L.bar.training, done: nowM() } : null;
   L.bar.admitted = { year: store.state.year, m: nowM(), where: COUNTRY_NAME(p.countryId), body: prof.admission };
   (p.flags.licenses ??= []).includes('law') || p.flags.licenses.push('law');
   p.stats.mood = clamp(p.stats.mood + 12);
@@ -439,6 +464,13 @@ export function graduated(p = player()) {
  * Moves law school on to the present month: terms that have ended are graded and the next one opens. Runs on every
  * turn and at the turn of the year (engine/lawPractice.js tickLaw), so any turn length reaches the same terms.
  */
+/** Training after the exam ends when its months are done, and admission follows. Run every turn (engine/lawPractice.js). */
+export function progressBar(p = player()) {
+  const B = p.law?.bar;
+  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam);
+  return null;
+}
+
 export function progressSchool(p = player()) {
   const S = school(p);
   if (!S || S.done) return;
@@ -447,7 +479,7 @@ export function progressSchool(p = player()) {
   while (termOf(S) && termOf(S).end <= nowM() && guard++ < 12) {
     const t = termOf(S);
     gradeTerm(p, t);
-    if (termsDone(p) >= TERMS) break; // the last term is over: graduation comes at the turn of the year
+    if (termsDone(p) >= termsFor(p)) break; // the last term is over: graduation follows
     openTerm(p, t.end);
   }
 }

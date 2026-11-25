@@ -323,7 +323,7 @@ function leaveSchool(how = 'completed') {
 export function finishLawSchool() {
   const p = player();
   const e = p.education;
-  if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.TERMS) graduate();
+  if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.termsFor(p)) graduate();
 }
 
 function graduate() {
@@ -499,7 +499,7 @@ export function tickEducation() {
   }
   // A degree is finished when its credits are earned; other courses, when their years are served.
   // Law school ends when its terms are done (engine/lawSchool.js), counted in months, not New Years passed.
-  if (e.stage === 'law') { if (lawSchool.termsDone(p) >= lawSchool.TERMS) return graduate(); }
+  if (e.stage === 'law') { if (lawSchool.termsDone(p) >= lawSchool.termsFor(p)) return graduate(); }
   else if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
   if (e.gpa < 1.2) {
     log(`Your grades collapsed and ${stageLabel(e.stage).toLowerCase()} asked you to leave.`, 'system', 'bad');

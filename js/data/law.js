@@ -54,6 +54,28 @@ export const LAW_PROFILES = {
   },
 };
 
+/**
+ * Documented outlines of how lawyers qualify in particular countries, laid over their family's profile. The route is
+ * the documented one (degree, entrance test, exam, practical training, who admits); how it plays is still simplified.
+ * training: months of supervised practical training after the exam, before admission.
+ */
+export const COUNTRY_LAW = {
+  us: { training: 0 },
+  ca: { name: 'Canada', degree: 'Juris Doctor (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'lsat', name: 'LSAT', required: true },
+    exam: 'provincial bar admission exams', training: 10, trainingName: 'articling', admission: 'call to the bar of the province' },
+  uk: { name: 'England and Wales', degree: 'law degree (or a degree and a conversion course)', exam: 'Solicitors Qualifying Examination (SQE)', training: 24,
+    trainingName: 'qualifying work experience', admission: 'admission as a solicitor', note: 'Barristers qualify differently: the Bar course and a pupillage. Pathways plays the solicitor route.' },
+  au: { name: 'Australia', degree: 'law degree (LLB or JD)', exam: 'Practical Legal Training assessment', training: 6, trainingName: 'Practical Legal Training', admission: 'admission by the Supreme Court of the state' },
+  jp: { name: 'Japan', degree: 'law school degree', degreeYears: 3, afterBachelor: true, exam: 'national bar examination', training: 12, trainingName: 'the Legal Training and Research Institute', admission: 'registration with the bar association' },
+  kr: { name: 'South Korea', degree: 'law school degree (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'leet', name: 'LEET', required: true }, exam: 'bar examination', training: 6, trainingName: 'practical training', admission: 'registration with the Korean Bar Association' },
+  de: { name: 'Germany', degree: 'law degree', exam: 'First State Examination', training: 24, trainingName: 'the Referendariat, ending in the Second State Examination', admission: 'admission to the bar (Rechtsanwaltskammer)' },
+  fr: { name: 'France', degree: 'master\'s degree in law', exam: 'CRFPA entrance exam to bar school', training: 18, trainingName: 'bar school, ending in the CAPA', admission: 'swearing-in before the Court of Appeal' },
+  in: { name: 'India', degree: 'LL.B.', exam: 'All India Bar Examination', training: 0, admission: 'enrollment with a State Bar Council' },
+  br: { name: 'Brazil', degree: 'law degree (bacharelado em Direito)', exam: 'OAB bar exam (Exame de Ordem)', training: 0, admission: 'registration with the OAB' },
+  ph: { name: 'the Philippines', degree: 'Juris Doctor (J.D.)', degreeYears: 4, afterBachelor: true, exam: 'bar examinations of the Supreme Court', training: 0, admission: 'admission to the bar and signing of the Roll of Attorneys' },
+  ng: { name: 'Nigeria', degree: 'LL.B.', exam: 'Nigerian Law School Bar Final examination', training: 12, trainingName: 'the Nigerian Law School', admission: 'call to the bar' },
+};
+
 // ---------- Skills ----------
 
 /** The lawyer's craft, kept apart from fame and from how many cases were won. */

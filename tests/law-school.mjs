@@ -19,7 +19,7 @@ rng.seed(20261125);
   check(/university degree/i.test(opt().reason), 'no first degree, no law school');
   const de = graduate({ countryId: 'de' });
   check(!ls.entrance(de) && !/LSAT/.test(edu.programOptions().find((x) => x.id === 'law').reason), 'Germany has no LSAT: other countries are not given American rules');
-  check(ls.profileFor('de').depth === 'simplified' && ls.profileFor('us').depth === 'full', 'the US is played in depth; other systems are labeled simplified');
+  check(ls.profileFor('de').depth === 'documented' && ls.profileFor('mx').depth === 'simplified' && ls.profileFor('us').depth === 'full', 'the US is played in depth; other countries are documented outlines or labeled simplified');
 }
 
 // 4–7. Terms move with the months; courses, an exam, a clinic, an internship; graduation only at the end.
@@ -99,6 +99,26 @@ rng.seed(20261125);
   for (let i = 0; i < 6; i++) { const e = ls.barExam(); if (e) { r = ls.takeBar(e.questions.map((q) => q.right)); if (/character|review|record/.test(r.text)) break; } turn(); }
   check(r && !r.ok && /record/.test(r.text) && !ls.admitted() && ls.barStatus().stage === 'fitness', 'a serious recent conviction puts admission off');
 }
+// Other countries: the documented route, with its own exam, entrance test, length and practical training.
+{
+  check(ls.profileFor('ca').entrance.name === 'LSAT' && ls.profileFor('kr').entrance.name === 'LEET' && ls.profileFor('uk').entrance.id === 'none', 'Canada asks for the LSAT and Korea for the LEET; England does not');
+  check(ls.profileFor('uk').depth === 'documented' && ls.profileFor('de').depth === 'documented' && ls.profileFor('mx').depth === 'simplified', 'documented countries are marked as such; others are simplified');
+  check(/Solicitors Qualifying Examination/.test(ls.profileFor('uk').exam) && /State Examination/.test(ls.profileFor('de').exam), 'each country\'s own exam by name');
+  const ph = graduate({ countryId: 'ph' });
+  check(ls.termsFor(ph) === 8, 'a Philippine law degree takes four years');
+  const uk = graduate({ countryId: 'uk' });
+  uk.education.degrees.push({ type: 'law', majorId: 'history', gpa: 3.6, age: 25 });
+  ls.prepareBar('course');
+  let r = null;
+  for (let i = 0; i < 6; i++) { const e = ls.barExam(); if (e) { r = ls.takeBar(e.questions.map((q) => q.right)); if (r.ok) break; } turn(); }
+  check(r?.ok && !ls.admitted() && ls.barStatus().stage === 'training' && /qualifying work experience/.test(r.text), `England: passing the SQE leads to two years of qualifying work, not straight to admission (${r?.text})`);
+  check(!!lp.mayPractice(), 'a trainee may not practice on their own yet');
+  turn();
+  check(!ls.admitted(), 'a year in, still training');
+  turn(); turn();
+  check(ls.admitted() && /solicitor/.test(ls.lawOf().bar.admitted.body), `after the training, admission as a solicitor (${ls.lawOf().bar.admitted?.body})`);
+}
+
 // 12. Older saves: a lawyer already working is not sent back to law school, and no cases are invented.
 {
   const p = graduate();

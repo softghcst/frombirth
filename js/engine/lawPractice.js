@@ -12,7 +12,7 @@ import { clamp, localCost, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION } from '../data/law.js';
-import { lawOf, nowM, profileFor, canon, admitted, progressSchool, keepPerson, gain, school, prepareBar } from './lawSchool.js';
+import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
 import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } from './career.js';
@@ -443,6 +443,8 @@ export function tickLaw(o = {}) {
   if (!p.law && !(p.education.stage === 'law' && p.education.enrolled)) return;
   const L = lawOf(p);
   if (p.education.stage === 'law' && p.education.enrolled) { progressSchool(p); finishLawSchool(); }
+  const admittedNow = progressBar(p); // practical training ends, and admission follows (engine/lawSchool.js)
+  if (admittedNow) log(admittedNow.text, 'system', 'good');
   cases.progressCases(p);
   if (trackOf(p)) refreshOpportunities(p);
   storyBeats(p);
