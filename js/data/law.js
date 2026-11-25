@@ -201,7 +201,7 @@ export const SCHOOL_ACTS = [
   { id: 'office_hours', name: 'Go to office hours', gains: { writing: 1 }, mentor: true },
   { id: 'moot', name: 'Enter moot court', from: 1, gains: { appellate: 3, oral: 2, research: 1 } },
   { id: 'mock', name: 'Enter mock trial', from: 1, gains: { oral: 2, examination: 2, cross: 1, procedure: 1 } },
-  { id: 'clinic', name: 'Join a legal clinic', from: 2, gains: { counseling: 3, procedure: 1, ethics: 1 } },
+  { id: 'clinic', name: 'Join a legal clinic', from: 1, gains: { counseling: 3, procedure: 1, ethics: 1 } },
 ];
 
 /** Summer and term-time placements. Each has a supervisor who stays in the player's life. */
@@ -372,7 +372,7 @@ export const CASE_TEMPLATES = {
     stages: [['intake', 0], ['filing', 1], ['disclosure', 3], ['negotiation', 2], ['hearing', 2], ['judgment', 0]],
     evidence: [E('home', 'property_record', 'The family home, in both names', 'client', 3, 95), E('accounts', 'financial_record', 'Bank and pension statements from both sides', 'client', 3, 90), E('hidden', 'financial_record', 'A savings account {other} did not list', 'client', 3, 70)],
     witnesses: [W('accountant', 'Forensic accountant', 'client', 75)],
-    research: q('{other} did not list a savings account in their financial disclosure. What follows?', ['Full disclosure is required; the court can take the hidden money into account', 'Nothing: it is theirs', '{client} loses the house', 'The divorce is cancelled'], 0, 'Both sides must disclose finances fully. Hiding assets usually counts against the one who hid them.'),
+    research: q('{other} did not list a savings account in their financial disclosure. What follows?', ['Full disclosure is required; the court can take the hidden money into account', 'Nothing: it is theirs', '{client} loses the house', 'The divorce is canceled'], 0, 'Both sides must disclose finances fully. Hiding assets usually counts against the one who hid them.'),
     motion: { name: 'Petition for dissolution, with a request for full disclosure', target: 'hidden', options: [['Ask the court to order full disclosure of all accounts', 'strong'], ['Ask for everything, for {client}', 'weak'], ['Leave the accounts alone', 'concede'], ['Delay', 'delay']] },
     settle: true,
   },
@@ -495,7 +495,7 @@ export const CASE_TEMPLATES = {
     evidence: [E('draft', 'contract', 'Their draft, letting them cancel at any time', 'other', 3, 95), E('volumes', 'business_record', '{clientOrg}\'s order volumes', 'client', 2, 90)],
     witnesses: [],
     research: q('The draft lets the supplier cancel at any time without notice. What is the risk?', ['{clientOrg} could be left without supply overnight', 'None', 'That prices fall', 'That the logo changes'], 0, 'One-sided termination leaves the buyer exposed.'),
-    motion: { name: 'Markup of the agreement', target: 'draft', options: [['Ask for mutual notice of six months before cancelling', 'strong'], ['Strike the clause and demand a penalty', 'weak'], ['Accept the draft', 'concede'], ['Delay', 'delay']] },
+    motion: { name: 'Markup of the agreement', target: 'draft', options: [['Ask for mutual notice of six months before canceling', 'strong'], ['Strike the clause and demand a penalty', 'weak'], ['Accept the draft', 'concede'], ['Delay', 'delay']] },
     transaction: true, settle: true,
   },
   agency_review: {

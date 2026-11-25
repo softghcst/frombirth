@@ -967,6 +967,7 @@ export function enroll(progId, subjectId, funding, living = {}, school = null) {
   }
   if (progId === 'university' || progId === 'community') campus.start(transfer);
   if (progId === 'doctorate') adult.startThesis();
+  if (progId === 'law') lawSchool.school(p); // law school's own record starts the day you enroll (engine/lawSchool.js)
   chargeTuition();
   // Someone studying alongside a job goes on living where they live.
   if (e.partTime) { e.housing = 'own'; e.roommateId = null; if (e.credits != null) e.load = 'part'; log('You will study in the evenings and keep your job.'); }

@@ -124,13 +124,16 @@ function openWindow(p, w) {
     return;
   }
   const n = t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) : 2;
+  const taken = new Set((L.offers ?? []).map((o) => o.templateId));
   for (let i = 0; i < n; i++) {
     const second = t === 'lawyer' && rng.chance(0.3) && cap < 5;
-    const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
-    if (!tid) continue;
+    let tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
+    for (let k = 0; k < 4 && taken.has(tid); k++) tid = pickTemplate(L.specialty, second ? cap + 1 : cap); // different cases, not the same one twice
+    if (!tid || taken.has(tid)) continue;
+    taken.add(tid);
     const T = CASE_TEMPLATES[tid];
     L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
-      summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? '…')) });
+      summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? 'some')).replace(/(^|[.!?]\s+)([a-z])/g, (x, a, b) => a + b.toUpperCase()) });
   }
   // A former client may come back with something new: the same person, their history with the player intact.
   const former = Object.values(store.state.npcs).filter((n) => n.alive && n.flags.formerClientOf === p.id && n.meters.relationship >= 55);
