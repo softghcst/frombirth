@@ -113,7 +113,7 @@ export const weekOfYear = () => healthOf().week ?? 0;
  */
 export function migrateHealth(state) {
   const p = state.player;
-  if (p.health && p.health.v >= 2) return;
+  if (p.health && p.health.v >= 2) { moveAilments(p); return; }
   const keep = store.state;
   store.state = state;
   try {
@@ -135,9 +135,9 @@ export function migrateHealth(state) {
  * clinician, assessment or treatment history is invented). One that was being
  * treated keeps the benefit of that treatment until a care plan replaces it.
  */
-export function absorbLegacy(p) {
+export function absorbLegacy(p, from = null) {
   const h = healthOf(p);
-  for (const c of [...(p.conditions ?? [])]) {
+  for (const c of [...(from ?? p.conditions ?? [])]) {
     const id = LEGACY_IDS[c.id];
     if (!id) continue;
     const rec = startCondition(id, { onsetAge: c.sinceAge, onsetWk: (p.birthYear + c.sinceAge) * WEEKS, severity: c.severity ?? 35, source: 'migrated',
@@ -148,6 +148,15 @@ export function absorbLegacy(p) {
         name: CONDITION_BY_ID[id].name, certainty: 'recorded', migrated: true, history: [{ wk: rec.onsetWk, text: `Carried over from before the health record.${c.treated ? ' It was being treated; the details were not kept.' : ''}` }] });
     }
     rec.dx = 'diagnosed';
-    p.conditions = p.conditions.filter((x) => x !== c);
+    if (!from) p.conditions = p.conditions.filter((x) => x !== c);
   }
+  moveAilments(p);
+}
+
+/** What is left of the older list (a flu, a broken arm, a sports injury) is the health record's ailments now. */
+function moveAilments(p) {
+  if (!Array.isArray(p.conditions)) return;
+  const list = (healthOf(p).ailments ??= []);
+  for (const c of p.conditions) if (!LEGACY_IDS[c.id] && !list.some((x) => x.id === c.id)) list.push({ ...c });
+  delete p.conditions;
 }

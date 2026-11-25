@@ -85,7 +85,7 @@ check(a && hosp.id === a.facilityId, 'a physician admitted in their city goes to
 check(store.state.journal.some((j) => /patient where you work/.test(j.text)), 'and is looked after by colleagues');
 
 // The everyday doctor's visit and cosmetic surgery: the same doctors.
-const { surgeonOptions, surgeryOptions } = await import('../js/engine/medical.js');
+const { surgeonOptions, surgeryOptions } = await import('../js/engine/health/visits.js');
 const proc = surgeryOptions()[0];
 if (proc) {
   const opts = surgeonOptions(proc.id);

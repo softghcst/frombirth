@@ -11,7 +11,7 @@ import { store, player, country, livingNpcs, log, log as logLine } from '../stat
 import { LIVING, CRISES, INFLATION, grade } from '../data/living.js';
 import { KINDS, countryHazards } from '../data/disasters.js';
 import { netWorth } from './finance.js';
-import { addCondition } from './health.js';
+import { addCondition } from './health/ailments.js';
 import { damageProperty, properties } from './realEstate.js';
 
 export const livingIn = (c = country()) => LIVING[c.id];

@@ -17,7 +17,7 @@ import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
-import * as med from '../../engine/medical.js';
+import * as med from '../../engine/health/visits.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
 import { openSalonVisit, shopRow } from '../salonVisit.js';
@@ -27,6 +27,9 @@ import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
 import { navRow, navGroup } from '../kit.js';
 import { loveFamilyGroup, openLoveFamily } from './people.js';
+import { ailmentsOf } from '../../engine/health/ailments.js';
+import { healthOf, presentConditions, diagnosisFor } from '../../engine/health/record.js';
+import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -36,8 +39,13 @@ export default {
     const traits = p.traits.map((id) => TRAIT_BY_ID[id]).filter(Boolean);
     const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)' })[p.traitSources?.[id]] ?? '';
     const born = (p.birth ?? []).map((id) => BIRTH_BY_ID[id]).filter(Boolean);
-    const conditions = p.conditions.length
-      ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.sinceAge}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
+    // One health record: the ailments, and the long-term conditions a clinician has diagnosed (the rest is in My Health).
+    const ails = ailmentsOf(p).map((c) => ({ name: c.name, since: c.sinceAge, treated: c.treated }));
+    const h = healthOf(p);
+    const known = presentConditions(h).filter((r) => diagnosisFor(r, h)).map((r) => ({ name: CONDITION_BY_ID[r.conditionId].name, since: r.onsetAge ?? 0, treated: !!r.legacyManaged || h.plans?.some((x) => x.conditionId === r.conditionId && x.status === 'active') }));
+    const all = [...ails, ...known];
+    const conditions = all.length
+      ? all.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.since}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
     // Health milestones are private: shown here with a lock, and they open the Treatment Journey.
     const milestones = p.milestones.map((m, i) => (m.kind === 'health'

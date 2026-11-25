@@ -11,7 +11,9 @@
 // A medicine cannot help before it starts, a change cannot happen before a
 // review, and an ended prescription is never charged again.
 import { store, player, log } from '../../state.js';
-import { CONDITION_BY_ID } from '../../data/health/conditions.js';
+import { CONDITION_BY_ID, LEGACY_IDS } from '../../data/health/conditions.js';
+import { BIRTH_BY_ID } from '../../data/birthConditions.js';
+import { ILLNESS_BY_ID } from '../../data/health/ailments.js';
 import { healthOf, startCondition, migrateHealth, absorbLegacy, presentConditions, diagnosisFor } from './record.js';
 import { WEEKS, now } from './util.js';
 import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName, attendNow, CONCERNS, serviceOptions, seekAssessment } from './care.js';
@@ -123,7 +125,11 @@ export function healthAtBirth(state, custom) {
   try {
     const p = state.player;
     healthOf(p);
-    absorbLegacy(p); // born with weak lungs: asthma, in the health record
+    // Born with weak lungs: asthma, in the health record from the start (an ailment from birth goes to the ailments).
+    const born = (p.birth ?? []).map((b) => ILLNESS_BY_ID[BIRTH_BY_ID[b]?.illness]).filter(Boolean)
+      .map((ill) => ({ id: ill.id, name: ill.name, severity: ill.severity, chronic: !!ill.chronic, sinceAge: 0, treated: false }));
+    absorbLegacy(p, born);
+    for (const a of born) if (!LEGACY_IDS[a.id]) (healthOf(p).ailments ??= []).push(a);
     for (const id of p.npcIds) genomeOf(state.npcs[id]);
     const g = genomeOf(p);
     const chosen = (custom?.conditions ?? []).filter((id) => BIRTH_CHOICES.includes(id));

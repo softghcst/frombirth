@@ -1,20 +1,24 @@
-// Doctors, check-ups, therapy and cosmetic surgery.
-import { treatmentIn, procedureOpen } from './history.js';
-import { cover } from './systems.js';
-import { normalize, cleanTweaks } from '../avatar/catalog.js';
-import { healthFactor } from './policy.js';
-import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
-import { player, country, log, milestone } from '../state.js';
-import { addCondition, cureCondition } from './health.js';
-import { careQuality } from './living.js';
-import { screen, MENTAL_CARE_AGE } from './health/care.js';
-import { parentsMoney, parentsSpend } from './conditions.js';
-import { ILLNESS_BY_ID } from '../data/illnesses.js';
-import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
-import { familyDoctor, plasticSurgeon } from './medicine/healthLink.js';
-import { facilitiesHere, clinicianAt } from './health/care.js';
-import { deptHead } from './medicine/hospitals.js';
+// The Health Engine's everyday visits: the doctor for an ailment, a yearly check-up, talking therapy, and cosmetic
+// surgery. Every one goes through the same places and people as the rest of the Health Engine: the family doctor at
+// the city's practice (engine/health/care.js), its assessments and therapy, and the plastic surgeons on its hospitals'
+// staff (engine/medicine/healthLink.js). Ailments are the health record's (engine/health/ailments.js).
+import { treatmentIn, procedureOpen } from '../history.js';
+import { cover } from '../systems.js';
+import { normalize, cleanTweaks } from '../../avatar/catalog.js';
+import { healthFactor } from '../policy.js';
+import { rng } from '../../rng.js';
+import { clamp, localMoney, fmtMoney, localCost } from '../../util.js';
+import { player, country, log, milestone } from '../../state.js';
+import { addCondition, cureCondition, ailmentsOf } from './ailments.js';
+import { careQuality } from '../living.js';
+import { screen, MENTAL_CARE_AGE, serviceOptions, seekAssessment } from './care.js';
+import { healthOf } from './record.js';
+import { parentsMoney, parentsSpend } from '../conditions.js';
+import { ILLNESS_BY_ID } from '../../data/health/ailments.js';
+import { TREATMENTS, CHECKUP_COST, SURGERIES, SURGEONS } from '../../data/activities.js';
+import { familyDoctor, plasticSurgeon } from '../medicine/healthLink.js';
+import { facilitiesHere, clinicianAt } from './care.js';
+import { deptHead } from '../medicine/hospitals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -47,7 +51,7 @@ const cannotPay = (p, what) => (parentsPayCare(p) || p.age < 18 ? `Your parents 
 /** Conditions a doctor could do something about, with what it would cost. */
 export function treatable() {
   const p = player();
-  return p.conditions.filter((c) => TREATMENTS[c.id]).map((c) => {
+  return ailmentsOf(p).filter((c) => TREATMENTS[c.id]).map((c) => {
     const t = TREATMENTS[c.id];
     const cost = careCost(t.cost);
     const era = treatmentIn(c.id);
@@ -59,7 +63,7 @@ export function treatable() {
 export function seeDoctor(conditionId) {
   const p = player();
   const c = country();
-  const cond = p.conditions.find((x) => x.id === conditionId);
+  const cond = ailmentsOf(p).find((x) => x.id === conditionId);
   const t = TREATMENTS[conditionId];
   if (!cond || !t) return result(false, 'There is nothing to treat.', 'neutral');
   if (acts().seen[conditionId]) return result(false, 'The doctor has done what can be done this year.', 'neutral');
@@ -109,7 +113,7 @@ export function checkUp() {
   p.stats.health = clamp(p.stats.health + 2);
   // Routine tests: blood pressure, blood sugar, and from fifty, screening.
   const screened = screen(p);
-  const found = p.conditions.filter((x) => TREATMENTS[x.id] && !x.treated);
+  const found = ailmentsOf(p).filter((x) => TREATMENTS[x.id] && !x.treated);
   const text = screened.length ? `The tests found ${screened.join(' and ')}. It is in My Health, with what can be done about it.`
     : found.length
     ? `The doctor ran the tests and wants to treat your ${found.map((x) => x.name.replace(/^an? /, '')).join(' and ')}.`
@@ -120,22 +124,21 @@ export function checkUp() {
   return result(true, said, any ? 'neutral' : 'good');
 }
 
+/**
+ * Talking therapy is the Health Engine's: an assessment with a therapist or psychologist (the first service here that
+ * takes people without a referral), which leads to a plan and sessions in My Health. Never a second, simpler therapy.
+ */
 export function therapy() {
   const p = player();
   if (p.age < MENTAL_CARE_AGE) return result(false, `Therapy is from age ${MENTAL_CARE_AGE}.`, 'neutral');
   if (!procedureOpen('therapy')) return result(false, 'There is no such thing as talking therapy here yet.', 'neutral');
-  const c = country();
-  const cost = careCost(THERAPY_COST);
-  if (acts().therapy) return result(false, 'You have a standing appointment already this year.', 'neutral');
-  if (!canPayCare(cost, p)) return result(false, `A year of sessions costs ${fmtMoney(cost, c)}. ${cannotPay(p, 'it')}`, 'neutral');
-  acts().therapy = true;
-  const paid = payCare(cost, p);
-  p.stats.mood = clamp(p.stats.mood + rng.int(8, 14));
-  p.hidden.crazy = clamp(p.hidden.crazy - 4);
-  p.hidden.willpower = clamp(p.hidden.willpower + 2);
-  const text = `An hour a week, saying things out loud that you had only ever thought. You feel lighter.${paid}`;
-  log(text, 'system', 'good');
-  return result(true, text);
+  const opts = serviceOptions('mental', p).filter((o) => !o.referral);
+  const pick = opts.find((o) => ['psychologist', 'therapist'].includes(o.profession)) ?? opts[0];
+  if (!pick) return result(false, 'Nobody here takes people for therapy without a referral. Your family doctor can refer you (My Health).', 'neutral');
+  const r = seekAssessment('mental', pick.facilityId, pick.profession, p);
+  if (!r.ok) return r;
+  const waiting = healthOf(p).appointments.some((x) => x.kind === 'assessment' && x.concern === 'mental' && x.status === 'booked');
+  return result(true, waiting ? `${r.text} If therapy is right for you, it is planned from there, in My Health.` : r.text, r.tone ?? 'good');
 }
 
 // ---------- Cosmetic surgery ----------

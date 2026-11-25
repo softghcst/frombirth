@@ -59,7 +59,7 @@ import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
-import { tickHealth } from './health.js';
+import { tickHealth } from './health/ailments.js';
 import { finishCareYear, healthYear } from './health/index.js';
 import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';

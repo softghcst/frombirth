@@ -8,7 +8,7 @@ const { advanceYear } = await import('../js/engine/yearProcessor.js');
 const { deathRoll } = await import('../js/engine/death.js');
 const cars = await import('../js/engine/vehicles.js');
 const martial = await import('../js/engine/martial.js');
-const { addCondition, ailmentChoice } = await import('../js/engine/health.js');
+const { addCondition, ailmentChoice } = await import('../js/engine/health/ailments.js');
 const { ENCOUNTERS } = await import('../js/data/rides.js');
 const { STYLES } = await import('../js/data/martial.js');
 
@@ -77,7 +77,7 @@ const bike = (p) => { const a = { id: `asset_test_${p.assets.length}`, kind: 've
   const p = life(30);
   addCondition('flu');
   const said = ailmentChoice('doctor', { words: { illnessId: 'flu' } });
-  check(said && (!p.conditions.some((c) => c.id === 'flu') || /slow to clear/.test(said)), `seeing a doctor sees to it (${said})`);
+  check(said && (!p.health.ailments.some((c) => c.id === 'flu') || /slow to clear/.test(said)), `seeing a doctor sees to it (${said})`);
 }
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }

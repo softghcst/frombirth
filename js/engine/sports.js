@@ -31,6 +31,7 @@ import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
 import { seeded, hash, teamGame, tennisMatch, rallyMatch, bout, mark, better, fmtMark, judged, golfRound, prChange, prOfSkill, edge } from './sportsPlay.js';
+import { conditionIdsOf } from './health/ailments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const fullName = (x) => `${x.firstName} ${x.lastName}`.trim();
@@ -116,7 +117,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
 /** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
-export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || (p.conditions ?? []).some((c) => /wheelchair|paraly|spinal/.test(c.id));
+export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || conditionIdsOf(p).some((id) => /wheelchair|paraly|spinal/.test(id));
 
 /** Saves from before this engine: a school athlete's record becomes an athletic profile, conservatively. */
 function migrate(state) {
