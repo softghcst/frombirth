@@ -84,7 +84,7 @@ export const REAL_LAWS = [
   L('ca_atia', ['ca'], 'records', 'Access to Information Act (1983)', 1983, 'Anyone in Canada may ask for federal government records; exemptions, such as personal information, are applied line by line.'),
   L('ca_irpa', ['ca'], 'asylum', 'Immigration and Refugee Protection Act (2001)', 2002, 'Protects Convention refugees and people in need of protection; claims are heard by the Immigration and Refugee Board.'),
   L('ca_cepa', ['ca'], 'pollution', 'Canadian Environmental Protection Act, 1999', 2000, 'Sets federal rules for toxic substances and pollution, with offenses for releases beyond what the law allows.'),
-  L('au_rda', ['au'], 'housing', 'Racial Discrimination Act 1975', 1975, 'Makes it unlawful to refuse accommodation, or offer it on worse terms, because of race, colour, descent or national or ethnic origin.'),
+  L('au_rda', ['au'], 'housing', 'Racial Discrimination Act 1975', 1975, 'Makes it unlawful to refuse accommodation, or offer it on worse terms, because of race, color, descent or national or ethnic origin.'),
   L('au_fwa', ['au'], 'wages', 'Fair Work Act 2009', 2009, 'Sets national minimum wages and employment standards, and lets workers recover underpayments.'),
   L('au_foi', ['au'], 'records', 'Freedom of Information Act 1982', 1982, 'A right to obtain documents held by federal government agencies, subject to exemptions.'),
   L('au_migration', ['au'], 'asylum', 'Migration Act 1958, protection visas', 1958, 'Decides who may enter and stay; people owed protection under the Refugee Convention, which Australia joined in 1954, may be granted a protection visa.'),
