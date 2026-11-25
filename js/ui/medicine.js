@@ -14,7 +14,10 @@ import * as train from '../engine/medicine/training.js';
 import * as cases from '../engine/medicine/cases.js';
 import * as ladder from '../engine/medicine/ladder.js';
 import * as practice from '../engine/medicine/practice.js';
-import { setDrama, DRAMA } from '../engine/medicine/drama.js';
+import { setDrama, DRAMA, requestSupport } from '../engine/medicine/drama.js';
+import * as research from '../engine/medicine/research.js';
+import * as work from '../engine/worklife.js';
+import * as market from '../engine/employers.js';
 import { hospitalName, hospital, kindName, deptOf, deptHead } from '../engine/medicine/hospitals.js';
 import { store } from '../state.js';
 
@@ -126,6 +129,15 @@ const VIEWS = {
         ...(m.job ? [['Your post', p.career.title], ['Since', String(m.job.since)]] : [])]));
     }
     if (m.offer && m.offer.year === store.state.year) out += card('An offer', `<p>${esc(hospitalName(m.offer.hospitalId))} offers you the post of ${esc(RANKS[m.offer.rank].title.toLowerCase())}.</p>${btn('offer', 'Accept', { arg: 'yes', cls: 'primary' })}${btn('offer', 'Decline', { arg: 'no' })}`);
+    const r = research.researchOptions(m, p);
+    const rs = m.research;
+    if (r.length) out += card('Research and teaching', `${rs ? kv([['Papers', String(rs.papers.length)], ['Projects under way', String(rs.projects.length)], ['Years teaching', String(rs.taught)],
+      ...(rs.faculty ? [['Faculty', rs.director ? 'Residency program director' : 'Assistant professor']] : [])]) : ''}${r.map((o) => btn('research', o.name, { arg: o.id, disabled: !!o.block, sub: o.block })).join('')}`);
+    const c = p.career;
+    if (c.careerId) out += card('Wellbeing', `${meterHtml('Stress', c.stress ?? 0, true)}<p class="muted">A demanding career does not have to cost your health. Asking for help is part of the job.</p>
+      ${btn('support', 'Ask for support')}${m.training ? '' : btn('hours', 'Ask for fewer hours')}${btn('leave', 'Take your vacation')}`);
+    const e = where ? market.employer(where) : null;
+    if (e?.history?.length) out += card('Hospital chronicle', `<ul>${e.history.slice(-10).reverse().map((x) => `<li>${esc(String(x.year))}: ${esc(x.text)}</li>`).join('')}</ul>`);
     const posts = ladder.postOptions(p, m);
     if (posts.length) out += card('Posts in your specialty', posts.map((o) => btn('post', o.name, { arg: o.id, disabled: !!o.block, sub: o.block || o.kind })).join(''));
     return out || card('Hospital', muted('Nothing here yet.'));
@@ -198,7 +210,10 @@ const ACTIONS = {
   reapply: (on, x) => x.say(train.setReapply(on === 'on')),
   local: (on, x) => x.say(train.setLocal(on === 'on')),
   second: (on, x) => x.say(train.setSecondRound(on === 'on')),
-  research: (_, x) => x.say(train.researchYear()),
+  research: (id, x) => x.say(id ? research.doResearch(id) : train.researchYear()),
+  support: (_, x) => x.say(requestSupport()),
+  hours: (_, x) => x.say(work.changeHours(-10)),
+  leave: (_, x) => x.say(work.takeLeave('vacation')),
   fellowship: (id, x) => x.say(train.applyForFellowship(id)),
   focus: (f, x) => x.say(ladder.setFocus(f)),
   offer: (yes, x) => x.say(ladder.answerOffer(yes === 'yes')),

@@ -18,8 +18,12 @@ import { clamp } from '../../util.js';
 import { store, player } from '../../state.js';
 import { remember } from '../conditions.js';
 import { askOut, partner } from '../romance.js';
-import { M, med, year, grow, note, result, roll } from './core.js';
+import { M, med, year, grow, note, result, roll, once, currentSpecialty } from './core.js';
 import { answerOffer } from './ladder.js';
+import { startPost } from './training.js';
+import { workplacesFor } from './hospitals.js';
+import { citiesOf, relocate, moveCost } from '../cities.js';
+import { changeHours, takeLeave } from '../worklife.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
 export function setDrama(level) {
@@ -59,6 +63,22 @@ function eligible(p, m) {
   if (t?.kind === 'residency' && t.pgy >= t.years - 1 && alive(rival)) out.push({ id: 'med_competition', cast: { rival: rival.id } });
   const recent = (m.caseIds ?? []).map((id) => store.state.medicine?.cases?.[id]).filter((c) => c && c.status === 'closed' && c.year >= year() - 1 && c.outcome?.points < 40 && !c.disclosed);
   if (recent.length) out.push({ id: 'med_disclosure', cast: { words: { caseId: recent[0].id } } });
+  // Strain: a hard year is met with support, never pushed through for a reward.
+  if ((m.training || m.job) && (p.career.stress ?? 0) >= 80) out.push({ id: 'med_strain', cast: {} });
+  // An offer from a hospital in another city, for an established attending.
+  if (m.job && year() - m.job.since >= 3 && !m.awayOffer && roll(0.25)) {
+    const spec = currentSpecialty(m);
+    const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => workplacesFor(spec, p.countryId, c.name).map((x) => ({ ...x, city: c.name })));
+    if (away.length) {
+      const o = rng.pick(away);
+      m.awayOffer = { hospitalId: o.e.id, city: o.city, year: year() };
+      out.push({ id: 'med_offer_away', cast: { words: { hospital: o.e.name, city: o.city } } });
+    }
+  }
+  // The old team, years later.
+  const first = m.completed[0];
+  const old = [...m.people.friendIds, ...m.people.colleagueIds].map(npc).find((n) => n?.alive);
+  if (first && year() - first.to >= 10 && old) out.push({ id: 'med_reunion', cast: { peer: old.id, words: { hospital: first.hospital ?? 'the hospital' } } });
   const thanks = (m.grateful ?? []).find((g) => g.year <= year() - 3 && !g.thanked);
   if (thanks) out.push({ id: 'med_grateful', cast: { words: { label: thanks.label.toLowerCase(), key: `${thanks.patientId}` } } });
   return out;
@@ -74,12 +94,19 @@ export function dramaYear() {
   if (!list.length) return;
   const n = rate >= 1 ? 2 : roll(rate) ? 1 : 0;
   // A disclosure or a thank-you comes whatever the setting: they are about patients, not drama.
-  const must = list.filter((x) => ['med_disclosure', 'med_grateful'].includes(x.id));
+  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away'].includes(x.id));
   const rest = list.filter((x) => !must.includes(x)).sort(() => rng.next() - 0.5).slice(0, n);
-  for (const x of [...must.slice(0, 1), ...rest]) {
+  for (const x of [...must.slice(0, 2), ...rest]) {
     m.scenes[x.id] = year();
     store.state.pendingEvents.push({ id: x.id, cast: x.cast });
   }
+}
+
+/** Asks for support in a hard year: once a year, from a mentor or the program. Never a weakness. */
+export function requestSupport() {
+  const m = M();
+  if (!once('support', m)) return result(false, 'You have asked this year; the support is in place.', 'neutral');
+  return result(true, medicineChoice('strain:support'), 'good');
 }
 
 /** What a hospital scene's choice does (effect type 'medicine', engine/effects.js). */
@@ -146,6 +173,41 @@ export function medicineChoice(value, cast = {}) {
       if (how in m.skills) grow(how, Number(by), m);
       return '';
     }
+    case 'strain': {
+      if (how === 'support') {
+        p.career.stress = clamp((p.career.stress ?? 50) - 15);
+        const mentor = npc(m.people.mentorId);
+        if (mentor?.alive) mentor.meters.relationship = clamp(mentor.meters.relationship + 4);
+        grow('professionalism', 1, m);
+        return mentor?.alive ? `${mentor.firstName} listens, then helps you rearrange the next month.` : 'The program\'s wellbeing service finds you an hour a week, and a colleague swaps two of your nights.';
+      }
+      if (how === 'hours') return changeHours(-10).text;
+      if (how === 'leave') return takeLeave('vacation').text;
+      return '';
+    }
+    case 'away': {
+      const o = m.awayOffer;
+      if (!o) return '';
+      m.awayOffer = null;
+      if (how === 'accept') {
+        const spec = currentSpecialty(m);
+        const rank = m.job?.rank ?? 'attending';
+        p.finance.cash += moveCost();
+        const r = relocate(o.city);
+        if (!r.ok) { p.finance.cash -= moveCost(); return `The move fell through: ${r.text}`; }
+        startPost(spec, o.hospitalId, rank);
+        return `You move to ${o.city} and start at the new hospital.`;
+      }
+      if (how === 'negotiate') {
+        if (roll(0.5)) { p.career.salary = Math.round(p.career.salary * 1.08); return 'Your hospital matches part of the offer to keep you. You stay, better paid.'; }
+        return 'Your hospital will not match it. You stay, for now.';
+      }
+      if (how === 'family') { const pt = partner(); if (pt) pt.meters.relationship = clamp(pt.meters.relationship + 6); p.stats.mood = clamp(p.stats.mood + 4); }
+      return '';
+    }
+    case 'reunion':
+      if (how === 'go' && who) { who.meters.relationship = clamp(who.meters.relationship + 12); p.stats.mood = clamp(p.stats.mood + 5); }
+      return '';
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

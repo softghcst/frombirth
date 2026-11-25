@@ -83,6 +83,22 @@ export default [
     ['Call the senior resident when you are unsure', 'You call twice. Both times they say you were right to.', 'skill:teamwork:2', 'good'],
     ['Try to handle everything yourself', 'You manage, just. In the morning the senior resident says: next time, call.', 'skill:reasoning:1'],
   ]),
+  scene('med_strain', 'It has been a hard stretch: long nights, a run of difficult cases, and you are not sleeping well even when you can. A colleague asks, quietly, whether you are all right.', [
+    ['Tell the truth and ask for support', 'Saying it out loud helps more than you expected.', 'strain:support', 'good'],
+    ['Ask to work fewer hours', 'You ask for a lighter schedule.', 'strain:hours'],
+    ['Take your vacation, all of it', 'You book the time off before you can talk yourself out of it.', 'strain:leave', 'good'],
+    ['Say you are fine', 'You are not fine. Nobody is rewarded for pretending otherwise, least of all your patients.', null, 'bad', st('mood', -3)],
+  ]),
+  scene('med_offer_away', '{hospital}, in {city}, wants you: the same kind of post, a bigger program, and a move across the country. It would change more than your commute.', [
+    ['Accept and move', 'You say yes, and start planning the move.', 'away:accept', 'good'],
+    ['Use it to negotiate where you are', 'You tell your chief about the offer.', 'away:negotiate'],
+    ['Decline: your family\'s life is here', 'You say no. At dinner, nobody asks why, and you are glad.', 'away:family', 'good'],
+    ['Decline politely', 'You thank them and say no.', 'away:no'],
+  ]),
+  scene('med_reunion', 'A conference, a crowded reception, and suddenly {peer}, whom you have not seen since your training days at {hospital}. Ten years, and you recognize the laugh before the face.', [
+    ['Skip the keynote and catch up properly', 'You talk until the staff stack the chairs around you.', 'reunion:go', 'good'],
+    ['Swap numbers and promise to call', 'You mean it at the time.', 'reunion:later'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

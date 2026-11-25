@@ -22,6 +22,7 @@ import * as cases from '../js/engine/medicine/cases.js';
 import * as ladder from '../js/engine/medicine/ladder.js';
 import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
+import * as research from '../js/engine/medicine/research.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
@@ -408,6 +409,42 @@ section('the Match: at home, or nationwide with a move');
   check(mm.stage === 'retired' && mm.history.some((h) => /Retired from medicine/.test(h.text)), 'retiring from medicine is recorded');
 }
 section('teaching residents; claims decided on the care, not the result');
+
+// 8d. Research, wellbeing, and an offer from another city.
+{
+  rng.seed(1357);
+  const q = life('us', 38);
+  q.city = COUNTRIES.us.cities[0];
+  const rm = core.M(q);
+  strong(rm);
+  rm.skills.research = 90;
+  rm.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+  rm.license = { status: 'full', countryId: 'us' };
+  const site = trainingSites('internal', q.countryId, q.city)[0];
+  train.startPost('internal', site.e.id, 'attending');
+  check(research.researchOptions(rm, q).find((o) => o.id === 'faculty').block, 'a faculty post needs published work first');
+  check(research.doResearch('project').ok && !research.doResearch('project').ok, 'a research project is joined once a year');
+  check(research.doResearch('teach').ok, 'an attending at a teaching hospital teaches students');
+  let papers = 0;
+  for (let i = 0; i < 8; i++) { year(); if (rm.research.projects.length < 2) research.doResearch('project'); research.doResearch('teach'); papers = rm.research.papers.length; }
+  check(papers >= 1 && papers <= 8, `research takes years and is not guaranteed (${papers} papers in eight years)`);
+  // A hard stretch brings support, not a reward for pushing through.
+  q.career.stress = 92;
+  store.state.pendingEvents = [];
+  rm.scenes = {};
+  drama.dramaYear();
+  check(store.state.pendingEvents.some((e) => e.id === 'med_strain'), 'a hard stretch is noticed');
+  const before = q.career.stress;
+  drama.medicineChoice('strain:support');
+  check(q.career.stress < before, 'and support helps');
+  // An offer elsewhere: taking it moves the player and the post.
+  const other = COUNTRIES.us.cities.find((c) => c !== q.city);
+  const there = hospitalsIn('us', other).find(({ h }) => h.depts.includes('medicine'));
+  rm.awayOffer = { hospitalId: there.e.id, city: other, year: store.state.year };
+  drama.medicineChoice('away:accept');
+  check(q.city === other && rm.job?.hospitalId === there.e.id && !rm.awayOffer, `an offer in ${other} accepted moves the post there`);
+}
+section('research and teaching, wellbeing, and an offer from another city');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

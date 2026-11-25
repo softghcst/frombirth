@@ -17,6 +17,7 @@ import { tickTraining, premedOpen } from './training.js';
 import { postYear, claimsYear } from './ladder.js';
 import { caseload, closeYear } from './cases.js';
 import { practiceYear } from './practice.js';
+import { researchYear } from './research.js';
 import { dramaYear } from './drama.js';
 
 export * from './core.js';
@@ -68,6 +69,7 @@ export function tickMedicine() {
   postYear();
   claimsYear(p, m);
   practiceYear();
+  researchYear();
   m.reputation = reputationOf(m);
   caseload(m, p); // this year's patients, made now so the year's count is fixed
   dramaYear();
