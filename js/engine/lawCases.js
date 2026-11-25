@@ -13,7 +13,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS } from '../data/law.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -259,7 +259,7 @@ export function actions(c) {
   for (const pf of proceduralDue(c)) out.push({ id: `proc:${pf.id}`, label: `Prepare: ${pf.name}` });
   if (canNegotiate(c)) out.push({ id: 'negotiate', label: c.kind === 'criminal' ? (c.role === 'defense' ? 'Discuss a plea' : 'Consider a plea offer') : c.kind === 'transaction' ? 'Negotiate terms' : 'Discuss a settlement' });
   if (c.role === 'prosecution' && !c.tasks.charging) out.push({ id: 'charging', label: 'Review the charges' });
-  if (c.awaiting) out.push({ id: 'court', label: c.kind === 'transaction' ? 'Close the deal' : c.awaiting.what === 'trial' ? 'Go to trial' : 'Attend the hearing' });
+  if (c.awaiting && c.awaiting.since <= nowM()) out.push({ id: 'court', label: c.kind === 'transaction' ? 'Close the deal' : c.awaiting.what === 'trial' ? 'Go to trial' : 'Attend the hearing' });
   if (c.ethics && !c.ethics.resolved) out.push({ id: 'ethics', label: 'A difficult request' });
   return out;
 }
@@ -499,7 +499,7 @@ export function negotiate(c, accept) {
 
 /** What a day in court asks of the player, built from the case file. Not every proceeding has every phase. */
 export function courtroom(c) {
-  if (!c.awaiting) return null;
+  if (!c.awaiting || c.awaiting.since > nowM()) return null; // a retrial waits for its date
   const T = template(c);
   const pros = c.role === 'prosecution';
   const generic = {
@@ -525,6 +525,13 @@ export function courtroom(c) {
   if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(T.cross.text, c), options: T.cross.options.map(([t, v]) => ({ text: fill(t, c), v })), good: crossW.weakness });
   else if (pros && c.kind === 'criminal') phases.push({ id: 'direct', title: 'Direct examination of your witness', text: `${nameOf(c.witnesses[0]?.npcId)} takes the stand.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   else if (c.witnesses.some((w) => w.side === 'client')) phases.push({ id: 'direct', title: 'Direct examination', text: `${nameOf(c.witnesses.find((w) => w.side === 'client').npcId)} takes the stand for your side.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
+  // A second moment to object, from the run of a trial: sometimes the question is perfectly proper.
+  if (c.forum === 'trial' && ['criminal', 'civil'].includes(c.kind)) {
+    const o2 = OBJECTIONS[[...c.id].reduce((h, ch) => h + ch.charCodeAt(0), 0) % OBJECTIONS.length];
+    phases.push({ id: 'objection2', title: 'Another question', text: fill(o2.text, c), options: OBJECTION_GROUNDS.map(([t, v]) => ({ text: t, v })), valid: o2.valid });
+  }
+  // For the defense, a plea in mitigation, made ready in case of a conviction.
+  if (c.kind === 'criminal' && c.role === 'defense') phases.push({ id: 'mitigation', title: 'If it goes against you: mitigation', text: 'Should there be a conviction, what will you put before the judge at sentencing?', options: [['Character letters, the work record, and a plan for the future', 'strong'], ['Ask the court for mercy', 'weak'], ['Nothing', 'none']].map(([t, v]) => ({ text: t, v })) });
   if (c.kind === 'transaction') phases.push({ id: 'closing', title: 'Closing the deal', options: [['Check every condition is met, then sign', 'evidence'], ['Sign tonight and fix problems later', 'rushed'], ['Walk away', 'walk']].map(([t, v]) => ({ text: t, v })) });
   else phases.push({ id: 'closing', title: 'Closing argument', options: (pros ? generic.closing : T.closing ?? generic.closing).map(([t, v]) => ({ text: fill(t, c), v })) });
   return { title: c.title, what: c.awaiting.what, jury: c.jury, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
@@ -549,7 +556,14 @@ export function argue(c, answers = {}, o = {}) {
   let adv = 0;
   for (const ph of day.phases) {
     const a = answers[ph.id] ?? (o.routine ? (ph.id === 'objection' ? 'none' : ph.id === 'cross' ? 'repeat' : ph.options[0].v) : ph.options[0].v);
-    if (ph.id === 'objection') {
+    if (ph.id === 'mitigation') { c.mitigation = a; continue; }
+    if (ph.id === 'objection2' && ph.valid === 'none') {
+      // A proper question: objecting only annoys the judge.
+      if (a === 'none') { adv += 0.01; lines.push('A fair question, and you let it be asked.'); }
+      else { adv -= 0.03; L.rep.advocacy = clamp(L.rep.advocacy - 1); lines.push('Overruled: the question was proper. The jury noticed.'); }
+      continue;
+    }
+    if (ph.id === 'objection' || ph.id === 'objection2') {
       if (a === 'none') { if (ph.valid) adv -= 0.03; lines.push('You let the question stand.'); }
       else if (a === ph.valid) {
         adv += 0.05; lines.push('Objection sustained. The answer is struck.');
@@ -596,9 +610,31 @@ function decide(c, adv, lines, o = {}) {
     // The prosecution must prove its case. The share of the remaining evidence that points to guilt, moved by advocacy.
     const proof = (c.role === 'prosecution' ? s.share + edge : (1 - s.share) - edge) + noise + (c.reduced ? 0.06 : 0);
     const bar = c.jury ? 0.56 : 0.54;
-    const convicted = proof >= bar;
     const jc = c.justiceCaseId ? k.J().cases[c.justiceCaseId] : null;
+    // A jury that cannot agree: a mistrial. The prosecution decides whether to try again; a retrial is months away.
+    if (c.jury && Math.abs(proof - bar) < 0.025 && !c.mistrials) {
+      c.mistrials = 1;
+      if (jc && k.CASE_FLOW[jc.stage]?.includes('mistrial')) k.move(jc, 'mistrial', 'The jury could not agree.');
+      lines.push(`The jury was out for ${rng.int(9, 20)} hours, and could not agree. The judge declared a mistrial.`);
+      if (c.role === 'defense' && rng.chance(0.4)) {
+        if (jc) k.dismissFrom(jc, 'After the mistrial, the prosecution dropped the case.');
+        return close(c, { kind: 'dismissed', text: 'After the mistrial, the prosecution dropped the case.', favorable: 0.8, trial: true }, lines);
+      }
+      c.awaiting = { what: 'trial', since: nowM() + 4, turn: nowM() };
+      note(c, 'Mistrial: the jury could not agree. A retrial is set.');
+      return result(false, `${lines.join(' ')} A retrial is set.`, 'neutral', { mistrial: true });
+    }
+    const convicted = proof >= bar;
     if (jc) k.verdictFrom(jc, convicted, c.jury ? 'jury verdict' : 'verdict at trial');
+    // Sentencing: a plea in mitigation can take years off a custodial sentence, within the law.
+    if (convicted && c.role === 'defense' && jc?.sentenceId) {
+      const sen = k.J().sentences[jc.sentenceId];
+      if (sen?.type === 'custody' && sen.years >= 2 && c.mitigation === 'strong' && rng.chance(0.6)) {
+        const cut = Math.max(1, Math.round(sen.years * 0.2));
+        k.modify(sen, -cut, 'The judge took the mitigation into account.');
+        lines.push(`At sentencing, the mitigation took ${cut} year${cut === 1 ? '' : 's'} off.`);
+      }
+    }
     const forClient = c.role === 'prosecution' ? convicted : !convicted;
     lines.push(c.jury ? `The jury was out for ${rng.int(2, 9)} hours.` : 'The judge took a day to decide.');
     lines.push(convicted ? `Guilty of ${(OFFENSE_BY_ID[T.offense]?.name ?? 'the charge').toLowerCase()}.` : 'Not guilty.');
@@ -606,6 +642,12 @@ function decide(c, adv, lines, o = {}) {
     if (c.role === 'prosecution' && c.weakPush && convicted) c.errors.push({ kind: 'weak', text: 'A conviction on thin evidence.' });
   } else {
     const share = s.share + edge + noise;
+    // A close civil trial can end in part: the claim proved in part, and awarded in part.
+    if (c.kind === 'civil' && c.forum === 'trial' && Math.abs(share - 0.5) < 0.04) {
+      const amount = Math.round((currentOffer(c).claim ?? 0) * 0.5);
+      lines.push('Judgment for your client in part: some of the claim was proved, some was not.');
+      return close(c, { kind: 'partial', text: lines.at(-1), favorable: 0.3, trial: true, amount }, lines);
+    }
     const won = share >= 0.5;
     const kindMap = { family: won ? 'orders' : 'orders', child: won ? 'orders' : 'orders', immigration: won ? 'approved' : 'denied', civil: c.forum === 'appeal' ? (won ? 'reversed' : 'affirmed') : won ? 'judgment' : 'judgment_against', transaction: won ? 'closed' : 'closed_risk' };
     const text = {

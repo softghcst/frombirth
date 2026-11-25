@@ -172,6 +172,38 @@ const npc = (id) => store.state.npcs[id];
   check(lc.forumName(lc.createCase('tax_appeal')) === 'Tax tribunal', 'a tax appeal goes to the tax tribunal');
 }
 
+// ---------- Deeper trials: more objections, mitigation, mistrials, partial judgments, more dilemmas ----------
+{
+  const { ETHICS } = await import('../js/data/law.js');
+  check(ETHICS.length >= 8 && ['gift', 'press', 'coaching', 'billing'].every((id) => ETHICS.some((e) => e.id === id)), 'eight ethical dilemmas, including gifts, the press, coaching witnesses and billing');
+  lawyer('lawyer');
+  const c = lc.createCase('burglary_hale', { role: 'defense' });
+  c.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };
+  const ph = lc.courtroom(c).phases;
+  check(ph.some((x) => x.id === 'objection') && ph.some((x) => x.id === 'objection2') && ph.some((x) => x.id === 'mitigation'), `a jury trial has two moments to object, and a plea in mitigation is made ready (${ph.map((x) => x.id)})`);
+  const proper = ph.find((x) => x.id === 'objection2');
+  // Find a case whose second question is proper, and object to it anyway.
+  let pc = c; let pp = proper;
+  for (let i = 0; i < 30 && pp.valid !== 'none'; i++) { pc = lc.createCase('burglary', { role: 'defense' }); pc.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() }; pp = lc.courtroom(pc).phases.find((x) => x.id === 'objection2'); }
+  const r = lc.argue(pc, { objection2: 'hearsay' });
+  check(pp.valid === 'none' && /question was proper/.test((r.lines ?? []).join(' ') + r.text), 'objecting to a proper question is overruled, and the jury notices');
+  let mis = null; let partial = null; let cut = false;
+  for (let i = 0; i < 80 && (!mis || !partial || !cut); i++) {
+    lawyer('lawyer');
+    const t = lc.createCase(i % 2 ? 'contract_dispute' : 'burglary_hale', { role: i % 2 ? undefined : 'defense' });
+    t.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };
+    // A genuinely close civil case: the evidence on each side weighs the same.
+    if (t.kind === 'civil') for (const e of t.evidence) { e.reliability = 70; e.weight = e.favors === 'client' ? 3 : 6; }
+    const out = lc.argue(t, { mitigation: 'strong', objection: t.kind === 'criminal' ? 'hearsay' : undefined });
+    if (out.mistrial && !mis) mis = t;
+    if (t.outcome?.kind === 'partial') partial = t;
+    if (t.outcome?.kind === 'convicted' && /mitigation took/.test(out.text)) cut = true;
+  }
+  check(mis && !mis.done && mis.mistrials === 1 && !lc.courtroom(mis), 'a hung jury: a mistrial, and the retrial waits for its date');
+  check(partial && partial.outcome.favorable > 0 && partial.outcome.favorable < 1, 'a close civil trial can end in a partial judgment');
+  check(cut, 'a plea in mitigation can take years off a custodial sentence');
+}
+
 // ---------- Procedural filings and their deadlines ----------
 {
   lawyer('lawyer');

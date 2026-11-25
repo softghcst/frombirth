@@ -693,6 +693,25 @@ export const ETHICS = [
   { id: 'perjury', text: '{client} tells you they plan to lie on the stand.', options: [['Advise them against it and refuse to present false testimony', 'proper'], ['Let them', 'improper'], ['Ask your supervisor', 'guidance']] },
 ];
 
+// More dilemmas: a lawyer's duties to the court, the client and the truth.
+ETHICS.push(
+  { id: 'gift', text: '{client} offers you a very expensive watch, "for everything you are doing." The case is still open.', options: [['Decline politely, and note it', 'proper'], ['Accept it', 'improper'], ['Ask your supervisor', 'guidance']] },
+  { id: 'press', text: 'A reporter asks what {client} told you in private. They promise not to name you.', options: [['Say nothing: it is confidential', 'proper'], ['Tell them, off the record', 'improper'], ['Ask your supervisor how to handle the press', 'guidance']] },
+  { id: 'coaching', text: 'Your witness is nervous. A colleague suggests telling them exactly what to say, "to keep them consistent."', options: [['Prepare them to tell the truth clearly, in their own words', 'proper'], ['Give them a script', 'improper'], ['Ask your supervisor', 'guidance']] },
+  { id: 'billing', text: 'It was a slow month. Your timesheet is short of the firm\'s target.', options: [['Bill the hours you actually worked', 'proper'], ['Round up generously', 'improper'], ['Talk to your supervisor about the target', 'guidance']] },
+);
+
+/** Moments in a trial when the other side asks a question. `valid` is the right objection, or 'none' where the question is proper. */
+export const OBJECTIONS = [
+  { text: 'Opposing counsel asks your client: "Where were you at eleven that night?"', valid: 'none' },
+  { text: 'Opposing counsel asks a witness: "Isn\'t it true the defendant is the kind of person who would do this?"', valid: 'relevance' },
+  { text: 'Opposing counsel asks their own witness: "You saw the defendant clearly, didn\'t you?"', valid: 'leading' },
+  { text: 'Opposing counsel asks a witness: "What do you think the defendant was planning?"', valid: 'speculation' },
+  { text: 'Opposing counsel asks an expert to describe their qualifications.', valid: 'none' },
+  { text: 'Opposing counsel shows a witness a document nobody has identified: "This proves it, doesn\'t it?"', valid: 'foundation' },
+];
+export const OBJECTION_GROUNDS = [['Object: hearsay', 'hearsay'], ['Object: leading', 'leading'], ['Object: relevance', 'relevance'], ['Object: speculation', 'speculation'], ['Object: lack of foundation', 'foundation'], ['Let it go', 'none']];
+
 /** Story titles shown with each moment of a legal life (Story Director scenes, data/events/stories/law.js). */
 export const LAW_STORIES = {
   firstExam: 'Your First Law School Exam', professor: 'A Professor Notices Your Work', moot: 'The Moot Court Competition', internship: 'A Summer Internship',
