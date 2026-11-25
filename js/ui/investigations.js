@@ -20,7 +20,7 @@ import * as O from '../engine/investigations/oversight.js';
 import * as X from '../engine/investigations/crossover.js';
 import * as FM from '../engine/investigations/forensicMed.js';
 import * as PO from '../engine/investigations/policing.js';
-import { settle, investigationsOpen } from '../engine/investigations/index.js';
+import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -387,7 +387,7 @@ export function openInvestigations(api, start = 'overview') {
     const r = rec(p);
     const list = sectionsFor(p, r);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0">My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
+    root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
       <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
@@ -406,4 +406,16 @@ export function openInvestigations(api, start = 'overview') {
   render();
   if (lines.length) messageModal({ body: lines.join(' '), tone: 'neutral' });
   return modal;
+}
+
+/** Family Archive → Law enforcement legacy: each investigative career in the family, and the cases that reached a court. */
+export function openInvestigativeLegacy() {
+  const list = familyInvestigativeLegacy();
+  const body = list.map((x) => card(`${x.name}${x.you ? ' · you' : x.died ? ` (died ${x.died})` : ''}`,
+    kv([['Years of service', String(x.years ?? '—')], ['Units', x.units.map((u) => SPECIALTIES[u]?.name ?? u).join(', ') || '—'], ...(x.license ? [['License', x.license]] : []), ...(x.retired ? [['Retired', String(x.retired)]] : [])])
+    + x.history.slice(-10).map((h) => kv([[String(h.year), h.text]])).join('')
+    + (x.cases.length ? `<div class="eyebrow">Cases that went to court</div>${x.cases.slice(-12).map((c) => kv([[String(c.year), `${c.title}: ${c.outcome}`]])).join('')}` : ''))).join('');
+  return openModal(`<div class="eyebrow">Professional legacy</div><h2>Law enforcement in the family</h2>
+    ${body || '<p class="empty">Nobody in the family has served as an officer, detective, agent or investigator yet.</p>'}
+    <p class="muted">The public career and the court record only. Case files, witnesses and statements are not part of a family's record.</p>`, { dismissable: true });
 }

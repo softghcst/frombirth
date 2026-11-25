@@ -44,11 +44,13 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Conviction review | **Playable**: a conviction with kept evidence that can be tested anew can be reviewed; a result pointing elsewhere goes to the appeal court as new evidence, which decides; the first verdict stays on the record |
 | Romance at work | **Playable** within rules: never across supervision (either way); partners who are together must declare it and are given new working partners |
 | The next generation | **Playable**: an ancestor's public career is in My Investigations → Family Legacy; their cases stay in the records under their name and may come back to a descendant who investigates |
+| Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
+| Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
 | Forensic psychology outside the courts, police unions, national police reform | **Not built** |
 
 ## Studying for the work
 
-Work → Special careers → Law Enforcement & Investigations. The overview's **Ways in** card sets out each route.
+Work → Special careers → 🕵️ Law Enforcement & Investigations. The overview's **Ways in** card sets out each route.
 
 - Police work is open from high school (21 or older) through the academy; a degree is not required to start. A degree adds to the
   entrance assessment and academy readiness; relevant majors (criminal justice, criminology, psychology, political science, forensic science,
@@ -80,5 +82,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (11 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (15 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

@@ -96,7 +96,8 @@ export function createCase(templateId, o = {}) {
   const bench = k.bench(countryId);
   c.judgeId = T.forum === 'none' ? null : k.pick(bench.judges).id;
   if (T.kind === 'criminal') {
-    const jc = freshCase({ offenseId: T.offense });
+    // A case an investigator referred is the same case, not a new one (engine/investigations/legal.js).
+    const jc = o.justiceCaseId ? k.J().cases[o.justiceCaseId] : freshCase({ offenseId: T.offense });
     if (jc) {
       c.justiceCaseId = jc.id;
       c.parties.defendantId = jc.defendantId;
@@ -112,7 +113,7 @@ export function createCase(templateId, o = {}) {
       c.otherCounselId = role === 'defense' ? k.pick(bench.prosecutors).id : k.pick(bench.defense.good).id;
     }
     c.vars.client = nameOf(c.parties.defendantId);
-    c.vars.charge = OFFENSE_BY_ID[T.offense]?.name ?? T.offense;
+    c.vars.charge = OFFENSE_BY_ID[o.offenseId ?? T.offense]?.name ?? T.offense;
   } else {
     // A returning client is the same person, with their history intact; a divorce or custody case may be a real couple.
     const couple = T.kind === 'family' && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
@@ -202,9 +203,11 @@ export function createCase(templateId, o = {}) {
       c.evidenceFault = true;
     }
   }
-  c.evidence = T.evidence.map((e) => ({ ...e, label: fill(e.label, c), reviewed: false, status: e.admissibility === 'ok' ? 'admitted' : 'disputed', reliability: e.reliability }));
+  c.evidence = (o.evidence ?? T.evidence).map((e) => ({ ...e, label: fill(e.label, c), reviewed: false, status: e.admissibility === 'ok' ? 'admitted' : 'disputed', reliability: e.reliability }));
+  if (o.investigationId) { c.investigationId = o.investigationId; c.offenseId = o.offenseId ?? T.offense; if (o.cross) c.cross = o.cross; }
   if (c.evidenceFault) c.evidence.push({ id: 'fault', kind: 'witness_statement', label: `Evidence that ${c.vars.other} deserted the marriage, the fault ground pleaded`, favors: 'client', weight: 3, reliability: 55, admissibility: 'ok', status: 'admitted', reviewed: false });
-  c.witnesses = (T.witnesses ?? []).map((w) => ({ ...w, npcId: party(countryId, { title: w.role, kind: 'witness' }).id, examined: false }));
+  // The witnesses of a referred case are its real witnesses; otherwise the template's people are made.
+  c.witnesses = o.witnesses ? o.witnesses.map((w) => ({ ...w, examined: false })) : (T.witnesses ?? []).map((w) => ({ ...w, npcId: party(countryId, { title: w.role, kind: 'witness' }).id, examined: false }));
   for (const w of c.witnesses) if (store.state.npcs[w.npcId]) store.state.npcs[w.npcId].flags.justice.caseIds.push(id);
   // A filing deadline for the first stage that needs one.
   const fileAt = c.stages.findIndex((s) => ['filing', 'pretrial', 'pleadings', 'drafting', 'review', 'diligence'].includes(s.s));
@@ -559,8 +562,10 @@ export function courtroom(c) {
   if (c.kind !== 'transaction') phases.push({ id: 'opening', title: c.kind === 'immigration' || c.kind === 'family' || c.kind === 'child' ? 'Your statement to the court' : 'Opening statement', options: (pros ? generic.opening : T.opening ?? generic.opening).map(([t, v]) => ({ text: fill(t, c), v })) });
   if (T.objection && !pros) phases.push({ id: 'objection', title: 'An objection?', text: fill(T.objection.text, c), options: T.objection.options.map(([t, v]) => ({ text: t, v })), valid: T.objection.valid });
   if (pros && c.kind === 'criminal') phases.push({ id: 'objection', title: 'An objection?', text: 'Defense counsel asks your witness: "You have hated my client for years, haven\'t you, and you are lying now?"', options: [['Object: argumentative', 'argumentative'], ['Object: hearsay', 'hearsay'], ['Let it go', 'none']].map(([t, v]) => ({ text: t, v })), valid: 'argumentative' });
-  const crossW = T.cross && !pros ? c.witnesses.find((w) => w.id === T.cross.witness) : null;
-  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(T.cross.text, c), options: T.cross.options.map(([t, v]) => ({ text: fill(t, c), v })), good: crossW.weakness });
+  // A case from a real investigation has its own cross-examination: its eyewitness, and what they could really see.
+  const X = c.cross ?? T.cross;
+  const crossW = X && !pros ? c.witnesses.find((w) => w.id === X.witness) : null;
+  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(X.text, c), options: X.options.map(([t, v]) => ({ text: fill(t, c), v })), good: X.good ?? crossW.weakness, real: !!c.cross });
   else if (pros && c.kind === 'criminal') phases.push({ id: 'direct', title: 'Direct examination of your witness', text: `${nameOf(c.witnesses[0]?.npcId)} takes the stand.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   else if (c.witnesses.some((w) => w.side === 'client')) phases.push({ id: 'direct', title: 'Direct examination', text: `${nameOf(c.witnesses.find((w) => w.side === 'client').npcId)} takes the stand for your side.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   // A second moment to object, from the run of a trial: sometimes the question is perfectly proper.
@@ -611,13 +616,15 @@ export function argue(c, answers = {}, o = {}) {
       continue;
     }
     if (ph.id === 'cross') {
-      const w = c.witnesses.find((x) => x.weakness === ph.good);
+      const w = c.witnesses.find((x) => x.weakness === ph.good && (!ph.real || x.id === c.cross.witness));
+      // In a case from a real investigation, the line of cross works only if the witness really had that limitation.
+      if (a === ph.good && ph.real && !w) { lines.push('The witness had a clear view, and says so. The question finds nothing.'); const cw = c.witnesses.find((x) => x.id === c.cross.witness); if (cw) cw.examined = 'held'; continue; }
       if (a === ph.good) {
         // The witness is not destroyed; the answer shows what the file already shows.
         const hit = c.evidence.filter((e) => !ours(c, e) && e.status !== 'excluded').sort((x, y) => y.weight * y.reliability - x.weight * x.reliability)[0];
         if (hit) hit.reliability = Math.round(hit.reliability * (0.55 + rng.next() * 0.2));
         adv += 0.04;
-        lines.push(rng.chance(0.6) ? 'The witness admits it was dark, and they were far away. They still say it looked like your client.' : 'The witness hesitates, then corrects one detail of their earlier statement.');
+        lines.push(ph.real && w?.limitation ? `The witness admits ${w.limitation}. They still say it looked like your client.` : rng.chance(0.6) ? 'The witness admits it was dark, and they were far away. They still say it looked like your client.' : 'The witness hesitates, then corrects one detail of their earlier statement.');
         if (w) w.examined = 'shaken';
       } else if (a === 'improper') { adv -= 0.05; L.rep.integrity = clamp(L.rep.integrity - 2); lines.push('The judge stops the question: it is not relevant, and it is not fair.'); }
       else { lines.push('The witness repeats their account, firmly. Nothing new comes out.'); if (w) w.examined = 'held'; }
@@ -682,7 +689,7 @@ function decide(c, adv, lines, o = {}) {
     }
     const forClient = c.role === 'prosecution' ? convicted : !convicted;
     lines.push(c.jury ? `The jury was out for ${rng.int(2, 9)} hours.` : 'The judge took a day to decide.');
-    lines.push(convicted ? `Guilty of ${(OFFENSE_BY_ID[T.offense]?.name ?? 'the charge').toLowerCase()}.` : 'Not guilty.');
+    lines.push(convicted ? `Guilty of ${(OFFENSE_BY_ID[c.offenseId ?? T.offense]?.name ?? 'the charge').toLowerCase()}.` : 'Not guilty.');
     out = { kind: convicted ? 'convicted' : 'acquitted', text: lines.at(-1), favorable: forClient ? 1 : -1, trial: true };
     if (c.role === 'prosecution' && c.weakPush && convicted) c.errors.push({ kind: 'weak', text: 'A conviction on thin evidence.' });
   } else {

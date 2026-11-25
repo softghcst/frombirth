@@ -17,7 +17,8 @@ import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations } from './core.js';
+import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations, legacies } from './core.js';
+import { J } from '../cases.js';
 import { agencyOf, kindsIn } from './agencies.js';
 import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit } from './careers.js';
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
@@ -150,3 +151,19 @@ export function legacySummary(p) {
   };
 }
 export { workLeft, caseStatus };
+
+/**
+ * Every investigative career in the family, for the Family Archive: the public career of each ancestor and of the
+ * player, and the cases they led that went to court (a court record is public; case files and statements are not).
+ */
+export function familyInvestigativeLegacy(p = player()) {
+  const OUT = { sentenced: 'convicted', acquitted: 'acquitted', dismissed: 'dismissed', quashed: 'conviction set aside' };
+  const courtCases = (id) => Object.values(J().investigations ?? {}).filter((inv) => inv.file?.leadId === id && inv.file.courtCaseId && J().cases[inv.file.courtCaseId])
+    .map((inv) => { const c = J().cases[inv.file.courtCaseId]; return { title: inv.file.title, year: c.year, outcome: OUT[c.stage] ?? 'in court' }; })
+    .sort((a, b) => a.year - b.year);
+  const list = legacies().map((x) => ({ id: x.id, name: x.name, died: x.died ?? null, years: x.years ?? null, units: x.units ?? [], license: x.license ?? null, retired: x.retired ?? null,
+    history: x.history ?? [], cases: courtCases(x.id) }));
+  const mine = legacySummary(p);
+  if (mine) list.push({ id: p.id, name: mine.name, you: true, years: mine.years, units: mine.units ?? [], license: mine.license, retired: mine.retired, history: mine.history, cases: courtCases(p.id) });
+  return list;
+}

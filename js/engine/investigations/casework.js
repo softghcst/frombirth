@@ -28,6 +28,7 @@ import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seede
 import { agency, office, lab, prosecutorFor, staffer, ownerName } from './agencies.js';
 import { meet } from './careers.js';
 import { labMonths, hoursBonus } from './policing.js';
+import { lawyerOnIt, lawCaseFor } from './legal.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -705,7 +706,12 @@ export function testify(invId, how) {
 export function settleCourt(inv) {
   const f = inv.file;
   const c = f?.courtCaseId && k.J().cases[f.courtCaseId];
-  if (!c || TERMINAL.includes(c.stage) || (c.trialDue ?? 0) > now()) return null;
+  if (!c) return null;
+  // A lawyer working the case (engine/investigations/legal.js) takes it through court; the court waits for them.
+  if (lawyerOnIt(c.id)) return null;
+  // A lawyer has finished it: the court's decision is on the case, and the investigation records it once.
+  if (TERMINAL.includes(c.stage)) return f.outcome || !lawCaseFor(c.id) ? null : courtOutcome(inv, c);
+  if ((c.trialDue ?? 0) > now()) return null;
   const r = rec();
   // Disclosure: what the report left out reaches the defense one way or another; when it does, the case cannot go on.
   if (f.report?.omitted.length && seeded(`${inv.id}/disclosure`).chance(0.65)) {
@@ -724,6 +730,12 @@ export function settleCourt(inv) {
   // Statements taken by pressure are challenged, and the court decides whether to hear them.
   for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e?.tainted) { e.admissible = false; c.rulings.push({ evidenceId: id, challenged: true, admitted: false, year: year() }); } }
   for (let i = 0; i < 8 && !TERMINAL.includes(c.stage); i++) k.runToEnd(c);
+  return courtOutcome(inv, c);
+}
+/** Records the court's decision in the case file, and in the lead investigator's record. */
+function courtOutcome(inv, c) {
+  const f = inv.file;
+  const r = rec();
   const convicted = c.stage === 'sentenced';
   f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at: now() };
   const inc = incidentOf(inv);

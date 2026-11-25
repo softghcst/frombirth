@@ -747,6 +747,24 @@ section('forensic medicine for the court and death investigations, policing deci
 }
 section('studying: new majors, degrees that count for each path, a head start once, senior posts that ask for a degree, a shorter way to a license');
 
+// ---------- 15. The Family Archive ----------
+{
+  life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Elm Row Burglary' });
+  r.caseIds.push(inv.id);
+  const jc = k.openCaseFor(inv, inv.file.poi[0]);
+  inv.file.courtCaseId = jc.id;
+  const fam = IX.familyInvestigativeLegacy();
+  const me = fam.find((x) => x.you);
+  check(me && me.history.length && me.cases.some((c) => c.title === 'The Elm Row Burglary' && c.outcome === 'in court'), 'the Family Archive keeps the player\'s career and the cases that reached a court');
+  const text = JSON.stringify(fam);
+  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(store.state.npcs[id].lastName) || store.state.npcs[id].lastName === store.state.player.lastName), 'and never the witnesses of a case');
+}
+section('the Family Archive: the public career and the court record, not the case file');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
