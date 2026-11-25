@@ -2,6 +2,7 @@
 // systems run, then the death check, then this year's scenarios are queued.
 import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
+import { tickHair } from './salon.js';
 import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
 import { tickCare } from './animalCare.js';
@@ -157,6 +158,7 @@ export const YEARLY = [
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['hair', () => tickHair(store.state)], // a hair treatment grown out; hairstyles kept in the texture each person's hair shows (engine/salon.js)
   ['talents', () => tickTalents()], // talents come on with the years; a gift shows itself (engine/talentGrowth.js)
   ['military', tickMilitary], // contracts, national service (engine/military.js)
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)

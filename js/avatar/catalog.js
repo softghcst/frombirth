@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -52,7 +52,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: with
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
  * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short', gender: s.gender === 'any' ? undefined : s.gender }, type: s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null, elderOk: s.elderOk ?? null }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short', gender: s.gender === 'any' ? undefined : s.gender }, type: FITTED_TEXTURE[s.id] ?? s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null, elderOk: s.elderOk ?? null }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = {
   textured_crop: 'textured_pixie_cut',
@@ -153,6 +153,17 @@ const resting = (key) => {
 /** Whether a hairstyle is one for this gender: men's and women's styles go to their own, unisex ones (no tag) to both. */
 export const hairSuitsGender = (style, gender) => !gender || !style?.tags?.gender || style.tags.gender === gender;
 export const stylesFor = (texture) => HAIR_STYLES.filter((s) => (SUITS[texture] ?? SUITS.straight).includes(s.type));
+/** Whether a hairstyle is worn in this texture ('bald' and the 'any' styles suit every texture). */
+export const hairSuits = (id, texture) => {
+  if (!id || id === 'bald') return true;
+  const h = INDEX.hair[id];
+  return !h || h.type === 'any' || (SUITS[texture] ?? SUITS.straight).includes(h.type);
+};
+/**
+ * The texture someone's hair shows today: a salon treatment's while it lasts (style.treatment), otherwise the one they
+ * were born with, which never changes.
+ */
+export const hairTextureOf = (appearance) => appearance?.style?.treatment?.texture ?? appearance?.inherited?.hairTexture ?? 'straight';
 
 // ---------- Older saves ----------
 
@@ -243,6 +254,9 @@ export function normalize(a, seed = 'x') {
   style.hat = has('hat', st.hat) ? st.hat : null;
   // What they wear as a baby and as a child, if chosen (otherwise picked for them in resolveLook).
   for (const k of ['babyHair', 'babyOutfit', 'kidHair', 'kidOutfit']) style[k] = has(k, st[k]) ? st[k] : null;
+  // A salon treatment that shows another texture for a time (js/engine/salon.js): kept while it is a real texture.
+  const tr = st.treatment;
+  style.treatment = tr && TEXTURES.includes(tr.texture) && tr.texture !== inherited.hairTexture ? { texture: tr.texture, kind: String(tr.kind ?? ''), years: Number(tr.years) || 2, ...(tr.from != null ? { from: Number(tr.from), until: Number(tr.until) } : {}) } : null;
   if (st.keepHair) style.keepHair = true;  // hair chosen at the salon in old age: kept, not drawn as an elder's style
   // Earlier saves kept surgery separately; it is simply the person's face now.
   if (st.tweaks) inherited.tweaks = cleanTweaks(st.tweaks);

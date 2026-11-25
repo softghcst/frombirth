@@ -102,7 +102,8 @@ export default {
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
       const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,
-        scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });
+        scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance',
+        treatments: { treatmentFor: salon.treatmentFor, years: salon.TREATMENT_YEARS, minAge: salon.TREATMENT_MIN_AGE } });
       if (!next) return;
       const r = salon.applySalon(next);
       api.changed();

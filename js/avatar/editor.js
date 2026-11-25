@@ -3,9 +3,9 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender, resolveLook } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender, resolveLook, hairTextureOf } from './catalog.js';
 import { avatarSvg } from './render.js';
-import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
+import { randomAppearance, defaultStyle, cloneAppearance, fitHairToTexture } from './inherit.js';
 import { rng } from '../rng.js';
 import { ELDER_BROWS, ELDER_HAIR_AGE, BABY_HAIR_BY_TEXTURE } from './curation.js';
 import { elderHair, ageStage } from '../CharacterAvatar.js';
@@ -68,7 +68,8 @@ const TABS = [
   { id: 'style', name: 'Clothes', keys: ['outfit', 'outfitColor'] },
   { id: 'extras', name: 'Extras', keys: ['glasses', 'jewelry', 'makeup'] },
 ];
-const HAIR_FILTERS = [['suits', 'Suits my hair'], ['short', 'Short'], ['medium', 'Medium'], ['long', 'Long'], ['updo', 'Up'], ['all', 'All']];
+// Hairstyles are always those of the texture the hair shows (its own, or a salon treatment's); these narrow them by length.
+const HAIR_FILTERS = [['all', 'All'], ['short', 'Short'], ['medium', 'Medium'], ['long', 'Long'], ['updo', 'Up']];
 const PREVIEWS = [['now', 'Now'], [1, 'Baby'], [9, 'Child'], [72, 'At 72']];
 
 /**
@@ -85,7 +86,7 @@ export function mountAppearanceEditor(el, o = {}) {
   const scope = o.scope ?? 'all';
   let a = cloneAppearance(normalize(o.appearance, seed));
   let preview = 'now';
-  let hairFilter = 'suits';
+  let hairFilter = 'all';
   const shownAge = () => (preview === 'now' ? age : preview);
   const outfitsFor = (key) => (CATALOG[key] ?? []).length;
   const usable = (key, stage) => (scope === 'all' || CONTROLS[key].half === 'style') && (CONTROLS[key].young || age >= (CONTROLS[key].minAge ?? 0))
@@ -123,8 +124,9 @@ export function mountAppearanceEditor(el, o = {}) {
     // A child's styles: the children's ones among the hairstyles, filtered as for grown-ups.
     if (key === 'kidHair') return optionsFor('hair').filter((h) => CATALOG.kidHair.some((k) => k.id === h.id));
     if (key === 'hair') {
-      if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
-      else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
+      const texture = hairTextureOf(a);
+      list = [...stylesFor(texture), ...fittedFor(texture)];
+      if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
       // A child is not offered the grown-ups' styles.
       if (age < 14) list = list.filter((h) => kidsMayWear(h.id));
       list = list.filter((h) => age >= (h.minAge ?? 0));
@@ -167,6 +169,28 @@ export function mountAppearanceEditor(el, o = {}) {
       <div class="av-options ${c.kind}">${options.join('')}</div></div>`;
   }
 
+  /**
+   * The salon's hair texture treatments (o.treatments, from js/engine/salon.js): the hair's natural texture, or another
+   * for the years paid for. Only at the salon, and for grown-ups.
+   */
+  const treatments = scope === 'style' && o.treatments && age >= o.treatments.minAge ? o.treatments : null;
+  function treatmentControl() {
+    const natural = a.inherited.hairTexture;
+    const tr = a.style.treatment;
+    const name = (x) => x[0].toUpperCase() + x.slice(1);
+    const chips = ['straight', 'wavy', 'curly', 'coily'].map((t) => {
+      const on = (tr?.texture ?? natural) === t;
+      const label = t === natural ? `${name(t)} (natural)` : `${name(t)}: ${treatments.treatmentFor(natural, t).short}`;
+      return `<button type="button" class="av-chip av-filter ${on ? 'on' : ''}" data-treat="${t}" aria-pressed="${on}">${esc(label)}</button>`;
+    }).join('');
+    const years = tr ? `<div class="av-label" style="margin-top:8px"><strong>How long it holds</strong><span>${tr.years} years</span></div>
+      <div class="av-filters">${treatments.years.map((y) => `<button type="button" class="av-chip av-filter ${tr.years === y ? 'on' : ''}" data-treat-years="${y}" aria-pressed="${tr.years === y}">${y} years</button>`).join('')}</div>
+      <p class="muted" style="margin:6px 0 0">Touch-ups are included; when the years are up it grows out and your natural ${esc(natural)} hair comes back. Stopping early is free, but the years left are not refunded.</p>` : '';
+    return `<div class="av-control"><div class="av-label"><strong>Hair texture</strong><span>${esc(name(tr?.texture ?? natural))}${tr ? ' (treated)' : ''}</span></div>
+      <p class="muted" style="margin:0 0 6px">Your natural texture is ${esc(natural)}. A treatment changes how it shows, not what you were born with.</p>
+      <div class="av-filters">${chips}</div>${years}</div>`;
+  }
+
   /** A five-step adjuster for one proportion: two steps either side of "as drawn". */
   function tweakControl(id) {
     const k = TWEAKS.find((x) => x.id === id);
@@ -189,7 +213,7 @@ export function mountAppearanceEditor(el, o = {}) {
           <button type="button" class="btn small av-random" data-random>${icon('sparkle')}Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
-        <div class="av-panel">${stageOf(shownAge()) !== 'adult' ? `<p class="av-stage-note muted">${stageOf(shownAge()) === 'baby' ? 'As a baby: a baby\'s face and eyes. Choose their hair and outfit.' : 'As a child: a child\'s face and eyes. Choose their hairstyle and outfit as a child.'}</p>` : ''}${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
+        <div class="av-panel">${stageOf(shownAge()) !== 'adult' ? `<p class="av-stage-note muted">${stageOf(shownAge()) === 'baby' ? 'As a baby: a baby\'s face and eyes. Choose their hair and outfit.' : 'As a child: a child\'s face and eyes. Choose their hairstyle and outfit as a child.'}</p>` : ''}${t.id === 'hair' && treatments && stageOf(shownAge()) === 'adult' ? treatmentControl() : ''}${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
       </div>`;
   }
   const keepScroll = (fn) => {
@@ -207,6 +231,17 @@ export function mountAppearanceEditor(el, o = {}) {
     if (pv) { preview = pv.dataset.preview === 'now' ? 'now' : Number(pv.dataset.preview); keepScroll(render); return; }
     const f = e.target.closest('[data-filter]');
     if (f) { hairFilter = f.dataset.filter; keepScroll(render); return; }
+    const treat = e.target.closest('[data-treat]');
+    if (treat) {
+      const t = treat.dataset.treat;
+      const keep = a.style.treatment;
+      a.style.treatment = t === a.inherited.hairTexture ? null
+        : { texture: t, kind: treatments.treatmentFor(a.inherited.hairTexture, t).kind, years: keep?.texture === t ? keep.years : treatments.years[0] };
+      fitHairToTexture(a, o.gender, seed);  // a hairstyle of the texture the hair now shows
+      keepScroll(render); o.onChange?.(cloneAppearance(a)); return;
+    }
+    const ty = e.target.closest('[data-treat-years]');
+    if (ty && a.style.treatment) { a.style.treatment = { ...a.style.treatment, years: Number(ty.dataset.treatYears) }; keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
     const twBtn = e.target.closest('[data-tweak]');
     if (twBtn) { a.inherited.tweaks[twBtn.dataset.tweak] = Number(twBtn.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
     const opt = e.target.closest('.av-opt');
@@ -220,6 +255,11 @@ export function mountAppearanceEditor(el, o = {}) {
     } else a[c.half][key] = id;
     // Hair chosen in old age is kept as chosen, rather than drawn as an elder's style (elderHair).
     if (key === 'hair' && o.gender && age >= ELDER_HAIR_AGE) a.style.keepHair = true;
+    // A different natural texture: the hairstyle becomes one of that texture (and a treatment to the same texture ends).
+    if (key === 'hairTexture') {
+      if (a.style.treatment?.texture === id) a.style.treatment = null;
+      fitHairToTexture(a, o.gender, seed);
+    }
     keepScroll(render);
     o.onChange?.(cloneAppearance(a));
   };

@@ -5,8 +5,8 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender, fittedFor } from './catalog.js';
-import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender, fittedFor, hairSuits, hairTextureOf, hash } from './catalog.js';
+import { RESTING, OUTFITS, HAIR_COVERS_FACE, TEXTURES } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -98,7 +98,8 @@ export function inheritAppearance(a, b) {
   const between = (depthOf(pa) + depthOf(pb)) / 2 + (rng.chance(0.35) ? rng.pick([-1, 1]) : rng.chance(0.5) ? 0.5 : -0.5) * (lo === hi ? 0.6 : 1);
   g.skin = toneAt(Math.max(lo - 1, Math.min(hi + 1, between)));
   // Hair and eye color and texture never appear from nowhere as often as shapes do.
-  for (const key of ['hairColor', 'hairTexture', 'eyeColor']) if (!rng.chance(0.04)) g[key] = rng.pick([pa[key], pb[key]]);
+  for (const key of ['hairColor', 'eyeColor']) if (!rng.chance(0.04)) g[key] = rng.pick([pa[key], pb[key]]);
+  g.hairTexture = childTexture(pa.hairTexture, pb.hairTexture);
   // Proportions run in families too.
   g.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([pa.tweaks?.[k.id] ?? 0, pb.tweaks?.[k.id] ?? 0])]));
   g.marks = CATALOG.marks.map((m) => m.id).filter((id) => {
@@ -109,6 +110,43 @@ export function inheritAppearance(a, b) {
 }
 
 /** Gives a newly made character a haircut and clothes if they have none yet. Changes and returns the appearance. */
+/**
+ * A child's hair texture, from the textures their parents were born with. Textures lie on a line, straight, wavy, curly,
+ * coily: a child's can be like either parent or fall between them (straight and curly parents can have a wavy-haired
+ * child), and now and then a step beyond either.
+ *   same texture:      that texture about 6 times in 7, otherwise the one next to it
+ *   straight + curly:  straight ~30%, wavy ~33%, curly ~28%, coily ~10%
+ *   straight + coily:  about a quarter each
+ */
+export function childTexture(a, b) {
+  const i = TEXTURES.indexOf(a); const j = TEXTURES.indexOf(b);
+  if (i < 0 || j < 0) return TEXTURES[Math.max(i, j, 0)];
+  const mid = (i + j) / 2;
+  const spread = 0.55 + Math.abs(i - j) * 0.35;
+  const weights = TEXTURES.map((_, t) => Math.exp(-((t - mid) ** 2) / (2 * spread * spread)) + (t === i || t === j ? 0.15 : 0));
+  return rng.weighted(TEXTURES, (t) => weights[TEXTURES.indexOf(t)]);
+}
+
+/**
+ * Keeps someone's hairstyle in the texture their hair shows (hairTextureOf: their own, or a salon treatment's). A style
+ * of another texture (a treatment grown out, a child grown up, an older save) is changed for one of theirs: the same
+ * length if there is one, for their gender, the same one each time for the same person and style. Changes `appearance`.
+ * @returns {boolean} whether the hairstyle changed
+ */
+export function fitHairToTexture(appearance, gender, seed = 'x') {
+  const st = appearance?.style;
+  if (!st?.hair || !appearance.inherited) return false;
+  const texture = hairTextureOf(appearance);
+  if (hairSuits(st.hair, texture)) return false;
+  const was = part('hair', st.hair);
+  const theirs = [...stylesFor(texture), ...fittedFor(texture).filter((h) => !h.elder)].filter((h) => hairSuitsGender(h, gender) && !HAIR_COVERS_FACE.includes(h.id));
+  const sameLength = theirs.filter((h) => h.tags?.length === was?.tags?.length);
+  const list = sameLength.length ? sameLength : theirs;
+  if (!list.length) return false;
+  st.hair = list[hash(`${seed}:${st.hair}:${texture}`) % list.length].id;
+  return true;
+}
+
 export function ensureStyled(appearance, gender) {
   if (appearance?.inherited && !appearance.style?.hair) {
     const kept = Object.fromEntries(Object.entries(appearance.style ?? {}).filter(([, v]) => v != null && !(Array.isArray(v) && !v.length)));
