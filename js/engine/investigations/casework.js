@@ -722,7 +722,7 @@ export function suspend(invId) {
 /** Where a case stands, in plain words. */
 export function caseStatus(inv) {
   const f = inv.file;
-  if (f?.coldSince && !f.reopened.some((x) => x.at > f.coldSince)) return 'cold';
+  if (f?.coldSince && !f.reopened.some((x) => x.at >= f.coldSince)) return 'cold';
   if (f?.outcome) return f.outcome.kind === 'resolved' ? 'resolved' : 'closed';
   if (f?.courtCaseId) return 'charged';
   if (inv.stage === 'suspended') return 'inactive';
