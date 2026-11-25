@@ -8,7 +8,8 @@ import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { addCondition, cureCondition } from './health.js';
 import { careQuality } from './living.js';
-import { screen } from './health/care.js';
+import { screen, MENTAL_CARE_AGE } from './health/care.js';
+import { parentsMoney, parentsSpend } from './conditions.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
 
@@ -27,6 +28,19 @@ export function careCost(base) {
   return Math.round(localCost(base * cover().share, c) * healthFactor(c.id)); // what the patient pays depends on the system, and on whether they are covered
 }
 
+/** A child's care is paid for by the parents they live with (with what cover leaves to pay); an adult pays their own. */
+export const parentsPayCare = (p = player()) => p.age < 18 && !!p.flags.livesWithParents && parentsMoney(p) > 0;
+/** Whether this bill can be paid, by whoever pays it. */
+export const canPayCare = (cost, p = player()) => !cost || (parentsPayCare(p) ? parentsMoney(p) >= cost : p.finance.cash >= cost);
+/** Pays a bill. @returns {string} a sentence saying what it cost and who paid */
+function payCare(cost, p = player()) {
+  if (!cost) return '';
+  if (parentsPayCare(p)) { parentsSpend(cost, p); return ` Your parents paid ${fmtMoney(cost, country())}.`; }
+  p.finance.cash -= cost;
+  return ` It cost ${fmtMoney(cost, country())}.`;
+}
+const cannotPay = (p, what) => (parentsPayCare(p) || p.age < 18 ? `Your parents cannot afford ${what} this year.` : `You cannot afford ${what}.`);
+
 /** Conditions a doctor could do something about, with what it would cost. */
 export function treatable() {
   const p = player();
@@ -35,7 +49,7 @@ export function treatable() {
     const cost = careCost(t.cost);
     const era = treatmentIn(c.id);
     return { id: c.id, name: c.name, cost, manage: !!t.manage && era.manage, managed: !!c.treated, limited: era.limited,
-      seen: !!acts().seen[c.id], affordable: p.finance.cash >= cost };
+      seen: !!acts().seen[c.id], affordable: canPayCare(cost, p) };
   });
 }
 
@@ -47,10 +61,9 @@ export function seeDoctor(conditionId) {
   if (!cond || !t) return result(false, 'There is nothing to treat.', 'neutral');
   if (acts().seen[conditionId]) return result(false, 'The doctor has done what can be done this year.', 'neutral');
   const cost = careCost(t.cost);
-  if (p.finance.cash < cost) return result(false, `Treatment costs ${fmtMoney(cost, c)}. You do not have it.`, 'neutral');
+  if (!canPayCare(cost, p)) return result(false, `Treatment costs ${fmtMoney(cost, c)}. ${cannotPay(p, 'it')}`, 'neutral');
   acts().seen[conditionId] = true;
-  p.finance.cash -= cost;
-  const paid = cost ? ` It cost ${fmtMoney(cost, c)}.` : '';
+  const paid = payCare(cost, p);
   const plain = cond.name.replace(/^an? /, '');
 
   // Historical Eras: what medicine could do then (insulin from 1922, antibiotics from the mid-1940s, and so on).
@@ -85,9 +98,9 @@ export function checkUp() {
   const c = country();
   const cost = careCost(CHECKUP_COST);
   if (acts().checkup) return result(false, 'You have had your check-up this year.', 'neutral');
-  if (p.finance.cash < cost) return result(false, 'You cannot afford the appointment.', 'neutral');
+  if (!canPayCare(cost, p)) return result(false, cannotPay(p, 'the appointment'), 'neutral');
   acts().checkup = true;
-  p.finance.cash -= cost;
+  const paid = payCare(cost, p);
   p.flags.checkupAge = p.age;
   p.stats.health = clamp(p.stats.health + 2);
   // Routine tests: blood pressure, blood sugar, and from fifty, screening.
@@ -97,24 +110,26 @@ export function checkUp() {
     : found.length
     ? `The doctor ran the tests and wants to treat your ${found.map((x) => x.name.replace(/^an? /, '')).join(' and ')}.`
     : 'The doctor ran the tests and found nothing to worry about. Catching things early keeps it that way.';
+  const said = `${p.age < 16 ? 'Your parents took you for a check-up. ' : ''}${text}${paid}`;
   const any = found.length || screened.length;
-  log(text, 'system', any ? 'neutral' : 'good');
-  return result(true, text, any ? 'neutral' : 'good');
+  log(said, 'system', any ? 'neutral' : 'good');
+  return result(true, said, any ? 'neutral' : 'good');
 }
 
 export function therapy() {
   const p = player();
+  if (p.age < MENTAL_CARE_AGE) return result(false, `Therapy is from age ${MENTAL_CARE_AGE}.`, 'neutral');
   if (!procedureOpen('therapy')) return result(false, 'There is no such thing as talking therapy here yet.', 'neutral');
   const c = country();
   const cost = careCost(THERAPY_COST);
   if (acts().therapy) return result(false, 'You have a standing appointment already this year.', 'neutral');
-  if (p.finance.cash < cost) return result(false, `A year of sessions costs ${fmtMoney(cost, c)}.`, 'neutral');
+  if (!canPayCare(cost, p)) return result(false, `A year of sessions costs ${fmtMoney(cost, c)}. ${cannotPay(p, 'it')}`, 'neutral');
   acts().therapy = true;
-  p.finance.cash -= cost;
+  const paid = payCare(cost, p);
   p.stats.mood = clamp(p.stats.mood + rng.int(8, 14));
   p.hidden.crazy = clamp(p.hidden.crazy - 4);
   p.hidden.willpower = clamp(p.hidden.willpower + 2);
-  const text = 'An hour a week, saying things out loud that you had only ever thought. You feel lighter.';
+  const text = `An hour a week, saying things out loud that you had only ever thought. You feel lighter.${paid}`;
   log(text, 'system', 'good');
   return result(true, text);
 }

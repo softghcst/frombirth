@@ -321,7 +321,7 @@ export const BONDS = [
       if (rng.chance(0.4)) store.state.pendingEvents.push({ id: rng.pick(SLEEPOVER_SCENES), cast: { pal: n.id } });
       return a.text.replace(/\{name\}/g, n.firstName);
     } },
-  { id: 'askHelp', group: 'ask', roles: FRIEND, age: [6, 120],
+  { id: 'askHelp', group: 'ask', roles: FRIEND, age: [6, 120], label: 'Ask for help',
     options: (n) => {
       const p = player();
       const job = n.life?.job?.careerId && CAREER_BY_ID[n.life.job.careerId];
