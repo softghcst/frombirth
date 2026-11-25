@@ -197,10 +197,11 @@ let keptInv = null;
   const d = item.disciplines[0];
   W.act(inv.id, `lab:${item.id}:${d}`);
   const req = inv.file.labs[0];
-  check(req.status === 'pending' && req.due === core.now() + D.LAB[d].months && req.analystId && store.state.npcs[req.analystId], 'a laboratory request is dated, with a real analyst');
+  const { labMonths } = await import('../js/engine/investigations/policing.js');
+  check(req.status === 'pending' && req.due === core.now() + labMonths(inv.agencyId, D.LAB[d].months) && req.analystId && store.state.npcs[req.analystId], 'a laboratory request is dated, with a real analyst');
   W.settleLabs(inv);
   check(req.status === 'pending', 'no result before its date');
-  months(D.LAB[d].months + 2);
+  months(D.LAB[d].months + 3);
   W.settleLabs(inv);
   check(req.status === 'reported' && Object.keys(D.LAB_RESULTS).includes(req.result), `a result comes on its date (${req.result})`);
   const res1 = req.result;
@@ -632,6 +633,90 @@ section('Age Up length: the same academy, laboratory result, caseload and career
   }
 }
 section('more: six new case types, autonomy for the person harmed, each federal agency its own work, convictions reviewed by the court, romance never across supervision, the next generation');
+
+// ---------- 13. Forensic medicine, policing and accountability, journalism ----------
+{
+  const FM = await import('../js/engine/investigations/forensicMed.js');
+  const PO = await import('../js/engine/investigations/policing.js');
+  const medCore = await import('../js/engine/medicine/core.js');
+  const { SPECIALTY_BY_ID } = await import('../js/data/medicine.js');
+  check(SPECIALTY_BY_ID.forensic_path?.after.includes('pathology') && SPECIALTY_BY_ID.forensic_psych?.after.includes('psychiatry'), 'forensic pathology and forensic psychiatry are fellowships after their residencies');
+  // The medical examiner: a qualified physician only; cause and manner apart; no naming of anyone.
+  let p = life('us', 38);
+  check(!FM.examinerNow(p), 'a physician without the fellowship is not an examiner');
+  const m = medCore.M(p);
+  m.completed = [{ specialtyId: 'pathology' }, { specialtyId: 'forensic_path' }]; m.license = { status: 'full', countryId: 'us' }; m.training = null; m.stage = 'practice';
+  check(FM.examinerNow(p), 'after the fellowship, with a full license, they are');
+  FM.forensicYear(p);
+  const d = FM.referrals('death', p)[0];
+  const inv = W.investigation(d.invId);
+  const truth = W.incidentOf(inv).truth.hypothesis;
+  check(d && inv.file.template === 'homicide' && store.state.npcs[d.detectiveId], 'a death is referred by a real investigation');
+  check(!FM.signDeathReport(d.id, 'blunt', 'homicide').ok, 'no report before the examination');
+  for (const s of ['referral', 'history', 'examination', 'toxicology']) FM.deathStep(d.id, s);
+  check(FM.toxicology(d.id) === null, 'toxicology takes time');
+  check(Object.keys(FM.MANNERS).every((x) => !/suspect|perpetrator|killer/i.test(x)) && !FM.signDeathReport(d.id, 'natural_disease', 'natural').ok, 'the examiner cannot name anyone, and cannot sign a finding the evidence does not support');
+  months(4);
+  const cause = truth === 'not_homicide' ? 'medication' : 'blunt';
+  const manner = truth === 'not_homicide' ? 'accident' : 'homicide';
+  const signed = FM.signDeathReport(d.id, cause, manner);
+  const clue = inv.file.clues.find((c) => c.via === 'examiner');
+  check(signed.ok && clue.text.includes(p.lastName) && /cause of death/.test(clue.text) && /manner of death/.test(clue.text), 'the signed report is the examiner\'s finding in the same case file');
+  // The forensic psychiatrist: works for the court, says so first; a diagnosis is not guilt.
+  p = life('us', 40);
+  const m2 = medCore.M(p);
+  m2.completed = [{ specialtyId: 'psychiatry' }, { specialtyId: 'forensic_psych' }]; m2.license = { status: 'full', countryId: 'us' }; m2.training = null; m2.stage = 'practice';
+  FM.forensicYear(p);
+  const e = FM.referrals('competency', p)[0];
+  check(e && store.state.justice.cases[e.caseId]?.competency?.status === 'ordered', 'a court orders a competency evaluation in a real case');
+  check(!FM.evalStep(e.id, 'interview').ok, 'nothing before explaining the role and the limits of confidentiality');
+  FM.evalStep(e.id, 'role'); FM.evalStep(e.id, 'interview');
+  check(!FM.reportCompetency(e.id, 'competent').ok, 'a firm opinion needs the structured assessment');
+  FM.evalStep(e.id, 'testing');
+  const rep = FM.reportCompetency(e.id, e.competent ? 'competent' : 'not_competent');
+  const cc = store.state.justice.cases[e.caseId];
+  check(rep.ok && cc.competency.evaluatorId === p.id && cc.hearings.some((h) => h.stage === 'competency') && /(not evidence of guilt|says nothing about whether)/.test(rep.text), 'the opinion goes to the court, which decides; it is not a verdict');
+  // Policing: budgets from policy, a chief's priorities, a civilian board voted by a council, an elected sheriff.
+  p = life('us', 45);
+  const a = makeOfficer();
+  const r = core.I();
+  const b = PO.budgetOf(a);
+  check([-1, 0, 1].includes(b.level) && b.year === store.state.year, 'a department\'s budget is read from the policies in force');
+  check(!PO.setPriority('training').ok, 'only the chief sets priorities');
+  a.chiefId = p.id; a.priority = null;
+  const slow = PO.labMonths(a.id, 4);
+  check(PO.setPriority('technology').ok && PO.labMonths(a.id, 4) === Math.max(1, slow - 1), 'a chief\'s focus on the laboratory shortens its work by a month');
+  check(!PO.proposeBoard(true).ok, 'a chief cannot create an oversight board; the council does');
+  p.politics = { officeId: 'council', title: 'Council member' };
+  const vote = PO.proposeBoard(true);
+  check(vote.ok && a.oversight.history.length === 1 && !PO.proposeBoard(true).ok, 'the council votes once a year on it');
+  check(PO.BOARD_ARGUMENTS.for.length >= 2 && PO.BOARD_ARGUMENTS.against.length >= 2, 'both sides of the question are shown');
+  r.stats.years = 10;
+  const blk = PO.sheriffBlock(p);
+  check(store.state.year % 4 === 0 ? blk === '' || /sheriff/.test(blk) : /next election/.test(blk), 'sheriffs are elected, in election years only');
+  // Journalism: the public record and willing sources only; verification; corrections.
+  p = life('us', 30, { degree: 'journalism' });
+  hire(CAREER_BY_ID.journalist, 0, 60, 'test');
+  let pub = null;
+  for (let i = 0; i < 6 && !pub; i++) { X.npcCourtCase(p); pub = X.publicCases(p)[0]; }
+  check(pub && pub.defendant && pub.outcome, 'a case in court is in the public record');
+  X.startStory(pub.caseId);
+  const st = X.myStories(p)[0];
+  check(!X.storyStep(st.id, 'sealed').ok, 'a reporter cannot get the case file');
+  check(!X.publishStory(st.id).ok, 'a story starts from the public record');
+  for (const s2 of ['records', 'sources', 'comment', 'verify']) X.storyStep(st.id, s2);
+  const res = X.publishStory(st.id);
+  check(res.ok && ['verified', 'accurate, unverified'].includes(st.accuracy), `a verified story holds up (${st.accuracy})`);
+  const st2id = (() => { const other = X.publicCases(p).find((c) => c.caseId !== pub.caseId) ?? (X.npcCourtCase(p), X.publicCases(p).find((c) => c.caseId !== pub.caseId)); if (!other) return null; X.startStory(other.caseId); return X.myStories(p).find((s) => s.caseId === other.caseId).id; })();
+  if (st2id) {
+    X.storyStep(st2id, 'records');
+    const s2 = core.W().stories[st2id];
+    s2.claims.push({ text: 'A witness says they saw it all.', sourced: false, accurate: false });
+    X.publishStory(st2id);
+    check(s2.accuracy === 'contains an error' && X.correctStory(st2id).ok && !X.correctStory(st2id).ok, 'an unverified mistake is published as one, and corrected once');
+  }
+}
+section('forensic medicine for the court and death investigations, policing decided by those with the authority, journalism from the public record');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

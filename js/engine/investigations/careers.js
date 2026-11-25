@@ -20,6 +20,7 @@ import { relocate, moveBlock } from '../cities.js';
 import { techAvailable } from '../digital/tech.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, once, reputationOf, skillAvg, working, dateWords } from './core.js';
 import { agency, agencyOf, agenciesHere, office, officeOf, federalCities, vacancies, staffer, employerOf } from './agencies.js';
+import { trainingBonus } from './policing.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const name = (id) => { const n = npc(id); return n ? `${n.firstName} ${n.lastName}` : 'someone'; };
@@ -206,7 +207,7 @@ export function academyAct(id) {
 const readiness = (r, p) => {
   const ac = r.academy;
   const marks = Object.values(ac.marks).reduce((s, v) => s + Math.min(2, v), 0) * 4;
-  return clamp(skillAvg(['law', 'writing', 'interviewing', 'ethics'], r) * 0.6 + marks + (p.stats.health - 50) / 3 + p.stats.intellect / 8);
+  return clamp(skillAvg(['law', 'writing', 'interviewing', 'ethics'], r) * 0.6 + marks + (p.stats.health - 50) / 3 + p.stats.intellect / 8 + trainingBonus(ac.ownerId));
 };
 
 /** The academy's end, when the calendar reaches it: graduate, more time (once), or not. */
