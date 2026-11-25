@@ -15,16 +15,16 @@
 //     the life story.
 import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
-import { store, player } from '../../state.js';
+import { store, player, log } from '../../state.js';
 import { remember } from '../conditions.js';
 import { askOut, partner } from '../romance.js';
 import { M, med, year, grow, note, result, roll, once, currentSpecialty, reputationOf } from './core.js';
 import { answerOffer } from './ladder.js';
 import { startPost } from './training.js';
 import { doResearch } from './research.js';
-import { employer } from '../employers.js';
-import { SPECIALTY_BY_ID } from '../../data/medicine.js';
-import { workplacesFor, hospital } from './hospitals.js';
+import { employer, chronicle } from '../employers.js';
+import { SPECIALTY_BY_ID, DEPARTMENTS } from '../../data/medicine.js';
+import { workplacesFor, hospital, hospitalsIn } from './hospitals.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 
@@ -106,6 +106,60 @@ function eligible(p, m) {
   const thanks = (m.grateful ?? []).find((g) => g.year <= year() - 3 && !g.thanked);
   if (thanks) out.push({ id: 'med_grateful', cast: { words: { label: thanks.label.toLowerCase(), key: `${thanks.patientId}` } } });
   return out;
+}
+
+/**
+ * The hospital goes on living whether or not the player does anything: it grows or tightens its
+ * belt, opens departments, and colleagues make their own choices (some leave for other posts).
+ * Each event is written in the hospital's own chronicle (engine/employers.js), never invented twice.
+ */
+export function hospitalYear() {
+  const p = player();
+  const m = med();
+  const id = m?.job?.hospitalId ?? m?.training?.hospitalId;
+  if (!id) return;
+  const e = employer(id);
+  const h = hospital(e);
+  if (!e || !h) return;
+  const seen = (h.events ??= {});
+  if (seen[year()]) return;
+  seen[year()] = true;
+  const r = rng.next();
+  if (r < 0.08) {
+    h.resources = clamp(h.resources + 5);
+    chronicle(e, `${e.name} opened a new wing.`);
+    log(`${e.name} opened a new wing this year: more beds, newer equipment.`, 'system', 'good');
+  } else if (r < 0.16) {
+    h.resources = clamp(h.resources - 4);
+    chronicle(e, `${e.name} went through a year of staff shortages.`);
+    store.state.pendingEvents.push({ id: 'med_staffing_shortage', cast: { words: { hospital: e.name } } });
+  } else if (r < 0.22) {
+    chronicle(e, `${e.name} cut its budget across departments.`);
+    store.state.pendingEvents.push({ id: 'med_budget_dispute', cast: { words: { hospital: e.name } } });
+  } else if (r < 0.27) {
+    const missing = Object.keys(DEPARTMENTS).filter((d) => !h.depts.includes(d) && !['nicu', 'peds_surgery'].includes(d));
+    if (missing.length && h.kind !== 'clinic') {
+      const d = rng.pick(missing);
+      h.depts.push(d);
+      chronicle(e, `${e.name} founded a department of ${DEPARTMENTS[d]}.`);
+      log(`${e.name} founded a new department: ${DEPARTMENTS[d]}.`, 'system', 'neutral');
+    }
+  }
+  // Colleagues decide for themselves: now and then one takes a post elsewhere in the country.
+  for (const n of [...m.people.colleagueIds, ...m.people.friendIds].map(npc)) {
+    if (!n?.alive || n.life?.job?.employerId !== id || n.id === m.people.mentorId || !roll(0.06)) continue;
+    const away = citiesOf(e.countryId).filter((c) => c.name !== e.city);
+    if (!away.length) continue;
+    const city = rng.pick(away).name;
+    const other = hospitalsIn(e.countryId, city).find(({ h: oh }) => oh.kind !== 'clinic');
+    if (!other) continue;
+    n.life.job.employerId = other.e.id;
+    e.staff = e.staff.filter((x) => x !== n.id);
+    other.e.staff.push(n.id);
+    n.flags.workedWith = other.e.name;
+    chronicle(e, `${n.firstName} ${n.lastName} left for ${other.e.name}.`);
+    log(`${n.firstName} ${n.lastName} has taken a post at ${other.e.name}, in ${city}. The farewell drinks run late.`, 'system', 'neutral');
+  }
 }
 
 /** Queues this year's hospital scenes, as often as the drama setting asks. Once a year. */
@@ -263,6 +317,13 @@ export function medicineChoice(value, cast = {}) {
       grow('integrity', -6, m);
       if (roll(0.5)) { m.discipline.push({ year: year(), what: 'Altered a medical record after the fact.' }); return 'The audit trail shows the change. Altering a record is a serious matter, and it is treated as one.'; }
       return 'Nobody notices. You do.';
+    case 'politics': {
+      // Institutional pressure, met one way or another; none of it is a shortcut.
+      const by = { cover: ['teamwork', 1.5], escalate: ['leadership', 1.5], cut: ['management', 1], protect: ['leadership', 1], data: ['management', 1.5] }[how];
+      if (by) grow(by[0], by[1], m);
+      if (how === 'cover') p.career.stress = clamp((p.career.stress ?? 50) + 6);
+      return '';
+    }
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

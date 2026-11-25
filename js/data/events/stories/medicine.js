@@ -158,6 +158,15 @@ export default [
     ['Refuse, and explain why', 'A medical record is what happened, not what we wish had.', 'record:refuse', 'good'],
     ['Do as they ask', 'You change it.', 'record:alter', 'bad'],
   ]),
+  scene('med_staffing_shortage', '{hospital} is short of nurses and doctors this year. The rota has gaps, and someone has to decide what gives.', [
+    ['Cover extra shifts for a while', 'You cover. The department notices, and so does your sleep.', 'politics:cover'],
+    ['Raise it with the chief, with the numbers', 'You bring a page of figures. It moves faster than complaints ever did.', 'politics:data', 'good'],
+    ['Escalate it to the hospital board', 'It is not popular with everyone. It is heard.', 'politics:escalate'],
+  ]),
+  scene('med_budget_dispute', '{hospital} is cutting budgets, and the departments are arguing over who loses what.', [
+    ['Propose cuts that do not touch patient care', 'Your proposal is dull and careful, and it is the one they adopt.', 'politics:cut', 'good'],
+    ['Defend your own department hard', 'You protect your people this year. Other departments remember.', 'politics:protect'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

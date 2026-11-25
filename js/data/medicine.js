@@ -193,6 +193,10 @@ export const HOSPITAL_KINDS = {
   community: { name: 'Community hospital', teaching: false, fellowships: false, resources: 60, payK: 0.97, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'radiology', 'anesthesiology', 'family', 'icu', 'psychiatry', 'podiatry'] },
   childrens: { name: "Children's hospital", teaching: true, fellowships: true, resources: 85, payK: 1.02, depts: ['pediatrics', 'peds_surgery', 'nicu', 'emergency', 'radiology', 'anesthesiology', 'psychiatry', 'icu'] },
   rural: { name: 'Rural health facility', teaching: false, fellowships: false, resources: 40, payK: 1.08, depts: ['family', 'emergency', 'medicine', 'obgyn'] },
+  government: { name: 'Government hospital', teaching: true, fellowships: false, resources: 70, payK: 0.95, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'psychiatry', 'radiology', 'pathology', 'anesthesiology', 'icu', 'family', 'trauma', 'rehabilitation', 'neurology', 'cardiology', 'podiatry'] },
+  public_health: { name: 'Public health service', teaching: false, fellowships: false, resources: 45, payK: 0.92, depts: ['family', 'medicine', 'pediatrics', 'psychiatry', 'obgyn'] },
+  heart: { name: 'Specialty hospital (heart)', teaching: true, fellowships: true, resources: 92, payK: 1.08, depts: ['cardiology', 'cardiothoracic', 'vascular', 'anesthesiology', 'radiology', 'icu'] },
+  bone: { name: 'Specialty hospital (orthopedic)', teaching: true, fellowships: true, resources: 88, payK: 1.06, depts: ['orthopedics', 'rehabilitation', 'podiatry', 'anesthesiology', 'radiology', 'neurosurgery'] },
   clinic: { name: 'Physician group clinic', teaching: false, fellowships: false, resources: 50, payK: 1, depts: ['family', 'medicine', 'pediatrics', 'dermatology', 'psychiatry', 'podiatry', 'cardiology', 'neurology', 'rehabilitation'] },
 };
 

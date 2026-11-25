@@ -26,7 +26,8 @@ const STEPS = {
   director: { from: 'senior', years: 3, rep: 58, lead: 45, odds: 0.22, leader: true },
   chief: { from: 'director', years: 3, rep: 62, lead: 55, odds: 0.18, leader: true },
   chair: { from: 'chief', years: 4, rep: 68, lead: 62, odds: 0.12, leader: true, kinds: ['academic', 'childrens'] },
-  cmo: { from: 'chief', years: 5, rep: 70, lead: 68, odds: 0.08, leader: true },
+  // A chief medical officer is chosen for running an organization, not for surgical fame: management counts.
+  cmo: { from: 'chief', years: 5, rep: 70, lead: 68, mgmt: 65, odds: 0.08, leader: true },
 };
 
 /** The next step up from a rank, if this hospital has it. */
@@ -177,7 +178,7 @@ export function postYear() {
   if (m.offer && m.offer.year < year()) m.offer = null;
   const years = year() - (m.job.rankSince ?? m.job.since);
   for (const step of nextRank(m.job, h)) {
-    if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead) continue;
+    if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead || m.skills.management < (step.mgmt ?? 0)) continue;
     if (!roll(step.odds + (m.reputation - step.rep) / 200)) continue;
     if (!step.leader) { takeRank(p, m, step.id); log(`You were made ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; }
     // A leadership seat has other candidates: a rival from residency who works here, or a colleague of long standing.

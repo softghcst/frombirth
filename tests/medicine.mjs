@@ -23,6 +23,7 @@ import * as ladder from '../js/engine/medicine/ladder.js';
 import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import * as research from '../js/engine/medicine/research.js';
+import * as jobs from '../js/engine/medicine/jobs.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
@@ -452,6 +453,41 @@ section('teaching residents; claims decided on the care, not the result');
   check(rm.skills.integrity < integrity1, 'accepting a gift from industry is a conflict of interest');
 }
 section('research and teaching, wellbeing, and an offer from another city');
+
+// 8e. Choosing where to work: postings across the country, an employer's profile, an offer, negotiating, accepting.
+{
+  rng.seed(97531);
+  const q = life('us', 36);
+  q.city = COUNTRIES.us.cities[0];
+  const jm = core.M(q);
+  for (const k of Object.keys(jm.skills)) jm.skills[k] = 90;
+  jm.completed.push({ specialtyId: 'cardiology', kind: 'fellowship', from: 2000, to: 2003 });
+  jm.boards.push({ specialtyId: 'cardiology', passed: true, year: 2003, tries: 1 });
+  jm.license = { status: 'full', countryId: 'us' };
+  const kinds = new Set(hospitalsIn('us', q.city).map(({ h }) => h.kind));
+  check(kinds.has('public_health') && kinds.has('heart'), `a big city has a public health service and specialty hospitals (${[...kinds].join(', ')})`);
+  const here = jobs.postings('city', q, jm);
+  const all = jobs.postings('country', q, jm);
+  check(all.length > here.length && all.some((x) => x.away), 'posts can be browsed across the country');
+  check(JSON.stringify(jobs.postings('country', q, jm)) === JSON.stringify(all), 'the year\'s openings are the same each time they are looked at');
+  const v = jobs.hospitalProfile(all[0].id);
+  check(v && v.ownership && v.departments.length && v.physicians > 0, 'an employer can be reviewed before applying');
+  let offered = null;
+  for (const o of all.filter((x) => !x.block)) { const r = jobs.applyFor(o.id); if (r.ok) { offered = o; break; } }
+  check(!!offered && jobs.offers(jm).length === 1 && !jm.job, 'an interview can end in an offer, which waits for an answer');
+  if (offered) {
+    const before = jobs.offers(jm)[0]?.salary;
+    jobs.negotiate(offered.id);
+    check(!jobs.negotiate(offered.id).ok, 'an offer is negotiated once');
+    const still = jobs.offers(jm)[0];
+    if (still) {
+      check(still.salary >= before, 'negotiating never lowers an offer');
+      const r = jobs.acceptOffer(offered.id);
+      check(r.ok && jm.job?.hospitalId === offered.id && q.city === offered.city && q.career.salary === still.salary, `accepting starts the post where it is (${r.text})`);
+    }
+  }
+}
+section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

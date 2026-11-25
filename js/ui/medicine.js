@@ -13,6 +13,7 @@ import { med, M, currentSpecialty, specialtyName, qualified, reputationOf } from
 import * as train from '../engine/medicine/training.js';
 import * as cases from '../engine/medicine/cases.js';
 import * as ladder from '../engine/medicine/ladder.js';
+import * as jobs from '../engine/medicine/jobs.js';
 import * as practice from '../engine/medicine/practice.js';
 import { setDrama, DRAMA, requestSupport } from '../engine/medicine/drama.js';
 import * as research from '../engine/medicine/research.js';
@@ -115,7 +116,7 @@ const VIEWS = {
     }).join('') : muted('No patients this year.')) + muted('Cases you do not open are handled in the run of a busy year. They are confidential and never appear in your life story.'))
       + card('Your record', kv([['Patients seen', String(st.total)], ['Procedures performed', String(st.procedures)], ['Assisted', String(st.assisted)], ['Average judgment', st.judgment == null ? '—' : `${st.judgment}/100`]]));
   },
-  hospital(p, m) {
+  hospital(p, m, st = {}) {
     let out = '';
     const where = m.training?.hospitalId ?? m.job?.hospitalId;
     if (where) {
@@ -130,6 +131,17 @@ const VIEWS = {
         ...(m.job ? [['Your post', p.career.title], ['Since', String(m.job.since)]] : [])]));
     }
     if (m.offer && m.offer.year === store.state.year) out += card('An offer', `<p>${esc(hospitalName(m.offer.hospitalId))} offers you the post of ${esc(RANKS[m.offer.rank].title.toLowerCase())}.</p>${btn('offer', 'Accept', { arg: 'yes', cls: 'primary' })}${btn('offer', 'Decline', { arg: 'no' })}`);
+    let jobsOut = '';
+    for (const o of jobs.offers(m)) {
+      const name = market.employer(o.hospitalId)?.name ?? 'A hospital';
+      jobsOut += card(`Offer: ${name}`, `${kv([['Post', RANKS[o.rank].title], ['Salary', `${fmtMoney(o.salary, country())} a year`], ['Where', `${o.city}${o.city !== p.city ? (o.relocation ? ', move paid' : ', move at your own cost') : ''}`]])}
+        ${btn('accept', 'Accept', { arg: o.hospitalId, cls: 'primary' })}${btn('negotiate', 'Negotiate', { arg: o.hospitalId, disabled: o.negotiated })}${btn('review', 'Review the employer', { arg: o.hospitalId })}${btn('decline', 'Decline', { arg: o.hospitalId })}`);
+    }
+    const scope = st.jobScope ?? 'city';
+    const posts = jobs.postings(scope, p, m);
+    if (posts.length || qualified(m).length) jobsOut += card('Hospital jobs', `${btn('scope', scope === 'city' ? 'Show the whole country' : `Show ${p.city} only`, { arg: scope === 'city' ? 'country' : 'city' })}
+      ${posts.map((o) => `<div class="row" style="gap:6px;flex-wrap:wrap">${btn('post', `${o.name}${o.away ? ` (${o.city})` : ''}`, { arg: o.id, disabled: !!o.block, sub: o.block || `${o.kind} · ${o.open} opening${o.open === 1 ? '' : 's'}` })}${btn('review', 'Review', { arg: o.id })}</div>`).join('') || muted('No posts in your specialty.')}`);
+    if (!m.job) out = jobsOut + out;
     const r = research.researchOptions(m, p);
     const rs = m.research;
     if (r.length) out += card('Research and teaching', `${rs ? kv([['Papers', String(rs.papers.length)], ['Projects under way', String(rs.projects.length)], ['Years teaching', String(rs.taught)],
@@ -139,8 +151,7 @@ const VIEWS = {
       ${btn('support', 'Ask for support')}${m.training ? '' : btn('hours', 'Ask for fewer hours')}${btn('leave', 'Take your vacation')}`);
     const e = where ? market.employer(where) : null;
     if (e?.history?.length) out += card('Hospital chronicle', `<ul>${e.history.slice(-10).reverse().map((x) => `<li>${esc(String(x.year))}: ${esc(x.text)}</li>`).join('')}</ul>`);
-    const posts = ladder.postOptions(p, m);
-    if (posts.length) out += card('Posts in your specialty', posts.map((o) => btn('post', o.name, { arg: o.id, disabled: !!o.block, sub: o.block || o.kind })).join(''));
+    if (m.job) out += jobsOut;
     return out || card('Hospital', muted('Nothing here yet.'));
   },
   practice(p, m) {
@@ -219,7 +230,18 @@ const ACTIONS = {
   fellowship: (id, x) => x.say(train.applyForFellowship(id)),
   focus: (f, x) => x.say(ladder.setFocus(f)),
   offer: (yes, x) => x.say(ladder.answerOffer(yes === 'yes')),
-  post: (id, x) => x.say(ladder.applyForPost(id)),
+  post: (id, x) => x.say(jobs.applyFor(id)),
+  scope: (s, x) => { x.st.jobScope = s; x.render(); },
+  accept: (id, x) => x.say(jobs.acceptOffer(id)),
+  decline: (id, x) => x.say(jobs.declineOffer(id)),
+  negotiate: (id, x) => x.say(jobs.negotiate(id)),
+  async review(id) {
+    const v = jobs.hospitalProfile(id);
+    if (!v) return;
+    await messageModal({ title: v.name, body: `${v.kind} in ${v.city}. ${v.ownership}. Resources ${v.resources}/100, reputation ${v.reputation}/100. ${v.teaching ? 'Runs residency programs. ' : ''}`
+      + `About ${v.physicians} physicians, ${v.nurses} nurses and ${v.administrators} administrators, serving ${v.patients}. Departments: ${v.departments.join(', ')}.`
+      + `${v.history.length ? ` Lately: ${v.history.map((h) => h.text).join(' ')}` : ''}` });
+  },
   open: (id, x) => x.say(practice.openPractice(id)),
   case: async (id, x) => { await openCase(id, x.api); x.refresh(); },
   person: (id, x) => { const n = store.state.npcs[id]; if (n) openNpc(n, x.api); },
@@ -258,7 +280,7 @@ export function openMedicine(api, start = 'overview') {
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
     root.innerHTML = `<h2 style="margin-top:0">My Medical Career</h2>
       <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, m)}</div>
+      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
   const refresh = () => { api.changed(); render(); };
