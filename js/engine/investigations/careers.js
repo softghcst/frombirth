@@ -12,7 +12,7 @@ import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
 import { COUNTRIES } from '../../data/countries.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { AGENCY_KINDS, POLICE_RANKS, DETECTIVE_RANKS, FEDERAL, FEDERAL_RANKS, SPECIALTIES, PI_LICENSE, PI_EXPERIENCE, FEDERAL_BACKGROUNDS, coverageOf } from '../../data/investigations.js';
+import { AGENCY_KINDS, POLICE_RANKS, DETECTIVE_RANKS, FEDERAL, FEDERAL_RANKS, SPECIALTIES, PI_LICENSE, PI_EXPERIENCE, FEDERAL_BACKGROUNDS, STUDY, coverageOf } from '../../data/investigations.js';
 import { hire, promote, quitCareer } from '../career.js';
 import { ensureCareer } from '../worklife.js';
 import { residency, rightToLive } from '../citizenship.js';
@@ -44,6 +44,23 @@ const advanced = (p) => p.education.degrees.some((d) => ['masters', 'doctorate',
 const highSchool = (p) => university(p) || hasDegree(p, 'high');
 /** Serious convictions on the record (sealed and juvenile ones excepted). */
 const record = (p) => (p.legal?.record ?? []).filter((r) => !r.sealed && !r.juvenile);
+/** The subjects of the player's degrees (law school counts as law). */
+const subjects = (p) => p.education.degrees.filter((d) => ['university', 'masters', 'doctorate', 'law'].includes(d.type)).map((d) => (d.type === 'law' ? 'law' : d.majorId)).filter(Boolean);
+/** Degrees the player holds that are relevant to a path ('police', 'detective', 'pi') or a unit. */
+export const studied = (path, p = player()) => subjects(p).filter((m) => (path in STUDY.unit ? STUDY.unit[path] : STUDY[path] ?? []).includes(m));
+export const hasDegree_ = (p = player()) => university(p);
+/**
+ * What a relevant degree has already taught: once per degree, a head start in the skills it covers. Called whenever the
+ * record is looked at for work, so a degree finished part-time while serving counts from then on.
+ */
+export function studyCredit(p = player(), r = I(p)) {
+  r.studyCredit ??= {};
+  for (const m of subjects(p)) {
+    if (r.studyCredit[m] || !STUDY.skills[m]) continue;
+    r.studyCredit[m] = year();
+    for (const k of STUDY.skills[m]) grow(k, 8, r);
+  }
+}
 /** Years of full-time work, across every career. */
 export const workYears = (p = player()) => Object.values(ensureCareer(p.career).experience ?? {}).reduce((s, y) => s + y, 0);
 const yearsIn = (p, ids) => ids.reduce((s, id) => s + (ensureCareer(p.career).experience?.[id] ?? 0), 0);
@@ -111,9 +128,10 @@ export function applyPolice(agencyId) {
   const no = policeUnmet(a, p);
   if (no.length) return result(false, no[0], 'neutral');
   if (!once(`apply:${agencyId}`)) return result(false, 'They take one application a year from the same person.', 'neutral');
+  studyCredit(p, r);
   const roll = seeded(`${me()}/${a.id}/${year()}`);
   const scores = {
-    written: clamp(p.stats.intellect * 0.5 + skillAvg(['reasoning', 'law', 'writing'], r) * 0.5 + r.prep.study * 4 + roll.int(-10, 10)),
+    written: clamp(p.stats.intellect * 0.5 + skillAvg(['reasoning', 'law', 'writing'], r) * 0.5 + r.prep.study * 4 + (university(p) ? 4 : 0) + (studied('police', p).length ? 6 : 0) + roll.int(-10, 10)),
     fitness: clamp(p.stats.health * 0.8 + r.prep.fitness * 6 + roll.int(-10, 10)),
     interview: clamp(p.stats.charm * 0.5 + skillAvg(['interviewing', 'ethics'], r) * 0.5 + r.interest * 3 + roll.int(-12, 12)),
     background: clamp(80 - record(p).length * 25 + (p.hidden.karma - 50) / 3 + roll.int(-5, 5)),
@@ -157,6 +175,7 @@ export function acceptAcademy(appId) {
   const a = agency(app.ownerId);
   const d = AGENCY_KINDS[a.kind];
   app.status = 'accepted';
+  studyCredit(p, r);
   hire(CAREER_BY_ID.police, 0, 55, 'academy', { employerId: a.employerId });
   p.career.title = 'Police recruit';
   const classmates = [0, 1].map(() => staffer(a.countryId, 'officer', 'Police recruit', { agencyId: a.id, rank: 'recruit', age: Math.max(21, p.age + rng.int(-3, 3)) }).id);
@@ -207,7 +226,7 @@ export function academyAct(id) {
 const readiness = (r, p) => {
   const ac = r.academy;
   const marks = Object.values(ac.marks).reduce((s, v) => s + Math.min(2, v), 0) * 4;
-  return clamp(skillAvg(['law', 'writing', 'interviewing', 'ethics'], r) * 0.6 + marks + (p.stats.health - 50) / 3 + p.stats.intellect / 8 + trainingBonus(ac.ownerId));
+  return clamp(skillAvg(['law', 'writing', 'interviewing', 'ethics'], r) * 0.6 + marks + (p.stats.health - 50) / 3 + p.stats.intellect / 8 + trainingBonus(ac.ownerId) + (studied('police', p).length ? 4 : 0));
 };
 
 /** The academy's end, when the calendar reaches it: graduate, more time (once), or not. */
@@ -321,7 +340,9 @@ export function applyDetective(vacancyId) {
   const asDetective = r.job.detective ? year() - (r.job.detectiveSince ?? year()) : 0;
   if (s.years && asDetective < s.years) return result(false, `${s.name} takes detectives with ${s.years} years in investigations first.`, 'neutral');
   const roll = seeded(`${me()}/${v.id}`);
-  const mine = skillAvg(['reasoning', 'writing', 'evidence', 'interviewing'], r) * 0.6 + reputationOf(r) * 0.4 + (s.skill ? r.skills[s.skill] / 5 : 0) + roll.int(-10, 10);
+  studyCredit(p, r);
+  // A relevant degree helps; one that fits the unit (accounting for fraud, cybersecurity for cybercrime) helps more.
+  const mine = skillAvg(['reasoning', 'writing', 'evidence', 'interviewing'], r) * 0.6 + reputationOf(r) * 0.4 + (s.skill ? r.skills[s.skill] / 5 : 0) + (studied('detective', p).length ? 4 : 0) + (studied(v.unit, p).length ? 6 : 0) + roll.int(-10, 10);
   const rival = staffer(a.countryId, 'officer', 'Police officer', { agencyId: a.id, rank: 'officer', age: Math.max(25, p.age + roll.int(-4, 6)) });
   const theirs = 45 + roll.int(-8, 18);
   v.applicants.push(me(), rival.id);
@@ -384,7 +405,8 @@ export function promotionOptions(p = player()) {
   return next.map((x) => {
     const served = year() - (r.job.rankSince ?? year());
     let block = '';
-    if (served < (x.years ?? 3)) block = `Needs ${x.years ?? 3} years at your rank (you have ${served}).`;
+    if (STUDY.degreeRanks.includes(x.id) && !university(p)) block = 'Senior posts ask for a bachelor\'s degree. Many officers study part-time while serving.';
+    else if (served < (x.years ?? 3)) block = `Needs ${x.years ?? 3} years at your rank (you have ${served}).`;
     else if (reputationOf(r) < (x.leader ? 58 : 50)) block = 'Your professional record needs to be stronger.';
     else if (x.leader && r.skills.leadership < 35) block = 'Needs more leadership experience.';
     else if (r.apps.some((a) => a.kind === 'promotion' && a.status === 'pending')) block = 'Your application is being considered.';
@@ -566,7 +588,8 @@ export function licenseUnmet(p = player()) {
   const out = [];
   if (p.age < rule.minAge) out.push(`Applicants must be ${rule.minAge}.`);
   const y = yearsIn(p, PI_EXPERIENCE);
-  if (y < rule.experienceYears && !university(p)) out.push(`Needs ${rule.experienceYears} years of investigative or related work (you have ${y}), or a degree and supervised experience.`);
+  const need = Math.max(0, rule.experienceYears - (studied('pi', p).length ? 1 : 0));
+  if (y < need && !university(p)) out.push(`Needs ${need} years of investigative or related work (you have ${y}), or a degree and supervised experience.`);
   if (record(p).length) out.push('A criminal record rules this out.');
   if (rec(p)?.license?.status === 'licensed' && rec(p).license.countryId === p.countryId) out.push('You hold a license here.');
   if (rec(p)?.apps.some((x) => x.kind === 'license' && x.status === 'pending')) out.push('Your application is being processed.');

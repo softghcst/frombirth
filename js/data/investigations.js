@@ -157,6 +157,24 @@ export const FEDERAL_BACKGROUNDS = {
   law: ['law'],
   languages: ['languages', 'linguistics'],
   science: ['chemistry', 'biology', 'forensic_science', 'physics'],
+  justice: ['criminal_justice', 'criminology', 'psychology', 'political_science'],
+};
+
+/**
+ * Studying for the work. Police agencies here hire from high school and train at their academy, so a degree is not
+ * required to start; it helps, and senior posts ask for one. Federal agencies require one. These are the majors
+ * that count as relevant to each path, and the ranks that ask for a degree (simplified gameplay rules).
+ */
+export const STUDY = {
+  police: ['criminal_justice', 'criminology', 'psychology', 'political_science', 'forensic_science', 'communications'],
+  detective: ['criminal_justice', 'criminology', 'forensic_science', 'psychology', 'accounting', 'finance', 'cybersecurity', 'computer_science'],
+  unit: { fraud: ['accounting', 'finance'], cyber: ['cybersecurity', 'computer_science'], corruption: ['accounting', 'political_science'], homicide: ['forensic_science', 'criminology'],
+    special_victims: ['psychology'], family: ['psychology'], juvenile: ['psychology', 'education'], arson: ['chemistry', 'forensic_science'] },
+  pi: ['criminal_justice', 'criminology', 'psychology', 'journalism', 'accounting'],
+  degreeRanks: ['captain', 'deputy_chief', 'chief', 'detective_lieutenant', 'asac', 'sac'],
+  skills: { criminal_justice: ['law', 'ethics', 'writing'], criminology: ['reasoning', 'law'], forensic_science: ['evidence', 'forensic'], psychology: ['interviewing'], accounting: ['financial'],
+    finance: ['financial'], cybersecurity: ['digital'], computer_science: ['digital'], political_science: ['law', 'writing'], communications: ['interviewing', 'writing'], journalism: ['writing', 'interviewing'],
+    chemistry: ['forensic'], law: ['law'] },
 };
 
 // ---------- Private investigation ----------

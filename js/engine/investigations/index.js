@@ -19,7 +19,7 @@ import { store, player, log } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
 import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations } from './core.js';
 import { agencyOf, kindsIn } from './agencies.js';
-import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed } from './careers.js';
+import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit } from './careers.js';
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
 import { settleComplaints, intake } from './oversight.js';
 import { dramaYear, peopleYear, formTaskForce } from './drama.js';
@@ -78,6 +78,7 @@ export function tickInvestigations() {
     r.job.agencyId = a.id;
     if (r.job.detective) { const u = a.units[r.job.specialty] ?? a.units.general ?? Object.values(a.units)[0]; r.job.specialty = u.specialty; if (!u.memberIds.includes(me())) u.memberIds.push(me()); r.people.supervisorId ??= u.headId; }
   }
+  studyCredit(p, r); // a degree finished while serving (part-time) counts from now on
   if (r.job && !['academy', 'federal_training'].includes(r.stage)) {
     r.stats.years += 1;
     // A year on the job: the skills its work uses grow a little. Performance follows how the work is done.
