@@ -84,6 +84,37 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Outcome/i.test(await text()), `${label}: the case reaches an outcome`);
   check(!(await overflow()), `${label}: the case does not scroll sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-case.png`, fullPage: false });
+  // Close the case, open a colleague's profile from Hospital Life.
+  await page.locator(`${caseModal} [data-close]`).click();
+  await page.click(`${modal} [data-sec="people"]`);
+  const people = page.locator(`${modal} [data-act="person"]`);
+  check(await people.count() > 0, `${label}: hospital life lists the people you train with`);
+  if (await people.count()) {
+    const before = await page.locator('#modal-root .scrim').count();
+    await people.first().click();
+    await page.waitForTimeout(150);
+    check(await page.locator('#modal-root .scrim').count() > before, `${label}: a colleague opens to their profile`);
+    const all = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().textContent);
+    check(/trained together|Supervised your/i.test(all), `${label}: the profile shows what you share`);
+  }
+  // As a qualified physician: the hospital jobs across the country, and an employer's profile.
+  await page.evaluate(async () => {
+    document.querySelectorAll('#modal-root .scrim').forEach((x) => x.remove());
+    const { store } = await import('/js/state.js');
+    const m = store.state.player.medicine;
+    m.training = null; m.completed.push({ specialtyId: 'internal', kind: 'residency', from: 2000, to: 2003 });
+    m.license = { status: 'full', countryId: 'us' }; m.stage = 'practice';
+    const { openMedicine } = await import('/js/ui/medicine.js');
+    openMedicine(window.__api, 'hospital');
+  });
+  await page.waitForTimeout(150);
+  await page.click(`${modal} [data-act="scope"]`);
+  check(await page.locator(`${modal} [data-act="post"]`).count() > 1, `${label}: hospital jobs across the country are listed`);
+  check(!(await overflow()), `${label}: the jobs list does not scroll sideways`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-jobs.png` });
+  await page.locator(`${modal} [data-act="review"]`).first().click();
+  await page.waitForTimeout(100);
+  check(/Departments:/.test(await text()), `${label}: an employer can be reviewed`);
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();
 }

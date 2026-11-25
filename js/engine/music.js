@@ -475,12 +475,20 @@ export function reunite(actId) {
 
 // ---------- Songs and releases ----------
 
-/** Writes a song. Two a year at most: songs take time. */
+/**
+ * How many songs a year someone can write: a working act writes enough for an album in a year (12), anyone else
+ * writing on the side, four.
+ */
+export const songsAYear = (p = player()) => (myAct(p)?.status === 'active' ? 12 : 4);
+/** Songs still to be written this year. */
+export const songsLeft = (p = player()) => Math.max(0, songsAYear(p) - musicOf(p).musicActs.writes);
+
+/** Writes a song. */
 export function writeSong() {
   const p = player();
   const f = musicOf(p);
   if (p.age < 12) return result(false, 'You are a little young to be writing songs to sell.', 'neutral');
-  if (f.musicActs.writes >= 2) return result(false, 'You have written what you have in you this year.', 'neutral');
+  if (!songsLeft(p)) return result(false, 'You have written what you have in you this year.', 'neutral');
   f.musicActs.writes += 1;
   const q = Math.round(clamp(songwriting(p) + rng.around(0, 14)));
   f.songs.push({ q, written: year() });

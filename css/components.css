@@ -1278,13 +1278,13 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .sv-logo-art { width: 132px; height: 132px; filter: drop-shadow(0 8px 18px rgba(120, 40, 80, .25)); }
 .sv-logo-name { font-family: var(--serif); font-size: 1.7rem; font-weight: 700; color: #4A1F35; letter-spacing: .01em; }
 .sv-logo-sub { font-size: .8rem; text-transform: uppercase; letter-spacing: .22em; color: #7A3D5C; }
-.sv-blade-a { transform-origin: 58px 75px; animation: sv-snip .35s ease-in-out .35s 3 alternate; }
-.sv-blade-b { transform-origin: 58px 75px; animation: sv-snip-b .35s ease-in-out .35s 3 alternate; }
+.sv-blade-a { transform-origin: 60px 62px; animation: sv-snip .35s ease-in-out .35s 3 alternate; }
+.sv-blade-b { transform-origin: 60px 62px; animation: sv-snip-b .35s ease-in-out .35s 3 alternate; }
 .sv-dryer { animation: sv-wiggle .5s ease-in-out .2s 2 alternate; transform-origin: 50px 60px; }
 @keyframes sv-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes sv-fade-out { to { opacity: 0; transform: scale(1.04); } }
-@keyframes sv-snip { to { transform: rotate(-10deg); } }
-@keyframes sv-snip-b { to { transform: rotate(10deg); } }
+@keyframes sv-snip { to { transform: rotate(14deg); } }
+@keyframes sv-snip-b { to { transform: rotate(-14deg); } }
 @keyframes sv-wiggle { to { transform: rotate(-6deg); } }
 
 .sv-scene { width: 100%; max-width: 520px; display: flex; flex-direction: column; min-height: 0; height: 100%; }
@@ -1338,3 +1338,21 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .sv-barber .sv-glass { border-radius: 4px; background: linear-gradient(160deg, #EEF3F2 0%, #D2E1DF 55%, #BFD3D0 100%); }
 .sv-barber .sv-leave { background: #F3EEE4; }
 @media (prefers-reduced-motion: reduce) { .sv-bubble, .sv-logo, .sv-blade-a, .sv-blade-b, .sv-dryer, .sv-sparkles i { animation: none !important; } }
+
+/* The salon's or barbershop's row on the Self tab: its badge for a picture (shopRow in js/ui/salonVisit.js). */
+/* Drawn a little larger than its 30px tile, so the row's words line up with the rows below. */
+.nr-icon.nr-art { width: 30px; height: 30px; background: none; border-radius: 50%; padding: 0; overflow: visible; }
+.nr-art .shop-badge { width: 40px; height: 40px; margin: -5px; display: block; }
+.nr-art .shop-badge-barber .sv-blade-a, .nr-art .shop-badge-barber .sv-blade-b { display: none; }  /* just the pole, at this size */
+.nr-art .sv-blade-a, .nr-art .sv-blade-b { animation: none; }
+
+/* Explore the World as a page of its own: its sections as big buttons, two to a row, nothing cut off at the edge. */
+.modal-full .gl-nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 4px 0 10px; background: none; }
+.modal-full .gl-nav .chip { display: flex; align-items: center; min-height: 48px; justify-content: center; text-align: center; font-size: 0.98rem; border-radius: 14px; white-space: normal; }
+@media (min-width: 640px) { .modal-full .gl-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Digital Life forms: tick boxes stay tick boxes (not stretched like text fields), each choice a pill that lights up when picked. */
+.dl-checks input[type="checkbox"], .dl-check input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; width: 18px; height: 18px; min-height: 0; min-width: 0;
+  flex: none; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; accent-color: var(--accent); }
+.dl-checks label { padding: 6px 12px 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); max-width: 100%; line-height: 1.25; }
+.dl-checks label:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }

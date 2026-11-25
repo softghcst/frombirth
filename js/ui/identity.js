@@ -1,5 +1,6 @@
 // Screens for identity (orientation, gender, name, transition) and for
 // practicing skills. The Self tab opens these.
+import { birthDate, birthdayOf, starSign } from '../engine/birthday.js';
 import { faceGenderOf } from '../avatar/render.js';
 import { player, country } from '../state.js';
 import { fmtMoney, esc } from '../util.js';
@@ -20,7 +21,8 @@ export function identityRows() {
   const id = who.identity();
   const trans = who.isTrans() && (id.knows || id.outGender);
   const gender = (p.age < 18 ? { female: 'Girl', male: 'Boy', nonbinary: 'Non-binary' } : { female: 'Woman', male: 'Man', nonbinary: 'Non-binary' })[p.gender];
-  const rows = [['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : gender]];
+  const sign = starSign(birthdayOf(p));
+  const rows = [['Birthday', birthDate(p)], ['Star sign', `${sign.symbol} ${sign.name}`], ['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : gender]];
   const journey = who.questLine();
   if (journey) rows.push([journey.startsWith('Questioning') ? 'Exploring' : 'Inside', journey.replace(/^Questioning: /, '').replace(/^./, (x) => x.toUpperCase())]);
   if (p.age >= 12) rows.push(['Sexuality', `${who.orientationName(p.orientation)}${p.orientation !== 'straight' ? (id.outOrientation ? ', out' : ', not out') : ''}`]);

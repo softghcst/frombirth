@@ -44,6 +44,129 @@ export default [
     ['Pin it to the wall', 'It stays there for years. On bad days you read it again.', 'grateful:yes', 'good'],
     ['Write back', 'You write a short note back. You do not say how much it meant.', 'grateful:yes', 'good'],
   ]),
+  { ...scene('med_family_calling', 'You think of {relative}, {what}, {how}. People keep asking whether you will be a doctor too.', [
+    ['Say you might: you want to understand what they did', 'You start paying attention in biology.', 'calling:drawn', 'good', st('intellect', 1)],
+    ['Say you will find your own way', 'Nobody minds. Whatever you choose, it will be yours.', 'calling:own'],
+  ]), ageRange: [12, 18] },
+  // The story of becoming a doctor, told once each, when it is true (engine/medicine).
+  scene('med_school_interview', 'The medical school interview. Two doctors and a medical student behind a long table. "So," says the older one, "why medicine?"', [
+    ['Tell them about the people you met volunteering', 'You talk about one patient in particular. The student on the panel stops taking notes and listens.', 'skill:interview:1', 'good'],
+    ['Give the answer you rehearsed', 'It is a good answer. It sounds like everyone else\'s.', 'skill:interview:0.3'],
+    ['Admit you are still finding out', '"Good," says the older doctor. "So are we, most days."', 'skill:interview:0.6', 'good'],
+  ]),
+  scene('med_anatomy_exam', 'Your first anatomy exam at {school}. Forty stations, ninety seconds each, a bell between them, and a room colder than seems fair.', [
+    ['Trust the hours you put in', 'You finish with time to spare at every station but one.', 'skill:reasoning:2', 'good'],
+    ['Panic quietly, then steady yourself', 'Station twelve is a blur. By station twenty you have found your feet.', 'skill:reasoning:1'],
+  ]),
+  scene('med_patient_remember', 'On your first clinical rotation, a patient asks you to stay a minute after the team moves on. Nobody has told them what is happening, and they are frightened.', [
+    ['Sit down, listen, then find the resident so they get real answers', 'You are late for the next patient. The resident says it was the right call.', 'skill:communication:2', 'good'],
+    ['Tell them someone will come, and hurry after the team', 'You catch up with the team. You think about the patient all afternoon.', null],
+  ]),
+  scene('med_choosing_specialty', 'Everyone in your year is choosing. A friend has a spreadsheet: hours, pay, lifestyle, years of training. You have a feeling about one rotation you cannot quite put into a column.', [
+    ['Choose what you loved, and rank it first', 'You list the rotation that felt like yours. The spreadsheet can say what it likes.', 'skill:professionalism:1', 'good'],
+    ['Choose what makes sense on paper', 'Sensible. You will find out if it was right.', null],
+    ['Ask a doctor you admire how they chose', 'They laugh. "I picked the people I wanted to be like at three in the morning."', 'skill:reasoning:1', 'good'],
+  ]),
+  scene('med_residency_interview', 'Residency interviews: a dozen hospitals, a dozen dinners with residents who are trying to tell you the truth without saying so.', [
+    ['Ask the residents what they would change', 'Some deflect. One tells you exactly, and you trust that program more for it.', 'skill:reasoning:1', 'good'],
+    ['Focus on impressing the faculty', 'They seem impressed. You learn less about where you would be happy.', null],
+  ]),
+  scene('med_match_day', '{day}. A room full of envelopes, families, and a clock. At noon, everyone opens theirs at once: {specialty}, at {hospital}, in {city}.', [
+    ['Call home', 'Someone on the other end cries before you finish the sentence.', null, 'good', st('mood', 10)],
+    ['Find your friends and compare', 'The room is shouting. Some of them got their first choice, some did not, and you hold on to each other either way.', null, 'good', st('mood', 6)],
+  ]),
+  scene('med_match_day_unmatched', '{day}. You open the envelope with everyone else. It says you did not match. Around you, people are celebrating.', [
+    ['Step outside and breathe', 'It is not the end. It is a year you did not plan. Tomorrow you will make a plan.', null, 'neutral', st('mood', 2)],
+    ['Go straight to the dean\'s office', 'They have seen this before. They walk you through the options, calmly, and you leave with a list.', 'skill:professionalism:1'],
+  ]),
+  scene('med_first_night', 'Your first night on call at {hospital}. A pager, a list of forty patients you met this morning, and a senior resident who said "call me if you are worried" and meant it.', [
+    ['Call the senior resident when you are unsure', 'You call twice. Both times they say you were right to.', 'skill:teamwork:2', 'good'],
+    ['Try to handle everything yourself', 'You manage, just. In the morning the senior resident says: next time, call.', 'skill:reasoning:1'],
+  ]),
+  scene('med_strain', 'It has been a hard stretch: long nights, a run of difficult cases, and you are not sleeping well even when you can. A colleague asks, quietly, whether you are all right.', [
+    ['Tell the truth and ask for support', 'Saying it out loud helps more than you expected.', 'strain:support', 'good'],
+    ['Ask to work fewer hours', 'You ask for a lighter schedule.', 'strain:hours'],
+    ['Take your vacation, all of it', 'You book the time off before you can talk yourself out of it.', 'strain:leave', 'good'],
+    ['Say you are fine', 'You are not fine. Nobody is rewarded for pretending otherwise, least of all your patients.', null, 'bad', st('mood', -3)],
+  ]),
+  scene('med_offer_away', '{hospital}, in {city}, wants you: the same kind of post, a bigger program, and a move across the country. It would change more than your commute.', [
+    ['Accept and move', 'You say yes, and start planning the move.', 'away:accept', 'good'],
+    ['Use it to negotiate where you are', 'You tell your chief about the offer.', 'away:negotiate'],
+    ['Decline: your family\'s life is here', 'You say no. At dinner, nobody asks why, and you are glad.', 'away:family', 'good'],
+    ['Decline politely', 'You thank them and say no.', 'away:no'],
+  ]),
+  scene('med_reunion', 'A conference, a crowded reception, and suddenly {peer}, whom you have not seen since your training days at {hospital}. Ten years, and you recognize the laugh before the face.', [
+    ['Skip the keynote and catch up properly', 'You talk until the staff stack the chairs around you.', 'reunion:go', 'good'],
+    ['Swap numbers and promise to call', 'You mean it at the time.', 'reunion:later'],
+  ]),
+  // The wider catalog of hospital life.
+  scene('med_talked_about', 'Everyone is talking about {peer}: a difficult diagnosis caught at three in the morning, and the chief mentioned it at grand rounds.', [
+    ['Congratulate {peer}, and mean it', '{peer} looks surprised, then pleased.', 'talk:congratulate', 'good'],
+    ['Ask {peer} to show you how they spotted it', 'They walk you through it over coffee. You learn something.', 'talk:learn', 'good'],
+    ['Say nothing, and stew', 'It is not a good look, even in your own head.', 'talk:resent', 'bad'],
+  ]),
+  scene('med_or_disagreement', 'In the operating room, a senior colleague wants to go one way and you think the patient would be safer another. Everyone is waiting.', [
+    ['Say so, calmly, with your reasons', 'They listen. You agree on a plan together, and it is a better one.', 'talk:speak', 'good'],
+    ['Keep quiet and follow their lead', 'It goes fine. You wonder whether it would have.', 'talk:defer'],
+    ['Argue in front of the team', 'You may have been right. Nobody remembers that part.', 'talk:argue', 'bad'],
+  ]),
+  scene('med_attending_choice', '{mentor} has one place for a resident at a national course. Word is the choice was between you and {peer}, and the choice was {chosen}.', [
+    ['Congratulate whoever went', 'Whatever happened, you say the right thing.', 'talk:congratulate', 'good'],
+    ['Ask {mentor} what to work on for next time', '{mentor} gives you three things, frankly. They are fair.', 'talk:ask', 'good'],
+  ]),
+  scene('med_friend_pressure', '{peer} is your closest friend in the program, and you have both applied for the same thing. Neither of you has mentioned it.', [
+    ['Talk about it, out loud', 'You agree that whoever gets it, the other buys dinner. It helps.', 'talk:honest', 'good'],
+    ['Avoid each other until it is decided', 'The silence costs more than either application.', 'talk:distance', 'bad'],
+  ]),
+  scene('med_new_chief', 'Your department has a new chief, from outside, with a list of changes and a habit of asking why things are done the way they are.', [
+    ['Go and introduce yourself', 'They ask good questions. Some of them are about you.', 'talk:welcome', 'good'],
+    ['Keep your head down', 'It is a long year of rumors.', 'talk:defer'],
+  ]),
+  scene('med_work_relationship', 'You and {peer} work in the same department. Hospital policy asks colleagues in a relationship to tell their chief, so neither ever supervises or evaluates the other.', [
+    ['Tell the chief together', 'It is a five-minute conversation.', 'disclose_partner:yes', 'good'],
+    ['Keep it private', 'You keep it private. It is one more thing to keep.', 'disclose_partner:no'],
+  ]),
+  scene('med_colleague_leaving', '{peer} has been offered a post across the country: a real step up. They want to know what you think.', [
+    ['Tell them to take it', 'They do. You miss them, and are proud of them.', 'talk:encourage', 'good'],
+    ['Ask them to stay', 'They think about it for a week.', 'talk:stay'],
+  ]),
+  scene('med_friend_promoted', 'The post you both wanted has gone to {peer}. They find you before you have to find them.', [
+    ['Congratulate them properly', 'They were dreading this conversation. It is easy, because you make it easy.', 'talk:congratulate', 'good'],
+    ['Keep your distance for a while', 'It takes months to get back to where you were.', 'talk:distance', 'bad'],
+  ]),
+  scene('med_mentor_retiring', '{mentor} is retiring after a lifetime at the hospital. The department asks you to say a few words.', [
+    ['Say the few words, and say them well', 'You tell the story of your first night on call. {mentor} pretends not to be moved.', 'talk:farewell', 'good'],
+    ['Let someone more senior speak', 'You stand at the back and clap longest.', 'talk:farewell'],
+  ]),
+  scene('med_family_answers', 'A patient\'s family has asked to meet. The outcome was not what anyone hoped, though the care was sound. They want to understand.', [
+    ['Meet them, and explain honestly and kindly', 'It is the hardest hour of your month. At the end, they shake your hand.', 'talk:family', 'good'],
+    ['Write them a careful letter', 'It answers their questions. It is not the same as being there.', 'talk:letter'],
+  ]),
+  scene('med_research_offer', 'The hospital is starting a research project in your field and needs a physician to join it: years of work, no promises.', [
+    ['Join it', 'You add your name to the protocol.', 'research:join', 'good'],
+    ['Not now', 'You have enough on.', 'research:no'],
+  ]),
+  scene('med_department_divided', 'The department is split over a proposed change to how patients are seen: half think it will help, half think it will not.', [
+    ['Bring both sides together to look at the evidence', 'It takes three meetings. The compromise is better than either plan.', 'talk:mediate', 'good'],
+    ['Pick a side and argue for it', 'Your side wins, narrowly. Some colleagues are cooler toward you.', 'talk:side'],
+  ]),
+  scene('med_industry_gift', 'A company whose products you prescribe invites you to speak at a conference in a beautiful city: flights, a hotel, and a generous fee for a short talk.', [
+    ['Decline: it is a conflict of interest', 'You decline politely.', 'gift:decline', 'good'],
+    ['Accept: everyone goes', 'You accept.', 'gift:accept', 'bad'],
+  ]),
+  scene('med_alter_record', 'After a case went badly, a senior colleague asks you to "tidy up" a note you wrote that night: change a time, leave out a line.', [
+    ['Refuse, and explain why', 'A medical record is what happened, not what we wish had.', 'record:refuse', 'good'],
+    ['Do as they ask', 'You change it.', 'record:alter', 'bad'],
+  ]),
+  scene('med_staffing_shortage', '{hospital} is short of nurses and doctors this year. The rota has gaps, and someone has to decide what gives.', [
+    ['Cover extra shifts for a while', 'You cover. The department notices, and so does your sleep.', 'politics:cover'],
+    ['Raise it with the chief, with the numbers', 'You bring a page of figures. It moves faster than complaints ever did.', 'politics:data', 'good'],
+    ['Escalate it to the hospital board', 'It is not popular with everyone. It is heard.', 'politics:escalate'],
+  ]),
+  scene('med_budget_dispute', '{hospital} is cutting budgets, and the departments are arguing over who loses what.', [
+    ['Propose cuts that do not touch patient care', 'Your proposal is dull and careful, and it is the one they adopt.', 'politics:cut', 'good'],
+    ['Defend your own department hard', 'You protect your people this year. Other departments remember.', 'politics:protect'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],

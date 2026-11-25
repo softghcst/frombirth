@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { giveBirthday, yearSpan } from './birthday.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
@@ -36,6 +37,7 @@ import { heirHealth, legacySummary } from './health/index.js';
 import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
+import { physicianSummary } from './medicine/core.js';
 import { handOver as handOverSports } from './sportsLife.js';
 import { rate as fxRate } from './currency.js';
 
@@ -286,9 +288,13 @@ export function continueAs(npcId) {
   // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
-  next.today = `${old.year}-01-01`;
+  // The city's hospitals keep what they are; a physician's patient files are confidential and are not inherited.
+  if (old.medicine) next.medicine = { v: old.medicine.v, seq: old.medicine.seq ?? 0, hospitals: old.medicine.hospitals ?? {}, programs: old.medicine.programs ?? {}, schools: old.medicine.schools ?? {}, patients: {}, cases: {}, episodes: {} };
+  giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
+  next.today = yearSpan(next).start;
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
+    medicine: physicianSummary(op), // a physician's career, never their patients (engine/medicine/core.js)
     languages: Object.entries(op.skills ?? {}).filter(([k, v]) => ['spanish', 'french', 'japanese', 'mandarin', 'german', 'korean', 'portuguese', 'arabic', 'sign_language'].includes(k) && v >= 40).map(([k]) => k) } });
   player.archiveParents = [archiveIdOf(op)];
   store.state = next;

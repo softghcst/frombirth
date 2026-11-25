@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import { openBirthTag, openAdoptionCard } from '../birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -61,6 +62,16 @@ const GROUPS = [
 export const portrait = (npc) => (npc.role === 'pet'
   ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank, npc.flags.royal?.consort, player().royal?.countryId), label: npc.firstName })}</div>`);
+
+/** The people a child was adopted by, as they were on the day. */
+const adoptiveParents = (child) => (child.adoptionInfo?.by ?? []).map((id) => (id === player().id ? player() : store.state.npcs[id])).filter(Boolean);
+/** Adopts a child and, when it goes through, shows the day they came home. */
+async function adoptAndWelcome(api) {
+  const r = kids.adopt();
+  await report(api, r);
+  const child = r.childId ? store.state.npcs[r.childId] : null;
+  if (child?.adoptionInfo) { child.flags.adoptionCard = 'seen'; api.changed(); await openAdoptionCard(child, { title: `Welcome Home, ${child.firstName}!`, parents: adoptiveParents(child), button: `Hello, ${child.firstName}` }); }
+}
 
 async function report(api, r) {
   api.changed();
@@ -298,8 +309,9 @@ function grouped(actions) {
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    const open = shown++ < 1;
-    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
+    shown++;
+    // Each group is a plain heading with its buttons under it: nothing to unfold on a page of its own.
+    return `<section class="action-group"><div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></section>`;
   }).join('');
 }
 
@@ -380,6 +392,9 @@ export function openNpc(npc, api, back, o = {}) {
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
+    ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love' }] : []),
+    ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
@@ -410,7 +425,7 @@ export function openNpc(npc, api, back, o = {}) {
     ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
-    </div>`, { dismissable: true, onDismiss: () => back?.() });
+    </div>`, { dismissable: true, full: true, title: `${npc.firstName}${isPet ? '' : ` ${npc.lastName}`}`, onDismiss: () => back?.() });
 
   modal.el.addEventListener('click', async (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return back?.(); }
@@ -423,6 +438,8 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
+      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
@@ -444,6 +461,7 @@ export function openNpc(npc, api, back, o = {}) {
       bondConfess: () => report(api, bonds.confess(npc.id)),
       bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
       baby: () => report(api, kids.tryForBaby(npc.id)),
+      ivf: () => report(api, kids.tryIvf(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
       encourageCare: () => report(api, encourageCare(npc.id)),
       goWithCare: () => report(api, goWithCare(npc.id)),
@@ -521,7 +539,7 @@ export async function openLoveFamily(id, api) {
   if (id === 'love') return lookForLove(api);
   if (id === 'adopt') {
     const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-    if (yes) return report(api, kids.adopt());
+    if (yes) return adoptAndWelcome(api);
   }
   return undefined;
 }
@@ -587,7 +605,7 @@ export default {
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-        if (yes) return report(api, kids.adopt());
+        if (yes) return adoptAndWelcome(api);
       }
       return undefined;
     };

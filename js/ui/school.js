@@ -120,7 +120,7 @@ function pageActivitiesHub() {
  */
 function outsideSchool() {
   const p = player();
-  if (p.age < 6 || p.legal.incarceration) return '';
+  if (p.age < 6 || p.age > clubLife.CLUB_AGE_LIMIT || p.legal.incarceration) return '';
   const mine = clubLife.memberships();
   return `<div class="section-label">Outside School</div>
     <div class="nav-group">${mine.map((m) => navRow({ attrs: `data-outclub="${esc(m.id)}"`, label: clubTitle(m.club), sub: m.rankName === 'Member' ? `Member${m.years ? ` · ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName, ico: 'people' })).join('')}

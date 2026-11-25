@@ -38,7 +38,7 @@ await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEac
 const tripId = await page.evaluate(async () => {
   const { store } = await import('/js/state.js');
   const p = store.state.player;
-  p.countryId = 'us'; p.city = 'New York'; p.age = 30; p.birthYear = store.state.year - 30;
+  p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.countryId = 'us'; p.city = 'New York'; p.age = 30; p.birthYear = store.state.year - 30;
   p.finance.cash = 500000; p.legal.incarceration = null;
   const travel = await import('/js/engine/travel.js');
   const t = travel.startPlan('vacation');
@@ -104,6 +104,7 @@ const opts = await page.locator('.gl-modal [data-planfield="payment"] option').a
 check(opts.length === 2 && /^Ask Your/i.test(opts[0]) && /Pay It Yourself/i.test(opts[1]), `the dropdown: ask, or pay it yourself (${opts.join(' / ')})`);
 check(await page.locator('.gl-modal [data-book]').isDisabled() && /first, or pay it yourself/.test(plan), 'nothing is booked before asking');
 check(!/<strong>/.test(plan) && !/\d+%/.test(plan), 'no markup and no percentage shows');
+check(!/\$\{|`/.test(plan) && /Country/.test(plan), "the planner shows its fields, never code (From and to, things to do)");
 await page.locator('.gl-modal [data-askfamily]').click();
 const answer = page.locator('#modal-root .modal', { hasText: kid.who });
 await answer.last().waitFor({ timeout: 5000 }).catch(() => {});

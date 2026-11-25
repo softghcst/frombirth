@@ -101,15 +101,15 @@ function grownTo(age, countryId, city) {
   check(!sp.canPlay('soccer').ok, 'a four-year-old cannot start soccer');
   years(3);
   const talentBefore = p.talents.sports;
-  check(sp.takeUp('soccer').ok && sp.takeUp('tennis').ok && sp.takeUp('pickleball').ok, 'three sports can be taken up');
-  check(!sp.takeUp('golf').ok, 'a fourth cannot');
+  check(sp.takeUp('soccer').ok && sp.takeUp('tennis').ok, 'two sports can be taken up');
+  check(!sp.takeUp('pickleball').ok && !sp.takeUp('golf').ok, 'a third cannot: two get real attention');
   const e = sp.entryOf('soccer');
   check(e && Object.keys(e.skills).length === 6 && p.talents.sports === talentBefore, 'soccer has its own six skills; the general talent is untouched');
   check(Object.entries(e.skills).every(([k, v]) => v <= e.ceiling[k]), 'every skill starts below its ceiling');
   check(sp.entryOf('tennis').skills.serve !== undefined && sp.entryOf('tennis').skills.shooting === undefined, 'a tennis player\'s skills are tennis skills');
   const coach = sp.coachOf(e.coachId);
   check(coach && S().npcs[coach.id]?.role === 'coach' && p.npcIds.includes(coach.id), 'the coach is a real person the player knows');
-  check(weeklyLoad(p).rows.some((r) => r.kind === 'sport' && r.hours === 6), 'training takes hours out of the week');
+  check(weeklyLoad(p).rows.some((r) => r.kind === 'sport' && r.hours === 4), 'training takes hours out of the week');
   // History: a year before a sport existed.
   const was = S().year;
   S().year = 1950;
@@ -147,8 +147,8 @@ function grownTo(age, countryId, city) {
   years(6);
   const e = sp.entryOf('soccer');
   sp.myAthlete().injuries = [];
-  let n = 0; for (let i = 0; i < 10; i++) if (sp.extraSession('soccer', 'passing').ok) n++;
-  check(n === sp.EXTRA_PER_YEAR, `extra sessions stop at ${sp.EXTRA_PER_YEAR} a year (${n})`);
+  let n = 0; for (let i = 0; i < 20; i++) if (sp.extraSession('soccer', 'passing').ok) n++;
+  check(n >= 3 && n <= sp.EXTRA_PER_YEAR && !sp.extraLeft('soccer'), `extra sessions go on while there is energy for them, then stop (${n})`);
   for (const k of Object.keys(e.skills)) e.skills[k] = e.ceiling[k];
   e.plan = { type: 'technical', hours: 18 }; e.fatigue = 0; sp.internals.trainYear(S(), P(), sp.myAthlete(), e);
   check(Object.entries(e.skills).every(([k, v]) => v <= e.ceiling[k]), 'no skill goes past its ceiling, however hard the training');

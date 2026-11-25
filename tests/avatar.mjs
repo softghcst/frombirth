@@ -129,7 +129,7 @@ for (const [label, saved] of Object.entries(cases)) {
 }
 const fromV2 = normalize(v2, 'x');
 check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_12_sculpted'
-  && fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
+  && !fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or marks (its glasses go: they are being redrawn)');
 // The old facial hair is gone: a beard in an old save is dropped, and no one is drawn with one. Beards come back only
 // as new artwork (assets/avatars/facial_hair/), chosen at the barbershop (style.beard).
 check(!('facialHair' in fromV2.style) && !('facialHair' in normalize({ v: 3, inherited: {}, style: { facialHair: 'facial_hair_04_bushy_full_beard' } }, 'y').style), 'an old save still has facial hair');
@@ -534,7 +534,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[DEPTH.espresso]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
   for (const id of ['lips_17', 'lips_18', 'lips_20', 'lips_21', 'lips_5']) check(!readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('--lip-upper'), `the expression ${id} has been parted`);
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
-  check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');
+  const { lipShade } = await import('../js/avatar/catalog.js');
+  check(red === lipShade(CATALOG.lipColor[0].id, 3), 'lipstick chosen by a man is not worn, in the shade for his skin');
+  // Every lipstick has a shade for every skin, deeper on deeper skin, and a nude is never paler than the skin it is on.
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255); };
+  for (const c of CATALOG.lipColor) check(lum(lipShade(c.id, 0)) >= lum(lipShade(c.id, 16)), `${c.id} is not deeper on deeper skin`);
+  for (const t of SKIN_TONES) check(lum(lipShade('nude', t.depth)) < lum(t.hex), `nude is paler than ${t.id} skin: it would look ashy`);
   check(resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'female', { child: true }).colors.lip !== CATALOG.lipColor[0].hex, 'a child wears lipstick');
   const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_4' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');

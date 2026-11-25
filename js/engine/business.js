@@ -203,6 +203,9 @@ export function staffOf(b) {
 export const headcount = (b) => staffOf(b).length + b.others;
 export const managerOf = (b) => staffOf(b).find((s) => s.manager)?.npc ?? null;
 
+/** The order a medical practice fills its named posts (engine/medicine/practice.js marks a business as one). */
+const CLINIC_ROLES = [{ career: 'nurse', level: 0 }, { career: 'health_admin', level: 1 }, { career: 'care_assist', level: 0 }, { career: 'doctor', level: 1 }, { career: 'nurse', level: 1 }];
+
 /** This year's applicants: three people, each with a wage in mind. */
 export function candidates(b) {
   const p = player();
@@ -225,15 +228,18 @@ function employ(b, n, wageK) {
   if (!store.state.npcs[n.id]) store.state.npcs[n.id] = n;
   if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
   ensureLife(n);
-  const car = CAREER_BY_ID[t.track];
+  // A physician's practice is staffed like one: nurses, a practice manager, a medical assistant, and in time an associate physician.
+  const role = b.medical ? CLINIC_ROLES[b.staff.length % CLINIC_ROLES.length] : null;
+  const car = CAREER_BY_ID[role?.career ?? t.track];
+  const lv = role?.level ?? 0;
   const f = figures(t, b.countryId, b.city);
   if (n.life) {
-    n.life.job = { careerId: car.id, level: 0, title: car.levels[0].title, salary: Math.round(f.wage * wageK), years: 0, employerId: e.id };
+    n.life.job = { careerId: car.id, level: lv, title: car.levels[lv].title, salary: Math.round(f.wage * wageK), years: 0, employerId: e.id };
     n.life.edu.stage = 'done';
     n.life.edu.yearsLeft = 0;
   }
-  n.occupation = car.levels[0].title.toLowerCase();
-  if (n.role === 'colleague') n.flags.title = `Works for you at ${b.name}`;
+  n.occupation = car.levels[lv].title.toLowerCase();
+  if (n.role === 'colleague') n.flags.title = role ? `${car.levels[lv].title} at ${b.name}` : `Works for you at ${b.name}`;
   n.flags.employeeOf = b.id;
   if (b.countryId !== p.countryId) n.flags.abroad = b.countryId; // they live where the business is
   n.flags.workedWith = b.name;
@@ -457,7 +463,9 @@ export function valuation(b) {
 }
 
 /** People who might buy in as a partner. */
-export const partnerOptions = (b) => livingNpcs().filter((n) => ['friend', 'colleague', 'sibling', 'spouse'].includes(n.role) && n.age >= 21 && n.age < 70 && !b.partners.some((x) => x.id === n.id) && !n.flags.abroad);
+export const partnerOptions = (b) => livingNpcs().filter((n) => ['friend', 'colleague', 'sibling', 'spouse', 'coworker'].includes(n.role) && n.age >= 21 && n.age < 70 && !b.partners.some((x) => x.id === n.id) && !n.flags.abroad
+  // A physician-owned practice takes physicians as partners (data/medicine.js JURISDICTIONS ownership): a colleague from training, an associate.
+  && (!b.medical || ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')));
 
 /** Sells a quarter of the business to someone the player knows, for money put into it. */
 export function takePartner(b, npcId) {

@@ -32,7 +32,7 @@ await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 const adopted = await page.evaluate(async () => {
   document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
   const { store } = await import('/js/state.js'); const zoo = await import('/js/engine/animals.js'); const care = await import('/js/engine/animalCare.js');
-  const p = store.state.player; p.age = 30; p.birthYear = store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = 900000; p.finance.loans = [];
+  const p = store.state.player; p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.age = 30; p.birthYear = store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = 900000; p.finance.loans = [];
   zoo.reconcile(); const l = care.rentalPolicy(); if (l) l.kind = 'any';
   for (const a of care.shelterAnimals()) { if (care.adoptionCheck(a.id).ok && care.adopt(a.id).ok) return a.name; }
   return null;

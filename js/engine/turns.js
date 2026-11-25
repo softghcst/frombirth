@@ -14,6 +14,7 @@ import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
 import { seasonAt, turnSeasons, seasonName } from './calendar.js';
+import { birthdayOf, dateNow } from './birthday.js';
 import { disastersBetween, markHome } from './disasters.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
 import { between as hoodBetween } from './neighborhood.js';
@@ -31,7 +32,9 @@ export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'Jun
 export const stepOf = (state = store.state) => (STEPS.includes(state?.settings?.step) ? state.settings.step : 12);
 export const monthOf = (state = store.state) => state?.month ?? 0;
 
-export const seasonNow = (state = store.state) => seasonAt(monthOf(state), state.player.countryId);
+/** The month the player's year starts in: the month of their birthday. */
+const off = (state = store.state) => birthdayOf(state.player).m;
+export const seasonNow = (state = store.state) => seasonAt(monthOf(state) + off(state), state.player.countryId);
 
 /** An age with months: "15", "15 years, 6 months", "1 year, 3 months", or "3 months" for a baby. */
 export function ageLabel(age, month = 0) {
@@ -47,7 +50,7 @@ export function nextTurnText(state = store.state) {
   const step = stepOf(state);
   const m = monthOf(state) + step;
   if (m >= 12) return { label: step === 12 ? 'Age up' : `${step === 3 ? 3 : 6} months`, sub: `→ ${p.age + 1}` };
-  return { label: step === 3 ? '3 months' : '6 months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
+  return { label: step === 3 ? '3 months' : '6 months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId, off(state))[0])}` };
 }
 
 /**
@@ -103,8 +106,8 @@ export function advanceTurn(state = store.state) {
     advanceYear();
     // With shorter turns, the last part of the year has its season too: perhaps a scene for it, beside the year's own,
     // told with the turn length it was lived in; forecasts look ahead with the one coming.
-    if (step !== 12 && p.alive) { drawBetween(step, turnSeasons(12, step, p.countryId), 0.45); disastersBetween(state, 12, step, coming); }
-    if (p.alive && step !== 12) holdForSeason(state, turnSeasons(12, step, p.countryId));
+    if (step !== 12 && p.alive) { drawBetween(step, turnSeasons(12, step, p.countryId, off(state)), 0.45); disastersBetween(state, 12, step, coming); }
+    if (p.alive && step !== 12) holdForSeason(state, turnSeasons(12, step, p.countryId, off(state)));
     if (state.settings?.nextStep) { state.settings.step = state.settings.nextStep; delete state.settings.nextStep; }
     markHome(state);
     return { year: true };
@@ -112,7 +115,9 @@ export function advanceTurn(state = store.state) {
   // Anything the player did with money since the last turn is written down before the season changes.
   book({ state, cat: 'auto', src: 'action' });
   state.month = next;
-  const seasons = turnSeasons(next, step, p.countryId);
+  // The calendar moves on with the months: the date is the birthday and the months since (engine/birthday.js).
+  if (!state.today || dateNow(state) > state.today) state.today = dateNow(state);
+  const seasons = turnSeasons(next, step, p.countryId, off(state));
   log(`${cap(seasonName(seasons[0]))}.`, 'season');
   // Shorter turns, more chances: a scene for the season, and perhaps one of the year's ordinary scenes as well.
   disastersBetween(state, next, step); // storms as they strike, and forecasts of what is coming
