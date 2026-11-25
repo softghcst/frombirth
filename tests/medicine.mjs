@@ -192,7 +192,28 @@ section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} 
   };
   const careful = careWith('best');
   const careless = careWith('worst');
-  check(careless.skills.integrity < careful.skills.integrity && core.reputationOf(careless) < core.reputationOf(careful), 'poor and unsafe care lowers integrity and reputation, whatever the outcome');
+  check(careless.skills.reasoning < careful.skills.reasoning && careless.skills.integrity <= careful.skills.integrity && core.reputationOf(careless) < core.reputationOf(careful), 'poor care lowers judgment and reputation, whatever the outcome');
+  // An unsafe plan, chosen by a physician deciding alone, costs integrity.
+  {
+    rng.seed(5);
+    store.state = createLife({ countryId: 'us' });
+    const q = store.state.player; q.age = 40;
+    const um = core.M(q);
+    um.completed.push({ specialtyId: 'emergency', kind: 'residency', from: 2000, to: 2003 });
+    um.job = { specialtyId: 'emergency', hospitalId: null, rank: 'attending', since: 2003 };
+    const fx = CASE_BY_ID.er_crash;
+    const patient = { id: 'pt_test', firstName: 'Test', lastName: 'Patient', age: 30, alive: true, flags: {} };
+    store.state.npcs[patient.id] = patient;
+    core.W().patients[patient.id] = { id: patient.id, caseIds: [], bornYear: store.state.year - 30 };
+    const id = 'case_test';
+    core.W().cases[id] = { id, fixtureId: fx.id, patientId: patient.id, specialtyId: 'emergency', role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    um.caseIds.push(id);
+    const before = um.skills.integrity;
+    cases.triage(id, 'driver'); cases.setDiagnosis(id, fx.diagnosis);
+    cases.choosePlan(id, fx.plans.find((x) => x.quality === 'unsafe').id);
+    cases.decide(id, fx.decision.options[0].id);
+    check(um.skills.integrity < before, 'an unsafe plan costs integrity');
+  }
   const mm = careless;
   check(drama.romanceAllowed({ age: 30, flags: { medRole: 'supervisor' }, role: 'coworker' }, mm) === false && drama.romanceAllowed({ age: 30, flags: { patient: true }, role: 'coworker' }, mm) === false, 'no romance with a supervisor or a patient');
 }
