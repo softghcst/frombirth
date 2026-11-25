@@ -425,7 +425,7 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
-      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag` }),
+      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [player(), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),

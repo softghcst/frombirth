@@ -399,7 +399,7 @@ export function mountGame(app, hooks) {
       const other = (b.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
       const twins = mine.length > 1;
       await openBirthTag(b, { title: twins ? `Twins! ${i ? 'And' : 'Welcome,'} ${b.firstName}` : `Welcome, ${b.firstName}!`,
-        parents: `${player().firstName}${other ? ` & ${other.firstName}` : ''} ${player().lastName}`, button: i < mine.length - 1 ? 'Next' : `Hello, ${b.firstName}` });
+        parents: [player(), other], button: i < mine.length - 1 ? 'Next' : `Hello, ${b.firstName}` });
     }
     const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
       .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);

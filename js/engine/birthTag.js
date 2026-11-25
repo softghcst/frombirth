@@ -137,3 +137,76 @@ export function dayInYearJustLived(id, state = store.state) {
 }
 
 export { starSign, birthdayFor };
+
+// ---------- The back of the tag: a keepsake, filled in by the nurses ----------
+
+const BIRTHSTONES = [['Garnet', '❤️'], ['Amethyst', '💜'], ['Aquamarine', '🩵'], ['Diamond', '💎'], ['Emerald', '💚'], ['Pearl', '🤍'],
+  ['Ruby', '❤️'], ['Peridot', '💚'], ['Sapphire', '💙'], ['Opal', '🤍'], ['Topaz', '🧡'], ['Turquoise', '🩵']];
+const FLOWERS = [['Carnation', '🌸'], ['Violet', '🪻'], ['Daffodil', '🌼'], ['Daisy', '🌼'], ['Lily of the Valley', '🤍'], ['Rose', '🌹'],
+  ['Larkspur', '🪻'], ['Poppy', '🌺'], ['Aster', '🪻'], ['Marigold', '🌼'], ['Chrysanthemum', '🌼'], ['Holly', '🌿']];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** How a day of each season was, for the line about the day. */
+const SKY = { winter: ['a frosty', 'a cold', 'a gray'], spring: ['a breezy', 'a bright', 'a showery'], summer: ['a sunny', 'a warm', 'a golden'],
+  fall: ['a crisp', 'a windy', 'a leafy'], wet: ['a rainy', 'a stormy'], dry: ['a sunny', 'a dusty'], monsoon: ['a rainy', 'a pouring'],
+  after: ['a fresh', 'a green'], hot: ['a scorching', 'a sweltering'], cool: ['a cool', 'a mild'], mild: ['a mild', 'a soft'] };
+const STAMPS = ['Certified Cutie', '100% Snuggly', 'Ten Fingers · Ten Toes', 'Extra Cuddly', 'Head Nurse Approved', 'Brand New', 'Handle With Love', 'Officially Adorable'];
+/** What the nurses noticed, by what the baby was born with: the strongest gift speaks first. */
+const NOTES = {
+  music: ['Hums along to the monitors!', 'Already keeping time with one foot'],
+  singing: ['A set of lungs on this one!', 'Sang the whole ward awake'],
+  dance: ['Wiggled all night long', 'Never stops moving those feet'],
+  sports: ['Kicked their way into the world!', 'The strongest grip in the nursery'],
+  acting: ['Quite the little drama star', 'Pulls faces for every visitor'],
+  intellect: ['Looks around like they are taking notes', 'Wide awake and curious about everything'],
+  charm: ['Already charming the whole ward', 'Smiles at anyone who comes near'],
+  calm: ['Slept through absolutely everything', 'The calmest baby on the floor'],
+};
+
+/** "Tuesday": the day of the week of a date. */
+export const weekdayOf = (date) => WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+
+/**
+ * The back of a tag: the day, the birthstone and flower of the month, a note from the nurses, who the baby takes
+ * after, a stamp and the sign-off. `parents` are the two people the baby was born to, where known.
+ */
+export function keepsake(person, parents = [], seasonOf = () => null, snowy = false) {
+  const info = person.birthInfo;
+  const r = seeded(`keepsake:${person.id}`);
+  const month = Number(info.date.slice(5, 7)) - 1;
+  const season = seasonOf(month);
+  const sky = season === 'winter' && snowy ? 'a snowy' : r.pick(SKY[season] ?? ['a lovely']);
+  const t = person.talents ?? {};
+  const best = Object.entries({ music: t.music, singing: t.singing, dance: t.dance, sports: t.sports, acting: t.acting })
+    .filter(([, v]) => v != null).sort((a, b) => b[1] - a[1])[0];
+  const stats = person.stats ?? person.meters ?? {};
+  const kind = best && best[1] >= 55 ? best[0] : (stats.intellect ?? 0) >= 70 ? 'intellect' : (stats.charm ?? 0) >= 70 ? 'charm' : 'calm';
+  return {
+    day: `Born on ${sky} ${weekdayOf(info.date)}`,
+    stone: BIRTHSTONES[month], flower: FLOWERS[month],
+    note: r.pick(NOTES[kind]),
+    looks: takesAfter(person, parents, r),
+    stamp: r.pick(STAMPS), stampTilt: r.int(-12, 8),
+    signoff: info.atHome ? `With love, ${info.doctor.replace(/, midwife$/, '')}` : `With love, the nurses of Ward ${r.int(2, 9)}`,
+    bracelet: `#${String(r.int(1, 99)).padStart(2, '0')}-${String(r.int(1000, 9999))}`,
+    bars: Array.from({ length: 14 }, () => r.int(1, 3)),
+  };
+}
+
+/** "Has Mom's nose & Dad's eyes": the features a baby was born with that match a parent's. */
+function takesAfter(person, parents, r) {
+  const mine = person.appearance?.inherited;
+  const known = parents.filter((x) => x?.appearance?.inherited);
+  if (!mine || !known.length) return null;
+  const WORDS = { eyes: 'eyes', eyeColor: 'eye color', nose: 'nose', lips: 'smile', brows: 'eyebrows', hairColor: 'hair', head: 'face shape' };
+  // Mom and Dad where one of each; otherwise their names.
+  const genders = known.map((x) => x.gender);
+  const call = (x) => (known.length === 2 && genders.includes('female') && genders.includes('male') ? (x.gender === 'female' ? 'Mom' : 'Dad') : x.firstName);
+  const found = [];
+  for (const x of known) {
+    const theirs = x.appearance.inherited;
+    const same = Object.keys(WORDS).filter((k) => theirs[k] && theirs[k] === mine[k] && !found.some((f) => f.key === k));
+    if (same.length) { const key = same[r.int(0, same.length - 1)]; found.push({ key, who: call(x) }); }
+  }
+  if (!found.length) return 'Looks like nobody else: all their own!';
+  return `Has ${found.map((f) => `${f.who}'s ${WORDS[f.key]}`).join(' & ')}`;
+}

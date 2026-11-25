@@ -4,7 +4,7 @@
 import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { tickChildren } from '../js/engine/children.js';
-import { inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
+import { keepsake, weekdayOf, inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
 import { yearSpan } from '../js/engine/birthday.js';
 import { rng } from '../js/rng.js';
 
@@ -63,6 +63,20 @@ const me = life();
 const t1 = JSON.stringify(playerBirthInfo(me));
 check(t1 === JSON.stringify(playerBirthInfo(me)) && me.birthInfo.date.endsWith(`-${String(me.birthday.m + 1).padStart(2, '0')}-${String(me.birthday.d).padStart(2, '0')}`), 'your own tag is dated on your birthday');
 check(AT_BIRTH.weight === 120, 'the average baby weighs 7 lbs 8 oz');
+
+// The back: the day of the week, the birthstone and flower of the month, a note, who the baby takes after.
+check(weekdayOf('2026-11-25') === 'Wednesday' && weekdayOf('2000-01-01') === 'Saturday', 'days of the week are right');
+const ks = keepsake({ id: 'kk', birthInfo: { date: '2027-02-18', doctor: 'Dr. Ramirez' }, talents: { singing: 90 } }, [], () => 'winter', true);
+check(ks.day === 'Born on a snowy Thursday' && ks.stone[0] === 'Amethyst' && ks.flower[0] === 'Violet', `the day, the stone, the flower (${ks.day}, ${ks.stone[0]}, ${ks.flower[0]})`);
+check(/lungs|Sang/.test(ks.note), `a singer's note (${ks.note})`);
+check(ks.stamp && /Ward \d/.test(ks.signoff) && /^#\d{2}-\d{4}$/.test(ks.bracelet), 'a stamp, a sign-off and a wristband number');
+const mom = { firstName: 'Ana', gender: 'female', appearance: { inherited: { nose: 'nose_3', eyes: 'eyes_1', hairColor: 'black' } } };
+const dad = { firstName: 'Ben', gender: 'male', appearance: { inherited: { nose: 'nose_9', eyes: 'eyes_7', hairColor: 'brown' } } };
+const kid = { id: 'kid', birthInfo: { date: '2027-06-01', doctor: 'Dr. A' }, appearance: { inherited: { nose: 'nose_3', eyes: 'eyes_7', hairColor: 'red' } } };
+const looks = keepsake(kid, [mom, dad], () => 'summer').looks;
+check(/Mom's nose/.test(looks) && /Dad's eyes/.test(looks), `who they take after (${looks})`);
+check(keepsake({ ...kid, appearance: { inherited: { nose: 'x', eyes: 'y' } } }, [mom, dad], () => 'summer').looks.startsWith('Looks like nobody else'), 'a baby who takes after nobody');
+check(keepsake({ id: 'h', birthInfo: { date: '1910-03-01', doctor: 'Mrs. Bell, midwife', atHome: true } }, [], () => 'spring').signoff === 'With love, Mrs. Bell', 'a midwife signs her own');
 
 if (problems.length) { console.log([...new Set(problems)].join('\n')); process.exit(1); }
 console.log('Every baby gets a hospital tag, sized like their family.');

@@ -118,13 +118,36 @@
 .btag-foot span { font: 700 0.66rem/1.25 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
 .btag-foot small { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
 .btag-title { text-align: center; }
-/* The baby, swaddled: a hood behind the face, the blanket folded across the front. */
-.swaddle { position: relative; width: 104px; height: 124px; flex: none; margin-top: 2px; overflow: hidden; border-radius: 0 0 40% 40%; }
+/* The baby, swaddled: wrapped all over in the blanket, a hood around the face, just the face peeking out. */
+.btag-left { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+.swaddle { position: relative; width: 96px; height: 120px; flex: none; }
 .swaddle svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.swaddle-hood path { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2.5; }
-.swaddle-face { position: absolute; left: 50%; top: 7px; width: 90px; height: 90px; transform: translateX(-50%); overflow: hidden; border-radius: 50% 50% 44% 44%; }
+.swaddle-back .body { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2.5; }
+.swaddle-face { position: absolute; left: 50%; top: 14.5%; width: 52%; height: 41.6%; transform: translateX(-50%); overflow: hidden; border-radius: 50%; background: var(--blanket); }
 .swaddle-face svg { position: static; width: 100%; height: 100%; }
-.swaddle-wrap .w1 { fill: var(--blanket-deep); }
-.swaddle-wrap .w2 { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2; }
-.swaddle-wrap .fold { fill: none; stroke: var(--blanket-deep); stroke-width: 2; stroke-linecap: round; }
-@media (max-width: 360px) { .swaddle { width: 78px; height: 92px; } .swaddle-face { width: 66px; height: 66px; } .btag-ink { font-size: 1.08rem; } }
+.swaddle-front .rim { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 1.6; }
+.swaddle-front .flap.l { fill: var(--blanket-deep); }
+.swaddle-front .flap.r { fill: var(--blanket); stroke: var(--blanket-deep); stroke-width: 2; }
+.swaddle-front .fold, .swaddle-front .tuck { fill: none; stroke: var(--blanket-deep); stroke-width: 2; stroke-linecap: round; }
+/* Inked footprints and the wristband. */
+.btag-feet { display: block; height: auto; fill: #3b3f66; opacity: 0.82; margin-top: 2px; }
+.btag-band { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 10px 5px 6px; border-radius: 999px; background: #fff;
+  border: 1.5px solid var(--tag-edge); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05); font: 800 0.62rem/1 var(--sans); letter-spacing: 0.06em; color: var(--ink); overflow: hidden; }
+.btag-band-snap { width: 12px; height: 12px; border-radius: 50%; background: var(--tag); border: 1.5px solid var(--tag-edge); flex: none; }
+.btag-band-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btag-band-id { opacity: 0.7; white-space: nowrap; }
+.btag-band-bars { height: 12px; width: auto; margin-left: auto; fill: var(--ink); flex: none; }
+/* The back: the nurses' keepsake. */
+.btag-keep { display: grid; gap: 8px; padding: 12px; background: #fffaf1; text-align: center; position: relative; min-height: 250px; }
+.btag-keep-title { font: 800 0.66rem/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; }
+.btag-keep-line { font-size: 1.5rem; }
+.btag-keep-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btag-keep-pair > div, .btag-keep-note { display: grid; gap: 3px; justify-items: center; padding: 6px; border: 1px dashed rgba(35, 50, 74, 0.25); border-radius: 8px; }
+.btag-keep-sign { font-size: 1.15rem; margin-top: 4px; }
+.btag-stamp { justify-self: center; margin: 2px 0; padding: 5px 12px; border: 2.5px solid #c0392b; border-radius: 6px; color: #c0392b; font: 800 0.8rem/1 var(--sans);
+  letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(var(--tilt, -8deg)); opacity: 0.82; box-shadow: inset 0 0 0 2px rgba(192, 57, 43, 0.12); }
+.btag-flip.turned .btag-back { animation: btag-turn 0.35s ease-out; }
+.btag-flip:not(.turned) .btag-front { animation: btag-turn 0.35s ease-out; }
+@keyframes btag-turn { from { transform: rotateY(80deg) rotate(-0.6deg); opacity: 0.4; } to { transform: rotateY(0) rotate(-0.6deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .btag-flip .btag { animation: none !important; } }
+@media (max-width: 360px) { .swaddle { width: 80px; height: 100px; } .btag-ink { font-size: 1.08rem; } }

@@ -102,7 +102,7 @@ export default {
     el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
-    el.querySelector('[data-mytag]').onclick = async () => { const p = player(); playerBirthInfo(p); api.changed?.(); await openBirthTag(p, { title: 'Your Birth Tag' }); };
+    el.querySelector('[data-mytag]').onclick = async () => { const p = player(); playerBirthInfo(p); api.changed?.(); await openBirthTag(p, { title: 'Your Birth Tag', parents: p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'parent').slice(0, 2) }); };
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
       const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,
