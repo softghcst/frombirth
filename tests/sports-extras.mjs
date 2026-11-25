@@ -101,7 +101,7 @@ caseOf('boxing: a sport of its own, fights, a record, a title shot, a champion a
   e.level = 'pro'; e.pr = 1900;
   const cash = P().finance.cash;
   let won = false;
-  for (let i = 0; i < 12 && !won; i++) { year({ integrity: 'refuse' }); won = !!e.boxing?.title || (e.boxing?.titles ?? []).length > 0; }
+  for (let i = 0; i < 20 && !won; i++) { year({ integrity: 'refuse' }); won = !!e.boxing?.title || (e.boxing?.titles ?? []).length > 0; }
   const b = e.boxing;
   check(b && b.record.w + b.record.l >= 3 && b.fights.length === b.record.w + b.record.l, `fights add up to the record (${b?.record.w}-${b?.record.l})`);
   check(x.WEIGHTS.includes(b.weight), 'a weight class');

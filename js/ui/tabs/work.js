@@ -29,6 +29,7 @@ import { navRow, icon, lockedRow, fromAge } from '../kit.js';
 import { workLaw } from '../../engine/worklife.js';
 import * as military from '../../engine/military.js';
 import { openMilitary } from '../military.js';
+import { openLawCareer, lawRowSub, showLawRow } from '../lawCareer.js';
 import * as career from '../../engine/career.js';
 import { FAME_MIN_AGE } from '../../data/careers.js';
 
@@ -387,7 +388,7 @@ const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family:
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */
-const SPECIAL = new Set(['myfame', 'myidol', 'fame']);
+const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations']);
 const has = (list, id) => list.find(([x]) => x === id);
 const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
 
@@ -399,6 +400,8 @@ function findWork(p, list) {
   const mil = military.joinOptions();
   rows.push(military.serving() || mil.some((o) => !o.why) ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: military.serving() ? `${p.career.title}, ${military.serving().branch}` : '' })
     : lockedRow('Military', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 18) || mil[0].why));
+  // Law: school, the bar and practice in one place (ui/lawCareer.js), for anyone with a first degree or more.
+  if (showLawRow(p)) rows.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
   if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
   return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
 }
@@ -408,6 +411,8 @@ function specialCareers(p, list) {
   const rows = [];
   rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
   rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
+  // Law enforcement and investigations: police, detectives, federal agents, private investigators (ui/investigations.js).
+  rows.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
   if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
   // Famous before they can use it (a royal baby): shown, locked until old enough.
   else if (career.fame() >= 10) rows.push(lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)));
@@ -497,7 +502,7 @@ export default {
       if (!id) return;
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
-        clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api),
+        clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api), law: () => openLawCareer({ changed: () => api.changed(), openNpc: async (n) => { const { openNpc } = await import('./people.js'); openNpc(n, { changed: () => api.changed() }); } }),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();

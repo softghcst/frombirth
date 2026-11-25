@@ -51,6 +51,15 @@ export const OFFENSES = [
     ladder: ['suspended', 'custody'] },
   { id: 'homicide', name: 'Murder', category: 'violent', severity: 5, custody: [15, 50], victim: true,
     ladder: ['custody'], lesser: 'manslaughter' },
+  // Offenses investigated by specialized units and federal agencies (engine/investigations).
+  { id: 'arson', name: 'Arson', category: 'property', severity: 3, custody: [1, 10], victim: true,
+    ladder: ['probation', 'suspended', 'custody'], lesser: 'criminal_damage' },
+  { id: 'bribery', name: 'Bribery of a public official', category: 'financial', severity: 3, custody: [0, 8], fine: 10000, victim: false,
+    ladder: ['fine', 'probation', 'suspended', 'custody'] },
+  { id: 'drug_supply', name: 'Supplying controlled drugs', category: 'drugs', severity: 3, custody: [1, 12], fine: 5000, victim: false,
+    ladder: ['probation', 'suspended', 'custody'] },
+  { id: 'firearms_trafficking', name: 'Firearms trafficking', category: 'weapons', severity: 4, custody: [2, 12], victim: false,
+    ladder: ['suspended', 'custody'] },
 ];
 export const OFFENSE_BY_ID = Object.fromEntries(OFFENSES.map((o) => [o.id, o]));
 
@@ -160,6 +169,8 @@ export const LEADS = {
   violent: ['witness', 'forensic', 'physical', 'cctv'],
   public_order: ['witness', 'cctv'],
   regulatory: ['documents', 'financial'],
+  drugs: ['witness', 'financial', 'physical', 'digital'],
+  weapons: ['documents', 'physical', 'witness', 'digital'],
 };
 
 /** Grounds for appeal. Each may be argued once per case. */

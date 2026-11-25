@@ -2918,7 +2918,7 @@ export const CASES = [
     needs: ['ct'],
     plans: [
       { id: 'surveillance', label: 'Explain the size and risk calmly, control blood pressure, advise on heavy lifting, and plan regular scans', quality: 'best' },
-      { id: 'operate', label: 'Operate now to be safe', quality: 'poor', procedure: 'ct_valve' },
+      { id: 'operate', label: 'Operate now to be safe', quality: 'poor', procedure: 'ct_aorta' },
       { id: 'discharge', label: 'Discharge without follow-up', quality: 'poor' },
     ],
     outcomes: {

@@ -10,7 +10,7 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { advanceTurn } from '../js/engine/turns.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare } from '../js/data/medicine.js';
+import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare, JURISDICTIONS } from '../js/data/medicine.js';
 import { CASES, CASE_BY_ID } from '../js/data/medicineCases.js';
 import { EVENT_BY_ID } from '../js/data/events/index.js';
 import * as edu from '../js/engine/education.js';
@@ -24,6 +24,7 @@ import * as practice from '../js/engine/medicine/practice.js';
 import * as drama from '../js/engine/medicine/drama.js';
 import * as research from '../js/engine/medicine/research.js';
 import * as jobs from '../js/engine/medicine/jobs.js';
+import * as story from '../js/engine/medicine/story.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
@@ -37,6 +38,9 @@ rng.seed(20261125);
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
+/** Applies, sits the interview answering well, and says whether an offer came. */
+const seekOffer = (id) => { if (!jobs.applyFor(id).ok) return false; while (jobs.interview()) jobs.answer(0); return jobs.offers().some((o) => o.hospitalId === id); };
+
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'us', age = 22) => {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
@@ -120,6 +124,29 @@ for (const c of CASES) {
 }
 check(eraCare(1910) < eraCare(1950) && eraCare(1950) < eraCare(2000) && eraCare(2020) === 1, 'hospitals of earlier eras have less to work with');
 check(cases.fixturesFor('internal', 1910).every((c) => c.minYear <= 1910), 'a 1910 physician sees only cases of 1910');
+// Every country profile is keyed by a real country id (a 'gb' for 'uk' slip once hid the UK profile), and every one
+// but the United States is marked simplified.
+for (const id of Object.keys(JURISDICTIONS).filter((k) => k !== 'default')) {
+  check(!!COUNTRIES[id], `country profile ${id} is a country the game knows`);
+  check(id === 'us' || JURISDICTIONS[id].detail === 'simplified', `country profile ${id} is marked simplified`);
+}
+// Historical access: before about 1870 almost no school took women; until about 1920, fewer did.
+{
+  const q = life('us', 22);
+  const was = store.state.year;
+  q.gender = 'female';
+  store.state.year = 1860;
+  check(/admits women/.test(edu.programOptions().find((x) => x.id === 'medical').reason), 'in 1860 medical school is closed to women');
+  store.state.year = 1900;
+  const her = edu.admissionChance('medical');
+  q.gender = 'male';
+  const his = edu.admissionChance('medical');
+  store.state.year = 2000;
+  const now = edu.admissionChance('medical');
+  q.gender = 'female';
+  check(her < his && edu.admissionChance('medical') === now, `in 1900 fewer places for women; today the same (${her.toFixed(2)} vs ${his.toFixed(2)})`);
+  store.state.year = was;
+}
 const playable = SPECIALTIES.filter((s) => cases.fixturesFor(s.id, 2020).length >= 5);
 check(playable.length >= 6 && playable.some((s) => s.surgical) && playable.some((s) => !s.surgical), `at least six playable specialties, surgical and not (${playable.length})`);
 for (const id of ['med_rotation', 'med_mentor', 'med_rival', 'med_romance', 'med_disclosure', 'med_grateful', 'med_leadership_offer']) check(!!EVENT_BY_ID[id], `scene ${id} registered`);
@@ -218,7 +245,7 @@ if (mine) {
   check(biz.partnerOptions(b).every((n) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || /physician|surgeon|doctor|psychiatrist|podiatrist/i.test(n.occupation ?? '')), 'a practice takes physicians as partners');
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
-check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
+check(['attending', 'experienced', 'senior'].includes(m.job?.rank) || !!m.offer || !m.job, 'ranks change only through reviews and offers');
 section(`practice: ${m.job ? p.career.title : 'no post'}, ${m.clinicIds.length} practice(s)`);
 
 // 5. Drama never touches outcomes; unsafe plans are not rewarded.
@@ -385,6 +412,21 @@ section(`turn lengths: PGY ${a12.pgy}, ${a12.cases} cases over two years at ever
   core.migrateMedicine(gs);
   check(gs.player.medicine.reapply === false && !gs.player.medicine.training, 'a graduate in other work is not pulled into residency');
 }
+{
+  // A long career does not grow the save without end: old patients leave once nothing is on file for them.
+  rng.seed(3030);
+  const q = life('us', 30);
+  const lm = core.M(q);
+  strong(lm);
+  lm.completed.push({ specialtyId: 'family', kind: 'residency', from: 2000, to: 2003 });
+  lm.license = { status: 'full', countryId: 'us' };
+  train.startPost('family', trainingSites('family', q.countryId, q.city)[0].e.id, 'attending');
+  const counts = [];
+  for (let i = 0; i < 40; i++) { year(); q.age = Math.min(q.age, 60); counts.push(Object.keys(core.W().patients).length); }
+  const patientNpcs = Object.values(store.state.npcs).filter((n) => n.flags?.patient).length;
+  check(counts[39] <= counts[20] + 6 && patientNpcs <= counts[39] * 2 + 2, `patients on file level off over a long career (${counts[10]}, ${counts[20]}, ${counts[39]}; ${patientNpcs} patient people)`);
+  check(lm.experience.cases >= 100, `and the career's count of patients is kept (${lm.experience.cases})`);
+}
 section('saves: idempotent migration, no duplicate cases, no invented past');
 
 // 8b. Applying nationwide can mean moving; applying at home does not.
@@ -506,18 +548,31 @@ section('research and teaching, wellbeing, and an offer from another city');
   const v = jobs.hospitalProfile(all[0].id);
   check(v && v.ownership && v.departments.length && v.physicians > 0, 'an employer can be reviewed before applying');
   let offered = null;
-  for (const o of all.filter((x) => !x.block)) { const r = jobs.applyFor(o.id); if (r.ok) { offered = o; break; } }
+  for (const o of all.filter((x) => !x.block && !x.locum)) { if (seekOffer(o.id)) { offered = o; break; } }
   check(!!offered && jobs.offers(jm).length === 1 && !jm.job, 'an interview can end in an offer, which waits for an answer');
+  const terms = jobs.offers(jm)[0];
+  check(terms && terms.hours > 0 && ['light', 'regular', 'heavy'].includes(terms.call) && typeof terms.nonCompete === 'number', `an offer has terms: hours, on-call, non-compete (${JSON.stringify(terms)})`);
   if (offered) {
     const before = jobs.offers(jm)[0]?.salary;
-    jobs.negotiate(offered.id);
-    check(!jobs.negotiate(offered.id).ok, 'an offer is negotiated once');
+    jobs.negotiate(offered.id, 'salary');
+    check(!jobs.negotiate(offered.id, 'hours').ok, 'an offer is negotiated once');
     const still = jobs.offers(jm)[0];
     if (still) {
       check(still.salary >= before, 'negotiating never lowers an offer');
       const r = jobs.acceptOffer(offered.id);
       check(r.ok && jm.job?.hospitalId === offered.id && q.city === offered.city && q.career.salary === still.salary, `accepting starts the post where it is (${r.text})`);
     }
+  }
+  // A temporary post at a rural or public facility lasts a year (a family physician, whose department they all have).
+  jm.completed.push({ specialtyId: 'family', kind: 'residency', from: 2004, to: 2007 });
+  jm.job = null; q.career.employerId = null;
+  const locum = jobs.postings('country', q, jm).find((x) => x.locum && !x.block);
+  check(!!locum, 'temporary (locum) posts are offered by rural and public services');
+  if (locum && seekOffer(locum.id)) {
+    jobs.acceptOffer(locum.id);
+    check(jm.job?.contract?.locum && /Locum/.test(q.career.title), `a locum post is taken (${q.career.title})`);
+    year(); year();
+    check(!jm.job || jm.job.hospitalId !== locum.id, 'and it ends with its year');
   }
 }
 section('choosing where to work: the country\'s hospitals, a profile, an offer, its terms');
@@ -539,7 +594,48 @@ section('choosing where to work: the country\'s hospitals, a profile, an offer, 
   if (gm.training) check(/^Specialty trainee/.test(q.career.title) && !/PGY/.test(q.career.title), `UK titles are not US ones (${q.career.title})`);
   check(gm.license.status === 'full' && /GMC/.test(gm.license.name), `registration follows the UK profile (${gm.license.name})`);
 }
+{
+  // Japan: two supervised years after school, and the license with graduation.
+  rng.seed(4242);
+  const q = life('jp', 26);
+  const jm = core.M(q);
+  strong(jm);
+  jm.route = 'md'; jm.stage = 'graduate'; jm.local = true;
+  jm.school = { name: 'medical school', year: 4, rotations: [], exams: { final: { pass: true, score: 80 } }, interest: { internal: 5 }, apply: ['internal'], graduated: true, countryId: 'jp' };
+  train.runMatch('residency', ['internal']);
+  check(!jm.training || jm.training.kind === 'residency', 'runMatch places a residency directly when called');
+  const jm2 = core.M(life('jp', 26));
+  strong(jm2);
+  jm2.route = 'md'; jm2.stage = 'graduate'; jm2.local = true;
+  jm2.school = { name: 'medical school', year: 4, rotations: [], exams: { final: { pass: true, score: 80 } }, interest: { internal: 5 }, apply: ['internal'], graduated: true, countryId: 'jp' };
+  store.state.player.education.degrees.push({ type: 'medical', gpa: 3.5, age: 26 });
+  store.state.player.education.enrolled = false;
+  jm2.school.graduated = false;
+  year();
+  check(jm2.license.status === 'full' && jm2.training?.kind === 'internship' && jm2.training.years === 2, `in the Japan profile, the license at graduation and two supervised years (${jm2.license.status}, ${jm2.training?.kind} ${jm2.training?.years})`);
+}
 section('another country: its own route, words and license, marked simplified');
+
+// 8g. The Story Director: one beat a year, each once, each about the real life (and a real case, for a specialty).
+{
+  for (const id of story.STORY_BEATS) check(!!EVENT_BY_ID[id], `story beat ${id} has a scene`);
+  rng.seed(2222);
+  const q = life('us', 34);
+  const sm = core.M(q);
+  strong(sm);
+  sm.completed.push({ specialtyId: 'pediatrics', kind: 'residency', from: 2000, to: 2003 });
+  sm.license = { status: 'full', countryId: 'us' };
+  train.startPost('pediatrics', trainingSites('pediatrics', q.countryId, q.city)[0].e.id, 'attending');
+  store.state.pendingEvents = [];
+  const told = story.storyYear(q, sm);
+  check(!!told && !story.storyYear(q, sm), `one beat a year (${told})`);
+  const ev = store.state.pendingEvents.find((x) => x.id === told);
+  if (ev?.cast?.words?.caseId) check(sm.caseIds.includes(ev.cast.words.caseId), 'a case beat is about one of this year\'s real cases');
+  const seen = new Set([told]);
+  for (let i = 0; i < 6; i++) { year(); const t = Object.keys(sm.scenes).filter((k) => k.startsWith('story:med_') && sm.scenes[k] === store.state.year).map((k) => k.slice(6)); for (const x of t) { check(!seen.has(x), `beat ${x} told once`); seen.add(x); } }
+  check(seen.size >= 3, `the beats unfold over the years (${[...seen].join(', ')})`);
+}
+section('the Story Director: one beat a year, each once, about the real life');
 
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {

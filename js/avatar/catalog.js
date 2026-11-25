@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_HAIR, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -45,7 +45,7 @@ const MARK_FILES = new Set(MARKS.map((m) => m.file));
 
 const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|^outfit_kid_|heir|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
 export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
-export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
+export const HAIR_STYLES = parts('hair', (p) => !/^hair_(baby|kid)_/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
 export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: withdrawn, so babies and toddlers are bald
 /**
  * Hairstyles from the fitting pipeline, read from assets/hair_manifest.json (js/avatar/fittedHair.js): offered in the
@@ -321,6 +321,8 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: st.browStyle ?? g.brows, nose: g.nose, lips, beard: st.beard ?? null,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: st.babyHair ?? (babyHair.length ? seeded(babyHair, seed, 'babyhair') : null),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
+    // Hair drawn for the kid head (curation.KID_HAIR), for this child's gender and texture, when there is some.
+    kidDrawnHair: ((own) => (own.length ? seeded(own, seed, 'kiddrawnhair') : null))(KID_HAIR[sex]?.[g.hairTexture] ?? KID_HAIR[sex]?.straight ?? []),
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
     // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
     kidHairChosen: !!st.kidHair,

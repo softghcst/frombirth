@@ -33,8 +33,11 @@ export function settleComplaints() {
   for (const c of complaints().filter((x) => x.status === 'open' && x.subjectId === me() && x.due <= now())) {
     if (!c.investigatorId) {
       const a = agency(r?.job?.agencyId);
-      const ia = staffer(player().countryId, 'officer', 'Professional standards investigator', { agencyId: a?.id, role: 'oversight' });
+      // Where the city has a civilian oversight board, residents review it; otherwise the department's own unit (engine/investigations/policing.js).
+      const board = a?.oversight?.board;
+      const ia = staffer(player().countryId, board ? 'staff' : 'officer', board ? 'Civilian oversight board member' : 'Professional standards investigator', { agencyId: a?.id, role: 'oversight' });
       c.investigatorId = ia.id;
+      c.reviewer = board ? 'board' : 'department';
     }
     const roll = seeded(`${c.id}/finding`);
     c.finding = c.true ? (roll.chance(0.8) ? 'substantiated' : 'insufficient evidence') : (roll.chance(0.85) ? 'unsubstantiated' : 'insufficient evidence');
