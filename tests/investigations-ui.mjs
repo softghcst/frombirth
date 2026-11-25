@@ -101,6 +101,9 @@ async function run(viewport) {
   await dismissMessages(page);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Active Cases' }).first().click();
   check((await page.locator('[data-inv]').innerText()).includes('The Ashford Street Burglary'), `${w}px: the case is in Active Cases`);
+  check(await page.locator('[data-inv] [data-act="support"]').count() >= 1, `${w}px: a case can ask for support from the caseload page`);
+  await page.locator('[data-inv] [data-act="support"]').first().click();
+  await dismissMessages(page);
   await page.locator('[data-inv] [data-act="openCase"]').first().click();
   await page.waitForSelector('[data-case]');
   const tabs = await page.locator('[data-case] [data-tab]').allInnerTexts();
@@ -148,6 +151,18 @@ async function run(viewport) {
   await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
   check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
   check(await fits(page), `${w}px: the new pages fit the screen`);
+  await closeHub(page);
+  // The row has its own icon, and the Family Archive keeps the career.
+  await dismissMessages(page);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(200);
+  const rowText = await page.evaluate(() => document.querySelector('[data-act="investigations"]')?.textContent ?? '');
+  check(rowText.includes('🕵️'), `${w}px: Law Enforcement & Investigations has its icon`);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
+  await page.evaluate(() => document.querySelector('[data-top="archive"]').click()); await page.waitForTimeout(250);
+  await page.locator('#modal-root [data-go="investigations"]').click(); await page.waitForTimeout(200);
+  const legacy = await page.locator('#modal-root .modal').last().innerText();
+  check(/Law enforcement in the family/i.test(legacy) && /you/i.test(legacy) && /Years of service/i.test(legacy), `${w}px: Family Archive → Law enforcement legacy shows the career`);
+  check(await fits(page), `${w}px: the archive page fits the screen`);
   await closeHub(page);
   await page.close();
 }

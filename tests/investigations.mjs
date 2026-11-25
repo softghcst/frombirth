@@ -30,6 +30,8 @@ const PI = await import('../js/engine/investigations/private.js');
 const X = await import('../js/engine/investigations/crossover.js');
 const DR = await import('../js/engine/investigations/drama.js');
 const IX = await import('../js/engine/investigations/index.js');
+const WP = await import('../js/engine/investigations/workplace.js');
+const biz = await import('../js/engine/business.js');
 
 rng.seed(20261125);
 const problems = [];
@@ -746,6 +748,189 @@ section('forensic medicine for the court and death investigations, policing deci
   check(!C.licenseUnmet(p).some((x) => /years/.test(x)), 'with a criminology degree, two years of work are enough for a license');
 }
 section('studying: new majors, degrees that count for each path, a head start once, senior posts that ask for a degree, a shorter way to a license');
+
+// ---------- 15. The Family Archive ----------
+{
+  life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Elm Row Burglary' });
+  r.caseIds.push(inv.id);
+  const jc = k.openCaseFor(inv, inv.file.poi[0]);
+  inv.file.courtCaseId = jc.id;
+  const fam = IX.familyInvestigativeLegacy();
+  const me = fam.find((x) => x.you);
+  check(me && me.history.length && me.cases.some((c) => c.title === 'The Elm Row Burglary' && c.outcome === 'in court'), 'the Family Archive keeps the player\'s career and the cases that reached a court');
+  const text = JSON.stringify(fam);
+  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(store.state.npcs[id].lastName) || store.state.npcs[id].lastName === store.state.player.lastName), 'and never the witnesses of a case');
+}
+section('the Family Archive: the public career and the court record, not the case file');
+
+// ---------- 16. The working life: caseload, moves, task forces, staff, honors, after retiring ----------
+{
+  life('us', 34);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.people.partnerId ??= Object.values(store.state.npcs).find((n) => n.alive && n.age > 25 && n.id !== store.state.player.id).id;
+  const one = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  const two = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(one.id, two.id);
+  const h1 = W.workLeft(one); const h2 = W.workLeft(two);
+  check(WP.prioritize(one.id).ok && W.workLeft(one) === h1 + 2 && W.workLeft(two) === h2 - 1, 'a priority moves hours to one case, from the others');
+  const sup = WP.requestSupport(two.id);
+  check(sup.ok && !WP.requestSupport(two.id).ok, 'support is asked for once a year, and the supervisor decides');
+  const before = Object.keys(one.file.done).length;
+  const d = WP.delegate(one.id);
+  check(d.ok && Object.keys(one.file.done).length > before && one.file.log.some((x) => /took the routine work/.test(x.text)), 'the partner takes routine steps, recorded in the file');
+  check(!WP.delegate(one.id).ok, 'once a year per case');
+  // A task force meeting: sharing helps; holding back costs trust, and can end it.
+  const tfr = (await import('../js/engine/investigations/drama.js')).formTaskForce(two.id, 'fbi');
+  if (tfr.ok) {
+    const hh = W.workLeft(two);
+    check(WP.taskForceMeeting(two.id, 'share').ok && W.workLeft(two) === hh + 2 && !WP.taskForceMeeting(two.id, 'hold').ok, 'a task force meets once a year; sharing adds hands');
+    months(12);
+    WP.taskForceMeeting(two.id, 'hold'); months(12); WP.taskForceMeeting(two.id, 'hold'); months(12); WP.taskForceMeeting(two.id, 'hold');
+    check(core.W().taskForces[two.file.taskForceId].status === 'ended', 'holding back leads year after year ends the task force');
+  }
+  // Honors follow the way the work was done.
+  r.rep.integrity = 80; r.rep.ethics = 80; r.stats.years = 8;
+  one.file.outcome = { kind: 'resolved', at: core.now() }; one.file.cleared = [one.file.poi[0]].filter(Boolean);
+  for (let i = 0; i < 10 && !r.stats.awards.length; i++) { one.file.outcome.at = core.now(); WP.workplaceYear(); store.state.year += 1; }
+  check(r.stats.awards.length > 0 && r.history.some((h) => r.stats.awards.some((x) => h.text.startsWith(x.name))), `recognition for thorough, lawful work is recorded (${r.stats.awards.map((x) => x.id)})`);
+  r.rep.integrity = 30;
+  const n0 = r.stats.awards.length;
+  for (let i = 0; i < 4; i++) { one.file.outcome.at = core.now(); WP.workplaceYear(); store.state.year += 1; }
+  check(r.stats.awards.length === n0, 'no honors with a poor integrity record');
+}
+{
+  // A federal agent asks for a transfer and a squad.
+  const p = life('us', 32, { degree: 'accounting' });
+  hire(CAREER_BY_ID.fbi_agent, 0, 60, 'test');
+  const r = core.I();
+  const o = A.officeOf('fbi', A.federalCities()[0]);
+  r.family = 'federal'; r.stage = 'agent';
+  r.job = { agencyKind: 'fbi', officeId: o.id, employerId: o.employerId, rank: 'agent', detective: false, since: store.state.year - 4, rankSince: store.state.year - 4 };
+  const city = A.federalCities().find((c) => c !== o.city);
+  check(WP.requestMove('office', city).ok && !WP.requestMove('squad', 'fraud').ok, 'one request at a time, decided after six months');
+  months(6); WP.settleWorkplace();
+  check(['granted', 'refused'].includes(r.move.status) && (r.move.status !== 'granted' || A.office(r.job.officeId).city === city), `the transfer is decided (${r.move.status})`);
+  let squad = false;
+  for (let i = 0; i < 6 && !squad; i++) { WP.requestMove('squad', 'fraud'); months(6); WP.settleWorkplace(); squad = r.job.squad === 'fraud'; }
+  check(squad, 'an agent with an accounting degree gets onto the white-collar squad in time');
+  check(!WP.requestMove('squad', 'drugs').ok, 'squads are the agency\'s own');
+  void p;
+}
+{
+  // A private agency's staff take a matter on, lawfully, and it closes on its date.
+  const p = life('us', 45);
+  p.career.experience = { police: 8 };
+  C.applyLicense(); months(3); C.settleApplications();
+  if (!C.licensed(p)) { months(12); C.applyLicense(); months(3); C.settleApplications(); }
+  PI.openAgency('North Pier Investigations');
+  const b = PI.agencies(p)[0];
+  const hand = k.civilian('us', { age: 33, kind: 'civilian' });
+  b.staff.push({ id: hand.id, wageK: 1, asked: 1, since: p.age, manager: false });
+  const offer = PI.clientsFor(b)[0];
+  if (offer) {
+    PI.acceptClient(b.id, offer.id);
+    const q = PI.inquiries(p).at(-1);
+    check(WP.assignInquiry(q.id, hand.id).ok && q.assignedTo === hand.id, 'a matter can be given to staff');
+    const cash = b.cash;
+    months(6); WP.settleWorkplace();
+    check(q.status === 'complete' && q.steps.every((x) => ['client', 'public', 'people', 'report'].includes(x)) && b.cash === cash + q.fee, 'staff close it with lawful steps only, and the fee is paid once');
+  }
+}
+{
+  // After retiring: teaching, consulting, testifying, a memoir.
+  const p = life('us', 58);
+  const r = core.I();
+  r.retired = { year: store.state.year }; r.stage = 'retired'; r.stats.years = 25; r.rep.integrity = 75; r.skills.reasoning = 70;
+  const ids = WP.secondOptions(p).filter((x) => !x.block).map((x) => x.id);
+  check(['instructor', 'consultant', 'expert', 'memoir'].every((x) => ids.includes(x)), 'a retired investigator has work to go on to');
+  const cash = p.finance.cash;
+  check(WP.takeSecond('instructor').ok && WP.workplaceYear().some((x) => /Academy instructor/.test(x)) && p.finance.cash > cash, 'teaching at the academy pays each year');
+  const eth = r.rep.ethics;
+  WP.takeSecond('memoir', 'files');
+  check(r.rep.ethics < eth && !WP.takeSecond('memoir', 'public').ok, 'a memoir that tells what case files held is a breach; and there is one memoir');
+}
+section('the working life: a priority, support, a partner\'s routine work, task force meetings, transfers and squads, a private agency\'s staff, honors on how the work is done, work after retiring');
+
+// ---------- 17. The local world: real businesses, real neighbors, community meetings, the stand ----------
+{
+  const p = life('us', 34);
+  const LO = await import('../js/engine/investigations/local.js');
+  const E = await import('../js/engine/employers.js');
+  const NB = await import('../js/engine/neighborhood.js');
+  NB.settle(store.state, { quiet: true });
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  // A fraud happens at a real employer of the city, whose own history records it.
+  const fr = W.openCase('fraud', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(fr.id);
+  const emp = fr.file.employerId && E.jobs().employers[fr.file.employerId];
+  check(emp && fr.file.title.includes(emp.name) && emp.city === p.city && emp.history.some((h) => /money missing/.test(h.text)), `a fraud case is at a real employer of the city (${fr.file.title})`);
+  const again = W.openCase('fraud', { ownerId: a.id, truth: 'insider', title: 'Given title' });
+  check(!again.file.employerId, 'a case given its own place keeps it');
+  // Witnesses may be real residents of the city's neighborhoods: the same people, not copies.
+  const residents = new Set(Object.values(NB.hoods().res).map((x) => x.id));
+  let neighbor = null;
+  for (let i = 0; i < 12 && !neighbor; i++) { const c = W.openCase('burglary', { ownerId: a.id, truth: 'insider' }); neighbor = Object.keys(c.file.witnesses).find((id) => residents.has(id)); }
+  check(!Object.keys(NB.hoods().list).length || (neighbor && store.state.npcs[neighbor] && NB.hoods().res[neighbor].f === store.state.npcs[neighbor].firstName), 'a witness can be a real neighbor, with the same name and identity');
+  // A community meeting: once a year per neighborhood; listening builds trust; a tip is a lead, not evidence.
+  const hood = LO.meetingsHere(p)[0];
+  if (hood) {
+    const ev0 = Object.keys(k.J().evidence).length;
+    const m = LO.communityMeeting(hood.id, 'listen');
+    check(m.ok && r.community[hood.id] > 50 && !LO.communityMeeting(hood.id, 'listen').ok, 'a community meeting once a year; listening builds trust');
+    check(Object.keys(k.J().evidence).length === ev0, 'a tip from a meeting is never evidence by itself');
+  }
+  // On the stand: the file is the record; a denial it contradicts is found out.
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Stand Case' });
+  r.caseIds.push(inv.id);
+  for (const it of inv.file.items) inv.evidenceIds.push(it.evidenceId);
+  inv.file.items[0].integrity = 'gap';
+  const jc = k.openCaseFor(inv, inv.file.poi[0]);
+  inv.file.courtCaseId = jc.id;
+  const qs = W.crossQuestions(inv);
+  check(qs.find((q) => q.id === 'custody').weak, 'the defense asks about the custody gap the file shows');
+  const integ = r.rep.integrity;
+  const res = W.crossExamination(inv.id, { custody: 'deny', pressure: 'honest', lab: 'honest', others: 'honest' });
+  check(res.tone === 'bad' && inv.file.cross.caught === 1 && r.rep.integrity < integ, 'denying what the file shows is found out, and costs integrity');
+  check(!W.crossExamination(inv.id, {}).ok, 'evidence is given once');
+  const inv2 = W.openCase('burglary', { ownerId: a.id, truth: 'insider', title: 'The Honest Case' });
+  r.caseIds.push(inv2.id);
+  for (const it of inv2.file.items) inv2.evidenceIds.push(it.evidenceId);
+  inv2.file.items[0].integrity = 'gap';
+  inv2.file.courtCaseId = k.openCaseFor(inv2, inv2.file.poi[0]).id;
+  const rel = r.rep.reliability;
+  check(W.crossExamination(inv2.id, { custody: 'honest' }).tone === 'good' && r.rep.reliability > rel && !inv2.file.cross.caught, 'owning a weakness on the stand keeps the investigator\'s word good');
+}
+section('the local world: business cases at real employers, real neighbors as witnesses, community meetings, cross-examination against the file');
+
+// ---------- 18. Corporate investigators ----------
+{
+  const p = life('us', 35, { degree: 'accounting' });
+  let posts = [];
+  for (let i = 0; i < 6 && !posts.length; i++) { posts = WP.corporatePosts(p); if (!posts.length) store.state.year += 1; }
+  check(posts.length > 0, 'an accountant can find a corporate investigations post');
+  const e = posts[0];
+  const res = WP.joinCorporate(e.id);
+  const r = core.I();
+  check(res.ok && p.career.careerId === 'pi' && p.career.employerId === e.id && r.job.corporate && /no police powers/i.test(res.text), 'a corporate investigator works for a real company, with no police powers');
+  const lines = WP.workplaceYear();
+  const q = PI.inquiries(p).find((x) => x.kind === 'corporate');
+  check(q && lines.some((x) => /internal matter/.test(x)) && !WP.workplaceYear().length, 'the company brings one internal matter a year');
+  for (const s2 of ['police_records', 'pose']) check(!PI.inquiryStep(q.id, s2).ok, `inside a company too, an investigator may not: ${s2}`);
+  for (const s2 of ['client', 'public', 'people', 'report']) PI.inquiryStep(q.id, s2);
+  const done = PI.completeInquiry(q.id);
+  check(done.ok && q.status === 'complete' && !/paid/.test(done.text), 'the report goes to the company; there is no fee, it is a salaried job');
+  IX.tickInvestigations();
+  check(r.job?.corporate && p.career.careerId === 'pi', 'the yearly step keeps the corporate post');
+}
+section('corporate investigators: a real company, internal matters, no police powers, a salary not fees');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
