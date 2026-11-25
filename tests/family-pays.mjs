@@ -103,5 +103,58 @@ function plan(withMom) {
   check(adult[1] < close[1], 'a grown child still at home is helped less than a young one');
 }
 
+// 4. What the trip is: a premium cabin or grand hotel, paying for friends too, a second trip this year, all make it a
+// harder ask; a well-off family says yes more. A no stands until the plan is made cheaper or smaller.
+{
+  const { makeNpc: mk } = { makeNpc };
+  const yeses = (o, tweak) => {
+    let all = 0;
+    for (let i = 0; i < 150; i++) {
+      const { p, mom } = setup(14, { rel: 90, giving: 75, savings: 500000 });
+      mom.wealth = o.wealth ?? 50;
+      if (o.paid) p.flags.familyPaidTrips = { [store.state.year]: o.paid };
+      const t = plan(null);
+      tweak?.(t, p);
+      travel.askFamily(t.id);
+      all += t.familyAnswer.share === 1 ? 1 : 0;
+    }
+    return all;
+  };
+  const plain = yeses({});
+  const grand = yeses({}, (t) => travel.updatePlan(t.id, { stay: 'luxury' }));
+  const friends = yeses({}, (t, p) => {
+    for (let k = 0; k < 2; k++) { const f = mk({ role: 'friend', countryId: 'us', age: 14 }); store.state.npcs[f.id] = f; p.npcIds.push(f.id); t.travelers.push({ id: f.id, status: 'accepted', pays: 'organizer' }); }
+  });
+  const again = yeses({ paid: 1 });
+  const rich = yeses({ wealth: 95 });
+  console.log('   whole-trip yeses of 150:', JSON.stringify({ plain, grand, friends, again, rich }));
+  check(grand < plain, 'a grand hotel is a harder ask');
+  check(friends < plain, 'paying for friends too is a harder ask');
+  check(again < plain, 'a second trip this year is a harder ask');
+  check(rich > plain, 'a well-off family says yes more');
+
+  // A no stands for the same plan; making it cheaper lets you ask again.
+  let t = null, tries = 0;
+  for (; tries < 60; tries++) {
+    setup(14, { rel: 40, giving: 30, savings: 500000 });
+    t = plan(null);
+    travel.updatePlan(t.id, { stay: 'luxury' });
+    if (!travel.askFamily(t.id).ok) break;
+  }
+  const no = t.familyAnswer.text;
+  check(travel.askFamily(t.id).text.startsWith(no) && /cheaper or smaller/.test(travel.askFamily(t.id).text), 'a no stands for the same plan, with a hint');
+  travel.updatePlan(t.id, { stay: 'hostel' });
+  travel.askFamily(t.id);
+  check(!travel.askFamily(t.id).text.includes('cheaper or smaller') || t.familyAnswer.text !== no, 'made cheaper, it can be asked again');
+  // A yes lapses if the plan grows: dearer than asked, it has to be asked again.
+  for (tries = 0; tries < 60; tries++) {
+    setup(14, { rel: 95, giving: 90, savings: 900000 });
+    t = plan(null);
+    if (travel.askFamily(t.id).ok) break;
+  }
+  travel.updatePlan(t.id, { stay: 'luxury' });
+  check(travel.problems(t).some((x) => /grown since you asked/.test(x)) && travel.quote(t).family === 0, 'a plan made dearer after a yes has to be asked again');
+}
+
 if (problems.length) { console.log(`PROBLEMS:\n - ${problems.join('\n - ')}`); process.exit(1); }
 console.log('Asking the family to pay holds.');

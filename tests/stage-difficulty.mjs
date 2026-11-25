@@ -85,7 +85,7 @@ const partOdds = (skill, o = {}, n = 140) => {
 
 // 3. A part in a Broadway show, with credits and an agent: almost out of reach below the top; a BFA counts.
 {
-  const at75bfa = partOdds(75, { degree: BFA }), at85 = partOdds(85), at85ba = partOdds(85, { degree: BA }), at85bfa = partOdds(85, { degree: BFA }), at95bfa = partOdds(95, { degree: BFA });
+  const at75bfa = partOdds(75, { degree: BFA }), at85 = partOdds(85, {}, 500), at85ba = partOdds(85, { degree: BA }), at85bfa = partOdds(85, { degree: BFA }), at95bfa = partOdds(95, { degree: BFA });
   check(at75bfa <= 0.08, `a 75 with a BFA gets a Broadway part ${pct(at75bfa)} of the time`);
   check(at85 <= 0.2, `an untrained 85 gets one ${pct(at85)} of the time`);
   check(at85bfa >= at85 + 0.12 && at85bfa >= at85ba, `a BFA counts (${pct(at85bfa)} against ${pct(at85ba)} with a BA, ${pct(at85)} untrained)`);

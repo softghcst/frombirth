@@ -96,8 +96,11 @@ section('the past: only clubs that existed then');
 {
   const p = life(30);
   cl.join('sailing');
+  // The next year's dues fall due with no money to pay them. (Checked at that moment, not across a whole year:
+  // a year can bring a gift or a windfall before the dues are taken, and then they are paid.)
   p.finance.cash = 0;
-  year();
+  store.state.year += 1;
+  cl.tickClubs();
   check(!cl.clubsOf().now.sailing && cl.clubsOf().past.some((x) => x.id === 'sailing' && x.why === 'dues'), 'unpaid dues: the membership lapses');
   const k = life(16);
   cl.join('scouts');

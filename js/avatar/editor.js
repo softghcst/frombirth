@@ -3,11 +3,12 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
-import { ELDER_BROWS } from './curation.js';
+import { ELDER_BROWS, ELDER_HAIR_AGE } from './curation.js';
+import { elderHair } from '../CharacterAvatar.js';
 import { kidsMayWear } from './fittedHair.js';
 import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import { icon } from '../ui/kit.js';
@@ -69,7 +70,8 @@ export function mountAppearanceEditor(el, o = {}) {
   let a = cloneAppearance(normalize(o.appearance, seed));
   let preview = 'now';
   let hairFilter = 'suits';
-  const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0);
+  const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0)
+    && (CATALOG.outfit.length || !['outfit', 'outfitColor'].includes(key));  // no Clothes tab while there are no clothes
   // scope 'tweaks' is the surgeon's: only proportions, and they are worn rather than born with.
   const tabs = scope === 'tweaks' ? [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }]
     : TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);
@@ -85,6 +87,8 @@ export function mountAppearanceEditor(el, o = {}) {
     else next[c.half][key] = value;
     // A thumbnail for a hat shows the hat; for glasses, make-up or jewelry, nothing hides it.
     if (key !== 'hat') next.style.hat = null;
+    // Hair chosen in old age is kept as chosen, rather than drawn as an elder's style (elderHair).
+    if (key === 'hair' && o.gender && age >= ELDER_HAIR_AGE) next.style.keepHair = true;
     return next;
   };
   const optionsFor = (key) => {
@@ -94,9 +98,12 @@ export function mountAppearanceEditor(el, o = {}) {
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
       // A child is not offered the grown-ups' styles.
       if (age < 14) list = list.filter((h) => kidsMayWear(h.id));
+      list = list.filter((h) => age >= (h.minAge ?? 0));
+      list = list.filter((h) => hairSuitsGender(h, o.gender));  // men's styles to men, women's to women, unisex to both
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);
+    if (key === 'eyes') list = list.filter((x) => eyesFor(x.id, o.gender) === x.id);  // a man's eyes have no lashes
     // The bushy brows of old age are an old man's.
     if (key === 'brows' && o.gender === 'female') list = list.filter((x) => x.id !== ELDER_BROWS);
     return list;
@@ -105,7 +112,7 @@ export function mountAppearanceEditor(el, o = {}) {
   function control(key) {
     const c = CONTROLS[key];
     const current = a[c.half][key];
-    const shown = key === 'lips' ? lipsFor(current, o.gender) : current;
+    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'eyes' ? eyesFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
     const isOn = (id) => (c.multi ? current.includes(id) : shown === id);
     const zoom = ZOOM[key];
     const options = optionsFor(key).map((x) => {
@@ -121,7 +128,7 @@ export function mountAppearanceEditor(el, o = {}) {
         ? `<button type="button" class="av-opt av-thumb ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${draw(withValue(key, c.noneId ?? null), { viewBox: zoom })}<span>${esc(c.none)}</span></button>`
         : `<button type="button" class="av-opt av-chip ${on}" data-key="${key}" data-id="${id}" aria-pressed="${!!on}">${esc(c.none)}</button>`);
     }
-    const chosen = c.multi ? current.map((id) => part(key, id)?.name).filter(Boolean).join(', ') : part(key, current)?.name ?? c.none ?? '';
+    const chosen = c.multi ? current.map((id) => part(key, id)?.name).filter(Boolean).join(', ') : part(key, shown)?.name ?? c.none ?? '';
     const filters = c.filter ? `<div class="av-filters">${HAIR_FILTERS.map(([id, label]) => `<button type="button" class="av-chip av-filter ${hairFilter === id ? 'on' : ''}" data-filter="${id}">${esc(label)}</button>`).join('')}</div>` : '';
     return `<div class="av-control"><div class="av-label"><strong>${esc(c.label)}</strong><span>${esc(chosen)}</span></div>${filters}
       <div class="av-options ${c.kind}">${options.join('')}</div></div>`;
@@ -176,6 +183,8 @@ export function mountAppearanceEditor(el, o = {}) {
       const list = a[c.half][key];
       a[c.half][key] = id == null ? [] : list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
     } else a[c.half][key] = id;
+    // Hair chosen in old age is kept as chosen, rather than drawn as an elder's style (elderHair).
+    if (key === 'hair' && o.gender && age >= ELDER_HAIR_AGE) a.style.keepHair = true;
     keepScroll(render);
     o.onChange?.(cloneAppearance(a));
   };

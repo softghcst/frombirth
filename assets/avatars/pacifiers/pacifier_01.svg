@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1"><g id="art">
+<!-- A baby's binkie, drawn where a mouth sits on the template face (centred on 256, 388). Its color is the binkie-color
+     variable, which the portrait sets: blue for a boy, pink for a girl. The outline is the heads' own #23140f. -->
+<path style="fill:var(--binkie-color,#5aa7f0)" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round" d="M212 388C211 369 230 361 256 368C282 361 301 369 300 388C301 407 282 415 256 408C230 415 211 407 212 388Z"/>
+<path style="fill:none;stroke:color-mix(in srgb,var(--binkie-color,#5aa7f0) 45%,#fff)" stroke-width="3.5" stroke-linecap="round" d="M222 380C226 372 236 369 246 372M266 372C276 369 286 372 290 380"/>
+<ellipse cx="229" cy="392" rx="5.5" ry="4.5" style="fill:color-mix(in srgb,var(--binkie-color,#5aa7f0) 55%,#000)" stroke="#23140f" stroke-width="2"/>
+<ellipse cx="283" cy="392" rx="5.5" ry="4.5" style="fill:color-mix(in srgb,var(--binkie-color,#5aa7f0) 55%,#000)" stroke="#23140f" stroke-width="2"/>
+<circle cx="256" cy="388" r="11" style="fill:color-mix(in srgb,var(--binkie-color,#5aa7f0) 60%,#fff)" stroke="#23140f" stroke-width="3"/>
+<ellipse cx="256" cy="397" rx="15" ry="16" fill="none" stroke="#23140f" stroke-width="10"/>
+<ellipse cx="256" cy="397" rx="15" ry="16" fill="none" style="stroke:color-mix(in srgb,var(--binkie-color,#5aa7f0) 80%,#fff)" stroke-width="5"/>
+<path style="fill:none;stroke:#fff" stroke-opacity=".7" stroke-width="2" stroke-linecap="round" d="M245 389Q246 384 250 382"/>
+</g></svg>

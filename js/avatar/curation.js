@@ -57,6 +57,14 @@ export const RESTING = {
  * A man is drawn with the `male` match of the mouth he was born with, a woman with the `female` match of hers
  * (lipsFor in js/avatar/catalog.js). What is saved, and passed on to children, is the mouth itself.
  */
+/**
+ * Eyes drawn on a man: the eye shapes with lashes or winged liner (10, 16, 25, 6, 22, 20, and the closed 7) are drawn as
+ * the plain shape closest to them (18, 19, 8, 9 have none). The eyes are still inherited as they are, so a son with his
+ * mother's eyes passes hers on; only how they are drawn on him changes.
+ */
+export const EYE_MATCH = {
+  male: { eyes_10: 'eyes_8', eyes_16: 'eyes_18', eyes_6: 'eyes_18', eyes_25: 'eyes_9', eyes_22: 'eyes_19', eyes_20: 'eyes_19', eyes_7: 'eyes_9' },
+};
 export const LIP_MATCH = {
   male: { lips_4: 'lips_masc_04', lips_6: 'lips_masc_14', lips_7: 'lips_masc_09', lips_11: 'lips_masc_03', lips_14: 'lips_masc_13' },
   female: { lips_masc_02: 'lips_8', lips_masc_03: 'lips_11', lips_masc_04: 'lips_4', lips_masc_06: 'lips_10', lips_masc_07: 'lips_14',
@@ -64,6 +72,14 @@ export const LIP_MATCH = {
 };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';
+/**
+ * A baby's, toddler's and child's eyes are round and open: eyes they were born with that are one of these are kept; any other
+ * shape (heavy-lidded, almond, winged) is drawn as the round one it always maps to, until they are thirteen.
+ */
+// Round and open, with nothing above the eye that would read as a second pair of brows: eyes_22, and eyes_6 without
+// its fold lines (assets/avatars/baby_eyes/baby_eyes_6.svg).
+export const BABY_EYES = ['eyes_22', 'baby_eyes_6'];
+export const babyEyes = (id) => (!id || BABY_EYES.includes(id) ? id : BABY_EYES[[...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 7) % BABY_EYES.length]);
 /** Expressions the renderer can borrow for a mood. */
 export const EXPRESSION = { crying: 'eyes_14', laughing: 'lips_20', grin: 'lips_21', sadBrows: 'brows_11' };
 /**
@@ -114,6 +130,19 @@ export const PART_SCALE = {
 };
 /** Brows that come with age, to men: from 84 an old man's brows grow bushy (a woman's keep their shape and gray). */
 export const ELDER_BROWS = 'brows_23_elder_bushy';
+/**
+ * Hair in old age: from ELDER_HAIR_AGE (when graying has turned hair mostly white) a woman or man is drawn with one of
+ * the elder styles for their gender, unless their own style is one, or they have chosen their hair at the salon since (style.keepHair).
+ * The styles: the ids listed here, chosen by hand from the existing ones, and every fitted style whose raw SVG is marked
+ * data-elder="female" or "male" (elderHairStyles in js/CharacterAvatar.js).
+ */
+export const ELDER_HAIR_AGE = 70;
+export const ELDER_HAIR = { female: [], male: [] };
+
+// Clothes. The old outfits have been withdrawn while new ones are made: every list below is empty, so for now
+// nobody wears clothes (portraits show bare shoulders) and the creator hides its Clothes tab. To add clothes, put
+// the SVGs in assets/avatars/clothes/ (named outfit_<...>.svg), run python3 scripts/build-avatar-manifest.py, and
+// list their ids here. Saves keep no outfit until there is one to give: then everyone is dressed again.
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 /**
@@ -129,12 +158,9 @@ export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fri
 export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
-  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee',
-    'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
-  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset',
-    'outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
-  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
+  any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
+  female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
+  male: ['outfit_64_flannel_shirt', 'outfit_66_denim_shirt', 'outfit_67_varsity_jacket'],
   // What a baby or toddler wears (0 to 6, one head): drawn on its template, assets/clothes_templates/baby_head_template.png.
   baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest', 'outfit_baby_05_star_pajamas', 'outfit_baby_07_cable_sweater', 'outfit_baby_09_yellow_collar',
     'outfit_baby_10_suspenders_bowtie'],
@@ -142,9 +168,8 @@ export const OUTFITS = {
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
-    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'], monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+  outfits: { female: ['outfit_45_princess_sweetheart', 'outfit_52_princess_starlight'],
+    male: ['outfit_46_prince_epaulettes'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'], monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.
@@ -163,16 +188,14 @@ export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, cro
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
-  police: { outfit: 'outfit_police_01', senior: { outfit: 'outfit_swat_02', level: 4 } },
-  firefighter: { outfit: 'outfit_firefighter_01' },
-  enlisted: { outfit: 'outfit_military_01' },
-  officer: { outfit: 'outfit_military_01' },
-  doctor: { outfit: 'outfit_06_doctor' }, nurse: { outfit: 'outfit_06_doctor' }, dentist: { outfit: 'outfit_06_doctor' }, vet: { outfit: 'outfit_06_doctor' },
-  pharmacist: { outfit: 'outfit_06_doctor' }, scientist: { outfit: 'outfit_06_doctor' },
-  lawyer: { outfit: 'outfit_03_suit' }, banker: { outfit: 'outfit_19_tuxedo' }, accountant: { outfit: 'outfit_03_suit' }, political_staff: { outfit: 'outfit_03_suit' },
+  // The work uniforms (police, firefighter, military, doctor, suit) are being redrawn: until then, people wear their own clothes at work.
 };
-export const PRISON = 'outfit_07_prison';
-export const GRADUATION = { outfit: 'outfit_08_grad' };
+
+/** A baby (under 3) has a binky in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
+export const PACIFIER = { id: 'pacifier_01', boy: '#5aa7f0', girl: '#f48cc4' };
+/** What a prisoner wears: being redrawn; until then, their own clothes. */
+export const PRISON = null;
+export const GRADUATION = { outfit: null }; // the gown is being redrawn
 
 /**
  * Hairstyles that hide an eye or much of the face (measured: see README). Nobody is given one

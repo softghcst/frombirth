@@ -7,11 +7,12 @@
 import { faceGenderOf } from '../avatar/render.js';
 import { store, player, country, livingNpcs } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
-import { openModal, messageModal, confirmModal } from './modals.js';
+import { openModal, messageModal, confirmModal, tripSceneModal } from './modals.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { FILTERS, MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
 import { SKILLS, LEVELS } from '../data/skills.js';
 import { CABINS } from '../data/activities.js';
+import { STATEROOM_BY_ID, VIEW_BY_ID, DECKS, CRUISE_LINE_BY_ID, ITINERARY_BY_ID } from '../data/cruises.js';
 import * as travel from '../engine/travel.js';
 import * as docs from '../engine/documents.js';
 import * as reloc from '../engine/relocation.js';
@@ -58,6 +59,73 @@ const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}
 const money = (n) => fmtMoney(n, country());
 const flag = (id) => COUNTRIES[id]?.flag ?? '';
 const nameOf = (id) => COUNTRIES[id]?.name ?? id;
+/**
+ * The cruise planner's steps, kept calm: each choice is a short list until it is made, then one line that opens again
+ * to change it. Descriptions show only for what is chosen.
+ */
+const picked = (label, value, body, open = false) => `<details class="gl-pick" ${open ? 'open' : ''}><summary><span class="muted">${esc(label)}</span> <strong>${esc(value)}</strong> <span class="gl-change">Change</span></summary>${body}</details>`;
+const option = (field, name, id, on, title, sub = '', disabled = false) => `<label class="gl-radio"><input type="radio" name="${name}" data-cruise="${field}" value="${id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span class="gl-opt"><strong>${esc(title)}</strong>${sub ? `<small class="muted">${esc(sub)}</small>` : ''}</span></label>`;
+function cruiseStep(trip) {
+  const c = trip.cruise ?? {};
+  const lines = travel.cruiseLines(trip);
+  const line = CRUISE_LINE_BY_ID[c.line];
+  const lineList = lines.map((l) => option('line', 'cline', l.id, c.line === l.id, l.name, `${l.tier}${l.kids === 'adults' ? ', 18 and over' : ''}`)).join('');
+  if (!lines.length) return '<div class="card gl-step"><h3>2 · Cruise</h3><p class="muted">No cruise lines sail in this period.</p></div>';
+  if (!line) return `<div class="card gl-step"><h3>2 · Cruise</h3>${lineList}</div>`;
+  const list = travel.sailings(trip);
+  const open = list.filter((it) => !it.why);
+  const closed = list.filter((it) => it.why);
+  const it = list.find((x) => x.id === c.itin);
+  const sailList = `${open.map((x) => option('itin', 'citin', x.id, c.itin === x.id, x.name, `${x.nights} nights from ${x.portName.replace(/, .*$/, '')}${x.oneWay ? ', one way' : ''}`)).join('')}
+    ${closed.length ? `<details class="gl-more"><summary class="muted">${closed.length} not sailing on these dates</summary>${closed.map((x) => `<p class="muted gl-why"><strong>${esc(x.name)}</strong>: ${esc(x.why)}</p>`).join('')}</details>` : ''}`;
+  return `<div class="card gl-step"><h3>2 · Cruise</h3>
+    ${picked('Line', line.name, lineList)}
+    <p class="muted gl-note">${esc(line.blurb)}</p>
+    ${it ? `${picked('Sailing', `${it.name}, ${it.nights} nights`, sailList)}<p class="muted gl-note">From ${esc(it.portName)}. ${esc(it.ports.length ? it.ports.join(' · ') : 'Days at sea')}.</p>` : `<div class="section-label">Sailings</div>${sailList}`}
+  </div>`;
+}
+function stateroomStep(trip) {
+  const c = trip.cruise ?? {};
+  if (!c.itin) return '';
+  const room = STATEROOM_BY_ID[c.room];
+  const list = travel.staterooms(trip).map((r) => option('room', 'croom', r.id, c.room === r.id, r.name)).join('');
+  if (!room) return `<div class="card gl-step"><h3>7 · Stateroom</h3>${list}<p class="muted gl-note">Prices are for two sharing.</p></div>`;
+  return `<div class="card gl-step"><h3>7 · Stateroom</h3>
+    ${picked('Room', room.name, list)}
+    <p class="muted gl-note">${esc(room.blurb)} Sleeps ${room.sleeps}.</p>
+    <div class="gl-pair">${room.views.length > 1 ? `<label class="field">View <select data-cruise="view">${room.views.map((v) => `<option value="${v}" ${c.view === v ? 'selected' : ''}>${esc(VIEW_BY_ID[v].name)}</option>`).join('')}</select></label>` : ''}
+    <label class="field">Deck <select data-cruise="deck">${DECKS.map((d) => `<option value="${d.id}" ${c.deck === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label></div></div>`;
+}
+/** Short names for the extras' chips. */
+/** The bill, with a cruise's many charges folded into one line that opens to show them all. */
+function billLines(lines, trip) {
+  if (trip.type !== 'cruise') return lines;
+  const cruise = lines.filter((l) => l.kind === 'cruise');
+  if (cruise.length < 2) return lines;
+  const at = lines.indexOf(cruise[0]);
+  const rest = lines.filter((l) => l.kind !== 'cruise');
+  rest.splice(at, 0, { label: 'Cruise, fees and extras', amount: cruise.reduce((s2, l) => s2 + l.amount, 0), group: cruise });
+  return rest;
+}
+const EXTRA_SHORT = { drinks: 'Drinks package', soda: 'Soft drinks', dining: 'Specialty dining', wifi_basic: 'Wi-Fi', wifi_stream: 'Streaming Wi-Fi', excursions: 'Shore excursions' };
+function onboardStep(trip) {
+  const c = trip.cruise ?? {};
+  const it = ITINERARY_BY_ID[c.itin];
+  if (!it || !c.room) return '';
+  const extras = travel.cruiseExtras(trip);
+  const inc = extras.filter((e) => e.included);
+  const wifiOn = c.extras.some((id) => /^wifi/.test(id)) && !extras.some((e) => /^wifi/.test(e.id) && e.included);
+  const ashore = c.extras.includes('excursions') || extras.some((e) => e.id === 'excursions' && e.included);
+  const notes = [c.extras.includes('drinks') ? `Every adult in the room needs it (drinking age ${travel.drinkingAge(it)}).` : '', wifiOn ? 'Wi-Fi is per device.' : ''].filter(Boolean).join(' ');
+  return `<div class="card gl-step"><h3>8 · Extras</h3>
+    <p class="muted gl-note">Meals, shows and pools are in the fare.${inc.length ? ` ${esc(CRUISE_LINE_BY_ID[c.line].name)} also includes ${esc(inc.map((e) => (EXTRA_SHORT[e.id] ?? e.name).toLowerCase()).join(', '))}.` : ''}</p>
+    <div class="chips">${extras.filter((e) => !e.included).map((e) => chip(EXTRA_SHORT[e.id] ?? e.name, c.extras.includes(e.id), `data-cruise="extra" data-value="${e.id}"`)).join('')}</div>
+    ${notes ? `<p class="muted gl-note">${esc(notes)}</p>` : ''}
+    ${wifiOn ? `<label class="field">Devices <select data-cruise="devices">${[1, 2, 3, 4, 5, 6].map((d) => `<option ${c.devices === d ? 'selected' : ''}>${d}</option>`).join('')}</select></label>` : ''}
+    ${ashore && it.ports.length ? `<div class="section-label">Excursions</div><div class="chips">${it.ports.map((port, i) => chip(port.replace(/ \(.*\)$/, ''), c.ports.includes(i), `data-cruise="port" data-value="${i}"`)).join('')}</div>` : ''}
+  </div>`;
+}
+
 const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', canceled: 'Canceled', disrupted: 'Disrupted',
   submitted: 'Submitted', under_review: 'Under review', review_requested: 'Review requested', approved: 'Approved', refused: 'Refused', withdrawn: 'Withdrawn', expired: 'Expired', used: 'Used' };
 const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalization', restoration: 'restored' };
@@ -147,7 +215,8 @@ export function openExplore(api, start = {}) {
       const p = player();
       const types = travel.tripTypes(trip.destination?.countryId);
       const dest = trip.destination;
-      const modes = dest ? travel.modesFor(trip.origin, dest, docs.yearOf(trip.depart), { cruise: trip.type === 'cruise' }) : [];
+      const modes = dest ? travel.modesFor(trip.origin, dest, docs.yearOf(trip.depart)) : [];
+      const cruise = trip.type === 'cruise';
       const stays = dest ? travel.stayOptions(trip) : [];
       const acts = dest ? travel.activityOptions(trip) : [];
       const q = travel.quote(trip);
@@ -163,17 +232,17 @@ export function openExplore(api, start = {}) {
       return `
         <div class="card gl-step"><h3>1 · Kind of trip</h3>
           <select data-planfield="type" aria-label="Kind of trip">${types.map((t) => `<option value="${t.id}" ${t.id === trip.type ? 'selected' : ''} ${t.why ? 'disabled' : ''}>${esc(t.group)}: ${esc(t.name)}${t.why ? ` (${esc(t.why)})` : ''}</option>`).join('')}</select></div>
-        <div class="card gl-step"><h3>2 · From and to</h3>${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
-          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest?.countryId === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select></label>
-          ${dest ? `<label class="field">City <select data-planfield="city">${COUNTRIES[dest.countryId].cities.map((c) => `<option ${c === dest.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>` : ''}</div>
+        ${cruise ? cruiseStep(trip) : `<div class="card gl-step"><h3>2 · From and to</h3>\${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
+          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>\${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => \`<option value="\${c.id}" \${dest?.countryId === c.id ? 'selected' : ''}>\${c.flag} \${esc(c.name)}</option>\`).join('')}</select></label>
+          \${dest ? \`<label class="field">City <select data-planfield="city">\${COUNTRIES[dest.countryId].cities.map((c) => \`<option \${c === dest.city ? 'selected' : ''}>\${esc(c)}</option>\`).join('')}</select></label>\` : ''}</div>`}
         <div class="card gl-step"><h3>3 · Dates</h3>
           <div class="gl-dates"><label class="field">Leave <input type="date" data-planfield="depart" value="${esc(trip.depart)}" min="${docs.today()}" max="${y + 1}-12-31"></label>
-          <label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label></div>
-          <p class="muted">${docs.daysBetween(trip.depart, trip.ret)} nights. It is ${esc(docs.today())}; a trip ends in the year it starts.</p></div>
+          ${cruise ? '' : `<label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label>`}</div>
+          <p class="muted">${cruise ? (trip.cruise?.sail ? `Sails ${esc(trip.cruise.sail)}, back ${esc(trip.ret)}.${trip.cruise.sail !== trip.depart ? ' You leave a day early.' : ''}` : 'The sailing you choose sets how long.') : `${docs.daysBetween(trip.depart, trip.ret)} nights. It is ${esc(docs.today())}; a trip ends in the year it starts.`}</p></div>
         <div class="card gl-step"><h3>4 · Who is going</h3>
           ${trip.travelers.map((x) => { const who = docs.personById(x.id); return who ? kv(x.status === 'organizer' ? 'You' : `${who.firstName}`, `${esc(({ organizer: 'Organizer', accepted: 'Coming', declined: 'Not coming', stayed: 'Could not come' })[x.status] ?? x.status)}${x.reason && x.status !== 'organizer' ? ` <small class="muted">${esc(x.reason)}</small>` : ''}${x.status !== 'organizer' ? ` <button type="button" class="btn small" data-uninvite="${x.id}">Remove</button>` : ''}`) : ''; }).join('')}
           ${dest ? `<details ${ui.inviteOpen ? 'open' : ''} data-toggle="inviteOpen"><summary>Invite someone</summary>${travel.invitable(trip).map((n) => `<button type="button" class="tree-row" data-invite="${n.id}"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(n.age)} · they decide for themselves</small></button>`).join('') || '<p class="muted">Nobody else to ask.</p>'}</details>` : ''}</div>
-        ${dest ? `<div class="card gl-step"><h3>5 · Getting there</h3>
+        ${dest ? `<div class="card gl-step"><h3>5 · ${cruise ? 'Getting to the port' : 'Getting there'}</h3>
           ${modes.length ? modes.map((x) => { const j = travel.journey(trip.origin, dest, x, trip.depart, trip.cabin); return `<label class="gl-radio"><input type="radio" name="mode" data-planfield="mode" value="${x.id}" ${trip.mode === x.id ? 'checked' : ''}> ${esc(x.name)} <small class="muted">${j.hours < 48 ? `${Math.round(j.hours)} h` : `${Math.round(j.hours / 24)} days`}${x.accessible ? '' : ' · no step-free help'}</small></label>`; }).join('') : '<p class="muted">No way to make this journey in this period.</p>'}
           ${m?.cabins ? `<select data-planfield="cabin" aria-label="Cabin">${CABINS.map((k) => `<option value="${k.id}" ${trip.cabin === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>` : ''}
           ${legs.length ? `<div class="gl-legs">${legs.map((l) => `<p>${esc(l.from.city)} ${esc(l.depart.date)} ${esc(l.depart.time)} → ${esc(l.to.city)} ${esc(l.arrive.date)} ${esc(l.arrive.time)} <small class="muted">local times · ${l.km.toLocaleString('en-US')} km</small></p>`).join('')}</div>` : ''}
@@ -186,14 +255,14 @@ export function openExplore(api, start = {}) {
             ${x.mayApply && x.needs === 'passport' ? btn('Apply for a passport', `data-passport="${x.id}" data-issuer="${x.rule.nationality ?? cit.held(docs.personById(x.id))[0]}"`, 'small') : ''}
             ${x.mayApply && x.needs && x.needs !== 'passport' ? btn(`Apply: ${x.rule.name}`, `data-applyentry="${x.id}"`, 'small') : ''}</div>`).join('') : '<p class="muted">No border to cross.</p>'}
           <p class="muted">A visitor may not work.</p></div>
-        ${m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
-        <div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>
+        ${cruise ? stateroomStep(trip) : m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
+        ${cruise ? onboardStep(trip) : `<div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">\${acts.map((a) => chip(\`\${a.name}\${a.liked ? ' ★' : ''}\`, trip.activities.includes(a.id), \`data-act="\${a.id}"\`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>`}
         <div class="card gl-step"><h3>9 · Paying</h3>
           <select data-planfield="payment" aria-label="Who pays">${travel.paymentOptions().map((o) => `<option value="${o.id}" ${payHow === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
-          ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}
+          ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>${travel.canAskFamilyAgain(trip) ? btn(`Ask ${kinWho} again`, `data-askfamily="${trip.id}"`, 'small') : ''}` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
-          ${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
-          ${q.family ? kvt(`${kin.who} ${kin.plural ? 'pay' : 'pays'}`, money(q.family)) : ''}${kv('You pay', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
+          <div class="gl-bill">${billLines(q.lines, trip).map((l) => (l.group ? `<details class="gl-more"><summary>${kv(l.label, esc(money(l.amount)))}</summary>${l.group.map((g) => kvt(g.label, money(g.amount))).join('')}</details>` : kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount)))).join('')}
+          ${q.family ? kvt(`${kin.who} ${kin.plural ? 'pay' : 'pays'}`, money(q.family)) : ''}${kv('You pay', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}</div>
           </div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}
         <div class="btn-stack">${btn(`Book${bad.length || !q.organizer ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
@@ -492,6 +561,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-openplan]'))) return go('plan', { id: x.dataset.openplan });
       if ((x = t('[data-invite]'))) { const r = travel.invite(v.params.id, x.dataset.invite); ui.inviteOpen = true; return tell(r); }
       if ((x = t('[data-uninvite]'))) { travel.uninvite(v.params.id, x.dataset.uninvite); return changed(); }
+      if ((x = t('[data-cruise][data-value]')) && v.view === 'plan' && x.tagName !== 'SELECT') { travel.updatePlan(v.params.id, { cruise: { [x.dataset.cruise]: x.dataset.value } }); return render(modal.el.scrollTop); }
       if ((x = t('[data-act]')) && v.view === 'plan') { const trip = travel.tripById(v.params.id); const id = x.dataset.act; travel.updatePlan(trip.id, { activities: trip.activities.includes(id) ? trip.activities.filter((a) => a !== id) : [...trip.activities, id] }); return render(modal.el.scrollTop); }
       if ((x = t('[data-passport]'))) return tell(docs.applyPassport(x.dataset.passport, x.dataset.issuer));
       if ((x = t('[data-applyentry]'))) { const trip = travel.tripById(v.params.id); return tell(docs.applyEntry(x.dataset.applyentry, trip.destination.countryId, { from: trip.depart, to: trip.ret, purpose: { visit: 'visit', business: 'business', study: 'study' }[travel.tripTypes().find((k) => k.id === trip.type).purpose], tripId: trip.id, cost: travel.quote(trip).organizer })); }
@@ -501,7 +571,25 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-trip]'))) { const trip = travel.tripById(x.dataset.trip); return trip ? go(trip.status === 'draft' ? 'plan' : 'trip', { id: trip.id }) : undefined; }
       // Going is instant: the whole trip is taken, and a notice says how it went.
       if (t('[data-passportbook]')) return openPassportBook();
-      if ((x = t('[data-depart]'))) return tell(travel.takeTrip(x.dataset.depart));
+      if ((x = t('[data-depart]'))) {
+        // Off on the trip: its moments one at a time, each answered, then home.
+        const id = x.dataset.depart;
+        const start = travel.beginTrip(id);
+        if (!start.ok) return tell(start);
+        changed(); render(modal.el.scrollTop);
+        const trip = start.trip;
+        const scenes = travel.tripScenes(trip);
+        let previous = null;
+        for (const [i, sc] of scenes.entries()) {
+          const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
+          previous = travel.chooseTripScene(id, sc.id, index);
+          changed();
+        }
+        const end = travel.finishTrip(id);
+        changed();
+        await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+        return render(modal.el.scrollTop);
+      }
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));
       if ((x = t('[data-home]'))) return tell(travel.comeHome(x.dataset.home));
       if ((x = t('[data-cancel]'))) { if (await confirmModal({ title: 'Cancel this trip?', body: 'What comes back depends on what was booked and how soon it is.', yes: 'Cancel the trip', no: 'Keep it', danger: true })) return tell(travel.cancel(x.dataset.cancel)); return undefined; }
@@ -540,6 +628,7 @@ export function openExplore(api, start = {}) {
     };
     root.onchange = (e) => {
       const el = e.target;
+      if (el.dataset.cruise && el.dataset.value == null && v.view === 'plan') { travel.updatePlan(v.params.id, { cruise: { [el.dataset.cruise]: el.value } }); return render(modal.el.scrollTop); }
       const f = el.dataset.planfield;
       if (f && v.view === 'plan') {
         const id = v.params.id;
@@ -547,7 +636,7 @@ export function openExplore(api, start = {}) {
         if (f === 'country') travel.updatePlan(id, { destination: el.value ? { countryId: el.value } : null });
         else if (f === 'city') travel.updatePlan(id, { destination: { countryId: trip.destination.countryId, city: el.value } });
         else if (f === 'insurance') travel.updatePlan(id, { insurance: el.checked });
-        else if (f === 'depart') { const nights = docs.daysBetween(trip.depart, trip.ret); travel.updatePlan(id, { depart: el.value, ret: docs.addDays(el.value, Math.max(1, nights)) }); }
+        else if (f === 'depart') { const nights = docs.daysBetween(trip.depart, trip.ret); travel.updatePlan(id, trip.type === 'cruise' ? { depart: el.value } : { depart: el.value, ret: docs.addDays(el.value, Math.max(1, nights)) }); }
         else travel.updatePlan(id, { [f]: el.value });
         return render(modal.el.scrollTop);
       }

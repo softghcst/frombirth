@@ -210,8 +210,9 @@ export function drawEvents() {
     stories += 1;
   }
 
+  // A baby has a scene every year, often two: the first years are full of firsts (data/events/babyhood.js).
   const rolled = p.age < 2
-    ? (rng.chance(0.5) ? 1 : 0)
+    ? rng.weighted([1, 2], (n) => ({ 1: 65, 2: 35 })[n])
     : rng.weighted([1, 2, 3], (n) => ({ 1: 50, 2: 35, 3: 15 })[n]);
   const ordinary = pool.filter((x) => !x.ev.priority && (x.ev.weight ?? 1) > 0 && !groups.has(x.ev.exclusive));
   for (let i = 0; i < rolled - stories && ordinary.length; i++) {

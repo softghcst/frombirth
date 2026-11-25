@@ -11,7 +11,7 @@ import { getEra, erasBetween, eventsIn } from '../engine/history.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney, localMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { PLATFORMS, PLATFORM_BY_ID, FORMATS, TOPICS, TOPIC_BY_ID, DEVICE_BY_ID, CREATOR_STAGES, PROJECT_KINDS, SPONSOR_BY_ID } from '../data/digital.js';
+import { PLATFORMS, PLATFORM_BY_ID, FORMATS, TOPICS, TOPIC_BY_ID, DEVICE_BY_ID, CREATOR_STAGES, PROJECT_KINDS, SPONSOR_BY_ID, DIGITAL_AGES } from '../data/digital.js';
 import { roleLabel } from '../engine/relationships.js';
 import * as core from '../engine/digital/core.js';
 import * as tech from '../engine/digital/tech.js';
@@ -910,7 +910,9 @@ export function openDigitalLife(api, o = {}) {
   core.world();
   const v = state();
   const online = tech.digitalEra();
-  const sections = online ? SECTIONS : OFFLINE;
+  // A baby or small child has no life online: the family archive (reached from the family pages) is all there is.
+  const young = player().age < DIGITAL_AGES.digitalLife;
+  const sections = (online ? SECTIONS : OFFLINE).filter(([id]) => !young || id === 'archive');
   if (o.section) { v.section = o.section; v.trail = []; }
   if (!sections.some(([id]) => id === v.section)) { v.section = sections[0][0]; v.trail = []; }
 
@@ -953,7 +955,7 @@ export function openDigitalLife(api, o = {}) {
     const t = e.target;
     if (t.closest('[data-close]')) return m.close();
     const sec = t.closest('[data-section]');
-    if (sec) { v.scroll[key()] = body.scrollTop; v.section = sec.dataset.section; v.trail = []; return draw(); }
+    if (sec && sections.some(([id]) => id === sec.dataset.section)) { v.scroll[key()] = body.scrollTop; v.section = sec.dataset.section; v.trail = []; return draw(); }
     if (t.closest('[data-back]')) { v.trail.pop(); return draw(); }
     const person = t.closest('[data-person]');
     if (person) return openPerson(person.dataset.person, api, rerender);
@@ -964,7 +966,7 @@ export function openDigitalLife(api, o = {}) {
     if ((el = ds('data-open-thread'))) return push({ type: 'thread', id: el.dataset.openThread });
     if ((el = ds('data-ancestor'))) return push({ type: 'ancestor', id: el.dataset.ancestor });
     if (ds('data-places-home')) { m.close(); const { openNeighborhood } = await import('./neighborhood.js'); return openNeighborhood(api, 'history'); }
-    if ((el = ds('data-studio'))) { v.studio = el.dataset.studio; if (v.section !== 'studio') { v.section = 'studio'; v.trail = []; } return draw(); }
+    if ((el = ds('data-studio')) && sections.some(([id]) => id === 'studio')) { v.studio = el.dataset.studio; if (v.section !== 'studio') { v.section = 'studio'; v.trail = []; } return draw(); }
     if ((el = ds('data-do'))) {
       const flows = {
         newAccount: () => newAccount(api, rerender), compose: () => compose(api, rerender), newMessage: () => startConversation(api, rerender), newGroup: () => newGroup(api, rerender),
@@ -1104,7 +1106,7 @@ export function openDigitalLife(api, o = {}) {
 /** A one-card summary for the Pursuits tab. */
 export function digitalCard() {
   const p = player();
-  if (p.age < 6) return '';
+  if (p.age < DIGITAL_AGES.digitalLife) return '';
   const online = tech.digitalEra();
   const mine = store.state.digital ? acc.activeAccountsOf(p.id) : [];
   const unread = store.state.digital ? msg.inbox().reduce((s, t) => s + (t.muted ? 0 : t.unread), 0) : 0;

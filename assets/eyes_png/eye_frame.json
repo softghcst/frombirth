@@ -1,0 +1,10 @@
+{
+  "head": "athletic",
+  "headId": "head_13_athletic",
+  "x": 255.4,
+  "y": 292.93,
+  "scale": 0.94,
+  "anchorY": 292,
+  "apart": 3,
+  "note": "head point = (x, y) + scale * (template point - (256, anchorY) + (side * apart, 0)); side -1 for the eye left of x, +1 right"
+}

@@ -11,6 +11,9 @@
     "fit-clothes": "node scripts/fit-clothes.mjs",
     "import-outfit": "python3 scripts/import_outfit.py",
     "split-hair": "python scripts/split_batch.py && python scripts/fit_hair.py",
+    "trace-hair": "python scripts/trace_hair_png.py && python scripts/fit_hair.py",
+    "eye-template": "node scripts/make_eye_template.mjs",
+    "trace-eyes": "python scripts/trace_eyes_png.py && python scripts/build-avatar-manifest.py",
     "soften-hair": "python scripts/soften_hair_lines.py && python scripts/fit_hair.py"
   }
 }

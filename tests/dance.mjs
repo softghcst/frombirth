@@ -92,7 +92,8 @@ const offerOf = (kind, p) => {
   const p = dancer(25, 99, { agent: true, degree: 'dance_bfa' });
   const o = offerOf('cruise', p); o.wants = 'jazz';
   let r = dance.audition(o.id, 'jazz');
-  for (let i = 0; i < 3 && !r.ok; i++) { const again = offerOf('cruise', p); again.wants = 'jazz'; r = dance.audition(again.id, 'jazz'); }
+  // Even the best are turned away now and then: keep going (a new year's auditions each time) until one is booked.
+  for (let i = 0; i < 12 && !r.ok; i++) { dance.danceOf(p).offers.went = 0; const again = offerOf('cruise', p); again.wants = 'jazz'; r = dance.audition(again.id, 'jazz'); }
   check(r.ok, `a fine dancer books a cruise contract: ${r.text}`);
   const lines = dance.danceLines(p);
   check(lines.length === 1 && lines[0].gross > 0, 'its pay is a payroll line');
@@ -104,7 +105,7 @@ const offerOf = (kind, p) => {
   const kid = dancer(10, 99);
   const c = offerOf('commercial', kid); c.wants = 'jazz';
   let k = dance.audition(c.id, 'jazz');
-  for (let i = 0; i < 3 && !k.ok; i++) { const again = offerOf('commercial', kid); again.wants = 'jazz'; k = dance.audition(again.id, 'jazz'); }
+  for (let i = 0; i < 12 && !k.ok; i++) { dance.danceOf(kid).offers.went = 0; const again = offerOf('commercial', kid); again.wants = 'jazz'; k = dance.audition(again.id, 'jazz'); }
   const g = dance.danceOf(kid).gigs.at(-1);
   check(k.ok && g.trust === Math.round(g.fee * CHILD_TRUST_SHARE) && ent.workOf(kid).trust >= g.trust, 'a child\'s share is held in trust');
   section(`booked: a cruise contract pays once and takes ${work.weeklyLoad(p).rows.find((x) => x.label === 'Dance work')?.hours} hours a week; a child's share goes into trust`);
