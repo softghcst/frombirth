@@ -862,6 +862,22 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
   }
 }
 
+// What someone looks like as a baby and as a child can be chosen in the editor's Baby and Child views: kept in the save,
+// worn at that age, and only then.
+{
+  const base = randomAppearance(undefined, 'female');
+  const babyHair = CATALOG.babyHair.find((h) => h.id !== resolveLook(base, 'bk', 'female').babyHair)?.id;
+  const kidHair = CATALOG.kidHair.find((h) => h.id !== base.style.hair)?.id;
+  const babyOutfit = CATALOG.babyOutfit.at(-1)?.id;
+  const a = normalize({ ...base, style: { ...base.style, babyHair, kidHair, babyOutfit } }, 'bk');
+  check(a.style.babyHair === babyHair && a.style.kidHair === kidHair && a.style.babyOutfit === babyOutfit, 'a baby\'s or child\'s chosen look is not kept in the save');
+  const look = resolveLook(a, 'bk', 'female');
+  if (babyHair) check(dressFor(look, { age: 1, gender: 'female' }).hair === babyHair, 'the chosen baby hair is not worn as a baby');
+  if (babyOutfit) check(dressFor(look, { age: 1, gender: 'female' }).clothes === babyOutfit, 'the chosen baby outfit is not worn as a baby');
+  if (kidHair) check(dressFor(look, { age: 9, gender: 'female' }).hair === kidHair && dressFor(look, { age: 30, gender: 'female' }).hair !== kidHair || base.style.hair === kidHair, 'the chosen child\'s hairstyle is not worn as a child only');
+  check(normalize({ ...base, style: { ...base.style, babyHair: 'nonsense' } }, 'bk').style.babyHair === null, 'an unknown baby hairstyle is kept');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

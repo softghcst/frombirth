@@ -31,8 +31,25 @@ export const HAIR_TYPE = {
   ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
 };
 /** Which hair types suit each natural texture. */
+/**
+ * The hairstyles each hair texture is worn in: a style of that texture, and for curly and coily hair the braids and locs
+ * it holds. Hair texture is genetic (js/avatar/inherit.js); worn differently only through a salon treatment, for a time
+ * (js/engine/salon.js TREATMENTS), after which the natural texture grows back.
+ */
 export const SUITS = {
-  straight: ['straight', 'wavy'], wavy: ['wavy', 'straight', 'curly'], curly: ['curly', 'wavy', 'braids', 'coily'], coily: ['coily', 'braids', 'locs', 'curly'],
+  straight: ['straight'], wavy: ['wavy'], curly: ['curly', 'braids'], coily: ['coily', 'braids', 'locs'],
+};
+/**
+ * The texture each fitted hairstyle is drawn in (assets/hair_manifest.json marks most of them 'any'). Very short cuts,
+ * buns and the elder styles stay 'any': they read the same on every texture.
+ */
+export const FITTED_TEXTURE = {
+  bowl_cut: 'straight', classic_side_part: 'straight', curtain_bangs_90s: 'straight', long_straight_center_part: 'straight', side_swept_bob: 'straight',
+  slicked_back: 'straight', swept_back_pompadour: 'straight', side_part_quiff: 'straight', side_ponytail: 'straight', textured_french_crop: 'straight',
+  spiky_crop: 'straight', textured_faux_hawk: 'straight', textured_pixie_cut: 'straight', flipped_half_up: 'straight', layered_feathered_midi: 'straight',
+  feathered_flow: 'wavy', center_part_waves: 'wavy', half_up_half_down_waves: 'wavy', messy_wavy_fringe: 'wavy', rocker_waves: 'wavy', storybook_waves: 'wavy',
+  swept_back_waves: 'wavy', twisted_crown_waves: 'wavy', wavy_side_part: 'wavy',
+  curly_puff: 'curly', elder_short_curls: 'curly', elder_twists: 'coily',
 };
 export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
 
