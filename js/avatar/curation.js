@@ -160,7 +160,7 @@ export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fri
 export const KID_OUTFITS = { any: [],
   female: ['outfit_kid_16_girl_rainbow_tee', 'outfit_kid_17_girl_striped_top', 'outfit_kid_18_girl_denim_jacket', 'outfit_kid_19_girl_cat_hoodie', 'outfit_kid_20_girl_strawberry_sweatshirt', 'outfit_kid_21_girl_gingham_dress', 'outfit_kid_22_girl_cardigan_dress', 'outfit_kid_23_girl_daisy_top', 'outfit_kid_24_girl_overall_dress', 'outfit_kid_25_girl_party_dress',
     'outfit_kid_26_girl_hearts_sweater', 'outfit_kid_27_girl_butterfly_tee', 'outfit_kid_28_girl_ballet_wrap', 'outfit_kid_29_girl_bunny_hoodie', 'outfit_kid_30_girl_peasant_top'],
-  male: [] };
+  male: ['outfit_kid_31_boy_track_jacket', 'outfit_kid_32_boy_puffer_jacket', 'outfit_kid_33_boy_rocket_sweatshirt', 'outfit_kid_34_boy_shark_hoodie', 'outfit_kid_35_boy_soccer_jersey'] };
 
 export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],

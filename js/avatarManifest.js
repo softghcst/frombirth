@@ -276,6 +276,11 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_kid_28_girl_ballet_wrap", "file": "avatars/clothes/outfit_kid_28_girl_ballet_wrap.svg", "label": "Kid ballet wrap"},
     {"id": "outfit_kid_29_girl_bunny_hoodie", "file": "avatars/clothes/outfit_kid_29_girl_bunny_hoodie.svg", "label": "Kid bunny hoodie"},
     {"id": "outfit_kid_30_girl_peasant_top", "file": "avatars/clothes/outfit_kid_30_girl_peasant_top.svg", "label": "Kid peasant top"},
+    {"id": "outfit_kid_31_boy_track_jacket", "file": "avatars/clothes/outfit_kid_31_boy_track_jacket.svg", "label": "Kid track jacket"},
+    {"id": "outfit_kid_32_boy_puffer_jacket", "file": "avatars/clothes/outfit_kid_32_boy_puffer_jacket.svg", "label": "Kid puffer jacket"},
+    {"id": "outfit_kid_33_boy_rocket_sweatshirt", "file": "avatars/clothes/outfit_kid_33_boy_rocket_sweatshirt.svg", "label": "Kid rocket sweatshirt"},
+    {"id": "outfit_kid_34_boy_shark_hoodie", "file": "avatars/clothes/outfit_kid_34_boy_shark_hoodie.svg", "label": "Kid shark hoodie"},
+    {"id": "outfit_kid_35_boy_soccer_jersey", "file": "avatars/clothes/outfit_kid_35_boy_soccer_jersey.svg", "label": "Kid soccer jersey"},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
