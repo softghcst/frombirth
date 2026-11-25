@@ -71,6 +71,9 @@ export const SPECIALTIES = [
   F('peds_cardiology', 'Pediatric Cardiology', 'pediatric cardiologist', ['pediatrics'], 3, { play: 'panel', dept: 'pediatrics', compete: 0.5 }),
   F('critical_care', 'Critical Care Medicine', 'intensivist', ['anesthesiology', 'emergency', 'internal'], 1, { play: 'acute', dept: 'icu', compete: 0.4, procedures: ['icu_procedure'] }),
   F('pain', 'Pain Medicine', 'pain specialist', ['anesthesiology', 'pmr', 'neurology', 'psychiatry'], 1, { play: 'panel', dept: 'anesthesiology', compete: 0.5, procedures: ['pain_procedure'] }),
+  // Forensic fellowships: the work is for death investigations and the courts (engine/investigations/forensicMed.js).
+  F('forensic_path', 'Forensic Pathology', 'forensic pathologist', ['pathology'], 1, { play: 'reading', dept: 'pathology', compete: 0.3, forensic: 'examiner' }),
+  F('forensic_psych', 'Forensic Psychiatry', 'forensic psychiatrist', ['psychiatry'], 1, { play: 'panel', dept: 'psychiatry', compete: 0.35, forensic: 'evaluator' }),
   F('mfm', 'Maternal-Fetal Medicine', 'maternal-fetal medicine specialist', ['obgyn'], 3, { play: 'panel', dept: 'obgyn', compete: 0.5 }),
   // Surgical fellowships
   F('ctsurg', 'Cardiothoracic Surgery', 'cardiothoracic surgeon', ['gensurg'], 2, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6,

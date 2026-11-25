@@ -10,13 +10,36 @@ import { clamp } from '../../util.js';
 import { store, player } from '../../state.js';
 import { LAB, LAB_RESULTS } from '../../data/investigations.js';
 import * as k from '../cases.js';
-import { rec, W, now, year, me, nextId, result, seeded } from './core.js';
+import { rec, W, now, year, me, nextId, result, seeded, nameOfId } from './core.js';
 import { agencyOf, kindsIn, lab } from './agencies.js';
 import { openCase, investigation, incidentOf } from './casework.js';
 import { publicRecord } from './views.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
-const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : 'someone');
+const nm = (id) => nameOfId(id);
+
+/**
+ * A case worked by a detective who is not the player, taken through the real court process: the kind of case a
+ * reporter covers. Its clues are found by that detective's ordinary work; the court decides as for any case.
+ */
+export function npcCourtCase(p = player()) {
+  const a = agencyOf(kindsIn(p.countryId)[0], p.countryId, p.city);
+  const det = Object.values(a.units)[0].memberIds.find((id) => store.state.npcs[id]?.alive);
+  const inv = openCase('burglary', { ownerId: a.id, lead: det, truth: 'insider' });
+  const inc = incidentOf(inv);
+  for (const c of inv.file.clues.filter((x) => ['scene', 'specialist', 'records'].includes(x.via))) {
+    c.found = true; c.at = now();
+    if (c.pointsTo && c.evKind) { const ev = k.addEvidence(inc, c.evKind, c.pointsTo, { lawful: true, summary: c.text }); inv.evidenceIds.push(ev.id); }
+  }
+  inv.file.report = { at: now(), complete: true, omitted: [] };
+  const suspect = inv.file.poi[0];
+  if (k.strength(inv.evidenceIds, suspect) < k.CHARGE_AT) return null;
+  const c = k.openCaseFor(inv, suspect);
+  inv.file.courtCaseId = c.id;
+  for (let i = 0; i < 8 && !['sentenced', 'acquitted', 'dismissed'].includes(c.stage); i++) k.runToEnd(c);
+  inv.file.outcome = { kind: c.stage === 'sentenced' ? 'convicted' : c.stage, at: now() };
+  return inv;
+}
 
 /** The player's bench, as a forensic scientist: requests waiting on them. */
 export function bench(p = player()) {
@@ -26,6 +49,11 @@ export function bench(p = player()) {
 }
 
 /** Once a year, a forensic scientist's laboratory sends them a request from a real case an NPC detective is working. */
+export function pressYear(p = player()) {
+  if (p.career?.careerId !== 'journalist' || !p.alive) return;
+  if (publicCases(p).length >= 3 && year() % 2) return;
+  npcCourtCase(p);
+}
 export function benchYear(p = player()) {
   if (p.career?.careerId !== 'forensics' || !p.alive) return;
   if (bench(p).some((b) => b.status === 'open')) return;
@@ -94,4 +122,86 @@ export function benchReport(id, how = 'careful') {
 /** What a journalist can find: the public record of cases in court where they live. Never a case file. */
 export function publicCases(p = player()) {
   return Object.values(k.J().investigations).filter((inv) => inv.file && incidentOf(inv).countryId === p.countryId).map(publicRecord).filter(Boolean);
+}
+
+// ---------- Journalism: working a story ----------
+//
+// A journalist works from what is public (the court's record of a case) and from people who choose to talk.
+// They never see case files, sealed records or privileged material. A story can be well sourced or not; a
+// claim that was not verified may be wrong, and needs a correction when it is. A careful story can draw
+// public attention to a case; it decides nothing, and it does not make a review or an arrest happen.
+
+const stories = () => { const w = W(); w.stories ??= {}; return w.stories; };
+export const myStories = (p = player()) => Object.values(stories()).filter((s) => s.byId === me(p));
+/** Starts a story on a case in the public record. */
+export function startStory(caseId) {
+  const p = player();
+  if (p.career?.careerId !== 'journalist') return result(false, 'That is a journalist\'s work.', 'neutral');
+  const inv = Object.values(k.J().investigations).find((x) => x.file?.courtCaseId === caseId);
+  if (!inv || !publicRecord(inv)) return result(false, 'There is no public record of that case.', 'neutral');
+  if (myStories(p).some((s) => s.caseId === caseId && !s.published)) return result(false, 'You are already working on it.', 'neutral');
+  const id = nextId('story');
+  stories()[id] = { id, caseId, invId: inv.id, byId: me(p), steps: [], sources: [], published: null, accuracy: 0, claims: [], correction: null };
+  return result(true, `You opened a file on ${publicRecord(inv).title}. What you can use: the public record, and people willing to talk.`, 'neutral');
+}
+export const STORY_STEPS = {
+  records: { label: 'Read the public court record', sub: 'Charges, hearings and the outcome.' },
+  sources: { label: 'Talk to people willing to talk', sub: 'Witnesses, neighbors, family: only those who agree.' },
+  comment: { label: 'Ask the agency and the defense for comment', sub: 'They may decline; say so if they do.' },
+  verify: { label: 'Verify every claim against a second source', sub: 'Slower, and the story is right.' },
+  sealed: { label: 'Get hold of the police case file', restricted: 'Case files, sealed records and what a client told their lawyer are not available to a reporter. Asking an officer to leak them puts both of you in the wrong.' },
+};
+export function storyStep(id, step) {
+  const s = stories()[id];
+  const d = STORY_STEPS[step];
+  if (!s || s.byId !== me() || s.published) return result(false, 'That story is not open.', 'neutral');
+  if (!d) return result(false, 'Nothing to do.', 'neutral');
+  if (d.restricted) return result(false, d.restricted, 'neutral');
+  if (s.steps.includes(step)) return result(false, 'Done already.', 'neutral');
+  s.steps.push(step);
+  const inv = investigation(s.invId);
+  const c = k.J().cases[s.caseId];
+  const pub = publicRecord(inv);
+  if (step === 'records') { s.claims.push({ text: `${pub.defendant} was charged with ${(pub.charge ?? 'an offense').toLowerCase()}; the outcome: ${pub.outcome}.`, sourced: true }); return result(true, s.claims.at(-1).text, 'neutral'); }
+  if (step === 'sources') {
+    const willing = Object.values(inv.file.witnesses).filter((w) => w.willing >= 0.5 && store.state.npcs[w.id]?.alive);
+    if (!willing.length) return result(true, 'Nobody connected to the case wants to talk to a reporter. That is their right.', 'neutral');
+    const w = willing[0];
+    const own = inv.file.clues.find((x) => x.via === `q:${w.id}:observed`);
+    s.sources.push(w.id);
+    s.claims.push({ text: own?.text ?? `${nm(w.id)} says they remember the night well.`, sourced: false, accurate: own?.accurate ?? true });
+    return result(true, `${nm(w.id)} agreed to talk: ${s.claims.at(-1).text} (Their own account. It may be mistaken.)`, 'neutral');
+  }
+  if (step === 'comment') { s.claims.push({ text: 'The agency said it does not comment on individual cases; the defense said the record speaks for itself.', sourced: true }); return result(true, s.claims.at(-1).text, 'neutral'); }
+  for (const cl of s.claims) if (!cl.sourced && cl.accurate !== false) cl.sourced = true; // verified against a second source
+  const wrong = s.claims.filter((cl) => cl.accurate === false);
+  return result(true, wrong.length ? 'Checking against a second source, one account does not hold up: a witness was sure, and wrong. It stays out, or is reported as one person\'s memory.' : 'Every claim checks out against a second source.', 'neutral');
+}
+/**
+ * Publishes. What was not verified is published as a claim; what was wrong will need a correction. A careful story
+ * about a conviction may bring public attention to it (which a review can then take up), never more.
+ */
+export function publishStory(id) {
+  const s = stories()[id];
+  if (!s || s.byId !== me() || s.published) return result(false, 'That story is not open.', 'neutral');
+  if (!s.steps.includes('records')) return result(false, 'Start with the public record.', 'neutral');
+  const verified = s.steps.includes('verify');
+  const keep = verified ? s.claims.filter((cl) => cl.accurate !== false) : s.claims;
+  s.published = now();
+  s.accuracy = keep.every((cl) => cl.accurate !== false) ? (verified ? 'verified' : 'accurate, unverified') : 'contains an error';
+  const p = player();
+  p.career.performance = clamp((p.career.performance ?? 50) + (s.accuracy === 'verified' ? 5 : s.accuracy === 'contains an error' ? -6 : 1));
+  const inv = investigation(s.invId);
+  const c = k.J().cases[s.caseId];
+  if (verified && c?.stage === 'sentenced') inv.file.publicAttention = year();
+  return result(true, s.accuracy === 'contains an error' ? 'Published. One claim in it was wrong: a witness\'s memory reported as fact. A correction is owed.' : `Published (${s.accuracy}).${inv.file.publicAttention === year() ? ' Readers are asking questions about the conviction; whether anyone reviews it is for the authorities.' : ''}`, s.accuracy === 'contains an error' ? 'bad' : 'good');
+}
+/** Runs a correction for a story that got something wrong. */
+export function correctStory(id) {
+  const s = stories()[id];
+  if (!s?.published || s.accuracy !== 'contains an error' || s.correction) return result(false, 'There is nothing to correct.', 'neutral');
+  s.correction = now();
+  const p = player();
+  p.career.performance = clamp((p.career.performance ?? 50) + 3);
+  return result(true, 'The correction ran, as prominently as the error. Readers trust a paper that corrects itself.');
 }

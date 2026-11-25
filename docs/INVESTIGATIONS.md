@@ -37,12 +37,14 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Task forces | **Partial**: a US robbery or fraud case may gain a federal partner, as one shared case |
 | Private investigation | **Playable**: license by exam, an agency on the business engine, clients who come or not by price and reputation, lawful steps only, fees paid once |
 | Forensic scientist (crossover) | **Partial**: requests from real cases on the bench; the report joins the same case file |
-| Journalist (crossover) | **Partial**: the public record of cases in court |
-| Medical examiner | **Partial**: homicide files carry an examiner's findings, with cause and manner kept apart; a player physician cannot issue them |
+| Medical examiner | **Playable** for a physician who completes the Forensic Pathology fellowship (after pathology): death referrals from real investigations; cause and manner of death found separately; toxicology takes time; findings the evidence does not support are refused; the signed report is the examiner's finding in the same case file |
+| Forensic psychiatry | **Playable** for a physician who completes the Forensic Psychiatry fellowship (after psychiatry): competency evaluations ordered by a court in a real case; the role and the limits of confidentiality come first; a firm opinion needs a structured assessment; the court decides |
+| Policing and accountability | **Playable**: department budgets read from the country's police policy and the mayor's safety budget, with effects on laboratory time, caseload hours and training; a chief's yearly priority; a civilian oversight board proposed by a mayor or council member and voted on, with arguments on both sides; elected sheriffs |
+| Journalism | **Playable**: stories on cases in the public record, from the court record, willing sources, requests for comment and verification; case files refused; an unverified error needs a correction; a verified story about a conviction draws public attention, which decides nothing |
 | Conviction review | **Playable**: a conviction with kept evidence that can be tested anew can be reviewed; a result pointing elsewhere goes to the appeal court as new evidence, which decides; the first verdict stays on the record |
 | Romance at work | **Playable** within rules: never across supervision (either way); partners who are together must declare it and are given new working partners |
 | The next generation | **Playable**: an ancestor's public career is in My Investigations → Family Legacy; their cases stay in the records under their name and may come back to a descendant who investigates |
-| Forensic psychology, politics of policing, a player physician as medical examiner | **Not built** |
+| Forensic psychology outside the courts, police unions, national police reform | **Not built** |
 
 ## Rules the engine keeps
 

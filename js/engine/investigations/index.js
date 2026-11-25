@@ -23,7 +23,8 @@ import { settleApplications, settleAcademy, settleProbation, settlePromotions, j
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
 import { settleComplaints, intake } from './oversight.js';
 import { dramaYear, peopleYear, formTaskForce } from './drama.js';
-import { benchYear } from './crossover.js';
+import { benchYear, pressYear } from './crossover.js';
+import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
 
 export * from './core.js';
@@ -44,7 +45,7 @@ export function investigationBlock(careerId, p = player()) {
 }
 
 /** Whether My Investigations has anything to show. */
-export const investigationsOpen = (p = player()) => !!rec(p) || p.age >= 16 || (store.state.investigations?.legacies?.length ?? 0) > 0 || INVESTIGATIVE.includes(p.career?.careerId) || ['pi', 'forensics', 'journalist'].includes(p.career?.careerId);
+export const investigationsOpen = (p = player()) => !!rec(p) || examinerNow(p) || evaluatorNow(p) || p.age >= 16 || (store.state.investigations?.legacies?.length ?? 0) > 0 || INVESTIGATIVE.includes(p.career?.careerId) || ['pi', 'forensics', 'journalist'].includes(p.career?.careerId);
 
 /** Everything with a date that has passed. Safe to call any time: each step happens once. */
 export function settle(p = player()) {
@@ -64,6 +65,8 @@ export function tickInvestigations() {
   if (!p.alive) return;
   if (!rec(p) && INVESTIGATIVE.includes(p.career.careerId)) migrateInvestigations(store.state);
   benchYear(p); // a forensic scientist or a journalist sees cases from their side (crossover.js)
+  forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
+  pressYear(p); // a journalist has cases in court to cover (crossover.js)
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.

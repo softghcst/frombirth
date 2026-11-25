@@ -27,6 +27,7 @@ import * as k from '../cases.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, skillAvg, reputationOf, dateWords, nameOfId } from './core.js';
 import { agency, office, lab, prosecutorFor, staffer, ownerName } from './agencies.js';
 import { meet } from './careers.js';
+import { labMonths, hoursBonus } from './policing.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -327,7 +328,7 @@ const found = (f) => f.clues.filter((c) => c.found);
 export function workLeft(inv) {
   const f = inv.file;
   const used = f.work[year()] ?? 0;
-  const cap = 6 + Math.round(skillAvg(['management', 'planning']) / 25);
+  const cap = Math.max(3, 6 + Math.round(skillAvg(['management', 'planning']) / 25) + hoursBonus(inv.agencyId));
   return Math.max(0, cap - used);
 }
 const spend = (f) => { f.work[year()] = (f.work[year()] ?? 0) + 1; };
@@ -559,7 +560,7 @@ export function requestLab(inv, itemId, discipline) {
   let outcome = 'inconclusive';
   if (!conclusive) outcome = r.chance(0.3) ? 'unable' : r.chance(0.3) ? 'more' : 'inconclusive';
   else outcome = ev.pointsTo ? 'links' : 'excludes';
-  const req = { id: nextId('labreq'), itemId, discipline, requested: now(), due: now() + d.months, analystId, outcome, status: 'pending', labId: l?.id ?? null };
+  const req = { id: nextId('labreq'), itemId, discipline, requested: now(), due: now() + labMonths(owner, d.months), analystId, outcome, status: 'pending', labId: l?.id ?? null };
   f.labs.push(req);
   grow('forensic', 2);
   f.log.push({ at: now(), text: `Sent ${it.label.toLowerCase()} for ${d.name.toLowerCase()}. Expected by ${dateWords(req.due)}.` });
@@ -885,7 +886,7 @@ export function reviewCandidates(countryId = player().countryId) {
   return Object.values(k.J().investigations).filter((inv) => {
     const c = inv.file?.courtCaseId && k.J().cases[inv.file.courtCaseId];
     return c && c.stage === 'sentenced' && incidentOf(inv).countryId === countryId && !inv.file.review;
-  }).map((inv) => ({ inv, newer: newerTests(inv) })).filter((x) => x.newer.length);
+  }).map((inv) => ({ inv, newer: newerTests(inv) })).filter((x) => x.newer.length).sort((a, b) => (b.inv.file.publicAttention ?? 0) - (a.inv.file.publicAttention ?? 0));
 }
 function newerTests(inv) {
   const used = new Set(inv.file.labs.map((l) => `${l.itemId}:${l.discipline}`));
