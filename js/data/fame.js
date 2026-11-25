@@ -250,7 +250,11 @@ export const MUSIC_GENRES = ['pop', 'rock', 'folk', 'hip-hop', 'R&B', 'electroni
 export const BAND_WORDS = { a: ['Paper', 'Velvet', 'Northern', 'Midnight', 'Glass', 'Copper', 'Electric', 'Quiet', 'Wild', 'Silver', 'Hollow', 'Lucky'], b: ['Foxes', 'Lanterns', 'Tides', 'Satellites', 'Harbors', 'Ravens', 'Engines', 'Orchards', 'Strangers', 'Signals', 'Comets', 'Wolves'] };
 export const SONG_WORDS = { a: ['Slow', 'Golden', 'Late', 'Paper', 'Borrowed', 'Burning', 'Little', 'Wide', 'Blue', 'Summer', 'Last', 'Neon'], b: ['Hearts', 'Rooms', 'Rivers', 'Lights', 'Letters', 'Roads', 'Mornings', 'Windows', 'Ghosts', 'Promises', 'Streets', 'Skies'] };
 /** Kinds of release: how many songs, and what recording costs (base units) without a label. */
-export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Album', songs: 10, cost: 18000 } };
+export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Studio album', songs: 10, cost: 18000 },
+  // A live album: the act on stage, recorded on a good night (an act people come to see). A compilation: the best of what is out already.
+  live: { name: 'Live album', songs: 12, cost: 8000, sales: 0.6 }, compilation: { name: 'Compilation', songs: 14, cost: 4000, sales: 0.45 } };
+/** Record sales certifications, by units sold (as the common thresholds go): the highest earned is shown. */
+export const CERTIFICATIONS = [['Diamond', 10000000], ['Double Platinum', 2000000], ['Platinum', 1000000], ['Gold', 500000]];
 /** Venues by size. capacity per show; price per ticket (base units); cost per show (crew, travel, hall). */
 export const VENUES = {
   bar: { name: 'Bars and pubs', capacity: 120, price: 10, cost: 300, fans: 0 },

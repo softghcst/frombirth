@@ -8,7 +8,7 @@ import { player, country, store } from '../state.js';
 import { esc, fmtMoney, localWage } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { PRODUCTION_KINDS, TIERS, ROLE_KINDS, ACCURACY, AWARD_BODIES, MUSIC_AWARD, RELEASE_TYPES, VENUES } from '../data/fame.js';
-import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
+import { openModal, messageModal, pickModal, confirmModal, inputModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import { openNpc } from './tabs/people.js';
@@ -30,10 +30,29 @@ import * as agents from '../engine/agents.js';
 import * as special from '../engine/specialCareer.js';
 import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
 import { SPORTS, LEVEL_NAMES } from '../data/sports.js';
-import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
+import { POSITIONS, GENRES, genreOf, genresIn, subgenresOf } from '../data/music.js';
 
 const BODIES = [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD];
-const aRelease = (k) => ({ single: 'a single', ep: 'an EP', album: 'an album' }[k]);
+const aRelease = (k) => ({ single: 'a single', ep: 'an EP', album: 'an album', live: 'a live album', compilation: 'a compilation' }[k]);
+/** Naming and styling a record, then recording it. */
+async function recordFlow(type, x) {
+  const a = music.myAct();
+  if (!a) return;
+  const title = await inputModal({ title: type === 'single' ? 'Name the single' : `Name the ${RELEASE_TYPES[type].name.toLowerCase()}`, label: 'Title (leave empty and the label will think of one)', maxLength: 40 });
+  const sub = await pickModal({ title: 'Its style', body: `Within ${genreOf(a.genre).name.toLowerCase()}. A style in fashion lands a little better.`, cancel: 'Back', options: subgenresOf(a.genre).map((g) => ({ value: g, label: g })) });
+  if (!sub) return;
+  const vid = fame.exists('music_video') && ['single', 'album', 'ep'].includes(type);
+  const v = vid ? await pickModal({ title: 'A music video?', cancel: 'Back', options: [{ value: 'plain', label: 'No video' }, { value: 'video', label: 'Make a video', sub: a.deal ? 'The label pays.' : 'Costs more; reaches more people.' }] }) : 'plain';
+  if (!v) return;
+  await x.say(music.record(type, { title: title ?? '', subgenre: sub, video: v === 'video' }));
+}
+
+/** A record label's offer to a solo artist: what is paid, for how long, and the sound the career will have. */
+function soloOfferCard(o) {
+  const l = ent.org(o.labelId);
+  return `<div class="card"><h3>${esc(l?.name ?? 'A label')} want to sign you</h3>${kv([['Up front', money(o.advance)], ['Each year', `${money(o.perYear)} for ${o.years} years`], ['Royalties', `${Math.round(o.royalty * 100)}%, once the advance is paid back`], ['Albums owed', String(o.albums)], ['Your sound', `${genreOf(o.genre).name}: a career keeps its genre`]])}
+    <div class="btn-stack" style="margin-top:6px">${btn('acceptsolo', 'Sign the contract', { cls: 'primary' })}${btn('declinesolo', 'Turn it down', { sub: 'They will not take your call again' })}</div></div>`;
+}
 
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`;
@@ -103,7 +122,7 @@ export function openFame(api, start = null, o = {}) {
       ${deep ? '<button type="button" class="btn small" data-back>← Back</button>' : `<div class="world-groups fame-tabs" role="tablist">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === t.view ? 'on' : ''}" aria-selected="${id === t.view}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>`}
       ${banner}
       <div style="margin-top:10px">${(VIEWS[t.view] ?? VIEWS.overview)(p, t.arg)}</div>
-      ${mine && !deep ? `<div class="btn-stack" style="margin-top:12px">${btn('leavespecial', `Leave ${careerName.toLowerCase()}`, { cls: 'danger', sub: 'What you built is kept. Another special career opens to you.' })}</div>` : ''}
+      ${mine && !deep && !(careerId === 'music' && music.myAct(p)) ? `<div class="btn-stack" style="margin-top:12px">${btn('leavespecial', `Leave ${careerName.toLowerCase()}`, { cls: 'danger', sub: 'What you built is kept. Another special career opens to you.' })}</div>` : ''}
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
   const refresh = () => { api.changed(); render(); };
@@ -330,42 +349,54 @@ const VIEWS = {
   music(p) {
     const a = music.myAct(p);
     const f = music.musicOf(p);
-    const c = country();
     const past = f.acts.map(music.act).filter((x) => x && x !== a);
+    const pastRows = past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.kind === 'solo' ? 'Solo' : 'Band'} · ${x.formed}–${x.status === 'split' ? (x.history.at(-1)?.year ?? '') : 'still going'}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : '';
     if (!a) {
-      return `<div class="card"><h3>Your music</h3><p class="muted" style="margin:0">Songwriting ${music.songwriting(p)} · performing ${music.performing(p)}. Start on your own, or find people to play with.</p></div>
-        <div class="btn-stack">${btn('solo', 'Perform as a solo artist', { sub: 'Choose your sound' })}${btn('band', 'Start a band', { sub: 'Choose your sound, your place in it, and who plays with you.' })}</div>
-        ${VIEWS.bandboard(p)}
-        ${store.state.year >= 1996 ? `<div class="btn-stack">${btn('idol', 'Idol opportunities', { sub: 'K-pop auditions, training and debut' })}</div>` : ''}
-        ${VIEWS.songcraft(p)}
-        ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.kind === 'solo' ? 'Solo' : 'Band'} · ${x.formed}–${x.status === 'split' ? (x.history.at(-1)?.year ?? '') : 'still going'}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
+      const best = music.bestPositions(p, 3).map((x) => `${POSITIONS[x.pos].name} ${x.skill}`).join(' · ');
+      const o = f.soloOffer && f.soloOffer.year === store.state.year ? f.soloOffer : null;
+      const young = p.age < music.MUSIC_CAREER_AGE;
+      return `<div class="card"><h3>A career in music</h3><p class="muted" style="margin:0 0 6px">Two ways in: as a solo artist signed to a record label, or as a member of a band. Labels and bands want people who can really play or sing: the better you are, the better the offers.</p>
+        ${kv([['What you play best', best]])}${young ? `<p class="muted" style="margin:6px 0 0">Labels and bands take people from ${music.MUSIC_CAREER_AGE}. Until then, lessons and practice (Pursuits) are how you get there.</p>` : ''}</div>
+        ${o ? soloOfferCard(o) : ''}
+        ${young ? '' : `<div class="btn-stack">${btn('soloentry', 'Solo Artist', { cls: 'primary', sub: 'Audition for a record label' })}${btn('bandentry', 'Join a Band', { sub: 'Find a band that needs what you play' })}${btn('band', 'Start Your Own Band', { sub: 'Choose the sound, your part, and who plays with you' })}</div>`}
+        ${VIEWS.songcraft(p)}${pastRows}`;
     }
     const fans = music.fanTotal(a);
-    const rels = a.releases.map(music.release).filter(Boolean);
-    const pending = rels.filter((r) => r.released == null);
     const deal = a.deal ? ent.org(a.deal.labelId) : null;
     const offerL = a.offer ? ent.org(a.offer.labelId) : null;
-    const tours = a.tours.map(music.tour).filter(Boolean).slice(-3).reverse();
-    const scales = Object.entries(VENUES).filter(([k]) => k !== 'bar');
     const me = a.members.find((m) => m.who === 'player' && m.to == null);
-    const lineup = genreOf(a.genre).lineup;
-    const filled = music.members(a).map((m) => m.role);
-    const gaps = a.kind === 'band' ? [...new Set(lineup.filter((pos) => lineup.filter((x) => x === pos).length > filled.filter((x) => x === pos).length))] : [];
-    return `<div class="card"><h3>${esc(a.name)}</h3>${kv([['Act', `${a.kind === 'solo' ? 'Solo artist' : `Band of ${music.members(a).length}`}, ${genreOf(a.genre).name}`], ...(a.kind === 'band' ? [['You play', `${POSITIONS[me?.role]?.name ?? 'Lead'} (${music.positionSkill(me?.role)})`]] : []), ['Suits the sound', `${music.genreFit(a)}/100`], ['Since', String(a.formed)], ['Status', a.status === 'hiatus' ? 'On hiatus' : 'Active'],
-      ['Fans', fans.toLocaleString('en-US')], ['Songs ready', String(f.songs.length)], ['Label', deal ? `${deal.name} (${Math.round(a.deal.royalty * 100)}%, ${a.deal.albumsOwed} albums owed${a.deal.unrecouped > 0 ? `, ${money(a.deal.unrecouped, COUNTRIES[a.countryId])} of the advance still to earn back` : ''})` : 'Independent']])}</div>
+    const plays = a.instrument ?? (POSITIONS[me?.role] ? me.role : 'vocals');
+    const recorded = music.recordedThisYear(a);
+    const scale = ['stadium', 'arena', 'theater', 'club'].find((k) => fans >= VENUES[k].fans);
+    const contract = deal ? `${deal.name}${a.deal.until ? ` · contract to ${a.deal.until}` : ''}${a.deal.albumsOwed ? ` · ${a.deal.albumsOwed} ${a.deal.albumsOwed === 1 ? 'album' : 'albums'} owed` : ''}` : 'Independent';
+    const nav = (act, label, sub, arg = '', disabled = false) => `<button type="button" class="row world-row" data-act="${act}"${arg ? ` data-arg="${esc(arg)}"` : ''}${disabled ? ' disabled' : ''}><div class="main"><strong>${esc(label)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div><div class="side">›</div></button>`;
+    return `<div class="card"><h3>${esc(a.name)}</h3>${kv([['Act', `${a.kind === 'solo' ? 'Solo artist' : `Band of ${music.members(a).length}`} · ${genreOf(a.genre).name}`], ['You play', POSITIONS[plays]?.name ?? 'Vocals'], ['Fans', fans.toLocaleString('en-US')], ['Label', contract], ...(a.status === 'hiatus' ? [['Status', 'On a break']] : [])])}
+      <div style="margin-top:8px">${meterHtml('Popularity', music.popularity(a), true)}</div></div>
       ${offerL ? `<div class="card"><h3>A record deal</h3><p class="muted" style="margin:0">${esc(offerL.name)} (${offerL.tier === 'major' ? 'a major label' : 'an independent label'}) offers ${money(a.offer.advance, COUNTRIES[a.countryId])} up front, ${Math.round(a.offer.royalty * 100)}% royalties, ${a.offer.albums} albums. The advance is paid back from royalties first.</p>
         <div class="btn-stack">${btn('lawyer', 'Have a lawyer read it', { disabled: a.offer.lawyer })}${btn('negdeal', 'Ask for better terms', { disabled: a.offer.asked })}${btn('signdeal', 'Sign', { cls: 'primary' })}${btn('nodeal2', 'Turn it down')}</div></div>` : ''}
-      ${a.status === 'active' ? `<div class="btn-stack">${btn('write', 'Write a song', { sub: `${music.songsLeft(p)} left this year` })}${btn('gig', 'Play a gig', { sub: `${4 - f.musicActs.gigs} left this year` })}
-        ${Object.entries(RELEASE_TYPES).map(([k, t]) => btn('record', `Record ${aRelease(k)}`, { arg: k, disabled: f.songs.length < t.songs, sub: `${t.songs} ${t.songs === 1 ? 'song' : 'songs'}${a.deal ? ', label pays' : `, ${money(Math.round(localWage(t.cost, c)))}`}` })).join('')}
-        ${scales.map(([k, v]) => btn('tour', `Tour: ${v.name.toLowerCase()}`, { arg: k, disabled: fans < v.fans, sub: fans < v.fans ? `Needs about ${v.fans.toLocaleString('en-US')} fans` : `${v.capacity.toLocaleString('en-US')} a night` })).join('')}
-        ${a.kind === 'band' ? btn('advert', 'Advertise for a member', { sub: gaps.length ? `The line-up is missing: ${gaps.map((g) => posLow(g)).join(', ')}` : 'Anyone you would like to add' }) : ''}</div>` : ''}
+      ${a.status === 'active' ? `<div class="section-label">Your career</div>
+      ${nav('album', 'Album', recorded ? 'You have recorded this year: one record a year' : 'Studio album, EP, live album or compilation', '', recorded)}
+      ${nav('single', 'Single', recorded ? 'You have recorded this year' : 'One song, out at the turn of the year', '', recorded)}
+      ${nav('gig', 'Concert', `${Math.max(0, 4 - f.musicActs.gigs)} left this year`, '', f.musicActs.gigs >= 4)}
+      ${nav('tournow', 'Tour', scale ? `${VENUES[scale].name}, ${VENUES[scale].capacity.toLocaleString('en-US')} a night` : `Needs about ${VENUES.club.fans.toLocaleString('en-US')} fans`, '', !scale)}
+      ${nav('mpractice', 'Practice', `Your ${(POSITIONS[plays]?.name ?? 'voice').toLowerCase()}: ${music.positionSkill(plays)}`)}
+      ${nav('discog', 'Discography', `${music.discography(p).length} records out`)}
+      ${nav('stagename', 'Stage Name', p.flags.stageName ? `You perform as ${p.flags.stageName}` : 'Perform under another name')}
+      ${a.kind === 'band' ? `<div class="section-label">The band</div>
+        ${nav('bandview', 'Band', `${music.members(a).length} members`)}${nav('bandname', 'Band Name', a.name)}${nav('advert', 'Find a New Member', 'Advertise for a player')}
+        ${nav('gosolo', 'Go Solo', music.SOLO_POSITIONS.includes(me?.role) ? 'Leave the band and carry on alone' : 'Not for a drummer', '', !music.SOLO_POSITIONS.includes(me?.role))}` : ''}` : ''}
       ${!a.deal && a.status === 'active' ? VIEWS.labelboard(p) : ''}
-      ${VIEWS.songcraft(p)}
-      <div class="btn-stack">${btn('hiatus', a.status === 'hiatus' ? 'End the hiatus' : 'Take a break')}${btn('leaveact', a.kind === 'solo' ? 'Stop performing' : 'Leave the band', { cls: 'danger' })}</div>
-      ${pending.length ? `<p class="muted">Coming out at the turn of the year: ${pending.map((r) => esc(r.title)).join(', ')}.</p>` : ''}
-      ${a.kind === 'band' ? `<div class="section-label">The band</div>${music.members(a).filter((m) => m.who !== 'player').map((m) => { const n = store.state.npcs[m.who]; return n ? row('person', n.id, `${n.firstName} ${n.lastName}`, `${POSITIONS[m.role]?.name ?? m.role} · since ${m.from}`, `${Math.round(n.meters.relationship)}%`, n) : ''; }).join('') || '<p class="empty">Just you, for now.</p>'}` : ''}
-      ${row('act', a.id, 'The story so far', `${a.history.length} moments`)}
-      ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.formed}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
+      ${f.songs.length ? `<p class="muted">${f.songs.length} ${f.songs.length === 1 ? 'song' : 'songs'} written ahead: they go on your next record first.</p>` : ''}
+      <div class="btn-stack" style="margin-top:8px">${btn('hiatus', a.status === 'hiatus' ? 'End the break' : 'Take a break')}${btn('leaveact', a.kind === 'solo' ? 'Stop performing' : 'Quit the band', { cls: 'danger' })}</div>
+      ${row('act', a.id, 'The story so far', `${a.history.length} moments`)}${pastRows}`;
+  },
+
+  /** The band: who is in it, and asking someone to leave. */
+  bandview(p) {
+    const a = music.myAct(p);
+    if (!a || a.kind !== 'band') return '<p class="empty">You are not in a band.</p>';
+    return `<div class="card"><h3>${esc(a.name)}</h3><p class="muted" style="margin:0">Getting on with each other matters: a record that does well brings a band closer.</p></div>
+      ${music.members(a).filter((m) => m.who !== 'player' && m.to == null).map((m) => { const n = store.state.npcs[m.who]; return n ? `${row('person', n.id, `${n.firstName} ${n.lastName}`, `${POSITIONS[m.role]?.name ?? m.role} · since ${m.from}`, `${Math.round(n.meters.relationship)}%`, n)}<div class="btn-stack" style="margin:-4px 0 10px">${btn('kick', `Kick ${n.firstName} out`, { arg: n.id, cls: 'danger' })}</div>` : ''; }).join('') || '<p class="empty">Just you, for now.</p>'}`;
   },
 
   /** Releases and tours: what has come out, how it did, and the road. */
@@ -378,7 +409,7 @@ const VIEWS = {
     const out = (a ? rels.filter((r) => r.released != null) : disc).slice().reverse();
     const tours = a ? a.tours.map(music.tour).filter(Boolean).reverse() : [];
     return `${pending.length ? `<div class="card"><h3>Coming out</h3><p class="muted" style="margin:0">At the turn of the year: ${pending.map((r) => esc(r.title)).join(', ')}.</p></div>` : ''}
-      <div class="section-label">Releases</div>${out.length ? out.map((r) => row('release', r.id, r.title, `${RELEASE_TYPES[r.type].name}, ${r.released}${r.chart ? ` · chart #${r.chart}` : ''}`, `${r.critics}/100`)).join('') : '<p class="empty">Nothing out yet.</p>'}
+      <div class="section-label">Discography</div>${out.length ? out.map((r) => { const cert = music.certification(r); return row('release', r.id, r.title, `${RELEASE_TYPES[r.type].name}, ${r.released} · ${music.unitsSold(r).toLocaleString('en-US')} sold${r.chart ? ` · chart #${r.chart}` : ''}${cert ? ` · ${cert}` : ''}`, `${r.critics}/100`); }).join('') : '<p class="empty">Nothing out yet.</p>'}
       <div class="section-label">Tours</div>${tours.length ? tours.map((t) => row('tourview', t.id, t.title, `${t.year} · ${t.dates.length} dates`, t.net == null ? 'Booked' : money(t.net, COUNTRIES[a.countryId]))).join('') : '<p class="empty">No tours yet. They open as the fans come.</p>'}`;
   },
 
@@ -676,6 +707,44 @@ const ACTIONS = {
     if (v) await x.say(music.addMember(v));
   },
   write: (_, x) => x.say(music.writeSong()),
+  async soloentry(_, x) {
+    const pos = await pickModal({ title: 'Solo artist', body: 'What will you audition with?', cancel: 'Back',
+      options: music.SOLO_POSITIONS.map((k) => ({ value: k, label: POSITIONS[k].name.replace(/^DJ and producer$/, 'DJ and producer'), sub: `You: ${music.positionSkill(k)}` })) });
+    if (!pos) return undefined;
+    const lab = await pickModal({ title: 'Which record label?', body: 'Majors pay more and want more. Independents each have their sound.', cancel: 'Back',
+      options: music.labelChoices().map(({ label: l, why }) => ({ value: l.id, disabled: !!why, label: l.name, sub: why || `${l.tier === 'major' ? 'Major label' : 'Independent'} · ${music.labelSound(l)}` })) });
+    if (!lab) return undefined;
+    const r = music.soloAudition(pos, lab);
+    if (!r.offer) return x.say(r);
+    x.refresh();
+    return undefined;
+  },
+  acceptsolo: (_, x) => x.say(music.acceptSoloOffer()),
+  declinesolo: (_, x) => x.say(music.declineSoloOffer()),
+  async bandentry(_, x) {
+    const pos = await pickModal({ title: 'Join a band', body: 'What do you play?', cancel: 'Back', options: music.BAND_POSITIONS.map((k) => ({ value: k, label: POSITIONS[k].name, sub: `You: ${music.positionSkill(k)}` })) });
+    if (!pos) return undefined;
+    const r = music.findBand(pos);
+    if (!r.opening) return x.say(r);
+    const b = r.band;
+    const ok = await confirmModal({ title: b.name, body: `A ${b.genre.toLowerCase()} band of ${b.members}, looking for a ${POSITIONS[pos].name.toLowerCase()}. ${b.fans.toLocaleString('en-US')} fans${b.label ? `, signed to ${b.label}` : ', unsigned'}; about ${money(b.lastYear)} made last year. They want to hear you play.`, yes: 'Audition', no: 'Keep looking' });
+    if (ok) await x.say(music.auditionForBand(r.opening.id));
+    return undefined;
+  },
+  async album(_, x) {
+    const type = await pickModal({ title: 'A new record', body: 'One record a year. It comes out at the turn of the year.', cancel: 'Not yet',
+      options: ['album', 'ep', 'live', 'compilation'].map((k) => ({ value: k, label: RELEASE_TYPES[k].name, sub: { album: `${RELEASE_TYPES.album.songs} songs: the real thing`, ep: 'A few songs', live: 'Recorded on stage', compilation: 'The best of what is out' }[k] })) });
+    if (type) await recordFlow(type, x);
+  },
+  single: (_, x) => recordFlow('single', x),
+  tournow: (_, x) => x.say(music.tourNow()),
+  mpractice: (_, x) => x.say(music.practiceMusic()),
+  discog: (_, x) => { x.st.stack = [{ view: 'releases', arg: null }]; x.render(); },
+  async stagename(_, x) { const n = await inputModal({ title: 'Stage name', label: 'Perform as', value: player().flags.stageName ?? '', maxLength: 30 }); if (n) await x.say(music.setStageName(n)); },
+  async bandname(_, x) { const n = await inputModal({ title: 'Band name', label: 'Suggest a new name', value: music.myAct()?.name ?? '', maxLength: 40 }); if (n) await x.say(music.renameBand(n)); },
+  bandview: (_, x) => x.go('bandview'),
+  async kick(id, x) { const n = store.state.npcs[id]; if (await confirmModal({ title: `Kick ${n?.firstName ?? 'them'} out?`, body: 'The band will not forget it.', yes: 'Kick them out', danger: true })) await x.say(music.kickMember(id)); },
+  async gosolo(_, x) { if (await confirmModal({ title: 'Go solo?', body: 'You leave the band and carry on alone, in the same genre. Some of the fans come with you.', yes: 'Go solo' })) await x.say(music.goSolo()); },
   pitch: (_, x) => x.say(music.pitchSong()),
   session: (_, x) => x.say(music.session()),
   gig: (_, x) => x.say(music.gig()),
