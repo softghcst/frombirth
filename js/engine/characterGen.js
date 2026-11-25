@@ -1,5 +1,6 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { giveBirthday, birthDate } from './birthday.js';
+import { giveNativeLanguages, languagesOf } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
@@ -198,6 +199,8 @@ function createOnce(opts = {}) {
 
   if (opts.birthday) player.birthday = { m: opts.birthday.m, d: opts.birthday.d }; // chosen (a test, or the creator)
   giveBirthday(player); // otherwise a day of the year of its own (engine/birthday.js)
+  // The language of the country they are born in, and of parents raised somewhere else, spoken from the start.
+  giveNativeLanguages(player, [mother, father].filter(Boolean).flatMap((n) => (n.bornIn && n.bornIn !== c.id ? languagesOf(n.bornIn) : [])));
 
   // Opening journal
   const an = (job) => `${/^[aeiou]/i.test(job) ? 'an' : 'a'} ${job}`;
