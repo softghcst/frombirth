@@ -26,6 +26,7 @@ import { gain, regard, fameOf } from './fame.js';
 import { hasRecord } from './records.js';
 import { rightToLive } from './citizenship.js';
 import { addCondition, cureCondition } from './health.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -222,6 +223,7 @@ export function apply(auditionId, category) {
   if (!au) return result(false, 'No such audition.', 'neutral');
   const why = whyNotApply(au, p);
   if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial('kpop'); if (sc) return result(false, sc, 'neutral'); }
   if (!au.categories.includes(category)) return result(false, 'That is not a category this audition takes.', 'neutral');
   const i = idolOf(p);
   i.acts.apps += 1;
@@ -406,6 +408,7 @@ export function leaveTraining() {
   t.contract.ended = { year: year(), by: 'trainee', how: 'notice' };
   endTraineeLife(p, t.agency, 'left');
   note(`Left the trainee program at ${t.agency.name}.`);
+  if (!p.idol?.groupId) releaseSpecial('kpop');
   return result(true, `You give notice and leave ${t.agency.name}. The friends come with you; the schedule does not.`, 'neutral');
 }
 function endTraineeLife(p, a, how) {

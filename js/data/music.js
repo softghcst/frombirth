@@ -91,3 +91,31 @@ export const LABEL_SOUNDS = [
 export const LABEL_SOUND_WORDS = { rock: 'Amplifier', punk: 'Riot', metal: 'Iron', indie: 'Paper', hip_hop: 'Block', electronic: 'Pulse', soul: 'Velvet', country: 'Dust', jazz: 'Midnight', latin_pop: 'Sol', reggae: 'Palm', kpop: 'Starling' };
 /** How many openings, auditions and demos a year. */
 export const BAND_SEARCH = { openings: 8, auditions: 3, demos: 2 };
+
+/**
+ * The styles within each genre, chosen for each record: they shade how a record lands (a style that is in fashion
+ * helps a little), never the act's genre itself, which a career keeps.
+ */
+export const SUBGENRES = {
+  pop: ['Bubblegum', 'Dance-pop', 'Electropop', 'Power ballad', 'Teen pop', 'Psychedelic pop', 'Sing-along'],
+  rock: ['Classic rock', 'Hard rock', 'Southern rock', 'Rock and roll', 'Arena rock', 'Garage rock'],
+  punk: ['Street punk', 'Art punk', 'Folk punk', 'Dance-punk'], pop_punk: ['Skate punk', 'Easycore', 'Pop punk anthem'],
+  hardcore: ['Melodic hardcore', 'Beatdown', 'Post-hardcore'], metal: ['Thrash', 'Power metal', 'Doom', 'Alternative metal'],
+  death_metal: ['Melodic death metal', 'Technical death metal', 'Brutal death metal'], grunge: ['Post-grunge', 'Sludge', 'Seattle sound'],
+  alternative: ['Alternative metal', 'New wave', 'Britpop', 'College rock'], indie: ['Indie folk', 'Indie pop', 'Dream pop', 'Bedroom pop'],
+  emo: ['Midwest emo', 'Emo pop', 'Screamo', 'Emo rap'], shoegaze: ['Dream pop', 'Blackgaze', 'Nu-gaze'], ska: ['Two-tone', 'Ska punk', 'Rocksteady'],
+  blues: ['Delta blues', 'Chicago blues', 'Hill country blues', 'Contemporary blues'], jazz: ['Smooth jazz', 'Bebop', 'Fusion', 'Swing', 'Ragtime'],
+  soul: ['Motown', 'Northern soul', 'Neo-soul', 'Southern soul'], funk: ['P-funk', 'Boogie', 'Groove', 'Funk rock'], disco: ['Nu-disco', 'Italo disco', 'Euro disco'],
+  rnb: ['Contemporary R&B', 'New jack swing', 'Quiet storm', 'Doo-wop', 'Alternative R&B'],
+  hip_hop: ['Old-school', 'Conscious rap', 'Gangsta rap', 'West Coast', 'Dirty South', 'Boom bap', 'Alternative rap'],
+  trap: ['Mumble rap', 'Melodic trap', 'Rage', 'Crunk'], drill: ['UK drill', 'Brooklyn drill', 'Chicago drill'], grime: ['Road rap', 'Instrumental grime', 'Grime anthem'],
+  electronic: ['Electro', 'Drum and bass', 'Dubstep', 'Ambient'], house: ['Deep house', 'Tech house', 'Progressive house'], techno: ['Detroit techno', 'Minimal', 'Industrial techno'],
+  synth_pop: ['Synthwave', 'Electroclash', 'New romantic'], lofi: ['Lo-fi hip-hop', 'Chillhop', 'Bedroom lo-fi'],
+  country: ['Bluegrass', 'Honky-tonk', 'Outlaw country', 'Country rock', 'Urban cowboy', 'Rockabilly'],
+  folk: ['Indie folk', 'Neofolk', 'Progressive folk', 'Folk punk', 'Traditional'], reggae: ['Roots reggae', 'Dancehall', 'Dub', 'Reggae fusion', 'Lovers rock'],
+  latin_pop: ['Latin ballad', 'Tropical pop', 'Bachata pop', 'Salsa pop'], reggaeton: ['Dembow', 'Perreo', 'Latin trap', 'Romantic reggaeton'],
+  afrobeats: ['Afro-pop', 'Amapiano', 'Afro-fusion', 'Highlife'], kpop: ['Ballad', 'Bubblegum', 'Girl crush', 'Hip-hop idol', 'Retro'],
+  jpop: ['City pop', 'Anime song', 'Kawaii metal', 'Kayōkyoku'], gospel: ['Hymn', 'Praise', 'Contemporary worship', 'Spiritual', 'Gospel choir'],
+  classical: ['Popera', 'Neoclassical', 'Film score', 'Cinematic'], singer_songwriter: ['Acoustic', 'Confessional', 'Folk-pop', 'Piano ballad'],
+};
+export const subgenresOf = (genreId) => SUBGENRES[genreId] ?? ['Mainstream', 'Experimental', 'Acoustic'];

@@ -24,6 +24,7 @@ import { resolve } from './conditions.js';
 import { career as careerState, canFit, freelanceHours, weeklyLoad, workLaw } from './worklife.js';
 import { hereCity } from './cities.js';
 import { phase } from './economy.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const RATE_BY_ID = Object.fromEntries(RATES.map((r) => [r.id, r]));
@@ -141,6 +142,7 @@ export function acceptInquiry(id) {
   const f = fl();
   const q = f.inquiries.find((x) => x.id === id);
   if (!q) return result(false, 'That client has found someone else.', 'neutral');
+  { const sc = jobBlockSpecial('freelance', p); if (sc) return result(false, sc, 'neutral'); }
   const weekly = Math.ceil(q.hours / 48);
   if (freelanceHours() + weekly > f.hoursOffered) return result(false, `That is more than the ${f.hoursOffered} hours a week you set aside for freelance work.`, 'neutral');
   const fit = canFit(weekly, { kind: 'freelance' });

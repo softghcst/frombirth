@@ -57,6 +57,7 @@ function legalElection(p, title, level, s, boost = 0) {
   return rec;
 }
 import { events, visible, archiveIdOf, archived } from './chronicle.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const WINDOW = 6;
@@ -405,6 +406,7 @@ export function seek(id, p = player()) {
   const o = opportunities(p).find((x) => x.id === id);
   if (!o) return result(false, 'That is not open to you.', 'neutral');
   if (o.why) return result(false, o.why, 'neutral');
+  { const sc = jobBlockSpecial('lawyer', p); if (sc) return result(false, sc, 'neutral'); }
   const L = lawOf(p);
   (L.tried ??= {})[id] = nowM();
   const prof = profileFor(p.countryId);

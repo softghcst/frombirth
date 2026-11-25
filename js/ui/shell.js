@@ -150,7 +150,7 @@ export function mountGame(app, hooks) {
     $('[data-avatar]').innerHTML = avatarSvg({
       age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: p.stats.mood, label: `${p.firstName} ${p.lastName}`, ...dressOfPlayer(p),
     });
-    $('[data-name]').textContent = styledName(p);
+    $('[data-name]').textContent = p.flags.stageName && !p.royal ? p.flags.stageName : styledName(p); // a stage name is what the world calls you
     const line1 = $('[data-line1]');
     const ageNow = `Age ${ageText(p)}`;
     // A new age gets a brief glow, so the year turning over is felt without slowing anything down.
