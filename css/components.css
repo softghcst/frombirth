@@ -1488,3 +1488,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wq-postcard { position: static; padding: 0; background: none; }
 .wp-postcard-screen.sv-still .wp-postcard { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
+
+/* The journey: a map of the world, the route drawn as the plane (ship, train, car) follows it (js/ui/journey.js). */
+.journey-screen { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #5FA9D6; cursor: pointer; animation: sv-fade-in .3s ease both; }
+.journey-screen.journey-out { animation: sv-fade-out .35s ease forwards; }
+.journey-map { flex: 1; width: 100%; min-height: 0; display: block; }
+.journey-head { position: absolute; top: 0; left: 0; right: 0; z-index: 1; padding: calc(14px + env(safe-area-inset-top)) 16px 26px; text-align: center; color: #FFFFFF;
+  background: linear-gradient(rgba(20, 30, 60, .55), rgba(20, 30, 60, 0)); text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.journey-head strong { display: block; font-family: var(--serif); font-size: 1.35rem; }
+.journey-head span { font-size: .9rem; opacity: .95; }
+.journey-skip { position: absolute; bottom: calc(12px + env(safe-area-inset-bottom)); left: 0; right: 0; margin: 0; text-align: center; color: #FFFFFF; font-size: .8rem; opacity: .85; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.journey-trail { stroke-dashoffset: 0; animation: journey-draw var(--journey-secs, 3s) cubic-bezier(.45, 0, .35, 1) both; mask: none; }
+@keyframes journey-draw { from { opacity: 0; } 15% { opacity: .9; } }
+.journey-screen.sv-still, .journey-screen.sv-still * { animation: none !important; }

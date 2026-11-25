@@ -438,6 +438,30 @@ const POSTCARDS = {
     <path d="M0 130 Q80 100 160 124 T300 116 V200 H0z" fill="url(#${id}-hill)"/>${Array.from({ length: 8 }, (_, i) => `<path d="M${-20 + i * 44} 200 Q${60 + i * 30} 150 ${120 + i * 22} 128" fill="none" stroke="#5E7D3A" stroke-width="4" stroke-dasharray="7 5"/>`).join('')}
     <path d="M208 120 l14 -10 14 10z" fill="#C8643E" stroke="#23140f" stroke-width="1"/><rect x="211" y="120" width="22" height="12" fill="#F3E2C6" stroke="#23140f" stroke-width="1"/>
     ${[[246, 132, 30], [256, 134, 22]].map(([x, y, h]) => `<path d="M${x} ${y} q-${h / 6} -${h * 0.5} 0 -${h} q${h / 6} ${h * 0.5} 0 ${h}z" fill="url(#${id}-cyp)"/>`).join('')}${car(110, 178, 0.85, hex)}`,
+  // For anywhere else: a city at dusk, a tropical beach, the mountains, a cruise ship.
+  city: (id, hex) => `<defs>${sky(id, '#F2A07A', '#FFE0BC')}${lin(`${id}-river`, [[0, '#F3B69A'], [1, '#4E7FB0']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="220" cy="118" r="22" fill="#FFE08A" opacity=".9"/>
+    <g stroke="#23140f" stroke-width="1" stroke-linejoin="round">
+      ${[[10, 96, 24, '#8A7AA8'], [36, 110, 20, '#9E8CB8'], [58, 84, 26, '#7E6E9E'], [88, 120, 18, '#A898C4'], [108, 70, 22, '#6E5E8E'], [132, 104, 24, '#8A7AA8'], [158, 92, 20, '#9E8CB8'], [180, 112, 26, '#7E6E9E'], [208, 100, 22, '#8A7AA8'], [232, 80, 24, '#6E5E8E'], [258, 108, 22, '#9E8CB8'], [282, 96, 20, '#7E6E9E']].map(([x, y, w, c]) => `<rect x="${x}" y="${y}" width="${w}" height="${150 - y}" fill="${c}"/>${Array.from({ length: Math.floor((150 - y) / 12) }, (_, r) => `<rect x="${x + 4}" y="${y + 6 + r * 12}" width="${w - 8}" height="4" fill="#FFE59A" opacity="${(r + x) % 3 ? 0.85 : 0.25}" stroke="none"/>`).join('')}`).join('')}
+      <path d="M116 70 l3 -22 l3 22z" fill="#6E5E8E"/></g>
+    <rect y="150" width="300" height="50" fill="url(#${id}-river)"/>${sparkleSea(162, 7)}
+    <path d="M0 152 Q75 128 150 152 Q225 128 300 152" fill="none" stroke="#3B3030" stroke-width="3"/>${[30, 60, 90, 120, 180, 210, 240, 270].map((x) => `<path d="M${x} ${152 - Math.sin((x % 150) / 150 * Math.PI) * 24} V152" stroke="#3B3030" stroke-width="1.2"/>`).join('')}
+    ${[[40, 140], [150, 132], [250, 140]].map(([x, y]) => `<circle cx="${x}" cy="${y - 8}" r="3" fill="${hex}" stroke="#23140f" stroke-width=".6"/>`).join('')}`,
+  beach: (id, hex) => POSTCARDS['the Seychelles'](id, hex),
+  mountains: (id, hex) => `<defs>${sky(id, '#7FB2E6', '#E3EFFB')}${lin(`${id}-mtn`, [[0, '#8E9CC2'], [1, '#5E6E9A']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(240, 74, 44)}
+    <path d="M0 150 L60 80 L110 130 L170 62 L240 128 L300 92 V200 H0z" fill="url(#${id}-mtn)" stroke="#3E4E7A" stroke-width="1"/><path d="M50 92 l10 -12 10 12 -6 -2 -4 4 -4 -4z M160 74 l10 -12 10 12 -5 -2 -5 4 -5 -4z M290 100 l10 -8 v10z" fill="#FFFFFF"/>
+    <path d="M0 160 Q150 140 300 160 V200 H0z" fill="#7DB86E"/>${[20, 40, 250, 272, 290].map((x, i) => pine(x, 174 - (i % 2) * 6, 34)).join('')}
+    <g transform="translate(140 168)"><path d="M-16 0 l16 -14 16 14z" fill="${hex}" stroke="#23140f" stroke-width="1"/><rect x="-12" y="0" width="24" height="16" fill="#C98D5B" stroke="#23140f" stroke-width="1"/><rect x="-3" y="5" width="6" height="11" fill="#5A3A22"/><rect x="5" y="3" width="5" height="5" fill="#FFE08A"/></g>`,
+  cruise: (id, hex) => `<defs>${sky(id, '#F79B7A', '#FFE3B3')}${sea(id, '#4FA8D0', '#1E6E98')}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="70" cy="120" r="26" fill="#FFD36E"/>${cloud(230, 70, 54, '#FFE9D8', '#E8B8A8', 0.9)}
+    <rect y="128" width="300" height="72" fill="url(#${id}-sea)"/>${sparkleSea(150)}
+    <g transform="translate(150 140)" stroke="#23140f" stroke-width="1.2" stroke-linejoin="round">
+      <path d="M-92 0 h176 l-16 26 h-150z" fill="#FFFFFF"/><path d="M-90 8 h172" stroke="${hex}" stroke-width="5"/>
+      <rect x="-70" y="-16" width="136" height="16" fill="#FFFFFF"/><rect x="-50" y="-30" width="96" height="14" fill="#FFFFFF"/><rect x="-26" y="-42" width="52" height="12" fill="#FFFFFF"/>
+      <rect x="8" y="-60" width="12" height="18" fill="${hex}"/><rect x="8" y="-60" width="12" height="4" fill="#23140f"/>
+      ${Array.from({ length: 12 }, (_, i) => `<circle cx="${-64 + i * 11}" cy="-8" r="2" fill="#7FB5E0" stroke-width=".5"/>`).join('')}${Array.from({ length: 8 }, (_, i) => `<circle cx="${-44 + i * 12}" cy="-23" r="2" fill="#7FB5E0" stroke-width=".5"/>`).join('')}</g>
+    <path d="M40 176 q30 -6 60 0 M190 182 q30 -6 60 0" stroke="#FFFFFF" stroke-width="1.5" fill="none" opacity=".7"/>`,
   'Around the World': (id, hex) => `<defs>${sky(id, '#4A6AB0', '#A9CDF0')}${rad(`${id}-globe`, [[0, '#7FC6E8'], [1, '#2E7BB8']], 0.4, 0.35, 0.7)}</defs>
     <rect width="300" height="200" fill="url(#${id}-sky)"/>${[[30, 70], [270, 66], [90, 92], [210, 96]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#FFF"/>`).join('')}
     <circle cx="150" cy="188" r="74" fill="url(#${id}-globe)" stroke="#23140f" stroke-width="1.5"/><path d="M104 150 q16 -10 26 4 q6 12 -6 20 q-14 4 -18 -8z M166 140 q18 2 24 16 q2 14 -12 20 q-12 -2 -10 -16z" fill="#7DBA68" stroke="#3F7A3A" stroke-width="1"/>
@@ -448,14 +472,29 @@ const POSTCARDS = {
     <path d="M30 120 Q150 60 270 110" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 6"/><g transform="translate(256 104) rotate(24)"><path d="M-14 0 h26 l6 -3 v6 l-6 -3z M-2 0 l-8 -12 h5 l10 12z M-2 0 l-8 12 h5 l10 -12z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/></g>`,
 };
 
+/** The countries with a card of their own: their best-known coast or island. */
+const COUNTRY_CARDS = { gr: 'Santorini', id: 'Bali', mx: 'Tulum' };
+
 /**
- * The honeymoon postcard (300 x 200): a cartoon of where they went, "Greetings from" across the sky, a stamp in the
- * corner in the couple's color.
+ * Which picture a postcard from a place shows: the country's own, or by what kind of place it is (a cruise, a warm
+ * coast, the mountains, a city). `lat` is the place's latitude, `coastal` whether it is on the sea.
  */
-export function postcardFront(honeymoon, place, hex) {
+export function postcardArt({ countryId, cruise = false, lat = 40, coastal = true, alpine = false }) {
+  if (cruise) return 'cruise';
+  if (COUNTRY_CARDS[countryId]) return COUNTRY_CARDS[countryId];
+  if (alpine) return 'mountains';
+  if (coastal && Math.abs(lat) < 27) return 'beach';
+  return 'city';
+}
+
+/**
+ * The postcard (300 x 200): a cartoon of the place (`art`, a key of POSTCARDS), "Greetings from" and its name
+ * (`title`) across the sky, a stamp in the couple's color.
+ */
+export function postcardFront(art, title, hex) {
   const id = 'pc';
-  const draw = POSTCARDS[place] ?? POSTCARDS['Around the World'];
-  const name = place.replace(/^the /, 'The ');
+  const draw = POSTCARDS[art] ?? POSTCARDS.city;
+  const name = String(title).replace(/^the /, 'The ');
   const big = name.length > 14 ? 24 : 32;
   return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
     <text x="20" y="34" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width="3" paint-order="stroke">Greetings from</text>

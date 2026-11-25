@@ -60,7 +60,7 @@ await page.click(`[data-pick="${info.dream.venue}"]`);
 check(await page.locator('.wp-stage .sv-room').innerHTML() !== stageBefore || info.dream.venue === 'courthouse', 'choosing a venue changes the scene');
 check(/cry/.test(await page.locator('.sv-bubble p').innerText()), 'and the planner reacts to the dream venue');
 check(await page.locator('.sv-reply.primary').isEnabled(), 'a choice made, Next is open');
-const picks = { guests: info.dream.big ? 'big' : 'small', theme: 'lavender', flowers: 'peonies', attire: 'rack', cake: 'tiered', music: 'band', food: 'buffet', honeymoon: 'roadtrip' };
+const picks = { guests: info.dream.big ? 'big' : 'small', theme: 'lavender', flowers: 'peonies', attire: 'rack', cake: 'tiered', music: 'band', food: 'buffet', honeymoon: 'trip' };
 await page.click('.sv-reply.primary');
 for (const v of Object.values(picks)) {
   check(!(await page.locator('.sv-reply.primary').isEnabled()), 'Next waits for a choice');
@@ -83,10 +83,7 @@ await page.click('.sv-reply:has-text("Listen")');
 await page.click('.sv-reply:has-text("I do")');
 await page.click('.sv-reply:has-text("Kiss")');
 check(await page.locator('.wp-finale .wp-just').innerText() === 'Just married!' && await page.locator('.wp-finale .wp-frame svg').count() === 2, 'the finale: just married, the two of you');
-await page.click('[data-done]');
-// The honeymoon (a road trip): a postcard from wherever they drove.
-const pc = await page.locator('.wp-pc-front svg').innerHTML().catch(() => '');
-check(/Greetings from/.test(pc) && /JUST MARRIED|<text/.test(pc), 'then a cartoon postcard from where the honeymoon went');
+check(/Plan the honeymoon/i.test(await page.locator('[data-done]').textContent()), 'the finale offers to plan the honeymoon');
 await page.click('[data-done]');
 await page.waitForTimeout(100);
 check(!(await page.locator('.wp-screen').count()) && (await page.evaluate(() => window.__wedDone))?.married === true, 'back to the game, married');
@@ -129,6 +126,29 @@ await page.click('.wq-married [data-ok]'); await page.waitForTimeout(50);
 const q = await page.evaluate(async (id) => { const { store } = await import('/js/state.js'); const n = store.state.npcs[id]; return { role: n.role, venue: n.flags.wedding?.venue, done: window.__quickDone }; }, third.id);
 check(q.role === 'spouse' && q.venue === 'courthouse' && q.done?.married, 'married, at city hall');
 await page.evaluate(async () => { (await import('/js/ui/weddingPlanner.js')).setWeddingScenes(true); });
+// The honeymoon is planned in the trip planner, the spouse already coming; the journey is shown on a map; home again,
+// a postcard of wherever they went.
+const hm = await page.evaluate(async (id) => {
+  const { store } = await import('/js/state.js'); const w = await import('/js/ui/weddingPlanner.js'); const travel = await import('/js/engine/travel.js');
+  await w.planHoneymoon({ changed() {} }, store.state.npcs[id]);
+  const trip = travel.trips().find((t) => t.type === 'honeymoon' && t.status === 'draft');
+  const open = !!document.querySelector('.gl-modal');
+  document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
+  return { open, coming: trip?.travelers.find((x) => x.id === id)?.status, type: trip?.type };
+}, info.id);
+check(hm.open && hm.type === 'honeymoon' && hm.coming === 'accepted', `the honeymoon opens in the trip planner, the spouse coming (${JSON.stringify(hm)})`);
+await page.evaluate(async () => { const { openJourney } = await import('/js/ui/journey.js'); window.__jr = openJourney({ stops: [{ countryId: 'us', city: 'Chicago' }, { countryId: 'fr', city: 'Paris' }], over: 'air' }); });
+await page.waitForSelector('.journey-screen', { timeout: 5000 });
+check(await page.locator('.journey-map use').count() === 3 && /Paris/.test(await page.locator('.journey-head').innerText()) && await page.locator('.journey-map animateMotion').count() === 1, 'the flight is shown on a map, the plane following its route');
+await page.click('.journey-screen'); await page.waitForTimeout(500);
+check(!(await page.locator('.journey-screen').count()), 'and a tap skips it');
+await page.evaluate(async (id) => {
+  const { store } = await import('/js/state.js'); const w = await import('/js/ui/weddingPlanner.js');
+  window.__pc = w.honeymoonPostcard({ changed() {} }, { type: 'honeymoon', mode: 'jet', destination: { countryId: 'fr', city: 'Paris' }, origin: { countryId: 'us', city: 'Chicago' }, travelers: [{ id }] });
+}, info.id);
+await page.waitForSelector('.wp-pc-front svg', { timeout: 5000 });
+check(/Greetings from/.test(await page.locator('.wp-pc-front svg').innerHTML()) && /Paris/.test(await page.locator('.wp-pc-front svg').innerHTML()), 'home again, a postcard from Paris');
+await page.click('.wq-postcard [data-done]');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();

@@ -415,6 +415,17 @@ export function startPlan(typeId = 'vacation', p = player()) {
   return trip;
 }
 
+/**
+ * A honeymoon, planned like any trip (where, how, where to stay), with the new spouse already coming: nobody is asked
+ * whether they will come on their own honeymoon.
+ */
+export function startHoneymoon(spouseId, p = player()) {
+  const trip = startPlan('honeymoon', p);
+  const n = store.state.npcs[spouseId];
+  if (n?.alive) trip.travelers.push({ id: n.id, status: 'accepted', reason: `${n.firstName} is coming. Of course.`, pays: 'organizer' });
+  return trip;
+}
+
 /** Changes a plan still in draft. Unknown keys are ignored. */
 export function updatePlan(id, changes, p = player()) {
   const trip = tripById(id, p);
