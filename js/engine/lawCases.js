@@ -131,6 +131,9 @@ export function createCase(templateId, o = {}) {
     c.vars.city = p.city ?? COUNTRIES[countryId]?.cities?.[0] ?? '';
     c.vars.address = `${rng.int(12, 980)} ${rng.pick(['Oak', 'Maple', 'Hill', 'River', 'Station', 'Park', 'Church', 'Mill'])} ${rng.pick(['Street', 'Road', 'Lane', 'Avenue'])}`;
   }
+  // An old rival from earlier trials may be on the other side again (only real people from earlier cases).
+  const rivals = Object.values(store.state.npcs).filter((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice && n.id !== c.otherCounselId && n.id !== c.judgeId);
+  if (c.otherCounselId && rivals.length && rng.chance(0.25)) c.otherCounselId = rng.pick(rivals).id;
   c.title = fill(T.title, c);
   c.summary = fill(T.summary, c);
   c.evidence = T.evidence.map((e) => ({ ...e, label: fill(e.label, c), reviewed: false, status: e.admissibility === 'ok' ? 'admitted' : 'disputed', reliability: e.reliability }));
@@ -528,6 +531,9 @@ export function close(c, out, lines = []) {
   note(c, `Outcome: ${out.text}`);
   // A will drafted and signed is the client's will from now on, on their own record.
   if (c.templateId === 'will' && out.favorable > 0 && c.clientId && store.state.npcs[c.clientId]) store.state.npcs[c.clientId].flags.will = { year: store.state.year, by: p.id, caseId: c.id, guardianNamed: true };
+  // The lawyer on the other side of a trial remembers it: a professional rival, who may turn up again.
+  const opp = store.state.npcs[c.otherCounselId];
+  if (opp && out.trial && !c.clinic) { opp.flags.rivalOf = p.id; opp.flags.rivalCases = (opp.flags.rivalCases ?? 0) + 1; opp.flags.rivalSince ??= store.state.year; }
   // The client remembers how they were treated as much as how it ended.
   const n = store.state.npcs[c.clientId];
   if (n) { n.meters.relationship = clamp(n.meters.relationship + (out.favorable > 0 ? 12 : out.favorable > -0.6 ? 2 : -6) + (c.tasks.interview ? 4 : -4)); n.flags.formerClientOf = p.id; n.flags.lastCaseId = c.id; }

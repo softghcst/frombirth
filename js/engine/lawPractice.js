@@ -352,14 +352,16 @@ export function seek(id, p = player()) {
     p.finance.cash -= cost;
     const chance = clamp(0.25 + s + (elected ? (p.hidden.fame ?? 0) / 400 + (p.stats.charm - 50) / 300 : 0.05), 0.05, 0.8);
     const name = id === 'da' ? prof.titles.prosecutorChief : id === 'chief_defender' ? prof.titles.defenderChief : 'General Counsel';
+    const rivalRan = elected ? Object.values(store.state.npcs).find((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice?.kind === 'prosecutor') : null;
+    const against = rivalRan ? ` against your old rival ${rivalRan.firstName} ${rivalRan.lastName}` : '';
     if (luck >= chance) {
-      log(elected ? `You ran for ${name} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
+      log(elected ? `You ran for ${name}${against} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
       return result(false, elected ? `You ran for ${name}. The voters chose your opponent.` : `Another candidate was appointed ${name}.`, 'bad');
     }
     select(p, id);
     while (p.career.level < currentCareer().levels.length - 1) { if (!promote()) break; select(p, id); }
     canon(`law:${id}:${p.id}`, `${elected ? 'Elected' : 'Appointed'} ${name}`, `${elected ? 'Won the election' : 'Was appointed'} as ${name}.`, { privacy: 'public', sig: 3 });
-    return result(true, elected ? `You won the election. You are the ${name}.` : `You were appointed ${name}.`, 'good');
+    return result(true, elected ? `You won the election${against}. You are the ${name}.` : `You were appointed ${name}.`, 'good');
   }
   if (id === 'elevation') {
     const chance = clamp(0.2 + s + ((p.career?.performance ?? 50) - 60) / 200, 0.05, 0.7);
@@ -547,6 +549,24 @@ export function storyBeats(p = player()) {
     if (c.clientId && c.negotiation.offers.some((o) => !o.accepted) && rng.chance(0.4)) caseScene('law_wont_listen', c);
   }
   for (const c of L.caseIds.map(cases.caseById).filter((x) => x?.done && x.kind === 'immigration' && x.outcome?.kind === 'denied' && x.appealable && !x.appeal)) caseScene('law_imm_appeal', c);
+  // A law school classmate may join the bench years later: the same person, now a judge (k.bench).
+  const mate = store.state.npcs[L.people?.studyMate];
+  const since = L.bar.admitted?.m;
+  if (mate?.alive && !mate.flags.becameJudge && since != null && nowM() - since >= 96 && rng.chance(0.12)) {
+    mate.flags.becameJudge = store.state.year;
+    mate.flags.justice = { kind: 'judge', since: store.state.year, caseIds: [], countryId: p.countryId, skill: rng.int(62, 85), strict: rng.int(30, 70) };
+    mate.occupation = 'Judge';
+    mate.flags.title = 'Judge';
+    const b = k.bench(p.countryId);
+    if (!b.judges.includes(mate.id)) b.judges.push(mate.id);
+    log(`Your law school classmate ${mate.firstName} ${mate.lastName} has been appointed a judge.`);
+  }
+  for (const c of open) {
+    const judge = store.state.npcs[c.judgeId];
+    if (judge && (judge.id === L.people?.studyMate || (p.npcIds.includes(judge.id) && ['friend', 'partner', 'spouse', 'sibling', 'parent', 'child'].includes(judge.role)))) caseScene('law_old_classmate', c, { judge: `${judge.firstName} ${judge.lastName}` });
+    const rival = store.state.npcs[c.otherCounselId];
+    if (rival?.flags.rivalOf === p.id && (rival.flags.rivalCases ?? 0) >= 1) caseScene('law_old_rival', c, { rival: `${rival.firstName} ${rival.lastName}`, since: String(rival.flags.rivalSince ?? '') });
+  }
   const t = trackOf(p);
   if (t === 'lawyer' && p.career.level === 0 && rng.chance(0.25)) { const sup = supervisor(p); lifeScene('law_partner_help', { name: `${sup.firstName} ${sup.lastName}` }, 24); }
   const major = (L.offers ?? []).find((o) => o.prominent);
@@ -588,7 +608,7 @@ export function lawChoice(value) {
 function caseChoice(scene, choice, p, L) {
   const byScene = { clinicHard: 'law_clinic_hard', deadline: 'law_deadline', wontListen: 'law_wont_listen', firstHearing: 'law_first_hearing', accused: 'law_client_accused',
     ident: 'law_identification', pleaTalk: 'law_plea_offer', newWitness: 'law_new_witness', mustDismiss: 'law_must_dismiss', highStakes: 'law_high_stakes', marriage: 'law_marriage_apart',
-    parenting: 'law_parenting', settleConf: 'law_settlement_conf', childFuture: 'law_childs_future', rfe: 'law_rfe', immHearing: 'law_hearing_approaches', immAppeal: 'law_imm_appeal' };
+    classmate: 'law_old_classmate', rival: 'law_old_rival', parenting: 'law_parenting', settleConf: 'law_settlement_conf', childFuture: 'law_childs_future', rfe: 'law_rfe', immHearing: 'law_hearing_approaches', immAppeal: 'law_imm_appeal' };
   const c = byScene[scene] ? cases.caseById(L.sceneCase?.[byScene[scene]]) : null;
   const client = c ? store.state.npcs[c.clientId] : null;
   const rel = (n, d) => { if (n?.meters) n.meters.relationship = clamp(n.meters.relationship + d); };
@@ -709,6 +729,17 @@ function caseChoice(scene, choice, p, L) {
       if (choice === 'appeal') { const g = cases.appealGrounds(c)[0]; return g ? cases.fileAppeal(c, g.id).text : 'There are no grounds left.'; }
       if (choice === 'refile') { const n = cases.createCase(c.templateId, { clientId: c.clientId, track: c.track, specialty: c.specialty }); return `A new application is open: ${n.title}.`; }
       return 'You tell the client there is nothing more to do now.';
+    }
+    case 'classmate': {
+      if (!c || c.done) return '';
+      if (choice === 'disclose') { L.rep.integrity = clamp(L.rep.integrity + 2); gain(p, { ethics: 2 }); return 'You tell both sides you studied together. Nobody objects, and the case goes on.'; }
+      if (choice === 'recuse') { const others = k.bench(c.countryId).judges.filter((id) => id !== c.judgeId); if (others.length) c.judgeId = rng.pick(others); L.rep.integrity = clamp(L.rep.integrity + 2); return 'You ask for another judge, to be safe. Your old classmate agrees at once.'; }
+      L.rep.integrity = clamp(L.rep.integrity - 5); c.errors.push({ kind: 'bias', text: 'Counsel did not disclose a friendship with the judge.' }); return 'You say nothing. If it comes out, it will look bad, whatever the result.';
+    }
+    case 'rival': {
+      if (!c || c.done) return '';
+      if (choice === 'respect') { L.rep.integrity = clamp(L.rep.integrity + 1); gain(p, { negotiation: 1 }); return 'You shake hands outside the courtroom. Rivals, not enemies.'; }
+      c.bonus = (c.bonus ?? 0) - 0.02; L.rep.integrity = clamp(L.rep.integrity - 1); return 'You make it personal. They make it personal back.';
     }
     case 'major': {
       const o = (L.offers ?? []).find((x) => x.prominent);

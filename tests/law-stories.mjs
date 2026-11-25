@@ -1,6 +1,6 @@
 // The scenes of a legal life: each one comes when its moment really happens (in school, a case or the career), once,
 // and every choice in it changes something real. Run with: node tests/law-stories.mjs
-import { store, rng, ls, lp, lc, check, finish, turn, lawyer, graduate, edu } from './helpers/lawSetup.mjs';
+import { store, rng, ls, lp, lc, k, check, finish, turn, lawyer, graduate, edu } from './helpers/lawSetup.mjs';
 import LAW from '../js/data/events/stories/law.js';
 import { EVENT_BY_ID } from '../js/data/events/index.js';
 
@@ -87,6 +87,39 @@ check(LAW.length >= 29 && LAW.every((e) => EVENT_BY_ID[e.id] && e.choices.length
   check(seen.has('law_gov_offer') && seen.has('law_ag'), `an experienced prosecutor is offered government work and the chance to run for Attorney General (${[...seen].join(', ')})`);
   lp.lawChoice('govOffer:accept');
   check(p.career.careerId === 'attorney_general' && p.career.level === 0, 'accepting makes them a Deputy Attorney General, not Attorney General');
+}
+
+// Long stories: a rival from an earlier trial, and a classmate who became a judge.
+{
+  lawyer('lawyer');
+  const me = store.state.player;
+  const first = lc.createCase('contract_dispute', { track: 'lawyer' });
+  const rivalId = first.otherCounselId;
+  lc.close(first, { kind: 'judgment', text: 'Judgment.', favorable: 1, trial: true });
+  check(store.state.npcs[rivalId].flags.rivalOf === me.id, 'the lawyer on the other side of a trial becomes a rival');
+  let again = null;
+  for (let i = 0; i < 40 && !again; i++) { const c = lc.createCase('injury', { track: 'lawyer' }); if (c.otherCounselId === rivalId) again = c; }
+  check(!!again, 'and turns up against you again, as the same person');
+  store.state.pendingEvents = [];
+  lp.storyBeats();
+  check(queued().includes('law_old_rival'), 'a scene: an old rival across the aisle');
+  lp.lawChoice('rival:respect');
+  const L = ls.lawOf();
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  const friend = makeNpc({ role: 'friend', countryId: me.countryId, age: 40, relationship: 70 });
+  store.state.npcs[friend.id] = friend; me.npcIds.push(friend.id);
+  (L.people ??= {}).studyMate = friend.id;
+  L.bar.admitted.m = ls.nowM() - 120;
+  for (let i = 0; i < 80 && !friend.flags.becameJudge; i++) lp.storyBeats();
+  check(friend.flags.becameJudge && k.bench(me.countryId).judges.includes(friend.id), `a law school classmate is appointed a judge, years later (${friend.firstName} ${friend.lastName})`);
+  let before = null;
+  for (let i = 0; i < 60 && !before; i++) { const c = lc.createCase('boundary', { track: 'lawyer' }); if (c.judgeId === friend.id) before = c; }
+  check(!!before, 'and presides over one of your cases');
+  store.state.pendingEvents = [];
+  lp.storyBeats();
+  check(queued().includes('law_old_classmate'), 'a scene: an old classmate on the bench');
+  lp.lawChoice('classmate:recuse');
+  check(before.judgeId !== friend.id, 'asking for another judge moves the case to someone else');
 }
 
 // Every choice of every scene does something, with nothing thrown.

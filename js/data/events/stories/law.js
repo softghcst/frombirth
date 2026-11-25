@@ -137,4 +137,13 @@ export default [
     ['Run', 'ag:run', 'You announce your campaign.'],
     ['Not this time', 'ag:no', 'You say no, for now.'],
   ]),
+  scene('law_old_classmate', [30, 90], 'An Old Classmate on the Bench. The judge in {title} is {judge}, who sat next to you in your first year of law school.', [
+    ['Tell both sides you studied together', 'classmate:disclose', 'You raise it before anything else.'],
+    ['Ask for another judge', 'classmate:recuse', 'You ask, politely, for the case to go elsewhere.'],
+    ['Say nothing', 'classmate:silent', 'It was a long time ago.', 'bad'],
+  ]),
+  scene('law_old_rival', [28, 90], 'An Old Rival. Across the aisle in {title} is {rival}, whom you have faced before.', [
+    ['Shake hands and get to work', 'rival:respect', 'Rivals, not enemies.'],
+    ['Make it personal', 'rival:personal', 'You have not forgotten last time.', 'bad'],
+  ]),
 ];
