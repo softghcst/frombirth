@@ -167,7 +167,7 @@ function office() {
     const L = p.law ?? {};
     return card(f.name, `${kv('Founded', String(f.founded))}${kv('Staff', String(f.staff))}${kv('Firm cash', fmtMoney(f.cash, country()))}
       ${kv('Fees', lp.FEE_STRATEGIES[L.fees ?? 'standard'].name)}${kv('Malpractice cover', L.malpractice ? 'Insured' : 'None')}
-      <div class="btn-row">${btn('Set Fees', 'data-firm="fees"')}${btn(L.malpractice ? 'Drop Malpractice Cover' : 'Insure Against Malpractice', 'data-firm="insure"')}</div>
+      <div class="btn-row">${btn('Advertise', 'data-firm="ads"')}${btn('Set Fees', 'data-firm="fees"')}${btn(L.malpractice ? 'Drop Malpractice Cover' : 'Insure Against Malpractice', 'data-firm="insure"')}</div>
       <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`);
   }
   const duties = lp.leaderDuties(p);
@@ -395,6 +395,11 @@ export function openLawCareer(api, start = {}) {
     if (t.dataset.firm === 'fees') {
       const a = await pickModal({ title: 'Your fees', body: 'What you charge decides who comes to you.', options: Object.entries(lp.FEE_STRATEGIES).map(([id, x]) => ({ value: id, label: x.name, sub: x.note })) });
       if (a) await say(lp.setFeeStrategy(a));
+      return changed();
+    }
+    if (t.dataset.firm === 'ads') {
+      const a = await pickModal({ title: 'Advertise', body: 'What will the ads say?', options: [{ value: 'honest', label: 'Plain words about what you do and what you charge' }, { value: 'promises', label: '"We win your case, guaranteed"' }] });
+      if (a) await say(lp.advertise(a));
       return changed();
     }
     if (t.dataset.firm === 'insure') { await say(lp.setMalpractice(!player().law?.malpractice)); return changed(); }

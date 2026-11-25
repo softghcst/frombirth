@@ -61,6 +61,27 @@ j.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };
 const r = lc.argue(j, { jury: 'race' });
 check(/Batson/.test(r.text) && ls.lawOf().rep.integrity < 50, 'striking jurors for their race: the judge stops it, citing Batson v. Kentucky');
 check(rl.eraNotes('us', 1940).some((x) => /Sweatt v\. Painter/.test(x)) && !rl.eraNotes('us', 2000).length, 'the history of who was kept out of law school is told for its time');
+// More countries' family law, and when lawyers could advertise.
+check(!rl.divorceNeedsFault('au', 1980).fault && rl.governing('divorce', 'au', 1980).id === 'au_fla', 'Australia: no-fault divorce from the Family Law Act 1975');
+check(rl.divorceNeedsFault('de', 1970)?.fault === true, 'West Germany before 1977: divorce for fault');
+check(!rl.divorceNeedsFault('de', 1980).fault && rl.governing('divorce', 'in', 1960).nofault === false && rl.governing('divorce', 'in', 1980).id === 'in_hma13b', 'Germany after 1977; India: fault grounds, then mutual consent from 1976');
+check(rl.governing('custody', 'ca', 2000).id === 'ca_custody' && rl.governing('search', 'au', 2000).excludes && !rl.governing('search', 'in', 2000).excludes, 'Canada\'s best interests; Australia\'s Evidence Act excludes; India admits illegally obtained evidence');
+{
+  const { start } = await import('../js/engine/business.js');
+  const lp = await import('../js/engine/lawPractice.js');
+  const career = await import('../js/engine/career.js');
+  lawyer('lawyer'); store.state.player.career.experience.lawyer = 6; career.quitCareer(); start('law_firm', 'Hale Law');
+  store.state.player.finance.cash = 1e6; lp.ownFirm().cash = 1e6;
+  setYear(1970);
+  check(!lp.advertise('honest').ok, 'a US law firm in 1970 may not advertise: not before Bates v. State Bar of Arizona (1977)');
+  setYear(1990);
+  const ok = lp.advertise('honest');
+  check(ok.ok && /Bates|7\.1/.test(ok.text) && !lp.advertise('honest').ok, `in 1990 it may, honestly, once a half-year (${ok.text})`);
+  ls.lawOf().advertised = null;
+  const integ = ls.lawOf().rep.integrity;
+  lp.advertise('promises');
+  check(ls.lawOf().rep.integrity < integ, 'ads that promise results break the rule against misleading advertising');
+}
 setYear(2026);
 
 finish('Real laws hold, in their time.');

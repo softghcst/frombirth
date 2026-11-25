@@ -45,6 +45,23 @@ export const REAL_LAWS = [
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),
   L('uk_pida', ['uk'], 'retaliation', 'Public Interest Disclosure Act 1998', 1999, 'Protects workers dismissed or harmed for making a protected disclosure (whistleblowing).'),
   L('uk_tma', ['uk'], 'trademark', 'Trade Marks Act 1994, section 10', 1994, 'Using a sign likely to confuse the public with a registered trade mark is infringement.'),
+  // ---------- Elsewhere: families ----------
+  L('ca_divorce68', ['ca'], 'divorce', 'Divorce Act (1968)', 1968, 'Canada\'s first federal divorce law: adultery, cruelty, or marriage breakdown after three years\' separation.', { nofault: 'facts', until: 1985 }),
+  L('ca_divorce85', ['ca'], 'divorce', 'Divorce Act (1985)', 1986, 'Divorce for marriage breakdown: one year\'s separation, adultery or cruelty.', { nofault: 'facts' }),
+  L('ca_custody', ['ca'], 'custody', 'Divorce Act (1985), section 16', 1986, 'Custody and parenting are decided on the best interests of the child.'),
+  L('au_fla', ['au'], 'divorce', 'Family Law Act 1975 (in force 1976)', 1976, 'No-fault divorce: the marriage has broken down irretrievably, shown by twelve months\' separation.', { nofault: true }),
+  L('au_fla_child', ['au'], 'custody', 'Family Law Act 1975', 1976, 'Parenting orders are made on the best interests of the child.'),
+  L('de_1977', ['de'], 'divorce', 'First Marriage Law Reform Act (1977)', 1977, 'Divorce on the breakdown of the marriage, replacing divorce for fault.', { nofault: true }),
+  L('fr_1975', ['fr'], 'divorce', 'Divorce Reform Law of 11 July 1975', 1976, 'Brought back divorce by mutual consent beside divorce for fault and for breakdown of life together.', { nofault: 'facts' }),
+  L('in_hma', ['in'], 'divorce', 'Hindu Marriage Act 1955, section 13', 1955, 'Divorce on grounds such as cruelty, desertion or adultery.', { nofault: false, until: 1975 }),
+  L('in_hma13b', ['in'], 'divorce', 'Hindu Marriage Act 1955, section 13B (added 1976)', 1976, 'Divorce by mutual consent, beside the fault grounds.', { nofault: 'facts' }),
+  L('jp_civil', ['jp'], 'divorce', 'Civil Code of Japan, divorce by agreement', 1898, 'A couple may divorce by agreement, registered with the municipal office.', { nofault: true }),
+  L('au_ea138', ['au'], 'search', 'Evidence Act 1995, section 138', 1995, 'Improperly or illegally obtained evidence is excluded unless the desirability of admitting it outweighs the undesirability of how it was obtained.', { excludes: true }),
+  L('in_malkani', ['in'], 'search', 'R.M. Malkani v. State of Maharashtra (1973)', 1973, 'Evidence obtained illegally is still admissible if relevant, though the court may weigh how it was obtained.', { excludes: false }),
+  // ---------- Lawyers advertising ----------
+  L('us_bates', ['us'], 'advertising', 'Bates v. State Bar of Arizona (1977)', 1977, 'Lawyers may advertise their services; truthful advertising is protected speech.'),
+  L('us_rule71', ['us'], 'advertising', 'ABA Model Rule of Professional Conduct 7.1', 1983, 'A lawyer must not make false or misleading communications about their services.'),
+  L('uk_advert', ['uk'], 'advertising', 'Law Society rules on solicitors\' publicity (1984)', 1984, 'Solicitors may advertise, provided it is not misleading or inaccurate.'),
   // ---------- Elsewhere ----------
   L('ca_charter8', ['ca'], 'search', 'Canadian Charter of Rights and Freedoms, sections 8 and 24(2)', 1982, 'Protects against unreasonable search; evidence is excluded if admitting it would bring justice into disrepute.', { excludes: true }),
   L('ca_charter10', ['ca'], 'confession', 'Canadian Charter of Rights and Freedoms, section 10(b)', 1982, 'Everyone arrested has the right to retain and instruct counsel without delay, and to be told of it.', { excludes: true }),

@@ -23,6 +23,8 @@ import { employer as employerOf } from './employers.js';
 import { duel } from './elections.js';
 import * as world from './polity.js';
 import { VOTERS } from '../data/parties.js';
+import * as realLawMod from './realLaw.js';
+import { discipline } from './lawCases.js';
 
 /**
  * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
@@ -158,7 +160,7 @@ function openWindow(p, w) {
     }
     return;
   }
-  const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) : 2);
+  const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) + (L.adBoost === w ? 1 : 0) : 2);
   const taken = new Set((L.offers ?? []).map((o) => o.templateId));
   for (let i = 0; i < n; i++) {
     const second = inTraining(p) || (t === 'lawyer' && rng.chance(0.3) && cap < 5);
@@ -976,6 +978,38 @@ function firmYear(p) {
     else { b.cash -= amount; log(`${c.vars.client} sued your firm over a missed deadline in ${c.title}. With no malpractice cover, the firm paid ${fmtMoney(amount, country())}.`, 'system', 'bad'); }
     L.rep.clients = clamp(L.rep.clients - 3);
   }
+}
+
+// ---------- Advertising ----------
+
+/** Whether a practice may advertise here and now, and under what law. Where it is not listed, the game says so. */
+export function advertisingRule(p = player()) {
+  const law = realLawMod.governing('advertising', p.countryId);
+  const listed = ['us', 'uk'].includes(p.countryId);
+  return { allowed: listed ? !!law : true, law, listed };
+}
+/** Advertises your own firm, once a half-year: honestly, or with promises no lawyer can keep. */
+export function advertise(kind = 'honest', p = player()) {
+  const b = ownFirm(p);
+  if (!b) return result(false, 'Only for your own practice.', 'neutral');
+  const r = advertisingRule(p);
+  if (!r.allowed) return result(false, p.countryId === 'us' ? 'Lawyers may not advertise yet: that comes with Bates v. State Bar of Arizona (1977).' : 'Solicitors may not advertise yet: the rules change in 1984.', 'neutral');
+  const L = lawOf(p);
+  const w = Math.floor(nowM() / WINDOW);
+  if (L.advertised === w) return result(false, 'You have advertised this half-year.', 'neutral');
+  const cost = localCost(4000, country());
+  if (b.cash < cost) return result(false, `An advertising run costs the firm ${fmtMoney(cost, country())}.`, 'neutral');
+  b.cash -= cost;
+  L.advertised = w;
+  b.reputation = clamp((b.reputation ?? 30) + 3);
+  L.adBoost = w + 1; // one more client in the next half-year
+  if (kind === 'promises') {
+    L.rep.integrity = clamp(L.rep.integrity - 6);
+    const rule = realLawMod.governing('advertising', p.countryId);
+    if (rng.chance(0.5)) return discipline('reprimand');
+    return result(false, `The ads promise results. ${rule ? `That breaks ${rule.name}: ` : ''}no lawyer can promise an outcome.`, 'bad');
+  }
+  return result(true, `Your firm's ads run for six months: plain words about what you do.${r.law ? ` (${r.law.name})` : ''}`, 'good');
 }
 
 // ---------- The office and the court ----------
