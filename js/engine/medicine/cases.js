@@ -22,7 +22,7 @@ import { CASES, CASE_BY_ID } from '../../data/medicineCases.js';
 import { TEST_BY_ID, PROCEDURE_BY_ID, SPECIALTY_BY_ID, SPECIALTIES, qualifiesAs, eraCare } from '../../data/medicine.js';
 import { makeNpc } from '../npcFactory.js';
 import { M, med, W, year, grow, nextId, result, roll, currentSpecialty, qualified } from './core.js';
-import { hospital } from './hospitals.js';
+import { hospital, deptHead } from './hospitals.js';
 
 export const CASES_PER_YEAR = 3;
 const QUALITY = { best: 90, ok: 65, poor: 35, unsafe: 10 };
@@ -93,9 +93,20 @@ function openCase(fx, patient, specialtyId, role, o = {}) {
   W().patients[patient.id].lastYear = year();
   m.caseIds.push(id);
   if (fx.episode) {
-    const ep = (W().episodes[`${fx.episode}:${year()}`] ??= { id: fx.episode, year: year(), caseIds: [] });
+    // One emergency, one shared record: the other teams on the case are real physicians at this hospital.
+    const ep = (W().episodes[`${fx.episode}:${year()}`] ??= { id: fx.episode, year: year(), caseIds: [], patientId: patient.id, teams: [], log: [] });
     ep.caseIds.push(id);
+    if (!ep.teams.length) {
+      const h = c.hospitalId ? hospital(c.hospitalId) : null;
+      for (const other of [...new Set(CASES.filter((x) => x.episode === fx.episode && x.id !== fx.id).map((x) => x.specialty[0]))]) {
+        const dept = SPECIALTY_BY_ID[other]?.dept;
+        const lead = h && dept ? deptHead(h, dept) : null;
+        ep.teams.push({ specialtyId: other, physicianId: lead?.id ?? null });
+      }
+    }
+    c.episodeKey = `${fx.episode}:${year()}`;
   }
+
   return c;
 }
 
@@ -149,7 +160,9 @@ export function caseView(id) {
     guardian: !!fx.guardian, household: !!fx.household, followUp: !!c.followOf,
     family: (W().patients[c.patientId]?.household ?? []).map((x) => ({ name: store.state.npcs[x.id] ? `${store.state.npcs[x.id].firstName} ${store.state.npcs[x.id].lastName}` : 'A relative', as: x.as })),
     // One emergency, several teams: who else is working on the same patient (data/medicineCases.js `episode`).
-    teams: fx.episode ? [...new Set(CASES.filter((x) => x.episode === fx.episode && x.id !== fx.id).map((x) => SPECIALTY_BY_ID[x.specialty[0]]?.name).filter(Boolean))] : [],
+    teams: c.episodeKey ? (W().episodes[c.episodeKey]?.teams ?? []).map((t) => { const n = store.state.npcs[t.physicianId]; return `${SPECIALTY_BY_ID[t.specialtyId]?.name ?? 'Another team'}${n ? ` (${n.firstName} ${n.lastName})` : ''}`; })
+      : fx.episode ? [...new Set(CASES.filter((x) => x.episode === fx.episode && x.id !== fx.id).map((x) => SPECIALTY_BY_ID[x.specialty[0]]?.name).filter(Boolean))] : [],
+    shared: c.episodeKey ? (W().episodes[c.episodeKey]?.log ?? []) : [],
     intro: fill(fx.intro, c, patient), history: fill(fx.history, c, patient), exam: fill(fx.exam, c, patient),
     tests: fx.tests.filter((t) => (TEST_BY_ID[t.test]?.minYear ?? 0) <= now).map((t) => {
       const done = c.tests.find((x) => x.test === t.test);
@@ -409,6 +422,7 @@ function resolve(c, plan, decision, how = 'played') {
     (m.claims ??= []).push({ caseId: c.id, year: year(), status: 'open', below: points < 30 || quality === 'unsafe' });
   }
   c.status = 'closed';
+  if (c.episodeKey) W().episodes[c.episodeKey]?.log.push(`${SPECIALTY_BY_ID[c.specialtyId]?.name ?? 'Your team'}: ${fx.label.toLowerCase()}, ${res === 'good' ? 'stabilized' : res === 'fair' ? 'stabilized after a difficult course' : 'a hard course'}.`);
   // Experience follows judgment, not luck.
   grow('reasoning', points >= 75 ? 2 : points >= 52 ? 1 : -0.5, m);
   if (points >= 52) grow('communication', fx.guardian || fx.household ? 1 : 0.5, m); // talking a family through a poor plan is not good communication
