@@ -25,6 +25,7 @@ import * as drama from '../js/engine/medicine/drama.js';
 import { hospitalsIn, trainingSites } from '../js/engine/medicine/hospitals.js';
 import { events } from '../js/engine/chronicle.js';
 import { COUNTRIES } from '../js/data/countries.js';
+import * as biz from '../js/engine/business.js';
 import * as market from '../js/engine/employers.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { die } from '../js/engine/death.js';
@@ -166,6 +167,11 @@ check(pr.find((o) => o.id === 'dermatology_clinic').block || spec === 'dermatolo
 if (mine) {
   const r = practice.openPractice(mine.id);
   check(r.ok && m.clinicIds.length === 1 && p.businesses.at(-1).medical?.practiceType === mine.id, `opened a practice: ${r.text}`);
+  const b = p.businesses.at(-1);
+  b.cash += 10000000;
+  biz.hire(b, 0); biz.hire(b, 0);
+  const titles = b.staff.map((x) => store.state.npcs[x.id].occupation);
+  check(titles[0] === 'staff nurse' && titles[1] === 'practice manager', `a practice is staffed like one (${titles.join(', ')})`);
 }
 for (let i = 0; i < 4; i++) { strong(m); year(); }
 check(m.job?.rank === 'attending' || m.job?.rank === 'senior' || !!m.offer || !m.job, 'ranks change only through reviews and offers');
