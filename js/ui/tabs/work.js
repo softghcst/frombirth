@@ -410,6 +410,12 @@ const has = (list, id) => list.find(([x]) => x === id);
 const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
 
 function findWork(p, list) {
+  // A special career is the work: other jobs wait until it is left (engine/specialCareer.js).
+  const sc = special.jobBlock('other', p);
+  if (sc && p.age >= 18) {
+    const why = `You are ${special.SPECIAL_BY_ID[special.current(p)].noun}`;
+    return `<div class="section-label">Find work</div><div class="nav-group">${lockedRow('Jobs', why)}${lockedRow('Find work', why)}${military.serving() ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: `${p.career.title}, ${military.serving().branch}` }) : lockedRow('Military', why)}</div>`;
+  }
   const rows = [];
   rows.push(has(list, 'hub') ? row(has(list, 'hub')) : lockedRow('Jobs', fromAge(p.age, Math.min(15, workLaw().workAge)) || 'Not open to you now'));
   rows.push(has(list, 'findwork') ? row(has(list, 'findwork')) : lockedRow('Find work', fromAge(p.age, 5) || 'Not open to you now'));

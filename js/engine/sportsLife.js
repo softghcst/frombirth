@@ -212,7 +212,7 @@ const ANSWERS = {
   },
   turnPro(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
-    { const sc = claimSpecial('sports', state.player, state); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
+    { const sc = claimSpecial('sports', state.player, state, { replacesJob: true }); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
     const lock = sp.proLock(d.sportId, state);
     if (lock) return { ...result(false, lock, 'neutral'), close: true };
     const e = sp.entryOf(d.sportId, state.player.id, state);
@@ -329,7 +329,7 @@ function signPro(state, d, o = {}) {
   if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
     return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
   }
-  { const sc = claimSpecial('sports', p, state); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
+  { const sc = claimSpecial('sports', p, state, { replacesJob: true }); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
   const lock = sp.proLock(d.sportId, state);
   if (lock) return { ...result(false, lock, 'neutral'), close: true };
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.

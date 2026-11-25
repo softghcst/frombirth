@@ -5,6 +5,8 @@ import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import * as music from '../js/engine/music.js';
 import * as sc from '../js/engine/specialCareer.js';
+import * as career from '../js/engine/career.js';
+import { CAREER_BY_ID } from '../js/data/careers.js';
 
 const problems = [];
 const ok = [];
@@ -40,6 +42,25 @@ const life = (age = 22) => {
   delete p.flags.special;
   check(sc.current() === 'music', `an older save's band is its career (${sc.current()})`);
   section('older saves: what they were already doing');
+}
+
+{
+  // A special career is the work: no other job beside it, and a job has to be left to take one up.
+  const p = life();
+  music.formAct('solo');
+  const tried = career.startApplication('teacher');
+  check(tried.kind === 'blocked' && /You are a musician/.test(tried.text), `a musician cannot apply to be a teacher (${tried.text})`);
+  check(!career.finishApplication('teacher', [2, 2, 2]).ok && !p.career.careerId, 'nor be hired as one');
+  music.leaveAct();
+  check(sc.current() === null && !/You are a musician/.test(career.startApplication('teacher').text ?? ''), 'leaving music opens other work again');
+  career.hire(CAREER_BY_ID.teacher, 0, 50, 'Hired.');
+  const r = music.formAct('solo');
+  check(!r.ok && /quit your job first/.test(r.text), `someone with a job has to quit it to start a music career (${r.text})`);
+  career.quitCareer();
+  check(music.formAct('solo').ok, 'and then can');
+  const teen = life(16);
+  check(sc.jobBlock('cashier', teen, undefined, { partTime: true }) === '', 'a teenager can still have a part-time job');
+  section('a special career is the job: other work waits until it is left');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

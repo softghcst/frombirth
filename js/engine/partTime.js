@@ -11,6 +11,7 @@ import { resolve } from './conditions.js';
 import { canFit, workLaw, career as careerState } from './worklife.js';
 import { quitSide, allSides } from './sideJobs.js';
 import { uid } from '../util.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const STUDYING = ['university', 'community', 'graduate', 'doctorate', 'medical', 'law', 'nursing', 'teaching', 'business', 'dental', 'pharmacy', 'veterinary'];
 
@@ -53,6 +54,7 @@ export function takeJob(id) {
   const job = PART_TIME_BY_ID[id];
   const c = country();
   if (!canWorkPartTime()) return result(false, 'You cannot take a part-time job right now.');
+  { const sc = jobBlockSpecial(id, p, undefined, { partTime: true }); if (sc) return result(false, sc, 'neutral'); }
   const option = jobOptions().find((o) => o.id === id);
   if (!option?.available) return result(false, option?.reason || 'You cannot take that job.', 'neutral');
   yearActs().applied[id] = true;

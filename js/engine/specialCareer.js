@@ -51,19 +51,38 @@ export function current(p = player(), state = store.state) {
   return p.flags.special?.id ?? null;
 }
 
-/** Why this career cannot be taken up now, or ''. */
-export function whyNot(id, p = player(), state = store.state) {
+/**
+ * The ordinary jobs that are part of each special career (a professional athlete's contract is a job as an athlete).
+ * Any other job is work of another kind: a special career is a full-time career, so it is one or the other.
+ */
+const OWN_JOBS = { acting: ['actor'], music: ['singer', 'music_prod'], dance: ['dancer'], modeling: ['modeling'], writing: ['author', 'screenwriting'],
+  sports: ['athlete', 'coaching'], kpop: [], politics: [] };
+
+/** Why this career cannot be taken up now, or ''. o.replacesJob: taking it up is itself a new job (a professional contract). */
+export function whyNot(id, p = player(), state = store.state, o = {}) {
   const now = current(p, state);
-  if (!now || now === id) return '';
-  return `You are ${SPECIAL_BY_ID[now].noun}. One special career at a time: leave ${SPECIAL_BY_ID[now].name.toLowerCase()} first.`;
+  if (now && now !== id) return `You are ${SPECIAL_BY_ID[now].noun}. One special career at a time: leave ${SPECIAL_BY_ID[now].name.toLowerCase()} first.`;
+  const job = p.career;
+  if (!now && !o.replacesJob && job?.careerId && !job.retired && !job.military && !OWN_JOBS[id].includes(job.careerId)) {
+    return `You work as ${job.title ? job.title.replace(/^(a|an) /i, '').toLowerCase() : 'an employee'}. ${SPECIAL_BY_ID[id].name} is a full-time career: quit your job first.`;
+  }
+  return '';
+}
+
+/** Why a job cannot be taken while holding a special career, or ''. Part-time work stays open to a child or teenager. */
+export function jobBlock(careerId, p = player(), state = store.state, o = {}) {
+  const now = current(p, state);
+  if (!now || OWN_JOBS[now].includes(careerId) || (o.partTime && p.age < 18)) return '';
+  const c = SPECIAL_BY_ID[now];
+  return `You are ${c.noun}: that is your work. To take another job, leave ${c.name.toLowerCase()} first and retrain.`;
 }
 
 /**
  * Takes this career up, if it is free to be: called by whatever makes it a career (an audition, a band, a contract).
  * @returns {string} '' when it is this life's career now, or why not
  */
-export function claim(id, p = player(), state = store.state) {
-  const why = whyNot(id, p, state);
+export function claim(id, p = player(), state = store.state, o = {}) {
+  const why = whyNot(id, p, state, o);
   if (why) return why;
   if (!p.flags.special) p.flags.special = { id, since: state.year };
   return '';

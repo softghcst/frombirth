@@ -54,7 +54,7 @@ import { checkAchievements } from './careerRecord.js';
 import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
-import { release as releaseSpecial } from './specialCareer.js';
+import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -210,6 +210,7 @@ export function startApplication(id) {
   const royalNo = royalWorkBlock(career);
   if (royalNo) return { kind: 'blocked', text: royalNo };
   if (player().politics && player().politics.tier >= 2) return { kind: 'blocked', text: `Being ${player().politics.title} is a full-time job. You would have to resign first.` };
+  { const sc = jobBlockSpecial(career.id); if (sc) return { kind: 'blocked', text: sc }; }
   if (unmet(career).length) return { kind: 'blocked', text: unmet(career)[0] };
   const offer = standingOffer(career);
   if (offer) return { kind: 'offer', text: offer.text };
@@ -230,6 +231,7 @@ export function startApplication(id) {
 export function finishApplication(id, answers = []) {
   const p = player();
   const career = CAREER_BY_ID[id];
+  { const sc = jobBlockSpecial(id); if (sc) return result(false, sc, 'neutral'); }
   const offer = standingOffer(career);
   if (offer) {
     p.flags[`usedDoor_${id}`] = true;
