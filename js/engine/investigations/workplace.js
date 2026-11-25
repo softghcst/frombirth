@@ -11,10 +11,15 @@ import { FEDERAL, SPECIALTIES, PI_SERVICES } from '../../data/investigations.js'
 import * as biz from '../business.js';
 import * as fame from '../fame.js';
 import * as k from '../cases.js';
+import { cityEmployers } from '../employers.js';
+import { hire } from '../career.js';
+import { CAREER_BY_ID } from '../../data/careers.js';
+import { licensed } from './careers.js';
 import { I, rec, W, now, year, me, result, note, grow, regard, seeded, reputationOf, working, once, dateWords, nameOfId } from './core.js';
 import { officeOf, federalCities, office } from './agencies.js';
 import { investigation, workLeft, caseStatus, act, steps } from './casework.js';
 import { inquiryStep, completeInquiry } from './private.js';
+import { settleClaims } from './local.js';
 
 const npc = (id) => store.state.npcs[id];
 const nm = (id) => nameOfId(id);
@@ -285,11 +290,53 @@ function secondYear(p, r) {
 export function settleWorkplace(p = player()) {
   const r = rec(p);
   if (!r) return [];
-  return [...settleMove(p, r), ...settleInquiries(p)];
+  return [...settleMove(p, r), ...settleInquiries(p), ...settleClaims()];
 }
 /** The year's part: recognition, and the pay of work after retiring. */
 export function workplaceYear(p = player()) {
   const r = rec(p);
   if (!r) return [];
-  return [...awardsYear(p, r), ...secondYear(p, r)];
+  return [...awardsYear(p, r), ...secondYear(p, r), ...corporateYear(p, r)];
+}
+
+// ---------- Corporate investigators ----------
+
+/** Companies of the city with an investigations post this year, for someone with the background for it. */
+export function corporatePosts(p = player()) {
+  const r = rec(p);
+  const fit = licensed(p) || (r?.stats.years ?? 0) >= 5 || p.education.degrees.some((d) => ['accounting', 'criminology', 'criminal_justice', 'cybersecurity'].includes(d.majorId));
+  if (!fit || p.age < 23 || r?.job?.corporate) return [];
+  let list = [];
+  try { list = cityEmployers(p.countryId, p.city).filter((e) => ['corporate', 'retail', 'tech', 'transport'].includes(e.family)); } catch { list = []; }
+  const roll = seeded(`${me(p)}/corporate/${year()}`);
+  return list.filter(() => roll.chance(0.3)).slice(0, 3);
+}
+/** Joins a company's investigations team: internal matters for the company, lawful steps only, no police powers. */
+export function joinCorporate(employerId) {
+  const p = player();
+  const e = corporatePosts(p).find((x) => x.id === employerId);
+  if (!e) return result(false, 'That post is not open to you.', 'neutral');
+  const r = I(p);
+  if (working(r) && r.family !== 'private') return result(false, 'Leave your current post first.', 'neutral');
+  hire(CAREER_BY_ID.pi, 1, 60, 'corporate');
+  p.career.employerId = e.id;
+  p.career.title = `Corporate investigator, ${e.name}`;
+  r.family = 'corporate'; r.stage = 'corporate';
+  r.job = { corporate: true, employerId: e.id, rank: 'corporate', detective: false, since: year(), rankSince: year() };
+  note(`Joined ${e.name} as a corporate investigator.`, 'career', { key: `corporate:${e.id}`, milestone: `Corporate investigator at ${e.name}` });
+  return result(true, `You join ${e.name}'s investigations team. Internal matters: expense claims, stock that goes missing, complaints. You have no police powers, and nobody has to talk to you.`);
+}
+/** A corporate investigator's year: one internal matter from the company. */
+function corporateYear(p, r) {
+  if (!r.job?.corporate || p.career.careerId !== 'pi') return [];
+  const roll = seeded(`${me(p)}/internal/${year()}`);
+  const what = roll.pick(['expense claims that do not add up', 'stock missing from a warehouse', 'a complaint about a manager', 'a supplier paid twice']);
+  const manager = k.civilian(p.countryId, { kind: 'civilian', age: roll.int(35, 60) });
+  manager.occupation = 'Manager';
+  const id = `inq_corp_${me(p)}_${year()}`;
+  if (W().inquiries[id]) return [];
+  W().inquiries[id] = { id, kind: 'corporate', service: 'internal', clientId: manager.id, businessId: null, employerId: r.job.employerId, about: what, fee: 0, opened: now(), due: now() + 3, steps: [], findings: [],
+    status: 'open', outcome: null, paid: true, expenses: 0, truth: roll.chance(0.55) ? 'answer' : 'none' };
+  r.inquiryIds.push(id);
+  return [`A new internal matter: ${what}.`];
 }

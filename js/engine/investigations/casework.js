@@ -86,7 +86,7 @@ export function openCase(tid, o = {}) {
   const neighbor = o.neighbors !== false && seeded(`${key}/nb`).chance(0.5) ? neighborWitness(countryId, city, key, [reporting.id, insider?.id].filter(Boolean)) : null;
   const witnesses = [neighbor ?? civ(), ...(r.chance(0.6) ? [civ()] : [])];
   const missingPerson = tid === 'missing' ? civ({ age: r.int(19, 70) }) : null;
-  const victim = tid === 'homicide' || tid === 'family' ? civ({ age: r.int(22, 75) }) : tid === 'robbery' ? reporting : null;
+  const victim = tid === 'homicide' || tid === 'family' || t.shared === 'collision' ? civ({ age: r.int(22, 75) }) : tid === 'robbery' ? reporting : null;
   // Who did it, if anyone did.
   let perp = null;
   if (t.pack) perp = t.perp[truth] === 'insider' ? insider : t.perp[truth] === 'stranger' ? civ({ age: r.int(18, 55) }) : null;

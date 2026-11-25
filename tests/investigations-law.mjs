@@ -139,4 +139,42 @@ function referred(o = {}) {
   }
 }
 
+// ---------- A fatal collision: the hospital, the family's claim, the insurer ----------
+{
+  const p = lawyer('lawyer');
+  const L = ls.lawOf(p);
+  L.specialty = 'civil_litigation';
+  const a = A.agencyOf('municipal', p.countryId, p.city);
+  const inv = W.openCase('collision', { ownerId: a.id, truth: 'careless' });
+  const f = inv.file;
+  const v = store.state.npcs[f.victimId];
+  check(v && !v.alive && v.flags.causeOfDeath, 'the person struck died, and the death is on their record');
+  check(!f.hospitalId || f.log.some((x) => /died there/.test(x.text)), 'they died in a real hospital of the city');
+  f.outcome = { kind: 'convicted', at: core.now() };
+  const LO = await import('../js/engine/investigations/local.js');
+  LO.settleClaims();
+  const cl = LO.claims()[f.claimId];
+  check(cl && cl.familyId === f.reportingId && cl.driverId === f.poi[0] && cl.status === 'open', 'when the investigation ends, the family claims against the driver');
+  LO.settleClaims();
+  check(Object.values(LO.claims()).filter((x) => x.invId === inv.id).length === 1, 'one claim per collision');
+  let offer = null;
+  for (let i = 0; i < 10 && !offer; i++) { L.window = null; L.offers = []; lp.refreshOpportunities(p); offer = L.offers.find((o) => o.claimId === cl.id); }
+  check(offer && /killed by a car/.test(offer.summary), 'a civil litigator is offered the family\'s claim');
+  if (offer) {
+    const r = lp.accept(offer.id);
+    const c = r.caseId && lc.caseById(r.caseId);
+    check(c && c.templateId === 'collision_claim' && c.clientId === cl.familyId && c.parties.otherId === cl.driverId, 'the claim is the real family against the real driver');
+    check(c?.evidence.some((e) => e.id === 'conviction' && e.favors === 'client') && c.witnesses[0].weakness === 'speed', 'the conviction and the reconstruction are the family\'s evidence');
+    check(cl.status === 'with a lawyer' && cl.lawCaseId === c?.id, 'the claim is with the lawyer');
+  }
+  // An accident nobody could have avoided: nobody takes the claim, and the insurer refuses it after a year.
+  const inv2 = W.openCase('collision', { ownerId: a.id, truth: 'accident' });
+  inv2.file.outcome = { kind: 'resolved', finding: 'accident', at: core.now() };
+  LO.settleClaims();
+  const cl2 = LO.claims()[inv2.file.claimId];
+  store.state.year += 1;
+  LO.settleClaims();
+  check(cl2 && cl2.status === 'settled by insurer' && cl2.amount === 0, 'the insurer refuses a claim the investigation found was an unavoidable accident');
+}
+
 finish('A case from an investigation is the case its lawyers work, and the court decides it once.');

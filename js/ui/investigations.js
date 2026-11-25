@@ -218,8 +218,12 @@ const VIEWS = {
           + stack(btn('rate', 'Set fees', { arg: b.id })));
       }
     }
+    const posts = WP.corporatePosts(p);
+    if (r?.job?.corporate) out += card('Corporate investigations', kv([['Employer', p.career.title.replace(/^Corporate investigator, /, '')]]) + muted('Internal matters for the company. No police powers: nobody has to talk to you, and a crime is for the company to report.'));
+    else if (posts.length) out += card('Corporate investigations', muted('Companies hire investigators for internal matters: expense fraud, missing stock, complaints. A salary instead of fees.')
+      + posts.map((e) => kv([[e.name, 'Investigations team']]) + stack(btn('corporate', 'Apply and join', { arg: e.id }))).join(''));
     for (const q of PI.inquiries(p).filter((x) => x.status === 'open')) {
-      out += card(`${PI_SERVICES[q.service].name} for ${nm(q.clientId)}`, kv([['Fee', fmtMoney(q.fee, country())], ['Done', q.steps.join(', ') || 'nothing yet'], ['Findings', q.findings.join(' ') || 'none yet']])
+      out += card(`${PI_SERVICES[q.service].name} for ${nm(q.clientId)}`, kv([...(q.kind === 'corporate' ? [['About', q.about]] : [['Fee', fmtMoney(q.fee, country())]]), ['Done', q.steps.join(', ') || 'nothing yet'], ['Findings', q.findings.join(' ') || 'none yet']])
         + (q.assignedTo ? muted(`${nm(q.assignedTo)} is working it, and will report by ${dateWords(q.assignedDue)}.`)
           : stack(Object.entries(PI.PI_STEPS).map(([id, d]) => btn('piStep', d.label, { arg: `${q.id}|${id}`, cls: d.restricted ? 'danger' : '' })).join('') + btn('piDone', 'Deliver the findings and close', { arg: q.id })
             + (biz.business(q.businessId) && biz.staffOf(biz.business(q.businessId)).length ? btn('piAssign', 'Give it to a member of staff', { arg: q.id }) : ''))));
@@ -375,6 +379,7 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  corporate: (a, x) => x.say(WP.joinCorporate(a)),
   meeting: async (a, x) => {
     const how = await pickModal({ title: 'The community meeting', body: 'A church hall, folding chairs, a microphone that works some of the time.', options: [
       { value: 'listen', label: 'Mostly listen, and write it down', sub: 'What worries people here.' },

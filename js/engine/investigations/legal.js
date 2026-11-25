@@ -97,3 +97,24 @@ export function takeBrief(invId, role, o = {}) {
 }
 /** Whether a lawyer is working this court case now (then the court waits for them). */
 export const lawyerOnIt = (justiceCaseId) => { const lc = lawCaseFor(justiceCaseId); return !!lc && !lc.done; };
+
+/**
+ * Takes on a family's claim after a fatal collision, for the family. The evidence is what the investigation found: a
+ * conviction is strong evidence of fault; a finding that nobody could have avoided it turns the reconstruction against
+ * the claim. Questions about speed work only if the investigation found the driver was at fault.
+ */
+export function takeClaim(claimId, o = {}) {
+  const cl = (store.state.investigations?.claims ?? {})[claimId];
+  if (!cl || cl.status !== 'open' || cl.lawCaseId) return null;
+  const T = CASE_TEMPLATES.collision_claim;
+  const fault = cl.outcome === 'convicted' || (cl.outcome !== 'resolved' && cl.finding !== 'accident' && cl.outcome !== 'acquitted');
+  const evidence = T.evidence.map((e) => (e.id === 'recon' && !fault ? { ...e, favors: 'other', label: 'The police collision reconstruction: the pedestrian could not be seen in time' } : { ...e }));
+  if (cl.outcome === 'convicted') evidence.push({ id: 'conviction', kind: 'document', label: 'The driver\'s criminal conviction for the death', favors: 'client', weight: 5, reliability: 95, admissibility: 'ok' });
+  const lc = createCase('collision_claim', { ...o, clientId: cl.familyId, otherId: cl.driverId, evidence,
+    witnesses: [{ id: 'driver', npcId: cl.driverId, role: 'The driver', side: 'other', credibility: 55, weakness: fault ? 'speed' : null }] });
+  lc.claimId = cl.id;
+  cl.lawCaseId = lc.id;
+  cl.status = 'with a lawyer';
+  k.J().investigations[cl.invId]?.file?.log.push({ at: now(), text: `The family's claim is with a lawyer, ${player().firstName} ${player().lastName}.` });
+  return lc;
+}

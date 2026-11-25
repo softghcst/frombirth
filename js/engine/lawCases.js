@@ -184,7 +184,7 @@ export function createCase(templateId, o = {}) {
       if (mine) c.parties.clientOrgId = mine.id;
       c.otherCounselId = party(countryId, { title: T.gov || T.forum === 'tax' ? 'Government counsel' : 'Opposing counsel', kind: 'lawyer', age: rng.int(30, 60) }).id;
       // A dispute between two people (a boundary between neighbors) has a person on the other side.
-      if (`${T.title}${T.summary}`.includes('{other}')) { const o2 = party(countryId, { title: 'Neighbor' }); c.parties.otherId = o2.id; c.vars.other = nameOf(o2.id); }
+      if (`${T.title}${T.summary}`.includes('{other}')) { const o2 = o.otherId && store.state.npcs[o.otherId]?.alive ? store.state.npcs[o.otherId] : party(countryId, { title: T.otherTitle ?? 'Neighbor' }); c.parties.otherId = o2.id; c.vars.other = nameOf(o2.id); }
     }
     c.vars.city = p.city ?? COUNTRIES[countryId]?.cities?.[0] ?? '';
     c.vars.address = `${rng.int(12, 980)} ${rng.pick(['Oak', 'Maple', 'Hill', 'River', 'Station', 'Park', 'Church', 'Mill'])} ${rng.pick(['Street', 'Road', 'Lane', 'Avenue'])}`;

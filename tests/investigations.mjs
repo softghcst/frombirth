@@ -797,11 +797,11 @@ section('the Family Archive: the public career and the court record, not the cas
   // Honors follow the way the work was done.
   r.rep.integrity = 80; r.rep.ethics = 80; r.stats.years = 8;
   one.file.outcome = { kind: 'resolved', at: core.now() }; one.file.cleared = [one.file.poi[0]].filter(Boolean);
-  for (let i = 0; i < 6 && !r.stats.awards.length; i++) { WP.workplaceYear(); store.state.year += 1; }
+  for (let i = 0; i < 10 && !r.stats.awards.length; i++) { one.file.outcome.at = core.now(); WP.workplaceYear(); store.state.year += 1; }
   check(r.stats.awards.length > 0 && r.history.some((h) => r.stats.awards.some((x) => h.text.startsWith(x.name))), `recognition for thorough, lawful work is recorded (${r.stats.awards.map((x) => x.id)})`);
   r.rep.integrity = 30;
   const n0 = r.stats.awards.length;
-  for (let i = 0; i < 4; i++) { WP.workplaceYear(); store.state.year += 1; }
+  for (let i = 0; i < 4; i++) { one.file.outcome.at = core.now(); WP.workplaceYear(); store.state.year += 1; }
   check(r.stats.awards.length === n0, 'no honors with a poor integrity record');
 }
 {
@@ -909,6 +909,28 @@ section('the working life: a priority, support, a partner\'s routine work, task 
   check(W.crossExamination(inv2.id, { custody: 'honest' }).tone === 'good' && r.rep.reliability > rel && !inv2.file.cross.caught, 'owning a weakness on the stand keeps the investigator\'s word good');
 }
 section('the local world: business cases at real employers, real neighbors as witnesses, community meetings, cross-examination against the file');
+
+// ---------- 18. Corporate investigators ----------
+{
+  const p = life('us', 35, { degree: 'accounting' });
+  let posts = [];
+  for (let i = 0; i < 6 && !posts.length; i++) { posts = WP.corporatePosts(p); if (!posts.length) store.state.year += 1; }
+  check(posts.length > 0, 'an accountant can find a corporate investigations post');
+  const e = posts[0];
+  const res = WP.joinCorporate(e.id);
+  const r = core.I();
+  check(res.ok && p.career.careerId === 'pi' && p.career.employerId === e.id && r.job.corporate && /no police powers/i.test(res.text), 'a corporate investigator works for a real company, with no police powers');
+  const lines = WP.workplaceYear();
+  const q = PI.inquiries(p).find((x) => x.kind === 'corporate');
+  check(q && lines.some((x) => /internal matter/.test(x)) && !WP.workplaceYear().length, 'the company brings one internal matter a year');
+  for (const s2 of ['police_records', 'pose']) check(!PI.inquiryStep(q.id, s2).ok, `inside a company too, an investigator may not: ${s2}`);
+  for (const s2 of ['client', 'public', 'people', 'report']) PI.inquiryStep(q.id, s2);
+  const done = PI.completeInquiry(q.id);
+  check(done.ok && q.status === 'complete' && !/paid/.test(done.text), 'the report goes to the company; there is no fee, it is a salaried job');
+  IX.tickInvestigations();
+  check(r.job?.corporate && p.career.careerId === 'pi', 'the yearly step keeps the corporate post');
+}
+section('corporate investigators: a real company, internal matters, no police powers, a salary not fees');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

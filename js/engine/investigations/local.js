@@ -10,7 +10,9 @@ import { cityEmployers, chronicle } from '../employers.js';
 import { hoods, residentsOf, materialize, ageOf } from '../neighborhood.js';
 import { activeAccountsOf } from '../digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
-import { rec, now, year, result, regard, grow, seeded, once, working } from './core.js';
+import { TEMPLATES } from '../../data/investigations.js';
+import { rec, W, now, year, result, regard, grow, seeded, once, working } from './core.js';
+import * as k from '../cases.js';
 import { investigation, caseStatus } from './casework.js';
 
 const FAMILIES = { burglary: ['retail', 'hospitality', 'trades'], fraud: ['corporate', 'retail', 'trades', 'transport'], cyber: ['retail', 'tech'],
@@ -44,6 +46,15 @@ export function placeCase(inv, o) {
   if (o.employer) {
     f.employerId = o.employer.id;
     chronicle(o.employer, `Reported ${f.template === 'fraud' ? 'money missing from its accounts' : f.template === 'cyber' ? 'customers\' accounts taken over' : f.template === 'arson' ? 'a fire on its premises' : 'a break-in'} to the police.`);
+  }
+  // A fatal collision: the person died in a real hospital of the city; the death is on their record.
+  if (TEMPLATES[f.template]?.shared === 'collision' && f.victimId) {
+    let hospitals = [];
+    try { hospitals = cityEmployers(o.countryId ?? player().countryId, o.city ?? player().city).filter((e) => e.family === 'health'); } catch { hospitals = []; }
+    const h = hospitals.length ? seeded(`${inv.id}/hospital`).pick(hospitals) : null;
+    const v = store.state.npcs[f.victimId];
+    if (v) { v.alive = false; v.flags.diedYear = year(); v.flags.causeOfDeath = 'Struck by a car'; }
+    if (h) { f.hospitalId = h.id; f.log.push({ at: now(), text: `${v ? `${v.firstName} ${v.lastName}` : 'The pedestrian'} was taken to ${h.name} and died there that night.` }); }
   }
   if (f.template === 'cyber') {
     let accts = [];
@@ -93,3 +104,38 @@ export function communityMeeting(hoodId, how = 'listen') {
     present: 'You present the year\'s figures. A few questions; polite applause.', defend: 'You defend the department on every complaint. The room cools.' }[how];
   return result(true, text + tip, how === 'defend' ? 'bad' : 'good');
 }
+
+// ---------- After a fatal collision: the family's claim ----------
+
+/**
+ * When a collision investigation ends, the family of the person who died may claim against the driver for the loss:
+ * a civil matter, separate from any criminal case. A civil lawyer may take it (engine/lawPractice.js offers it); if
+ * nobody does within a year, the driver's insurer settles it. The investigation's outcome is the claim's evidence.
+ */
+export function claims() { const w = W(); w.claims ??= {}; return w.claims; }
+export function settleClaims() {
+  const out = [];
+  for (const inv of Object.values(k.J().investigations)) {
+    const f = inv.file;
+    if (!f || TEMPLATES[f.template]?.shared !== 'collision' || !f.outcome || f.claimId) continue;
+    const inc = k.J().incidents[inv.incidentId];
+    const driver = f.people.find((x) => x.role === 'insider')?.id ?? f.poi[0] ?? inc?.truth?.perpetratorId ?? null;
+    if (!driver || !store.state.npcs[f.reportingId]?.alive) { f.claimId = 'none'; continue; }
+    const id = `claim_${inv.id}`;
+    claims()[id] = { id, invId: inv.id, familyId: f.reportingId, driverId: driver, deceasedId: f.victimId, hospitalId: f.hospitalId ?? null, countryId: inc?.countryId, city: inc?.city,
+      outcome: f.outcome.kind, finding: f.outcome.finding ?? null, opened: now(), due: now() + 12, status: 'open', lawCaseId: null };
+    f.claimId = id;
+    f.log.push({ at: now(), text: `${store.state.npcs[f.reportingId].firstName} ${store.state.npcs[f.reportingId].lastName} began a claim against the driver for the loss.` });
+  }
+  for (const c of Object.values(claims())) {
+    if (c.status !== 'open' || c.due > now()) continue;
+    c.status = 'settled by insurer';
+    const strong = c.outcome === 'convicted';
+    c.amount = strong ? 250000 : c.finding === 'accident' ? 0 : 60000;
+    const f = k.J().investigations[c.invId]?.file;
+    f?.log.push({ at: now(), text: c.amount ? 'The driver\'s insurer settled the family\'s claim.' : 'The insurer refused the family\'s claim: the investigation found it was an accident nobody could have avoided.' });
+  }
+  return out;
+}
+/** Claims waiting for a lawyer in a city. */
+export const openClaims = (countryId) => Object.values(claims()).filter((c) => c.status === 'open' && !c.lawCaseId && c.countryId === countryId);
