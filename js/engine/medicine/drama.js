@@ -81,6 +81,16 @@ function eligible(p, m) {
       out.push({ id: 'med_offer_away', cast: { words: { hospital: o.e.name, city: o.city } } });
     }
   }
+  // Two hospitals, one relationship: a partner who is also a physician is offered a post in another city.
+  const love = partner();
+  if (love && (m.job || t) && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(love.life?.job?.careerId) && !m.partnerOffer && roll(0.2)) {
+    const away = citiesOf(p.countryId).filter((c) => c.name !== p.city);
+    if (away.length) {
+      const city = rng.pick(away).name;
+      const at = hospitalsIn(p.countryId, city).find(({ h: oh }) => oh.kind !== 'clinic');
+      if (at) { m.partnerOffer = { npcId: love.id, hospitalId: at.e.id, city, year: year() }; out.push({ id: 'med_partner_offer', cast: { peer: love.id, words: { hospital: at.e.name, city } } }); }
+    }
+  }
   // The old team, years later.
   const first = m.completed[0];
   const old = [...m.people.friendIds, ...m.people.colleagueIds].map(npc).find((n) => n?.alive);
@@ -197,7 +207,7 @@ export function dramaYear() {
   if (!list.length) return;
   const n = rate >= 1 ? 2 : roll(rate) ? 1 : 0;
   // A disclosure or a thank-you comes whatever the setting: they are about patients, not drama.
-  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away'].includes(x.id));
+  const must = list.filter((x) => ['med_disclosure', 'med_grateful', 'med_strain', 'med_offer_away', 'med_partner_offer'].includes(x.id));
   const rest = list.filter((x) => !must.includes(x)).sort(() => rng.next() - 0.5).slice(0, n);
   for (const x of [...must.slice(0, 2), ...rest]) {
     m.scenes[x.id] = year();
@@ -306,6 +316,27 @@ export function medicineChoice(value, cast = {}) {
         return 'Your hospital will not match it. You stay, for now.';
       }
       if (how === 'family') { const pt = partner(); if (pt) pt.meters.relationship = clamp(pt.meters.relationship + 6); p.stats.mood = clamp(p.stats.mood + 4); }
+      return '';
+    }
+    case 'partnerOffer': {
+      const o = m.partnerOffer;
+      m.partnerOffer = null;
+      const love = npc(o?.npcId);
+      if (!o || !love?.alive) return '';
+      if (how === 'follow') {
+        // Moving together: the partner takes the post; the player looks for one there (it is not guaranteed).
+        love.life.job.employerId = o.hospitalId;
+        p.finance.cash += moveCost();
+        const r = relocate(o.city);
+        if (!r.ok) { p.finance.cash -= moveCost(); return `The move fell through: ${r.text}`; }
+        love.meters.relationship = clamp(love.meters.relationship + 10);
+        const spec = currentSpecialty(m);
+        const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
+        if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
+        return `You move to ${o.city} together. You will need to find a post there: My Medical Career, Hospital.`;
+      }
+      if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
+      if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }
       return '';
     }
     case 'reunion':

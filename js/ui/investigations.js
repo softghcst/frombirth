@@ -9,7 +9,7 @@ import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, coverageOf, SOURCES } from '../data/investigations.js';
-import { rec, I, reputationOf, dateWords, now, working } from '../engine/investigations/core.js';
+import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
 import * as W from '../engine/investigations/casework.js';
@@ -38,13 +38,14 @@ function sectionsFor(p, r) {
   if (police && !(r?.job && r.family === 'federal')) out.push(['agency', r?.job ? 'My Agency' : 'Departments']);
   if (p.countryId === 'us' && p.age >= 21) out.push(['federal', 'Federal agencies']);
   if (r?.caseIds?.length) out.push(['cases', 'Active Cases'], ['archive', 'Case Archive']);
-  if (r?.job?.detective || r?.family === 'federal') out.push(['cold', 'Cold Cases']);
+  if (r?.job?.detective || r?.family === 'federal') out.push(['cold', 'Cold Cases'], ['reviews', 'Conviction Reviews']);
   if (r && Object.values(r.people).some((v) => (Array.isArray(v) ? v.length : v))) out.push(['team', 'Team']);
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
   if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections']);
+  if (legacies().length) out.push(['legacy', 'Family Legacy']);
   return out;
 }
 
@@ -112,7 +113,7 @@ const VIEWS = {
     }).join('');
   },
   cases(p, r) {
-    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome && W.caseStatus(inv) !== 'cold');
+    const list = r.caseIds.map(W.investigation).filter((inv) => inv?.file && ((!inv.file.outcome && W.caseStatus(inv) !== 'cold') || inv.file.review?.status === 'open'));
     if (!list.length) return muted('No active cases. New cases are assigned as the year turns, within a manageable caseload.');
     return list.map((inv) => { const v = V.view(inv, 'investigator'); return card(v.title, kv([['Kind', v.kind], ['Status', v.status], ['Agency', v.agency], ['Opened', v.opened], ['Hours left this year', String(W.workLeft(inv))]]) + stack(btn('openCase', 'Open the case file', { arg: inv.id }))); }).join('');
   },
@@ -124,6 +125,15 @@ const VIEWS = {
     const list = W.coldCandidates(p.countryId);
     return list.length ? list.map(({ inv, newer }) => card(inv.file.title, kv([['First investigated', dateWords(inv.file.opened)], ['What is new', newer.map((n) => n.discipline).join(', ')]]) + stack(btn('reopen', 'Reopen the case', { arg: inv.id })))).join('')
       : muted('No cold case has anything new that could be tested yet.');
+  },
+  reviews(p) {
+    const list = W.reviewCandidates(p.countryId);
+    return card('About reviews', muted('A conviction can be looked at again when kept evidence could be tested in a way it was not. The conviction stands while it is reviewed; only a court can set it aside.'))
+      + (list.length ? list.map(({ inv, newer }) => card(inv.file.title, kv([['Investigated', dateWords(inv.file.opened)], ['Could now be tried', [...new Set(newer.map((n) => n.discipline))].join(', ')]]) + stack(btn('openReview', 'Open a review', { arg: inv.id })))).join('') : muted('No conviction here has kept evidence that could be tested in a new way.'));
+  },
+  legacy() {
+    return legacies().map((x) => card(`${x.name}${x.died ? ` (died ${x.died})` : ''}`, kv([['Years of service', String(x.years ?? '—')], ['Units', (x.units ?? []).map((u) => SPECIALTIES[u]?.name ?? u).join(', ') || '—'], ...(x.license ? [['License', x.license]] : []), ...(x.retired ? [['Retired', String(x.retired)]] : [])])
+      + x.history.slice(-10).map((h) => kv([[String(h.year), h.text]])).join('') + muted('The public career only. Case files and witness statements are not part of a family\'s record.'))).join('');
   },
   team(p, r) {
     const rows = [['partnerId', 'Partner'], ['supervisorId', 'Supervisor'], ['ftoId', 'Field training officer'], ['mentorId', 'Mentor'], ['prosecutorId', 'Prosecutor'], ['rivalId', 'Rival']]
@@ -214,6 +224,7 @@ const CASE_VIEWS = {
       for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
+    if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
     return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
   },
@@ -251,6 +262,7 @@ function openCaseFile(api, invId, refreshHub) {
       if (pick) await say(W.act(id, x, { question: pick }));
     } else if (act === 'step') await say(W.act(id, x));
     else if (act === 'writeReport') await say(W.writeReport(id, x));
+    else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
     else if (act === 'suspend') { if (await confirmModal({ title: 'Set the case aside?', body: 'It stays open, inactive. After three years with nothing new, it becomes a cold case.', yes: 'Set it aside' })) await say(W.suspend(id)); }
@@ -279,6 +291,7 @@ const ACTIONS = {
   promote: (a, x) => x.say(C.seekPromotion(a)),
   openCase: (a, x) => openCaseFile(x.api, a, x.render),
   reopen: (a, x) => x.say(W.reopen(a)),
+  openReview: (a, x) => x.say(W.openReview(a)),
   profile: async (a, x) => { const { openNpc } = await import('./tabs/people.js'); openNpc(store.state.npcs[a], x.api); },
   applyLicense: (a, x) => x.say(C.applyLicense()),
   openAgency: (a, x) => x.say(PI.openAgency()),

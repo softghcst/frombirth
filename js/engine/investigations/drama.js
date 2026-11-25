@@ -6,10 +6,11 @@
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { SPECIALTIES, FEDERAL, LAB_RESULTS } from '../../data/investigations.js';
-import { W, I, rec, now, year, me, nextId, result, note, grow, regard, seeded, reputationOf } from './core.js';
-import { agency, office, officeOf, staffer } from './agencies.js';
+import { W, I, rec, now, year, me, nextId, result, note, grow, regard, seeded, reputationOf, legacies } from './core.js';
+import { agency, office, officeOf, staffer, federalCities } from './agencies.js';
 import { acceptAcademy, declineOffer, meet } from './careers.js';
-import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings } from './casework.js';
+import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings, reviewCandidates, openReview } from './casework.js';
+import * as k from '../cases.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : 'someone');
@@ -72,6 +73,48 @@ export function dramaYear(p = player()) {
   }
   const cold = j && (j.specialty === 'cold' || j.detective || r.family === 'federal') ? coldCandidates(p.countryId)[0] : null;
   if (cold) queue(r, 'inv_breakthrough', { case: cold.inv.file.title, years: String(Math.floor((now() - cold.inv.file.opened) / 12)), invId: cold.inv.id }, `breakthrough:${cold.inv.id}`);
+  // More of the work.
+  const panel = r.apps.find((x) => x.kind === 'detective' && x.status === 'pending');
+  if (panel) queue(r, 'inv_interview_panel', { unit: SPECIALTIES[panel.unit]?.name.toLowerCase() ?? 'the unit' }, `panel:${panel.id}`);
+  for (const inv of cases) {
+    const f = inv.file;
+    if (f.outcome) continue;
+    const fresh = f.poi.find((id) => !f.people.some((x) => x.id === id) && !f.clues.some((c) => c.poi === id));
+    if (fresh && queue(r, 'inv_new_poi', { case: f.title, person: nm(fresh), partner: r.people.partnerId ? nm(r.people.partnerId) : 'Your sergeant' }, `newpoi:${inv.id}:${fresh}`)) break;
+    if ((f.work[year() - 1] ?? 0) === 0 && now() - f.opened >= 12 && queue(r, 'inv_another_look', { case: f.title, partner: r.people.partnerId ? nm(r.people.partnerId) : 'Your sergeant' }, `look:${inv.id}`)) break;
+    if (f.done.examiner && f.template === 'homicide' && queue(r, 'inv_examiner', { case: f.title }, `me:${inv.id}`)) break;
+    if (f.labs.length && ['fraud', 'cyber', 'arson', 'firearms'].includes(f.template)) {
+      const lab = f.labs[0];
+      if (lab.analystId && queue(r, 'inv_specialist', { case: f.title, specialist: nm(lab.analystId), field: lab.discipline.replace('_', ' ') }, `spec:${inv.id}`)) break;
+    }
+    if (f.taskForceId && queue(r, 'inv_jurisdiction', { case: f.title }, `jur:${inv.id}`)) break;
+    const c = f.courtCaseId && k.J().cases[f.courtCaseId];
+    if (c && f.items.some((it) => it.integrity === 'gap') && queue(r, 'inv_defense_challenge', { case: f.title }, `defense:${inv.id}`)) break;
+    // Only when the classmate really is the lawyer on this case.
+    if (c && c.defenseId && r.people.classmateIds.includes(c.defenseId)) queue(r, 'inv_familiar_name', { case: f.title, name: nm(c.defenseId) }, `familiar:${c.defenseId}`);
+    if (c && f.federal && queue(r, 'inv_fed_prosecutor', { case: f.title, prosecutor: nm(c.prosecutorId) }, `fedpros:${inv.id}`)) break;
+  }
+  const review = reviewCandidates(p.countryId)[0];
+  if (review && j && (j.detective || r.family === 'federal')) queue(r, 'inv_new_trial', { case: review.inv.file.title, invId: review.inv.id }, `newtrial:${review.inv.id}`);
+  const open = Object.values(W().complaints).find((c) => c.subjectId === me() && c.status === 'open' && now() >= c.due - 2);
+  if (open) queue(r, 'inv_review_board', {}, `board:${open.id}`);
+  if (r.family === 'federal' && j && ['agent', 'senior_agent'].includes(j.rank) && year() - (j.rankSince ?? year()) >= 4) queue(r, 'inv_supervisory', {}, `supervisory:${j.officeId}:${j.rank}`);
+  if (r.family === 'federal' && j?.officeId && year() - (j.since ?? year()) >= 5 && seeded(`${me()}/transfer/${year()}`).chance(0.2)) {
+    const city = federalCities().find((c) => c !== p.city);
+    if (city) queue(r, 'inv_transfer', { city }, `transfer:${year()}`);
+  }
+  if (j?.detective && a && year() - (j.detectiveSince ?? year()) >= 4 && seeded(`${me()}/reassign/${year()}`).chance(0.12)) {
+    const other = Object.keys(a.units).find((u) => u !== j.specialty && !SPECIALTIES[u].oversight && !SPECIALTIES[u].years);
+    if (other) queue(r, 'inv_reassignment', { old: SPECIALTIES[j.specialty]?.name.toLowerCase() ?? 'your unit', new: SPECIALTIES[other].name.toLowerCase(), unit: other }, `reassign:${year()}`);
+  }
+  // Two partners at work who are together outside it: the rule is to declare it.
+  { const pt = npc(r.people.partnerId); if (pt?.alive && ['partner', 'spouse'].includes(pt.role) && j) queue(r, 'inv_partner_romance', { partner: nm(pt.id), partnerId: pt.id }, `romance:${pt.id}`); }
+  // A case an ancestor worked, still in the archive: a descendant who investigates may come across it.
+  const fam = new Set(legacies().map((x) => x.id));
+  if (j && fam.size) {
+    const theirs = [...coldCandidates(p.countryId).map((x) => x.inv), ...reviewCandidates(p.countryId).map((x) => x.inv)].find((inv) => fam.has(inv.file.leadId));
+    if (theirs) queue(r, 'inv_ancestor_case', { case: theirs.file.title, year: String(Math.floor(theirs.file.opened / 12)), name: legacies().find((x) => x.id === theirs.file.leadId).name, invId: theirs.id }, `ancestor:${theirs.id}`);
+  }
   // Federal.
   const fed = r.apps.find((x) => x.kind === 'federal' && x.status === 'pending' && x.stages.find((s) => s.id === 'background')?.due <= now() + 3);
   if (fed) queue(r, 'inv_background', { agency: FEDERAL[fed.agency].short, app: fed.id }, `bg:${fed.id}`);
@@ -159,6 +202,35 @@ export function invChoice(value, cast = {}) {
     case 'stayed': return null;
     case 'press': if (how === 'leak') { regard('ethics', -8); const id = nextId('complaint'); W().complaints[id] = { id, subjectId: me(), kind: 'confidentiality', text: 'Details of a case before the court reached a newspaper.', invId: null, opened: now(), due: now() + 4, status: 'open', true: true }; } else regard('reliability', 1); return null;
     case 'family': grow('interviewing', 2); regard('reliability', 1); return null;
+    case 'panel': if (how === 'honest') { regard('integrity', 2); const app = r.apps.find((x) => x.kind === 'detective' && x.status === 'pending'); if (app && app.outcome !== 'selected' && app.scores && app.scores.mine + 5 >= app.scores.theirs && app.scores.mine + 5 >= 38) app.outcome = 'selected'; } else regard('teamwork', -1); return null;
+    case 'poi': if (how === 'check') { grow('reasoning', 3); regard('integrity', 1); } return null;
+    case 'look': if (how === 'fresh') { grow('reasoning', 3); grow('planning', 2); } return null;
+    case 'me': grow('forensic', how === 'discuss' ? 4 : 2); return null;
+    case 'spec': grow(how === 'learn' ? 'forensic' : 'teamwork', 3); return null;
+    case 'fedpros': if (how === 'full') { regard('integrity', 2); grow('law', 3); } return null;
+    case 'sup': return null;
+    case 'transfer': if (how === 'yes' && r.job) { const o = officeOf(r.job.agencyKind, w.city); r.job.officeId = o.id; r.job.employerId = o.employerId; p.career.employerId = o.employerId; r.pendingMove = w.city; r.people.formerPartnerIds.push(...[r.people.partnerId].filter(Boolean)); r.people.partnerId = o.agentIds[0]; meet(o.agentIds[0], 'Special agent'); r.people.supervisorId = o.supervisorIds[0]; note(`Transferred to ${o.name}.`, 'career', { log: false }); return `You are posted to ${o.name}. Move from My Investigations.`; } return null;
+    case 'reassign': { if (r.job?.detective && w.unit) { const a2 = agency(r.job.agencyId); const old = a2?.units[r.job.specialty]; if (old) old.memberIds = old.memberIds.filter((x) => x !== me()); r.job.specialty = w.unit; a2?.units[w.unit]?.memberIds.push(me()); r.stats.units = [...new Set([...r.stats.units, w.unit])]; p.career.title = `Detective, ${SPECIALTIES[w.unit].name.toLowerCase()}`; } if (how === 'ask') grow('teamwork', 1); return null; }
+    case 'defense': if (how === 'honest') { regard('integrity', 3); regard('reliability', 2); } else regard('integrity', -3); return null;
+    case 'board': regard('reliability', how === 'attend' ? 2 : 0); return null;
+    case 'review': if (how === 'open' && w.invId) return openReview(w.invId).text; return null;
+    case 'familiar': return null;
+    case 'ancestor': { if (how === 'reopen' && w.invId) { const inv = investigation(w.invId); return inv?.file?.coldSince ? reopen(w.invId).text : openReview(w.invId).text; } grow('reasoning', 2); return null; }
+    case 'romance': {
+      const pt = npc(w.partnerId);
+      if (how === 'declare') {
+        regard('integrity', 2);
+        // A new working partner; the relationship carries on as it was.
+        const a2 = agency(r.job?.agencyId); const o = office(r.job?.officeId);
+        const next = [...(a2?.units?.[r.job?.specialty]?.memberIds ?? []), ...(o?.agentIds ?? []), ...(a2?.officerIds ?? [])].find((x) => x !== me() && x !== w.partnerId && live(x));
+        if (next) { r.people.formerPartnerIds.push(w.partnerId); r.people.partnerId = next; meet(next, r.family === 'federal' ? 'Special agent' : 'Detective partner'); }
+        if (pt) pt.flags.title = null;
+        return null;
+      }
+      const id = nextId('complaint');
+      W().complaints[id] = { id, subjectId: me(), kind: 'conflict', text: 'You worked cases with a partner you were in an undeclared relationship with.', invId: null, opened: now(), due: now() + 18, status: 'open', true: true };
+      return null;
+    }
     case 'remembered': { const inv = investigation(w.invId); const n = npc(w.witnessId); if (inv?.file && n) { inv.file.people.push({ id: n.id, role: 'witness' }); inv.file.log.push({ at: now(), text: `${nm(n.id)}, who helped on an earlier case, came forward.` }); } return null; }
     default: return null;
   }
@@ -179,6 +251,16 @@ export function peopleYear(p = player()) {
       : (a?.units?.[r.job.specialty]?.headId ?? o?.supervisorIds[0]);
     r.people[key] = next ?? null;
     if (next) { meet(next, key === 'partnerId' ? (r.family === 'federal' ? 'Special agent' : 'Detective partner') : (r.family === 'federal' ? 'Supervisory special agent' : 'Detective sergeant')); log(`${nm(id)} ${live(id) ? 'has retired' : 'has died'}. ${nm(next)} works with you now.`, 'system', 'neutral'); }
+  }
+  // Academy classmates have careers of their own: a few leave policing for law, and join the lawyers who take cases.
+  for (const id of r.people.classmateIds) {
+    const n = npc(id);
+    if (!n?.alive || n.flags.lawyer || !r.academy?.graduated || now() - r.academy.graduated < 48) continue;
+    if (!seeded(`${id}/law/${year()}`).chance(0.08)) continue;
+    n.flags.lawyer = year();
+    n.occupation = 'Defense lawyer';
+    n.flags.justice = { ...(n.flags.justice ?? {}), kind: 'defense', tier: 'good', skill: 60, caseIds: n.flags.justice?.caseIds ?? [] };
+    k.bench(p.countryId).defense.good.push(id);
   }
   // A chief who retires is replaced; the department changes leadership.
   const a = agency(r.job.agencyId);

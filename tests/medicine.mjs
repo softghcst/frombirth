@@ -392,6 +392,21 @@ section(`turn lengths: PGY ${a12.pgy}, ${a12.cases} cases over two years at ever
   core.migrateMedicine(gs);
   check(gs.player.medicine.reapply === false && !gs.player.medicine.training, 'a graduate in other work is not pulled into residency');
 }
+{
+  // A long career does not grow the save without end: old patients leave once nothing is on file for them.
+  rng.seed(3030);
+  const q = life('us', 30);
+  const lm = core.M(q);
+  strong(lm);
+  lm.completed.push({ specialtyId: 'family', kind: 'residency', from: 2000, to: 2003 });
+  lm.license = { status: 'full', countryId: 'us' };
+  train.startPost('family', trainingSites('family', q.countryId, q.city)[0].e.id, 'attending');
+  const counts = [];
+  for (let i = 0; i < 40; i++) { year(); q.age = Math.min(q.age, 60); counts.push(Object.keys(core.W().patients).length); }
+  const patientNpcs = Object.values(store.state.npcs).filter((n) => n.flags?.patient).length;
+  check(counts[39] <= counts[20] + 6 && patientNpcs <= counts[39] * 2 + 2, `patients on file level off over a long career (${counts[10]}, ${counts[20]}, ${counts[39]}; ${patientNpcs} patient people)`);
+  check(lm.experience.cases >= 100, `and the career's count of patients is kept (${lm.experience.cases})`);
+}
 section('saves: idempotent migration, no duplicate cases, no invented past');
 
 // 8b. Applying nationwide can mean moving; applying at home does not.
