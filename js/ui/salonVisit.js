@@ -24,6 +24,8 @@ const BARBERS = ['Marcus', 'Dre', 'Luis', 'Tony', 'Kofi', 'Sal', 'Jay', 'Omar', 
  */
 export const shopFor = (p) => (p.gender === 'male' ? 'barber' : 'salon');
 export const shopLabel = (p) => (shopFor(p) === 'barber' ? 'Barbershop' : 'Beauty Salon');
+/** The shop near the player: one name per city, the same each visit. */
+export const shopName = (p) => pickBy(shopFor(p) === 'barber' ? BARBERSHOPS : SALONS, `${p.city ?? ''}:${p.countryId}`);
 
 /** The salon's sign: scissors crossed over a hair dryer, in a round badge. */
 const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
@@ -114,11 +116,24 @@ const BULBS = (() => {
   return `<div class="sv-bulbs" aria-hidden="true">${at.map(([x, y]) => `<i style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%"></i>`).join('')}</div>`;
 })();
 
+/**
+ * The way in, at the top of the Self tab: the shop's own sign (scissors and a dryer for the salon, a barber's pole for
+ * the barbershop), its name and what it does. A button carrying data-salon, which opens the visit.
+ */
+export function shopDoor(p) {
+  const barber = shopFor(p) === 'barber';
+  const what = barber ? 'Cuts, beard grooming, brows and more' : 'Hair, brows, makeup and more';
+  return `<div class="shop-door-wrap"><button type="button" class="shop-door${barber ? ' shop-door-barber' : ''}" data-salon aria-label="${esc(`${shopLabel(p)}: ${shopName(p)}`)}">
+    <span class="shop-door-logo">${(barber ? BARBER_LOGO : LOGO).replace(/id="sv-pole-logo"/, 'id="sv-pole-door"').replace(/url\(#sv-pole-logo\)/, 'url(#sv-pole-door)')}</span>
+    <span class="shop-door-text"><strong>${esc(shopLabel(p))}</strong><span class="shop-door-name">${esc(shopName(p))}</span><span class="shop-door-sub">${esc(what)}</span></span>
+    <span class="shop-door-go" aria-hidden="true">›</span></button></div>`;
+}
+
 export function openSalonVisit(api, { intro = true } = {}) {
   const p = player();
   const c = country();
   const barber = shopFor(p) === 'barber';
-  const name = pickBy(barber ? BARBERSHOPS : SALONS, `${p.city ?? ''}:${p.countryId}`);
+  const name = shopName(p);
   const stylist = pickBy(barber ? BARBERS : STYLISTS, `${p.id}:${p.city ?? ''}`);
   const stylistGender = barber ? 'male' : hash(stylist) % 3 === 0 ? 'male' : 'female';
   const stylistLook = normalize({}, `stylist:${stylist}:${p.city ?? ''}`);

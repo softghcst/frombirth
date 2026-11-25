@@ -97,6 +97,12 @@ const shops = await page.evaluate(async () => {
   document.querySelector('[data-leave]').click();
   return out;
 });
+const doors = await page.evaluate(async () => {
+  const { shopDoor } = await import('/js/ui/salonVisit.js');
+  return { him: shopDoor({ gender: 'male', city: 'X', countryId: 'us' }), her: shopDoor({ gender: 'female', city: 'X', countryId: 'us' }) };
+});
+check(/Barbershop/.test(doors.him) && /shop-door-barber/.test(doors.him) && /sv-pole-door/.test(doors.him) && /data-salon/.test(doors.him), 'the Self tab\'s way in is a barbershop door, with a barber\'s pole, for a man');
+check(/Beauty Salon/.test(doors.her) && !/shop-door-barber/.test(doors.her) && /sv-dryer/.test(doors.her), 'and a salon door, with scissors and a dryer, for a woman');
 check(shops.transWoman === 'salon' && shops.transMan === 'barber', `the shop follows the gender lived as (${JSON.stringify(shops)})`);
 check(shops.sub === 'Barbershop' && shops.barberClass && !shops.bulbs && /Grab a chair/.test(shops.hello), 'a man\'s visit is to the barbershop');
 check(shops.barberReplies.includes('Beard grooming') && shops.barberReplies.includes('Eyebrows') && !shops.barberReplies.includes('Makeup'), `the barber offers beard grooming and eyebrows, not makeup (${shops.barberReplies})`);
