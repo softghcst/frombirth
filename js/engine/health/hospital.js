@@ -106,9 +106,9 @@ export function rehabProgress(course, engage, p = player()) {
   goal.metWk = now(p);
   course.history.push({ wk: now(p), text: `Rehabilitation goal reached: ${goal.text.toLowerCase()}.` });
   healthMilestone(`Reached a rehabilitation goal: ${goal.text.toLowerCase()}.`, { type: 'rehab', id: `${course.id}:${goal.id}` }, p, { shareable: true });
-  // A broken hip from the older illness list heals for good once the goals are met.
+  // A broken hip (an ailment) heals for good once the goals are met.
   if (course.rehabSet === 'hip' && course.rehabGoals.every((g) => g.metWk)) {
-    p.conditions = p.conditions.filter((c) => c.id !== 'broken_hip');
+    healthOf(p).ailments = (healthOf(p).ailments ?? []).filter((c) => c.id !== 'broken_hip');
     log('Your hip has healed, and you are getting about on your own again.', 'system', 'good');
   }
   return goal;

@@ -12,12 +12,12 @@ const career = await import('../js/engine/career.js');
 const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { die } = await import('../js/engine/death.js');
 const { makeNpc } = await import('../js/engine/npcFactory.js');
-const { ILLNESSES } = await import('../js/data/illnesses.js');
+const { ILLNESSES } = await import('../js/data/health/ailments.js');
 const edu = await import('../js/engine/education.js');
 const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
 const fam = await import('../js/engine/sportsFamily.js');
-const { tickHealth } = await import('../js/engine/health.js');
+const { tickHealth } = await import('../js/engine/health/ailments.js');
 const ui = await import('../js/ui/sports.js');
 
 rng.seed(20261118);

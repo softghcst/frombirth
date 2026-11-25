@@ -9,7 +9,7 @@ import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
-import { addCondition } from './health.js';
+import { addCondition } from './health/ailments.js';
 import { remember } from './conditions.js';
 import { readiness, today, addDays } from './documents.js';
 import { charge } from './chronicle.js';

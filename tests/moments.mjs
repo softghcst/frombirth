@@ -30,7 +30,7 @@ const item = (key) => mo.thisYear().find((x) => x.key === key);
 function life(id = 'us', age = 30, cash = 50000) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   const p = store.state.player;
-  p.flags.longevity = 18; p.stats.health = 100; p.conditions = []; // these checks follow one life through several years: it should not end by chance partway
+  p.flags.longevity = 18; p.stats.health = 100; (p.health ??= {}).ailments = []; // these checks follow one life through several years: it should not end by chance partway
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = age < 18; p.education.enrolled = false;
   p.finance.cash = Math.round(cash * COUNTRIES[id].currency.scale);
   for (const n of Object.values(store.state.npcs)) n.alive = false;

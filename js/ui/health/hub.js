@@ -29,6 +29,7 @@ import { now, when, rel, priceOf } from '../../engine/health/util.js';
 import * as ins from '../../engine/health/insurance.js';
 import * as hosp from '../../engine/health/hospital.js';
 import * as sys from '../../engine/systems.js';
+import { ailmentsOf } from '../../engine/health/ailments.js';
 
 const SKILLS_NAMES = new Set(Object.values(SKILLS));
 const SECTIONS = [
@@ -163,7 +164,7 @@ function proposalCard(prop) {
 }
 
 function physical(p, h) {
-  const legacy = p.conditions.map((c) => kv(c.name.charAt(0).toUpperCase() + c.name.slice(1), `since age ${c.sinceAge}${c.treated ? ', managed' : ''}`)).join('');
+  const legacy = ailmentsOf(p).map((c) => kv(c.name.charAt(0).toUpperCase() + c.name.slice(1), `since age ${c.sinceAge}${c.treated ? ', managed' : ''}`)).join('');
   const body = presentConditions(h).filter((r) => !MENTAL.includes(CONDITION_BY_ID[r.conditionId].group) && CONDITION_BY_ID[r.conditionId].group !== 'neurodev');
   const known = body.filter((r) => diagnosisFor(r, h) || ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group));
   const away = hosp.inHospital(p);

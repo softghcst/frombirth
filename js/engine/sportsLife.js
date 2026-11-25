@@ -13,7 +13,7 @@ import { SPORTS_LIST, sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES, WORLD_GAM
 import { gain, regard } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { book } from './ledger.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition, hasAilment } from './health/ailments.js';
 import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog, uniOf } from './university.js';
@@ -464,7 +464,7 @@ function healYear(state, a) {
     if (inj.year === state.year) continue; // it happened this year: healing starts next
     const plan = REHAB[inj.rehab ?? 'rest'];
     // Treated elsewhere (a doctor) — the record follows the health record.
-    const has = p.conditions.some((c) => c.id === injuryCondition(inj.type));
+    const has = hasAilment(injuryCondition(inj.type), p);
     const r = seeded(`heal/${inj.id}/${state.year}`);
     if (has && r.chance(plan.setback)) {
       inj.setbacks += 1; inj.left = Math.max(inj.left, 0.4);
@@ -1173,7 +1173,7 @@ export function audit(state = store.state) {
       }
     }
     if (Object.values(S.contracts).filter((k) => k.kind === 'pro' && k.status === 'active' && k.personId === a.id).length > 1) bad.push(`${a.name}: two professional contracts at once`);
-    if (a.id === state.player.id) for (const inj of a.injuries.filter((x) => x.status === 'out')) if (!state.player.conditions.some((c) => c.id === `sport_${inj.type}`)) bad.push(`${a.name}: an open injury missing from the health record`);
+    if (a.id === state.player.id) for (const inj of a.injuries.filter((x) => x.status === 'out')) if (!hasAilment(`sport_${inj.type}`, state.player)) bad.push(`${a.name}: an open injury missing from the health record`);
   }
   for (const [key, x] of Object.entries(S.paid)) if (!Number.isFinite(x.amount)) bad.push(`payment ${key} has no amount`);
   const open = {};
