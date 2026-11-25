@@ -64,7 +64,23 @@ check(yearOfDate(`${yr + 1}-03-01`) === yr && yearOfDate(`${yr + 1}-06-01`) === 
 // A life saved before birthdays were kept carries on from January 1.
 p = life();
 delete p.birthday;
-check(yearSpan().start === `${store.state.year}-01-01` && birthDate(p).startsWith('January 1,'), 'an older life keeps January 1');
+check(yearSpan().start === `${store.state.year}-01-01` && birthDate(p).startsWith('January 1,'), 'an older life without a birthday reads as January 1');
+// Loaded, it is given a day of its own (the same every load); saved mid-year, at its next turn of the year.
+{
+  const { saveGame, peekGame } = await import('../js/save.js');
+  const mem = new Map();
+  globalThis.localStorage ??= { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+  saveGame(store.state);
+  const back = peekGame(store.state.slotId);
+  {
+    const q = back.player;
+    check(JSON.stringify(q.birthday) === JSON.stringify(birthdayFor(q.id)), 'an older life, loaded, gets its own birthday');
+  }
+  const r = life(); delete r.birthday; setStep(6); advanceTurn();
+  check(!r.birthday, 'mid-year, an older life waits for the turn of the year');
+  store.state.pendingEvents = []; advanceTurn();
+  check(JSON.stringify(r.birthday) === JSON.stringify(birthdayFor(r.id)), 'and gets its birthday when the year turns');
+}
 
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Every life has its own birthday, and its years run from it.');

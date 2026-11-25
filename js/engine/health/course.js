@@ -254,10 +254,10 @@ export function weekWellbeing(p = player()) {
   const h = healthOf(p);
   const d = domainImpact(p);
   const w = h.wellbeing;
-  const job = p.career.careerId ? 8 : 0;
-  const study = p.education.enrolled ? 6 : 0;
+  // Everything taken on (work, school, homework, clubs, lessons: engine/worklife.js) is felt here too.
+  const load = p.career?.stress ?? 30;
   const money = p.finance.cash < 0 ? 15 : 0;
-  const stressTarget = clamp(25 + job + study + money + (d.mood ?? 0) * 0.35 - h.skills.distress * 0.12 - h.skills.coping * 0.08);
+  const stressTarget = clamp(10 + load * 0.55 + money + (d.mood ?? 0) * 0.35 - h.skills.distress * 0.12 - h.skills.coping * 0.08);
   w.stress = Math.round(w.stress + (stressTarget - w.stress) * 0.15);
   w.sleep = Math.round(w.sleep + (clamp(80 - (d.sleep ?? 0) * 0.6 - w.stress * 0.15) - w.sleep) * 0.2);
   w.energy = Math.round(w.energy + (clamp(80 - (d.energy ?? 0) * 0.6 - (100 - w.sleep) * 0.2) - w.energy) * 0.2);

@@ -5,7 +5,7 @@ import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { tickFamily } from '../js/engine/familyGen.js';
 import { adopt, tickChildren, cleanName, nameBaby, surnameChoices, NAME_LIMITS } from '../js/engine/children.js';
-import { keepsake, weekdayOf, inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
+import { olderBirthInfo, canTagOlder, keepsake, weekdayOf, inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
 import { yearSpan } from '../js/engine/birthday.js';
 import { rng } from '../js/rng.js';
 
@@ -145,6 +145,21 @@ const looks = keepsake(kid, [mom, dad], () => 'summer').looks;
 check(/Mom's nose/.test(looks) && /Dad's eyes/.test(looks), `who they take after (${looks})`);
 check(keepsake({ ...kid, appearance: { inherited: { nose: 'x', eyes: 'y' } } }, [mom, dad], () => 'summer').looks.startsWith('Looks like nobody else'), 'a baby who takes after nobody');
 check(keepsake({ id: 'h', birthInfo: { date: '1910-03-01', doctor: 'Mrs. Bell, midwife', atHome: true } }, [], () => 'spring').signoff === 'With love, Mrs. Bell', 'a midwife signs her own');
+
+// Older saves: a child, sibling or grandchild born before tags were kept gets one the first time it is asked for, the
+// same every time; someone adopted does not.
+{
+  const st = createLife({ countryId: 'us' }); store.state = st;
+  const old = { id: 'oldkid', role: 'child', age: 7, gender: 'female', alive: true, flags: {}, countryId: 'us' };
+  st.npcs.oldkid = old;
+  check(canTagOlder(old), 'an older child can be given a tag');
+  const a = JSON.stringify(olderBirthInfo(old));
+  delete old.birthInfo;
+  check(a === JSON.stringify(olderBirthInfo(old)), 'the same tag every time');
+  check(old.birthInfo.date.startsWith(String(st.year - 7)), `born seven years ago (${old.birthInfo.date})`);
+  check(!canTagOlder({ id: 'ad', role: 'child', adopted: true, flags: {} }), 'an adopted child has a card, not a tag');
+  check(!canTagOlder({ id: 'fr', role: 'friend', flags: {} }), 'not for friends');
+}
 
 if (problems.length) { console.log([...new Set(problems)].join('\n')); process.exit(1); }
 console.log('Every baby gets a hospital tag, sized like their family.');

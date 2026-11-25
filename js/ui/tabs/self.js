@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { weeklyLoad } from '../../engine/worklife.js';
 import { openBirthTag } from '../birthTag.js';
 import { playerBirthInfo } from '../../engine/birthTag.js';
 import { noticed } from '../../engine/talentGrowth.js';
@@ -50,6 +51,8 @@ export default {
       <div class="card"><h3>Health and mood</h3>
         ${meterHtml('Mood', p.stats.mood, true)}${meterHtml('Health', p.stats.health, true)}
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
+        ${meterHtml('Stress', p.career?.stress ?? 0, true, true)}
+        ${(() => { const w = weeklyLoad(p); return w.total ? `<p class="muted" style="margin:6px 0 0">Your week: ${w.total} hours (${esc(w.word.toLowerCase())}): ${esc(w.rows.map((r) => `${r.label.toLowerCase()} ${r.hours}`).join(', '))}. The more you take on, the more stress you carry.</p>` : ''; })()}
         <div class="section-label">Conditions</div>${conditions}
         ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
         <div style="margin-top:10px">${navGroup([

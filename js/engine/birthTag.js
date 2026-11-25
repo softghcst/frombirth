@@ -129,6 +129,25 @@ export function playerBirthInfo(p = store.state.player) {
   return p.birthInfo;
 }
 
+/**
+ * A tag for a child, sibling or grandchild born before tags were kept (an older save): made the first time it is asked
+ * for, from their id, so it is the same every time. Not for someone adopted (they have an adoption card), a step-relation,
+ * or a person whose birth the family was not there for.
+ */
+export const canTagOlder = (npc) => !!npc && !npc.birthInfo && !npc.adopted && !npc.adoptionInfo && !npc.flags?.step && ['child', 'sibling', 'grandchild'].includes(npc.role);
+export function olderBirthInfo(npc, state = store.state) {
+  if (npc?.birthInfo) return npc.birthInfo;
+  if (!canTagOlder(npc)) return null;
+  const p = state.player;
+  npc.birthday ??= birthdayFor(npc.id);
+  const year = state.year - (npc.age ?? 0);
+  const parents = npc.role === 'child' ? [p, ...(npc.parentIds ?? []).map((id) => state.npcs[id])]
+    : npc.role === 'sibling' ? (p.npcIds ?? []).map((id) => state.npcs[id]).filter((n) => n?.role === 'parent' && !n.flags?.step)
+      : (npc.parentIds ?? []).map((id) => state.npcs[id]);
+  npc.birthInfo = makeBirthInfo(npc, { date: isoDate(year, npc.birthday.m, npc.birthday.d), countryId: npc.birthCountryId ?? npc.countryId ?? p.countryId, city: npc.city ?? p.city, parents: parents.filter(Boolean).slice(0, 2) });
+  return npc.birthInfo;
+}
+
 /** A day during the year just lived, for a child born in it: never after the player's birthday that ended it. */
 export function dayInYearJustLived(id, state = store.state) {
   const b = birthdayOf(state.player);

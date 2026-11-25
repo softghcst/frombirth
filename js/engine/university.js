@@ -154,7 +154,9 @@ export function profile(majorId, inst = null) {
   const advanced = (courses?.advanced ?? []).filter((id) => (RELEVANT[majorId] ?? []).includes(id)).length;
   const recs = Math.min(2, livingNpcs().filter((n) => n.flags.wouldRecommend).length + (p.flags.teacherRec ? 1 : 0));
   const clubs = Object.values(e.clubLife ?? {});
-  const activities = Math.round(clamp(25 + clubs.reduce((s, c) => s + c.standing / 3 + (c.role === 'leader' ? 15 : 0), 0) + (p.flags.gapVolunteer ? 12 : 0) + (p.flags.performances?.length ?? 0) * 3));
+  // Awards from competitions (engine/summer.js): each counts, a win more, a national one most.
+  const awards = (p.flags.awards ?? []).reduce((t, a) => t + (a.place === 1 ? 8 : 5) + (a.level === 2 ? 6 : 0), 0);
+  const activities = Math.round(clamp(25 + clubs.reduce((s, c) => s + c.standing / 3 + (c.role === 'leader' ? 15 : 0), 0) + (p.flags.gapVolunteer ? 12 : 0) + (p.flags.performances?.length ?? 0) * 3 + Math.min(30, awards)));
   const plan = e.apps;
   const tier = wealthTier();
   const parents = npcsByRole('parent');
