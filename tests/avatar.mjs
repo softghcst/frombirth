@@ -203,7 +203,7 @@ const [, , COLS] = T.profile.cols;
 for (const h of AVATAR_MANIFEST.hair) check(h.edge && h.edge.L.length === ROWS && h.edge.R.length === ROWS && h.edge.T.length === COLS && h.edge.O.length === COLS && Number.isFinite(h.edge.top), `${h.id} is not measured`);
 for (const h of AVATAR_MANIFEST.heads) check(h.edge && h.edge.L.length === ROWS && h.edge.T.length === COLS, `${h.id} is not measured`);
 // Styles drawn with a lock or a sweep that hangs clear of the head on purpose: the gap beside it is the style.
-const LOOSE = ['hair_boy_long_11', 'hair_girl_long_04'];
+const LOOSE = []; // (the two that did, hair_boy_long_11 and hair_girl_long_04, have been taken out of the game)
 let worstGap = 0;
 for (const h of hairs) {
   for (const head of grown) {
@@ -225,7 +225,7 @@ for (const h of hairs) {
   }
 }
 // A short style and a tall one, on every head: placed, and placed the same way each time.
-for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_updo_07']) {
+for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_updo_02']) {
   for (const head of grown) {
     const f = hairFit(id, head.id);
     const hairline = Math.min(...PART_BY_ID[id].edge.T.slice(13, 20).filter((v) => v != null));
@@ -234,13 +234,20 @@ for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_u
   }
 }
 check(hairFit('hair_boy_updo_15_headband_puff', 'head_12_sculpted').squash < 1 && hairFit('hair_boy_short_07', 'head_12_sculpted').squash === 1, 'only a tall style is flattened to fit the picture');
-// The two repaired files, and the stray marks, stay repaired.
-for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
-check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
+// (The two repaired files and the arch styles checked here, hair_boy_medium_11, hair_girl_long_11 and hair_boy_medium_03,
+// have been taken out of the game.)
 // A baby's tuft is left where it was put.
 for (const h of tufts) for (const head of ['head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
 // The reference faces: hair that already sat well is left very nearly as drawn.
-const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_13', 'head_17_dimple_oval'] };
+// (asel, zhi and yoselin wore styles since taken out of the game: these are the ones they are given in their place.)
+const REFERENCES = { asel: ['hair_updo_02', 'head_15_cherubic'], zhi: ['hair_boy_updo_05_loc_bun', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_medium_09', 'head_17_dimple_oval'] };
+// Hairstyles taken out of the game: a save that wore one is given a kept style, for the same gender.
+for (const [from, to] of Object.entries(CUR.WITHDRAWN.hair)) {
+  const now = CATALOG.hair.find((h) => h.id === to), was = /girl|^hair_updo/.test(from) ? 'female' : /boy/.test(from) ? 'male' : null;
+  check(!!now && !CUR.WITHDRAWN.hair[to], `${from} is replaced by ${to}, which is not in the game`);
+  check(!now || !was || !now.tags?.gender || now.tags.gender === was, `${from} (${was}) is replaced by ${to}, a style for the other gender`);
+  check(normalize({ v: 3, style: { hair: from } }, 'x').style.hair === to, `a save with ${from} is not given ${to}`);
+}
 for (const [who, [hair, head]] of Object.entries(REFERENCES)) {
   check(!!PART_BY_ID[hair], `${who}: the reference hairstyle ${hair} is not in the game`);
   const f = hairFit(hair, head);
@@ -262,7 +269,7 @@ for (const id of ['head_00_toddler', 'head_00_kid']) check(frameFor(id) === FRAM
 check(share(PART_BY_ID.head_00_toddler, FRAME) > share(PART_BY_ID.head_00_kid, FRAME), 'a toddler\'s head should be bigger in the picture than a child\'s');
 // Hair height does not move or resize the face: the same head has the same picture whatever is on it.
 const framed = (hair, age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair } }, seed: 'frame', age }).match(/viewBox="([^"]+)"/)[1];
-check(framed('hair_boy_short_07', 30) === framed('hair_updo_07', 30) && framed('bald', 30) === framed('hair_updo_07', 30), 'the picture changes with the hairstyle');
+check(framed('hair_boy_short_07', 30) === framed('hair_updo_02', 30) && framed('bald', 30) === framed('hair_updo_02', 30), 'the picture changes with the hairstyle');
 check(framed('hair_boy_short_07', 3) === `${FRAME.x} ${FRAME.y} ${FRAME.size} ${FRAME.size}` && framed('hair_boy_short_07', 9) === framed('hair_boy_short_07', 3), 'a child\'s picture is not the plain one');
 // One person is drawn the same on every screen: screens differ only in the size they show it at.
 {
@@ -387,12 +394,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 
 // 12. Layers: lines of age kept on the face, front hair cut at the chin; an old beard is not drawn.
 {
-  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style
+  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_06', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style
   const svg = characterAvatarSvg(look, { age: 70, gender: 'male' });
   check(!/facial_hair/.test(svg), 'a beard from an old save is drawn');
   check(/<g clip-path="url\(#pw-face-\d+\)"><use href="[^"]*aging/.test(svg), 'lines of age are not kept to the face');
   const cut = Number(svg.match(/<clipPath id="pw-front-\d+"><rect x="-400" y="-2000" width="1312" height="(\d+)"/)[1]) - 2000;
-  const f = hairFit('hair_girl_long_04', 'head_13_athletic');
+  const f = hairFit('hair_girl_long_06', 'head_13_athletic');
   check(Math.abs(f.ty + f.sy * (cut - T.face.top) - (PART_BY_ID.head_13_athletic.fit.chin - 2)) <= 1.5, 'hair in front of the face does not end at the chin');
 }
 

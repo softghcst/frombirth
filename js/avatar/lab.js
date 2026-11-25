@@ -92,6 +92,6 @@ $('#parts').innerHTML = Object.entries(CATALOG).map(([key, list]) => `
     if (key === 'marks') a.inherited.marks = [x.id];
     else if (key === 'jewelry') a.style.jewelry = [x.id];
     else a[STYLE.has(key) ? 'style' : 'inherited'][key] = x.id;
-    if (['hairDye', 'hairColor', 'hairTexture'].includes(key)) a.style.hair = 'hair_girl_long_01';
+    if (['hairDye', 'hairColor', 'hairTexture'].includes(key)) a.style.hair = 'hair_girl_long_07';
     return `<figure><div class="face">${avatarSvg({ appearance: a, age: 28, seed: 'sheet' })}</div><figcaption>${esc(x.name)}<code>${esc(x.id)}</code></figcaption></figure>`;
   }).join('')}</div>`).join('');

@@ -126,7 +126,10 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   check(!!target, 'setup: a big disaster in the Philippines');
   if (target) {
     const cousin = makeNpc({ role: 'relative', countryId: 'ph', age: 30, relationship: 50 }); cousin.flags.abroad = 'ph'; // room to grow closer
-    S().npcs[cousin.id] = cousin; p.npcIds.push(cousin.id);
+    S().npcs[cousin.id] = cousin;
+    // The cousin is the only person the player knows: a life can begin with someone abroad already, somewhere a
+    // disaster strikes the same year, and then the scene can be about them instead.
+    p.npcIds = [cousin.id];
     S().year = target.y + 1; S().pendingEvents = [];
     dis.tickDisasters();
     const news = (S().world?.news ?? []).filter((x) => x.kind === 'disaster' && x.placeId === 'ph');
