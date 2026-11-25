@@ -1,8 +1,8 @@
 // The Story Director: one hand on the pacing of every storyline in a life.
 //
 // Each storyline already decides what is TRUE to tell (engine/loveStories.js, familyStories.js, sportsArcs.js,
-// abroadArcs.js, animalArcs.js, digital/stories.js, together.js, investigations/drama.js, medicine/drama.js and
-// medicine/story.js): a story whose test fails is never offered, and nothing is invented to tell one. What none of
+// abroadArcs.js, animalArcs.js, animalLife.js, digital/stories.js, together.js, investigations/drama.js, schoollife.js,
+// campus.js, kidschool.js, workEvents.js, moments.js, medicine/drama.js and medicine/story.js): a story whose test fails is never offered, and nothing is invented to tell one. What none of
 // them could see was the others, so a busy year could bring a love story, a family story, a hospital drama, a sports
 // arc and a life-abroad scene all at once. The Director sees them together.
 //
@@ -17,7 +17,8 @@
 //
 // Scenes over the budget are not lost: they wait (state.storyDirector.held) and are offered again first next year,
 // for up to two years, as long as the people in them are still alive. Consequences, decisions the player has to
-// make and scenes not tagged as story beats are never touched. Runs once per world year, so a 3-, 6- or 12-month
+// make and scenes not tagged as story beats are never touched; neither are scenes with their own calendar (the
+// neighborhood's months, a season's scenes), which are told when their time comes. Runs once per world year, so a 3-, 6- or 12-month
 // Age Up paces stories the same.
 //
 //   state.storyDirector = { held: [{ ev, meta, since }], history: [{ year, id, source }], quiet: { [source]: year } }
@@ -30,7 +31,7 @@ export const dramaSetting = (state = store.state) => (BUDGET[state.settings?.dra
 /** The storylines and their names (for the history and the tests). */
 export const SOURCES = {
   love: 'Love and relationships', family: 'Family', medicine: 'Medicine and hospital life', sport: 'Sport', abroad: 'Life abroad',
-  animals: 'Animals', digital: 'Digital life', friends: 'Friends', investigations: 'Investigations',
+  animals: 'Animals', digital: 'Digital life', friends: 'Friends', investigations: 'Investigations', school: 'School and campus', work: 'Work',
 };
 
 const dir = (state = store.state) => {
@@ -39,13 +40,20 @@ const dir = (state = store.state) => {
   return d;
 };
 
+/** Set by engine/yearProcessor.js while the yearly steps run. */
+export const yearSteps = { on: false };
+
 /**
  * Queues a story beat. `meta`: { source, must, weight }. A must-tell beat always plays; an optional one is paced.
  * Returns false (and queues nothing) if the same scene is already waiting.
  */
 export function storyBeat(id, cast = {}, meta = {}, state = store.state) {
   if (state.pendingEvents.some((e) => e.id === id && JSON.stringify(e.cast ?? {}) === JSON.stringify(cast ?? {}))) return false;
-  state.pendingEvents.push({ id, cast, story: { source: meta.source ?? 'other', must: !!meta.must, weight: meta.weight ?? 1, year: state.year } });
+  // Only beats queued in the yearly steps are paced (the same whatever the turn length); one queued between years by
+  // something the player did, or by a season, is told as it comes.
+  state.pendingEvents.push(yearSteps.on
+    ? { id, cast, story: { source: meta.source ?? 'other', must: !!meta.must, weight: meta.weight ?? 1, year: state.year } }
+    : { id, cast });
   return true;
 }
 

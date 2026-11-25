@@ -305,7 +305,7 @@ export const CASES = [
       { id: 'rest_old', label: 'Bed rest, limit salt and fluids, a heart medicine, and close visits', quality: 'best', maxYear: 1974 },
       { id: 'modern_hf', label: 'Treatment to clear the fluid and support the heart, daily weights at home, and close follow-up with the heart team', quality: 'best', minYear: 1975 },
       { id: 'water_only', label: 'Treat the fluid and send home without follow-up', quality: 'poor' },
-      { id: 'icu', label: 'Admit to intensive care straight away', quality: 'ok' },
+      { id: 'icu', label: 'Admit to the most closely watched beds straight away', quality: 'ok' },
     ],
     outcomes: {
       good: "{patient} loses the extra fluid, sleeps flat again, and learns to watch the scales.",
@@ -496,7 +496,7 @@ export const CASES = [
   C({
     id: 'peds_worried_parent', specialty: ['pediatrics', 'family'], ages: [1, 5], minYear: 1950, guardian: true,
     label: 'A worried parent',
-    intro: "{patient}, {age}, has had a fever for a day. The parent has read frightening things online and is very anxious.",
+    intro: "{patient}, {age}, has had a fever for a day. The parent has heard frightening stories and is very anxious.",
     history: "Drinking well, still playing when the fever comes down, a runny nose. All vaccines are up to date.",
     exam: "Alert and smiling, well hydrated. A rash that fades when pressed. Neck moves freely.",
     tests: [
@@ -2671,7 +2671,7 @@ export const CASES = [
     decision: {
       text: "After the operation, {patient} becomes more drowsy on the ward.",
       options: [
-        { id: 'review', label: 'Come and examine at once, repeat the scan, and discuss with the team', quality: 'best' },
+        { id: 'review', label: 'Come and examine at once, reassess, and discuss with the team', quality: 'best' },
         { id: 'phone', label: 'Advise by phone to let them sleep', quality: 'poor' },
         { id: 'morning', label: 'Review in the morning', quality: 'poor' },
       ],
@@ -4871,7 +4871,7 @@ export const CASES = [
     id: 'uro_psa_talk', specialty: ['urology'], ages: [55, 70], minYear: 1990, sex: 'male',
     label: 'A screening question',
     intro: "{patient}, {age}, asks whether he should have the prostate blood test because a friend was just diagnosed.",
-    history: "No urinary symptoms. No family history. Has read frightening things online.",
+    history: "No urinary symptoms. No family history. Has heard frightening things from friends.",
     exam: "Well. No abnormality found.",
     tests: [
       { test: 'history_detail', value: 'useful', result: 'Talking it through shows what {patient} is most worried about and what he values.' },
@@ -6094,7 +6094,7 @@ export const CASES = [
   C({
     id: 'pc_small_vsd', specialty: ['peds_cardiology'], ages: [0, 1], minYear: 1975, guardian: true, household: true,
     label: 'A hole in the heart',
-    intro: "{patient}, {age}, has a loud murmur found at a well-baby check. The parents have looked it up online and are terrified.",
+    intro: "{patient}, {age}, has a loud murmur found at a well-baby check. The parents have heard what a heart murmur can mean and are terrified.",
     history: "Feeding and growing well. No sweating at feeds or fast breathing.",
     exam: "A loud, harsh murmur. Otherwise a thriving baby.",
     tests: [

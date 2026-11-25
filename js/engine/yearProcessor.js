@@ -80,7 +80,7 @@ import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
-import { directYear } from './storyDirector.js';
+import { directYear, yearSteps } from './storyDirector.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -185,12 +185,15 @@ const DEADLY = new Set(['career', 'vehicles']);
  */
 export function runYearSteps(state = store.state) {
   const marks = (state.yearMarks ??= {});
-  for (const [id, step] of YEARLY) {
-    if (marks[id] === state.year) continue;
-    marks[id] = state.year;
-    const death = step();
-    if (DEADLY.has(id) && death) return death;
-  }
+  yearSteps.on = true;
+  try {
+    for (const [id, step] of YEARLY) {
+      if (marks[id] === state.year) continue;
+      marks[id] = state.year;
+      const death = step();
+      if (DEADLY.has(id) && death) return death;
+    }
+  } finally { yearSteps.on = false; }
   return null;
 }
 

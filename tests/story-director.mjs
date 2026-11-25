@@ -8,7 +8,8 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { advanceTurn } from '../js/engine/turns.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
-import { storyBeat, directYear, BUDGET } from '../js/engine/storyDirector.js';
+import { storyBeat, directYear, BUDGET, yearSteps } from '../js/engine/storyDirector.js';
+yearSteps.on = true; // these beats are queued as if by the yearly steps
 
 rng.seed(808);
 const problems = [];
@@ -44,6 +45,7 @@ const back = st.pendingEvents.map((e) => e.id);
 check(heldIds.filter((id) => id !== 'friends_y' || n.alive).every((id) => back.includes(id)), `held beats come back first (${back.join(', ')})`);
 check(!back.includes('friends_y') || n.alive, 'a held beat about someone who has died is dropped');
 // Turn length: once per world year.
+yearSteps.on = false;
 fresh();
 store.state = createLife({ countryId: 'us' });
 store.state.settings = { ...(store.state.settings ?? {}), step: 3, drama: 'balanced' };
