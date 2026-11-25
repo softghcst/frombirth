@@ -178,6 +178,60 @@ export function adopt() {
   return result(true, text);
 }
 
+/** How long a name may be, and what it may be made of: letters (any alphabet, accents too), spaces, hyphens, apostrophes. */
+export const NAME_LIMITS = { first: 20, last: 30 };
+const NAME_OK = /^[\p{L}\p{M}][\p{L}\p{M}' .-]*$/u;
+/** A name as typed, tidied: spaces trimmed and collapsed. Null if it will not do. */
+export function cleanName(name, max) {
+  const s = String(name ?? '').trim().replace(/\s+/g, ' ').replace(/\s*-\s*/g, '-');
+  return s && s.length <= max && NAME_OK.test(s) && !/[-' .]{2}/.test(s) && !/[-]$/.test(s) ? s : null;
+}
+const HISPANIC = new Set('es mx ar co cl pe ve cu do ec gt bo py uy sv hn ni cr pa pr'.split(' '));
+const LUSOPHONE = new Set(['pt', 'br', 'ao']);
+/**
+ * The last names a baby could be given: the player's, their partner's, both joined, or both the way the country does
+ * it (father's then mother's in Spanish-speaking countries, mother's then father's in Portuguese-speaking ones). The
+ * first is the usual choice where they live.
+ */
+export function surnameChoices(baby, p = player()) {
+  const other = (baby.parentIds ?? []).map((id) => store.state.npcs[id]).find(Boolean);
+  const mine = p.lastName;
+  const theirs = other?.lastName;
+  if (!theirs || theirs === mine) return [{ value: mine, label: mine }];
+  const [mom, dad] = p.gender === 'female' ? [mine, theirs] : [theirs, mine];
+  const first = (s) => s.split(/[ -]/)[0];
+  const local = HISPANIC.has(p.countryId) ? `${first(dad)} ${first(mom)}` : LUSOPHONE.has(p.countryId) ? `${first(mom)} ${first(dad)}` : null;
+  const list = [
+    ...(local ? [{ value: local, label: `${local} (both, as is the custom here)` }] : []),
+    { value: mine, label: `${mine} (yours)` },
+    { value: theirs, label: `${theirs} (${other.firstName}'s)` },
+    { value: `${first(mine)}-${first(theirs)}`, label: `${first(mine)}-${first(theirs)}` },
+    { value: `${first(theirs)}-${first(mine)}`, label: `${first(theirs)}-${first(mine)}` },
+  ];
+  return list.filter((x, i) => x.value.length <= NAME_LIMITS.last && list.findIndex((y) => y.value === x.value) === i);
+}
+
+/**
+ * Names a newborn, at birth: first name and last name. The day's lines in the life story are written with the name
+ * the baby is given, not the one the game first put down.
+ */
+export function nameBaby(npcId, first, last) {
+  const npc = store.state.npcs[npcId];
+  const f = cleanName(first, NAME_LIMITS.first);
+  const l = cleanName(last, NAME_LIMITS.last);
+  if (!npc || !canRename(npc)) return result(false, 'That baby cannot be named now.', 'neutral');
+  if (!f) return result(false, `A first name is up to ${NAME_LIMITS.first} letters: letters, spaces, hyphens and apostrophes.`, 'neutral');
+  if (!l) return result(false, `A last name is up to ${NAME_LIMITS.last} letters: letters, spaces, hyphens and apostrophes.`, 'neutral');
+  const old = npc.firstName;
+  npc.firstName = f;
+  npc.lastName = l;
+  const p = player();
+  const re = new RegExp(`\\b${old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+  for (const e of store.state.journal.filter((x) => x.age === p.age)) e.text = e.text.replace(re, f);
+  for (const m of p.milestones.filter((x) => x.age === p.age)) m.text = m.text.replace(re, f);
+  return result(true, `Welcome, ${f} ${l}.`, 'good');
+}
+
 /** Only babies can be renamed. */
 export const canRename = (npc) => npc.role === 'child' && npc.age <= 1 && !npc.adopted;
 export function renameChild(npcId, name) {

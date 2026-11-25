@@ -1,6 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
-import { openBirthTag } from './birthTag.js';
+import { openBirthTag, nameBabyModal } from './birthTag.js';
 import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
@@ -393,6 +393,8 @@ export function mountGame(app, hooks) {
   async function birthNotice(knownBefore) {
     // The player's own children: their hospital tag, filled in (ui/birthTag.js).
     const mine = player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.flags?.birthTag === 'new' && n.birthInfo);
+    // First the name: the player picks it, and the tag is written out with it.
+    for (const [i, b] of mine.entries()) { await nameBabyModal(b, { twinOf: i ? mine[0] : null }); persist(); render(); }
     for (const [i, b] of mine.entries()) {
       b.flags.birthTag = 'seen';
       persist();

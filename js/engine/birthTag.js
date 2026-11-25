@@ -110,7 +110,7 @@ export function makeBirthInfo(person, { date, countryId, city, parents = [], twi
 export function sizeWords(info) {
   if (IMPERIAL.has(info.countryId)) {
     const lbs = Math.floor(info.weightOz / 16);
-    return { weight: `${lbs} lbs ${info.weightOz % 16} oz`, length: `${String(info.lengthIn).replace(/\.0+$/, '').replace('.25', '¼').replace('.5', '½').replace('.75', '¾')} in`, lbs, oz: info.weightOz % 16, imperial: true };
+    return { weight: `${lbs} lbs ${info.weightOz % 16} oz`, length: `${String(info.lengthIn).replace(/\.0+$/, '').replace('.25', ' ¼').replace('.5', ' ½').replace('.75', ' ¾')} in`, lbs, oz: info.weightOz % 16, imperial: true };
   }
   return { weight: `${(info.weightOz * 28.3495 / 1000).toFixed(2)} kg`, length: `${Math.round(info.lengthIn * 2.54)} cm`, imperial: false };
 }

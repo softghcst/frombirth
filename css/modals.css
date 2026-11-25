@@ -151,3 +151,17 @@
 @keyframes btag-turn { from { transform: rotateY(80deg) rotate(-0.6deg); opacity: 0.4; } to { transform: rotateY(0) rotate(-0.6deg); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .btag-flip .btag { animation: none !important; } }
 @media (max-width: 360px) { .swaddle { width: 80px; height: 100px; } .btag-ink { font-size: 1.08rem; } }
+/* Naming a newborn (ui/birthTag.js nameBabyModal). */
+.bname { display: grid; gap: 10px; }
+.bname-baby { justify-self: center; padding: 10px 18px 6px; transform: rotate(-1.5deg); }
+.bname-row { display: flex; gap: 8px; align-items: center; }
+.bname-row input { flex: 1; min-width: 0; }
+.bname-lasts { display: grid; gap: 6px; }
+.bname-last { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 12px; font-weight: 600; }
+.bname-last input[type="text"] { flex: 1; min-width: 120px; }
+.bname-preview { text-align: center; margin: 2px 0 0; min-height: 1.6em; }
+.bname-preview .btag-ink { font-size: 1.7rem; color: var(--accent-text); }
+.bname-why { color: var(--bad); font-size: 0.85rem; margin: 0; text-align: center; min-height: 0; }
+.bname-last { cursor: pointer; padding: 9px 12px; }
+.bname-last input[type="radio"] { appearance: auto; -webkit-appearance: radio; width: 18px; height: 18px; min-height: 0; flex: none; margin: 0; padding: 0; box-shadow: none; accent-color: var(--accent); }
+.bname-last input[type="text"] { padding: 6px 10px; min-height: 0; }

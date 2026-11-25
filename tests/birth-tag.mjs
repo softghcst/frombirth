@@ -3,7 +3,7 @@
 // Run with: node tests/birth-tag.mjs
 import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
-import { tickChildren } from '../js/engine/children.js';
+import { tickChildren, cleanName, nameBaby, surnameChoices, NAME_LIMITS } from '../js/engine/children.js';
 import { keepsake, weekdayOf, inheritSize, sizeAtBirth, makeBirthInfo, sizeWords, hospitalIn, playerBirthInfo, AT_BIRTH } from '../js/engine/birthTag.js';
 import { yearSpan } from '../js/engine/birthday.js';
 import { rng } from '../js/rng.js';
@@ -56,6 +56,31 @@ for (let k = 0; k < 40; k++) {
     check(c.birthday.m === Number(c.birthInfo.date.slice(5, 7)) - 1 && c.birthday.d === Number(c.birthInfo.date.slice(8, 10)), 'their birthday is the day on the tag');
   }
   if (kids.length === 2) check(kids[0].birthInfo.date === kids[1].birthInfo.date && kids[0].birthInfo.doctor === kids[1].birthInfo.doctor && kids[0].birthInfo.time !== kids[1].birthInfo.time, 'twins: the same day and doctor, minutes apart');
+}
+
+// Naming the baby: the rules for names, the last names on offer, and the day's story told with the name given.
+check(cleanName('  Mary-Kate ', 20) === 'Mary-Kate' && cleanName("O'Brien", 30) === "O'Brien" && cleanName('José Luis', 20) === 'José Luis' && cleanName('Zoë', 20) === 'Zoë', 'real names are fine');
+check(cleanName('X Æ A-12', 20) === null && cleanName('', 20) === null && cleanName('a'.repeat(21), 20) === null && cleanName('Ann--Lee', 20) === null && cleanName('🙂', 20) === null, 'numbers, emoji, doubled marks and long names are not');
+check(NAME_LIMITS.first === 20 && NAME_LIMITS.last === 30, 'first names up to 20, last names up to 30');
+{
+  const mom = life({ countryId: 'mx', city: 'Guadalajara' });
+  mom.gender = 'female'; mom.lastName = 'Ruiz'; mom.age = 30; mom.birthYear = store.state.year - 30;
+  const dad = Object.values(store.state.npcs).find((n) => n.role === 'parent');
+  dad.gender = 'male'; dad.lastName = 'García'; dad.firstName = 'Miguel';
+  store.state.year += 1; mom.age += 1;
+  mom.flags.pregnancy = { otherId: dad.id, dueAge: mom.age };
+  const before = new Set(mom.npcIds);
+  tickChildren();
+  const baby = mom.npcIds.filter((id) => !before.has(id)).map((id) => store.state.npcs[id])[0];
+  const choices = surnameChoices(baby, mom).map((x) => x.value);
+  check(choices[0] === 'García Ruiz', `in Mexico, the father's surname then the mother's comes first (${choices})`);
+  check(choices.includes('Ruiz') && choices.includes('García') && choices.includes('Ruiz-García') && choices.includes('García-Ruiz'), 'with each one, and both joined');
+  const old = baby.firstName;
+  check(!nameBaby(baby.id, 'Luna 2', 'García').ok, 'a name with a number is turned down');
+  const r = nameBaby(baby.id, 'Luna', 'García Ruiz');
+  check(r.ok && baby.firstName === 'Luna' && baby.lastName === 'García Ruiz', 'the baby is named');
+  check(old === 'Luna' || !store.state.journal.filter((e) => e.age === mom.age).some((e) => new RegExp(`\\b${old}\\b`).test(e.text)), 'the day\'s story uses the new name');
+  check(store.state.journal.some((e) => e.age === mom.age && /Luna/.test(e.text)), 'and says it');
 }
 
 // The player's own tag: made once, and the same when asked again.

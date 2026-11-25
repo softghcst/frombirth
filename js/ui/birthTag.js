@@ -9,11 +9,13 @@ import { avatarSvg } from './avatar.js';
 import { longDate } from '../engine/birthday.js';
 import { seasonAt, SNOWY } from '../engine/calendar.js';
 import { sizeWords, starSign, birthdayFromDate, keepsake } from '../engine/birthTag.js';
+import { store } from '../state.js';
+import { nameBaby, surnameChoices, NAME_LIMITS } from '../engine/children.js';
 
 /** Blanket colors: soft pink for a girl, soft blue for a boy, mint otherwise. */
 const SHADE = { female: 'girl', male: 'boy' };
 /** The part of the 512 portrait frame that holds a baby's face. */
-const BABY_FACE = '128 178 256 256';
+const BABY_FACE = '122 170 268 300';
 
 /** The baby, swaddled: wrapped all over in a blanket, a hood around the face, just the face peeking out. */
 export function swaddleHtml(person, look) {
@@ -24,11 +26,11 @@ export function swaddleHtml(person, look) {
     </svg>
     <div class="swaddle-face">${face}</div>
     <svg class="swaddle-front" viewBox="0 0 120 150">
-      <path class="rim" d="M60 17c-19 0-33 14-33 32s14 32 33 32 33-14 33-32-14-32-33-32Zm0 6c15 0 26 11 26 26S75 75 60 75 34 64 34 49s11-26 26-26Z"/>
-      <path class="flap l" d="M18 78c14 4 30 2 42-4 10 18 12 44 0 70C36 138 20 110 18 78Z"/>
-      <path class="flap r" d="M102 76c-18 10-42 12-60 6-4 18 2 42 18 62 24-4 40-34 42-68Z"/>
-      <path class="fold" d="M46 96c12-4 26-5 40-2M48 112c10-3 22-3 32 0M56 128c6-1 12-1 18 1"/>
-      <path class="tuck" d="M84 88c4 6 4 14 0 20"/>
+      <path class="rim" d="M60 15c-20 0-34 15-34 35s14 37 34 37 34-17 34-37-14-35-34-35Zm0 6c16 0 27 12 27 29S76 81 60 81 33 67 33 50s11-29 27-29Z"/>
+      <path class="flap l" d="M18 84c14 4 30 2 42-4 10 16 12 40 0 64C36 138 20 112 18 84Z"/>
+      <path class="flap r" d="M102 82c-18 10-42 12-60 6-4 16 2 38 18 56 24-4 40-30 42-62Z"/>
+      <path class="fold" d="M46 102c12-4 26-5 40-2M50 117c10-3 22-3 32 0M56 131c6-1 12-1 18 1"/>
+      <path class="tuck" d="M84 93c4 6 4 13 0 18"/>
     </svg>
   </div>`;
 }
@@ -36,11 +38,12 @@ export function swaddleHtml(person, look) {
 /** Two inked footprints, sized by the baby's length. */
 function footprintsHtml(info) {
   const k = Math.max(0.85, Math.min(1.15, info.lengthIn / 19.7));
-  const foot = (flip) => `<g transform="${flip ? 'translate(60 0) scale(-1 1)' : ''}">
+  // Drawn as a right foot (big toe on the left, inward); the left foot is its mirror, on the left.
+  const foot = (left) => `<g transform="${left ? 'translate(30 0) scale(-1 1)' : 'translate(30 0)'}">
       <path d="M14 46c-6-2-8-12-6-22 2-8 8-12 13-10 6 2 7 10 5 18-1 6-1 10 1 14 2 6-6 4-13 0Z"/>
       <circle cx="9" cy="10" r="3.2"/><circle cx="14.5" cy="7" r="2.6"/><circle cx="19.5" cy="7.5" r="2.2"/><circle cx="23.5" cy="10" r="1.8"/><circle cx="26.5" cy="13.5" r="1.5"/>
     </g>`;
-  return `<svg class="btag-feet" viewBox="0 0 60 52" style="width:${Math.round(78 * k)}px" aria-label="Footprints">${foot(false)}${foot(true)}</svg>`;
+  return `<svg class="btag-feet" viewBox="0 0 60 52" style="width:${Math.round(78 * k)}px" aria-label="Footprints">${foot(true)}${foot(false)}</svg>`;
 }
 
 /** A hospital wristband: the baby's name, a number and a little barcode. */
@@ -127,5 +130,44 @@ export function openBirthTag(person, { title, who, parents, button = 'Close' } =
       turn.textContent = back ? 'Turn Back' : 'Turn Over';
     });
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
+
+/**
+ * Naming a newborn: their first name (with ideas from where the family lives) and their last name (the player's, the
+ * partner's, both joined, or one written in). Resolves when the name is given.
+ */
+export function nameBabyModal(baby, { twinOf } = {}) {
+  return new Promise((resolve) => {
+    const p = store.state.player;
+    const lasts = surnameChoices(baby, p);
+    const pool = COUNTRIES[p.countryId]?.names?.[baby.gender === 'male' ? 'male' : baby.gender === 'female' ? 'female' : Math.random() < 0.5 ? 'male' : 'female'] ?? [baby.firstName];
+    const kind = baby.gender === 'male' ? 'a Boy' : baby.gender === 'female' ? 'a Girl' : 'a Baby';
+    const m = openModal(`
+      <h2 class="pick-title btag-title">${twinOf ? 'And Another One! ' : ''}It's ${kind}!</h2>
+      <div class="bname">
+        <div class="btag btag-${SHADE[baby.gender] ?? 'mint'} bname-baby">${swaddleHtml(baby)}</div>
+        <label class="field"><span>First name</span>
+          <div class="bname-row"><input type="text" data-first maxlength="${NAME_LIMITS.first}" value="${esc(baby.firstName)}" autocomplete="off" spellcheck="false">
+          <button class="btn small" data-idea type="button" title="Another idea">🎲</button></div></label>
+        <div class="field"><span>Last name</span>
+          <div class="bname-lasts">${lasts.map((x, i) => `<label class="bname-last"><input type="radio" name="bname-last" value="${esc(x.value)}" ${i === 0 ? 'checked' : ''}> ${esc(x.label)}</label>`).join('')}
+          <label class="bname-last"><input type="radio" name="bname-last" value="" data-own> Something else: <input type="text" data-ownlast maxlength="${NAME_LIMITS.last}" placeholder="Write it in"></label></div></div>
+        <p class="bname-preview" data-preview></p>
+        <p class="bname-why" data-why role="alert"></p>
+      </div>
+      <button class="btn primary" data-ok style="width:100%;margin-top:6px">Name ${baby.gender === 'male' ? 'Him' : baby.gender === 'female' ? 'Her' : 'Them'}</button>`, { tone: 'good' });
+    const q = (s) => m.el.querySelector(s);
+    const lastNow = () => { const r = m.el.querySelector('input[name="bname-last"]:checked'); return r?.dataset.own != null ? q('[data-ownlast]').value : r?.value ?? ''; };
+    const preview = () => { q('[data-preview]').innerHTML = `<span class="btag-ink">${esc(`${q('[data-first]').value.trim()} ${lastNow().trim()}`.trim() || ' ')}</span>`; q('[data-why]').textContent = ''; };
+    q('[data-idea]').addEventListener('click', () => { let n = q('[data-first]').value; for (let i = 0; i < 6 && n === q('[data-first]').value; i++) n = pool[Math.floor(Math.random() * pool.length)].replace(/_/g, ' '); q('[data-first]').value = n; preview(); });
+    m.el.addEventListener('input', (e) => { if (e.target.matches('[data-ownlast]')) q('[data-own]').checked = true; preview(); });
+    m.el.addEventListener('change', preview);
+    q('[data-ok]').addEventListener('click', () => {
+      const r = nameBaby(baby.id, q('[data-first]').value, lastNow());
+      if (!r.ok) { q('[data-why]').textContent = r.text; return; }
+      m.close(); resolve(r);
+    });
+    preview();
   });
 }
