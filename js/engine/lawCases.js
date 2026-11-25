@@ -151,10 +151,12 @@ export function createCase(templateId, o = {}) {
       const origin = rng.pick(home);
       client.flags.originCountryId = origin; // where the client came from: a real country in the world
       client.countryId = countryId;
-      if (templateId === 'removal') {
-        // Their papers, in the citizenship engine's own form: a citizen of where they came from, on a lapsed visa here.
+      if (templateId === 'removal' || templateId === 'asylum') {
+        // Their papers, in the citizenship engine's own form: a citizen of where they came from, on a lapsed visa here
+        // (or, seeking asylum, newly arrived with their claim pending).
         client.citizenships = [{ jurisdictionId: origin, how: 'birth', year: client.birthYear ?? store.state.year - (client.age ?? 30) }];
-        client.residency = { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year - Number(c.vars.years), expired: true };
+        client.residency = templateId === 'asylum' ? { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year, asylumPending: true }
+          : { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year - Number(c.vars.years), expired: true };
       } else {
         client.citizenships = [{ jurisdictionId: origin, how: 'birth' }, { jurisdictionId: countryId, how: 'naturalization', year: store.state.year - rng.int(3, 15) }];
         const rel = party(origin, { title: c.vars.relation[0].toUpperCase() + c.vars.relation.slice(1), age: rng.int(25, 70) });
@@ -512,7 +514,7 @@ export function currentOffer(c) {
   if (c.kind === 'family') return { text: T.kind === 'family' && c.templateId === 'divorce' ? `${first(c.parties.otherId)} offers ${Math.round(clamp(40 + s * 25, 35, 62))}% of the shared property to ${first(c.clientId)}.` : `${first(c.parties.otherId)} proposes a shared parenting plan.`, value: s, kind: 'settlement', share: Math.round(clamp(40 + s * 25, 35, 62)) };
   if (c.kind === 'child') return { text: c.templateId === 'juvenile' ? 'The prosecutor agrees to diversion if the damage is repaired.' : 'The agency proposes services at home, with reviews every three months.', value: s, kind: 'agreement' };
   if (c.kind === 'transaction') return { text: c.templateId === 'acquisition' ? 'The seller will give an indemnity and take 4% off the price.' : 'The other side agrees to mutual notice of three months.', value: s, kind: 'terms' };
-  const claim = localCost(c.templateId === 'injury' ? 60000 : c.templateId === 'dismissal' ? 45000 : 18000, COUNTRIES[c.countryId]);
+  const claim = localCost(T.claim ?? (c.templateId === 'injury' ? 60000 : c.templateId === 'dismissal' ? 45000 : 18000), COUNTRIES[c.countryId]);
   return { text: `They offer ${fmtMoney(Math.round(claim * clamp(s * 0.9, 0.2, 0.85)), COUNTRIES[c.countryId])} to settle.`, value: s, kind: 'settlement', amount: Math.round(claim * clamp(s * 0.9, 0.2, 0.85)), claim };
 }
 /** Accept or decline what is offered. A client may refuse a deal the lawyer recommends: their case, their decision. */
@@ -773,6 +775,7 @@ export function close(c, out, lines = []) {
   // An adoption makes a parent; a guardianship a guardian; a protective order goes on the other person's record.
   const N = (id) => store.state.npcs[id];
   if (out.favorable > 0 && c.templateId === 'adoption' && N(c.parties.childId)) { const kid = N(c.parties.childId); kid.flags.parentIds = [...new Set([...(kid.flags.parentIds ?? []), c.clientId])]; kid.flags.adoptedBy = c.clientId; kid.flags.adoptedYear = store.state.year; }
+  if (c.templateId === 'asylum' && N(c.clientId)?.residency) { N(c.clientId).residency.asylumPending = false; if (out.favorable > 0) { N(c.clientId).residency.status = 'permanent_resident'; N(c.clientId).flags.refugee = store.state.year; } }
   if (out.favorable > 0 && c.templateId === 'guardianship' && N(c.parties.childId)) N(c.parties.childId).flags.guardianId = c.clientId;
   if (out.favorable > 0 && c.templateId === 'protective_order' && N(c.parties.otherId)) N(c.parties.otherId).flags.protectiveOrder = { protects: c.clientId, year: store.state.year };
   if (c.templateId === 'divorce' && ['orders', 'settlement'].includes(out.kind)) {

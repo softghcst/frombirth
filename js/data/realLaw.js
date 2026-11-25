@@ -5,7 +5,7 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship',
+//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum',
 //          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
@@ -59,6 +59,19 @@ export const REAL_LAWS = [
   L('uk_fla96', ['uk'], 'protection', 'Family Law Act 1996, Part IV', 1997, 'A court can make a non-molestation order, and an order about who may live in the family home.'),
   L('uk_aca02', ['uk'], 'adoption', 'Adoption and Children Act 2002', 2005, 'The child\'s welfare, throughout their life, is the court\'s paramount consideration; a parent\'s consent can be dispensed with only if the child\'s welfare requires it.'),
   L('uk_sgo', ['uk'], 'guardianship', 'Children Act 1989, section 14A (special guardianship, added 2002)', 2005, 'A relative can be made a special guardian: day-to-day parental responsibility, without ending the parents\' legal ties.'),
+  // Wages, housing, pollution, public records, eviction and asylum (more practice areas' cases).
+  L('us_flsa', ['us'], 'wages', 'Fair Labor Standards Act (1938)', 1938, 'Sets a minimum wage and overtime pay for hours over the standard week, unless an exemption applies; job duties, not titles, decide the exemption.'),
+  L('uk_nmwa', ['uk'], 'wages', 'National Minimum Wage Act 1998', 1999, 'Workers must be paid at least the national minimum wage for the hours they work.'),
+  L('us_fha', ['us'], 'housing', 'Fair Housing Act (1968)', 1968, 'Forbids refusing to rent or sell housing because of race, color, religion or national origin, with sex, disability and family status added later.'),
+  L('uk_rra68', ['uk'], 'housing', 'Race Relations Act 1968', 1968, 'Made it unlawful to discriminate on grounds of race in housing, employment and services.', { until: 2010 }),
+  L('uk_eqa10', ['uk'], 'housing', 'Equality Act 2010', 2010, 'Forbids discrimination in housing, work and services because of protected characteristics, including race, sex, disability and religion.'),
+  L('us_cwa', ['us'], 'pollution', 'Clean Water Act (1972)', 1972, 'Discharging pollutants into waters needs a permit, and its limits must be met; citizens may sue over violations.'),
+  L('uk_epa90', ['uk'], 'pollution', 'Environmental Protection Act 1990', 1990, 'Sets duties on polluters, and lets councils and residents act against statutory nuisances.'),
+  L('us_foia', ['us'], 'records', 'Freedom of Information Act (1967)', 1967, 'Federal agency records must be released on request, unless a listed exemption, such as personal privacy, applies.'),
+  L('uk_foia', ['uk'], 'records', 'Freedom of Information Act 2000', 2005, 'Anyone may ask a public authority for information it holds; it must be released unless an exemption applies.'),
+  L('uk_pfea', ['uk'], 'eviction', 'Protection from Eviction Act 1977', 1977, 'It is a crime to evict a residential occupier without a court order, or to harass them into leaving.'),
+  L('us_refugee', ['us'], 'asylum', 'Refugee Act of 1980', 1980, 'Asylum for anyone with a well-founded fear of persecution for race, religion, nationality, political opinion or membership of a particular social group.'),
+  L('uk_refugee', ['uk'], 'asylum', 'Convention Relating to the Status of Refugees (1951)', 1954, 'A refugee with a well-founded fear of persecution may not be returned to the country they fled.'),
   L('uk_children', ['uk'], 'custody', 'Children Act 1989, section 1', 1991, 'The child\'s welfare is the court\'s paramount consideration.'),
   L('uk_dra1969', ['uk'], 'divorce', 'Divorce Reform Act 1969 (in force 1971)', 1971, 'Divorce for irretrievable breakdown, shown by one of five facts: adultery, behavior or desertion, or two or five years\' separation.', { nofault: 'facts', until: 2021, note: 'Before 1971, divorce in England required proof of a matrimonial offense such as adultery or cruelty.' }),
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),
