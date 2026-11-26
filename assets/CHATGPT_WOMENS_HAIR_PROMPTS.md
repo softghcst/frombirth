@@ -27,7 +27,9 @@ x 429-820, y 642-1016; neck x 209-302 -> 512-740; shoulders at the bottom x 110-
    exactly 1254 x 1254 in the same position as the template", or "Lift the bangs above y = 610".
 
 After tracing, each style is tagged on its traced SVG (`assets/hair_raw/<name>.svg`) with the attributes listed
-under it, so the game knows who it is for.
+under it, so the game knows who it is for. A style with no lock deliberately over the face also gets
+`data-sides="behind"`: the hair beside the face then goes behind each head's own cheek and jaw line, so it fits every
+face shape, round or narrow (`scripts/trace_hair_png.py`).
 
 ## Setup message (attach the template and the two example styles)
 
@@ -48,7 +50,10 @@ centered on x = 626):
 - The ears join the head at x = 355 and x = 892, at y = 675. Hair may cover the ears or stop in front of them.
 - The eyebrows are at y = 622: bangs stop above y = 610.
 - Keep the face clear: nothing inside x = 429 to 820, y = 642 to 1016 (eyes, nose and mouth), except a fringe above
-  the brows or a thin strand that falls at the very edge of the face.
+  the brows.
+- Hair that hangs beside the face falls OUTSIDE the face's outline, from the ears down: never over the cheeks or the
+  jawline. (The game fits each hairstyle to rounder and narrower faces too, so hair laid over the cheek looks wrong on
+  them.) A deliberate lock across the face is fine only if the description asks for one.
 - Long hair may fall past the jaw and over or behind the shoulders, down to the bottom edge (y = 1254). The neck is
   x = 512 to 740; the shoulders reach x = 269 to 985 at the bottom edge.
 

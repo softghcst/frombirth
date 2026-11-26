@@ -498,7 +498,9 @@ def build(style, force=False):
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder|elder-ok|gender|sides|crown)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
+        head400 = open(out, encoding='utf-8').read(600)
+        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder|elder-ok|gender|sides|crown)="[a-z0-9_]+"', head400)
+        found += re.findall(r'data-name="[^"<>]*"', head400)  # its name in the game, kept as written (spaces, capitals)
         tags = ' '.join(found) or tags
     # The head it was drawn on: kept from an earlier trace, or the base head now (a new style is drawn on the template).
     import re
