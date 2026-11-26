@@ -112,6 +112,24 @@ function waysIn(p) {
   return card('Ways in', kv(rows) + muted('In the game, as in many places, police work is open without a degree; leadership and federal work favor those who studied. University planning is under School.'));
 }
 
+// First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
+const HINTS = {
+  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
+  federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
+  cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
+  cold: 'Cold cases stay open, inactive. One can be reopened when a laboratory method it never had becomes available.',
+  career: 'Your record: reputation is how the work is done, never how many arrests. Promotions need years, standing and a vacancy.',
+  private: 'A license comes first; then you can open an agency. Private investigators have no police powers: lawful steps only.',
+  policy: 'Budgets, oversight and reform are decided by mayors, councils and legislatures. A chief runs the department, not the courts.',
+  allied: 'Careers that meet the same cases. Each has one piece of work a year, from real cases, people and courts.',
+  integrity: 'Reviews of real convictions. A review is not a retrial: only a court can set a conviction aside.',
+  bench: 'Requests from real cases. Do the quality steps, report what the result shows, and nothing more.',
+};
+const hintSeen = (id) => !!player().flags?.invHints?.[id];
+const hint = (id) => (HINTS[id] && !hintSeen(id) ? `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(HINTS[id])}</p>${stack(btn('hintOk', 'Got it', { arg: id }))}</div>` : '');
+const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses apart. Investigative Actions are where the work is done; each step reveals what it can, once.';
+
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
@@ -141,6 +159,7 @@ const VIEWS = {
       + stack(btn('relative', 'Stay out of the case, and stand by them', { arg: `${inv.id}|support` }) + btn('relative', 'Stay out of it entirely', { arg: `${inv.id}|apart` }) + btn('relative', 'Call the detective and ask how it looks', { arg: `${inv.id}|favor`, cls: 'danger' })));
     for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
       + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
+    if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
     return out;
   },
   agency(p, r) {
@@ -473,7 +492,7 @@ function openCaseFile(api, invId, refreshHub) {
     const tabs = caseTabs(v);
     root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
       <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+      <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
   const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
   root.addEventListener('click', async (e) => {
@@ -498,6 +517,7 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'hintCase') { const p0 = player(); p0.flags.invHints = { ...(p0.flags.invHints ?? {}), case: true }; render(); }
     else if (act === 'medical') await say(MD.requestMedical(id, x));
     else if (act === 'compare') await say(SE.compareCases(id));
     else if (act === 'recruit') await say(UC.recruit(id, x));
@@ -530,6 +550,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
+  hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
   media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
   support2: (a, x) => x.say(WB.seekSupport(a)),
   medRetire: (a, x) => x.say(WB.medicalRetirement()),
@@ -674,7 +696,7 @@ export function openInvestigations(api, start = 'overview') {
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
     root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
       <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
+      <div style="margin-top:10px">${hint(st.section)}${VIEWS[st.section](p, r)}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };
