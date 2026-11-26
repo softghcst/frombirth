@@ -60,6 +60,6 @@ export function avatarSvg(o) {
   // Lipstick is a grown-up's choice: children's lips stay their natural color.
   // The face (lips and their color, an old man's brows) follows `face` where it is given: see faceGenderOf.
   const look = resolveLook(o.appearance, seed, o.face ?? o.gender, { child: age < MAKEUP_AGE });
-  return characterAvatarSvg(look, { age, gender: o.gender, face: o.face ?? o.gender, mood: o.mood, jailed: o.jailed, royal: o.royal, career: o.career, emotion: o.emotion, label: o.label },
+  return characterAvatarSvg(look, { age, gender: o.gender, face: o.face ?? o.gender, mood: o.mood, jailed: o.jailed, royal: o.royal, career: o.career, emotion: o.emotion, label: o.label, mortarboard: o.mortarboard },
     { size: o.size, viewBox: o.viewBox });
 }

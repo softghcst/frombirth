@@ -1,6 +1,6 @@
 // The graduation card: shown once, after the turn the player finishes high school, university, graduate school or
 // any other course (engine/education.js graduate sets player.flags.gradCard). A keepsake on fine paper, in the
-// spirit of the birth tag and the wedding cards: confetti, the player in a cap, a little diploma with a gold seal.
+// spirit of the birth tag and the wedding cards: confetti, the player in a graduation cap, a little diploma with a gold seal.
 // Under it, what comes next: university (the planner and its applications), more study, a job (the Work hub), or
 // some time off, which just closes it.
 import { esc, cap } from '../util.js';
@@ -67,15 +67,6 @@ function awardLine(card) {
   return stageLabel(s);
 }
 
-/** A mortarboard, to sit on the photo. */
-const CAP = `<svg class="grad-cap" viewBox="0 0 120 70" aria-hidden="true">
-  <path class="grad-cap-band" d="M32 30v18c0 8 13 14 28 14s28-6 28-14V30Z"/>
-  <path class="grad-cap-top" d="M60 4 114 26 60 46 6 26Z"/>
-  <path class="grad-cap-cord" d="M60 25 98 32v20"/>
-  <circle class="grad-cap-button" cx="60" cy="25" r="3"/>
-  <path class="grad-cap-tassel" d="M95 50h6l2 12h-10Z"/>
-</svg>`;
-
 /** Confetti pieces scattered over the card. Fixed spots, so the card looks the same every time it is opened. */
 const CONFETTI = [[5, 6, -20, 'a'], [10, 24, 30, 'b'], [90, 5, 15, 'c'], [93, 24, -35, 'a'], [8, 42, 50, 'c'], [91, 40, -10, 'b'],
   [4, 60, 25, 'b'], [95, 58, 40, 'a'], [20, 34, 60, 'c'], [80, 32, -45, 'b'], [26, 26, 10, 'a'], [72, 24, 20, 'c'], [3, 80, -30, 'a']];
@@ -85,14 +76,14 @@ const confettiHtml = () => `<div class="grad-confetti" aria-hidden="true">${CONF
 /** The card. */
 export function graduationCardHtml(p, card) {
   const st = STYLE[card.stage] ?? { shade: 'blue', seal: '🎓' };
-  const face = avatarSvg({ age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: 92, size: 104, ...dressOfPlayer(p) });
+  const face = avatarSvg({ age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: 92, size: 104, ...dressOfPlayer(p), mortarboard: true });
   const where = card.school ?? (card.stage === 'high' ? 'School' : stageLabel(card.stage));
   return `<div class="grad grad-${st.shade}">
     ${confettiHtml()}
     <div class="grad-class">Class of ${esc(String(card.year ?? ''))}</div>
     <div class="grad-word">${esc(headline(card))}</div>
     <svg class="grad-flourish" viewBox="0 0 200 14" aria-hidden="true"><path d="M4 8c30-8 60 6 96 0s66-8 96 0"/></svg>
-    <div class="grad-photo"><div class="grad-face">${face}</div>${CAP}</div>
+    <div class="grad-photo"><div class="grad-face">${face}</div></div>
     <div class="grad-diploma">
       <span class="grad-ribbon" aria-hidden="true"></span>
       <div class="grad-certify">This certifies that</div>

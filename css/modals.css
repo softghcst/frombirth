@@ -220,15 +220,10 @@
 .grad-word { position: relative; font-family: 'Great Vibes', 'Snell Roundhand', cursive; font-size: 2.6rem; line-height: 1.05; margin-top: 6px; color: var(--deep); }
 .grad-flourish { position: relative; width: 62%; height: 12px; margin: -2px auto 8px; display: block; }
 .grad-flourish path { fill: none; stroke: var(--deep); stroke-width: 1.1; stroke-linecap: round; }
-.grad-photo { position: relative; width: 112px; height: 132px; margin: 0 auto 4px; }
-.grad-face { position: absolute; left: 0; bottom: 0; width: 112px; height: 112px; border-radius: 50%; overflow: hidden; background: #fff;
+.grad-photo { position: relative; width: 120px; height: 120px; margin: 2px auto 4px; }
+.grad-face { position: absolute; left: 0; bottom: 0; width: 120px; height: 120px; border-radius: 50%; overflow: hidden; background: #fff;
   border: 3px solid #fff; box-shadow: 0 0 0 2px var(--edge), 0 4px 12px rgba(30, 30, 60, 0.15); display: grid; place-items: center; }
-.grad-face svg { width: 104px; height: 104px; }
-.grad-cap { position: absolute; left: 50%; top: -2px; width: 92px; transform: translateX(-50%) rotate(-10deg); filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); }
-.grad-cap-top { fill: #26232e; }
-.grad-cap-band { fill: #3a3644; }
-.grad-cap-cord { fill: none; stroke: #f2c14e; stroke-width: 2.4; stroke-linecap: round; }
-.grad-cap-button, .grad-cap-tassel { fill: #f2c14e; }
+.grad-face svg { width: 112px; height: 112px; }
 .grad-diploma { position: relative; margin: 6px 4px 0; padding: 12px 12px 14px; background: #fffdf7; border-radius: 6px;
   border: 1px solid rgba(45, 36, 54, 0.15); box-shadow: inset 0 0 0 4px #fffdf7, inset 0 0 0 5px var(--edge); transform: rotate(0.6deg); }
 .grad-ribbon { position: absolute; top: -7px; left: 50%; width: 46px; height: 14px; transform: translateX(-50%); border-radius: 3px; background: var(--edge); opacity: 0.9; }
