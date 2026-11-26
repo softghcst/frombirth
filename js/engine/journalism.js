@@ -24,14 +24,16 @@ import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { OUTLET_KINDS, BEATS, LOCAL_EVENTS, TIPS, QUESTIONS, ATTRIBUTION, STATUS, ACTIONS_A_YEAR, AWARDS } from '../data/journalism.js';
+import { OUTLET_KINDS, BEATS, LOCAL_EVENTS, TIPS, QUESTIONS, ATTRIBUTION, STATUS, ACTIONS_A_YEAR, AWARDS, OWN_KINDS, STAFF_PAY } from '../data/journalism.js';
+import { localWage, fmtMoney } from '../util.js';
+import { country } from '../state.js';
 import { RELEASE_TYPES } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
 import { registerEmployer, cityEmployers, employer } from './employers.js';
 import { hire, promote } from './career.js';
 import { levelOf } from './skills.js';
 import { exists } from './fame.js';
-import { claim as claimSpecial, whyNot as whySpecial } from './specialCareer.js';
+import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
 import { polity } from './polity.js';
 
@@ -119,6 +121,10 @@ export function J(p = player()) {
   return p.journalism;
 }
 export const isReporter = (p = player()) => p.career?.careerId === 'journalist' && !!J(p).outletId;
+/** A publication the player owns and runs (never the same as being employed by one). */
+export const ownedOutlet = (p = player()) => { const id = p.journalism?.owned; const o = id ? S().outlets[id] : null; return o && !o.closed ? o : null; };
+/** Whether the player is working as a journalist at all: on staff, freelance, or running their own publication. */
+export const working = (p = player()) => isReporter(p) || !!J(p).freelance || !!ownedOutlet(p);
 export const actionsLeft = (p = player()) => { const j = J(p); return j.acts.year === year() ? Math.max(0, ACTIONS_A_YEAR - j.acts.used) : ACTIONS_A_YEAR; };
 function spend(n, p = player()) {
   const j = J(p);
@@ -231,10 +237,10 @@ function meet(n, title, p = player()) {
 /** Changes beat. Investigations come with experience. */
 export function setBeat(beat) {
   const p = player();
-  if (!isReporter(p)) return result(false, 'You are not working as a reporter.', 'neutral');
+  if (!working(p)) return result(false, 'You are not working as a reporter.', 'neutral');
   const b = BEATS[beat];
   if (!b) return result(false, 'There is no such beat.', 'neutral');
-  if ((b.minLevel ?? 0) > p.career.level) return result(false, 'Investigations are for senior reporters.', 'neutral');
+  if ((b.minLevel ?? 0) > (isReporter(p) ? p.career.level : myPubs(p).length >= 6 ? 9 : 0)) return result(false, 'Investigations are for senior reporters.', 'neutral');
   J(p).beat = beat;
   return result(true, `You move to the ${b.name.toLowerCase()} beat. New assignments come with the year.`, 'neutral');
 }
@@ -248,7 +254,7 @@ export const myPubs = (p = player()) => Object.values(S().pubs).filter((x) => x.
 
 function newStory(p, o, beat, title, extra) {
   const id = nextId('story');
-  const s = { id, beat, title, reporterId: p.id, outletId: o.id, editorId: o.editorId, created: now(), year: year(), deadline: beat === 'investigative' ? null : now() + 9,
+  const s = { id, beat, title, reporterId: p.id, outletId: o?.id ?? null, editorId: o?.editorId ?? null, created: now(), year: year(), deadline: beat === 'investigative' ? null : now() + 9,
     status: 'assigned', claims: [], sources: [], docs: [], evidence: [], interviews: [], comment: null, legal: null, draft: null, review: null, pubId: null, links: {}, ...extra };
   S().stories[id] = s;
   return s;
@@ -399,11 +405,12 @@ function investigativeStory(p, o, r) {
 /** This year's assignments for the reporter: on their beat, about things that happened; never invented events. */
 export function assignYear(p = player()) {
   const j = J(p);
-  if (!isReporter(p) || j.assigned === year()) return [];
+  if (!working(p) || j.assigned === year()) return [];
   j.assigned = year();
-  const o = outlet(j.outletId);
+  // On staff, stories come from the newsroom; a freelancer finds their own and sells them; an owner reports for their own.
+  const o = isReporter(p) ? outlet(j.outletId) : ownedOutlet(p);
   const made = [];
-  const n = 2 + Math.min(3, p.career.level ?? 0);
+  const n = isReporter(p) ? 2 + Math.min(3, p.career.level ?? 0) : 2;
   const cases = (() => { try { return publicCases(p); } catch { return []; } })();
   for (let i = 0; i < n; i++) {
     const r = seeded(`${p.id}/${year()}/assign/${i}`);
@@ -434,7 +441,8 @@ export function statusOf(s, c) {
 export function notebook(id) {
   const s = story(id);
   if (!s) return null;
-  return { id: s.id, title: s.title, beat: s.beat, status: s.status, outlet: outlet(s.outletId)?.name, editorId: s.editorId, deadline: s.deadline, subject: s.subject,
+  return { id: s.id, title: s.title, beat: s.beat, status: s.status, outlet: outlet(s.outletId)?.name ?? 'Not yet sold', editorId: s.editorId, deadline: s.deadline, subject: s.subject,
+    fee: s.fee ?? null, commissioned: !!s.outletId, own: !!(s.outletId && outlet(s.outletId)?.ownerId),
     claims: s.claims.map((c) => ({ id: c.id, text: c.text, kind: c.kind, important: c.important, status: statusOf(s, c),
       heard: s.evidence.filter((e) => e.claimId === c.id).map((e) => ({ from: e.type === 'doc' ? s.docs.find((d) => d.id === e.docId)?.title : sourceLabel(s, e.sourceId, e.attribution), says: e.says, offRecord: !!e.offRecord })) })),
     sources: s.sources.filter((x) => !x.hidden).map((x) => ({ id: x.id, name: x.name, role: x.role, npcId: x.npcId ?? null, institution: !!x.institution, asked: s.interviews.some((i) => i.sourceId === x.id), agreed: s.interviews.find((i) => i.sourceId === x.id)?.accepted ?? null, wantsConfidential: x.wantsConfidential })),
@@ -594,7 +602,8 @@ export function submit(storyId) {
   if (!open(s, p)) return result(false, 'That story is not open.', 'neutral');
   if (!s.draft) return result(false, 'Write a draft first.', 'neutral');
   const o = outlet(s.outletId);
-  const ed = npc(s.editorId);
+  if (!o) return result(false, 'Pitch it to a newsroom first: a freelance story needs someone to run it.', 'neutral');
+  const ed = npc(s.editorId) ?? (o.ownerId === p.id ? { firstName: 'You', lastName: '(as editor)' } : null);
   const issues = [];
   const inc = s.draft.include.map((id) => s.claims.find((c) => c.id === id));
   const facts = inc.filter((c) => c.kind === 'fact');
@@ -611,6 +620,7 @@ export function submit(storyId) {
   const list = issues.filter(Boolean);
   s.review = { at: now(), by: s.editorId, decision: list.length ? 'revise' : 'approved', notes: list };
   s.status = list.length ? 'revise' : 'approved';
+  if (o.ownerId === p.id && !npc(s.editorId)) return list.length ? result(false, `Reading it as your own editor, by the policy you set: ${list.join(' ')}`, 'neutral') : result(true, 'You read it as your own editor, by the policy you set. It can run.');
   if (list.length) return result(false, `${nameOf(ed) || 'Your editor'} sends it back: ${list.join(' ')}`, 'neutral');
   return result(true, `${nameOf(ed) || 'Your editor'} reads it twice and approves it. It can run.`);
 }
@@ -638,6 +648,9 @@ export function publish(storyId, o2 = {}) {
   S().pubs[id] = pub;
   s.pubId = id;
   s.status = 'published';
+  // A freelance fee is paid once, for this piece, under its contract; never again for the same work.
+  if (s.fee && !pub.feePaid) { pub.fee = s.fee; pub.feePaid = true; p.finance.cash += s.fee; p.finance.lifetimeEarned = (p.finance.lifetimeEarned ?? 0) + s.fee; }
+  if (o.ownerId === p.id) o.published = (o.published ?? 0) + 1;
   // A reporter's standing: accuracy, trust and recognition are kept apart, and none is fame.
   j.rep.recognition = clamp(j.rep.recognition + quality / 25);
   if (!errors.length) j.rep.accuracy = clamp(j.rep.accuracy + 2);
@@ -707,7 +720,9 @@ export function tickJournalism(p = player()) {
   if (p.career?.careerId === 'journalist' && !j.outletId) migrateJournalist(p);
   for (const pub of raiseComplaints(p)) lines.push(`A complaint about "${pub.headline}" has come in. It is waiting in your journalism career.`);
   for (const s of myStories(p)) if (open(s, p) && s.deadline && now() > s.deadline) s.status = 'expired';
-  if (!isReporter(p)) return lines;
+  const own = ownedOutlet(p);
+  if (own) lines.push(...ownedYear(own, p));
+  if (!isReporter(p)) { if (working(p)) { const made = assignYear(p); if (made.length) lines.push(`${made.length} new leads ${j.freelance ? 'to report and sell' : `for ${own?.name}`}.`); } return lines; }
   const lived = year() - 1;
   const pubs = myPubs(p).filter((x) => x.year === lived);
   // The ordinary run of the work: briefs and updates the newsroom runs without a decision from you.
@@ -742,6 +757,7 @@ export function tickJournalism(p = player()) {
 /** Leaving the newsroom (leaving the special career, or the job). Stories in progress are dropped; what ran is kept. */
 export function leaveNewsroom(p = player()) {
   const j = J(p);
+  j.freelance = null;
   for (const s of myStories(p)) if (open(s, p)) s.status = 'spiked';
   if (j.outletId) j.history.push({ year: year(), text: `Left ${outlet(j.outletId)?.name}.` });
   j.outletId = null;
@@ -979,7 +995,7 @@ export function journalismChoice(value) {
     case 'editor:welcome': { if (o && ed) { ed.flags.retired = year(); ed.occupation = 'Retired editor'; const n = makeNpc({ role: 'colleague', countryId: o.countryId, age: 45 }); n.occupation = 'Editor'; n.flags.title = `Your editor at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Editor' }; store.state.npcs[n.id] = n; o.editorId = n.id; meet(n, `Your editor at ${o.name}`, p); o.history.push({ year: year(), text: `${nameOf(ed)} retired as editor; ${nameOf(n)} took over.` }); } return ''; }
     case 'anchor:try': return anchorAudition().text;
     case 'anchor:no': return '';
-    case 'retire:yes': { const r = leaveCareerNow(); return r; }
+    case 'retire:yes': return leaveSpecial().text;
     case 'retire:no': return '';
     default: return '';
   }
@@ -999,6 +1015,184 @@ function followUp(p) {
   addDoc(s, { title: 'The public business register', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
   return `${n.firstName} remembers how you treated their story. A new one is in your assignments.`;
 }
-let leaveCareerNow = () => '';
-/** Lets the special-career layer handle leaving (kept apart to avoid a loop of imports at load). */
-export function onRetire(fn) { leaveCareerNow = fn; }
+
+// ---------- Freelance ----------
+//
+// A freelancer finds stories, reports them, and sells them: a newsroom commissions a piece (or does not), and pays
+// its fee once, when it runs. No steady salary; nothing is paid twice for the same work.
+
+export function freelanceWhy(p = player()) {
+  const j = J(p);
+  if (p.age < 18) return 'From 18.';
+  if (isReporter(p)) return 'You have a newsroom job. Leave journalism first to go freelance.';
+  if (j.freelance) return 'You are freelance already.';
+  const sc = whySpecial('journalism', p);
+  if (sc) return sc;
+  if (!myPubs(p).length && !j.intern && j.school.articles < 3 && !p.education.degrees.some((d) => RELEVANT.includes(d.majorId))) return 'Editors buy from people with clips: published work, an internship, or a relevant degree.';
+  return '';
+}
+export function goFreelance() {
+  const p = player();
+  const why = freelanceWhy(p);
+  if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial('journalism', p); if (sc) return result(false, sc, 'neutral'); }
+  const j = J(p);
+  j.freelance = { since: year() };
+  j.history.push({ year: year(), text: 'Went freelance.' });
+  j.assigned = null;
+  assignYear(p);
+  return result(true, 'You go freelance: find a story, report it, then sell it. Nobody pays you to wait.', 'neutral');
+}
+/** What a newsroom pays a freelancer for a piece (local money). */
+export const feeFor = (o, s) => Math.round(localWage((s.beat === 'investigative' ? 2400 : 450) * OUTLET_KINDS[o.kind].pay * (0.8 + o.reputation / 250), country()));
+/** Pitches a freelance story to a newsroom, once per newsroom. They commission it at a fee, or pass. */
+export function pitch(storyId, outletId) {
+  const p = player();
+  const s = story(storyId);
+  const o = outlet(outletId);
+  if (!J(p).freelance || !open(s, p)) return result(false, 'That is not a freelance story you are working on.', 'neutral');
+  if (s.outletId) return result(false, `${outlet(s.outletId)?.name} has it already.`, 'neutral');
+  if (!o || o.ownerId) return result(false, 'There is no such newsroom.', 'neutral');
+  s.pitched ??= {};
+  if (s.pitched[o.id]) return result(false, 'You pitched it to them already.', 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  s.pitched[o.id] = year();
+  const j = J(p);
+  const work = s.evidence.length;
+  const r = seeded(`${s.id}/pitch/${o.id}`);
+  const odds = clamp(0.2 + work * 0.05 + j.rep.accuracy / 300 + j.rep.recognition / 250 - (o.reputation - 55) / 200, 0.05, 0.85);
+  if (!r.chance(odds)) return result(false, `${o.name} passes. ${work < 3 ? 'Report it further and it may sell.' : 'Try another newsroom.'}`, 'neutral');
+  s.outletId = o.id; s.editorId = o.editorId; s.fee = feeFor(o, s);
+  meet(npc(o.editorId), `An editor at ${o.name} who buys your work`, p);
+  return result(true, `${o.name} commissions it: ${fmtMoney(s.fee, country())} when it runs, edited by ${nameOf(npc(o.editorId))}.`);
+}
+
+// ---------- A publication of one's own ----------
+//
+// A newsletter, a podcast, a news website (from the digital era) or a local paper (any era), started with the
+// player's own money. The player edits it by the policy they set, can hire real staff (an editor raises the bar a
+// reporter's work brings in readers), and its money is counted once a year: readers bring revenue, staff and
+// running costs take it. Many lose money. Owning one is not the same as working for one.
+
+/** What it costs to start one, in local money of the time. */
+export const startCost = (kind) => Math.round(localWage(OWN_KINDS[kind].cost, country()));
+export function startWhy(kind, p = player()) {
+  const k = OWN_KINDS[kind];
+  if (!k) return 'No such kind.';
+  if (p.age < 21) return 'From 21.';
+  if (ownedOutlet(p)) return 'You run a publication already.';
+  if (isReporter(p)) return 'Leave your newsroom first: running your own is a job in itself.';
+  if (k.needs && !exists(k.needs)) return `Not in ${year()}: there is no way to publish it yet.`;
+  if (year() < k.from) return `Not in ${year()}.`;
+  const sc = whySpecial('journalism', p);
+  if (sc) return sc;
+  const cost = Math.round(localWage(k.cost, country()));
+  if (p.finance.cash < cost) return `It costs ${fmtMoney(cost, country())} to start.`;
+  return '';
+}
+export function startPublication(kind, name, policy = 'careful') {
+  const p = player();
+  const why = startWhy(kind, p);
+  if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial('journalism', p); if (sc) return result(false, sc, 'neutral'); }
+  const k = OWN_KINDS[kind];
+  const cost = Math.round(localWage(k.cost, country()));
+  p.finance.cash -= cost;
+  const r = seeded(`${p.id}/own/${year()}`);
+  const id = nextId('outlet');
+  const title = (name ?? '').trim().slice(0, 40) || `The ${p.city} ${kind === 'podcast' ? 'Report' : kind === 'newsletter' ? 'Letter' : 'News'}`;
+  const o = { id, kind: `own_${kind}`, ownKind: kind, name: title, medium: k.medium, countryId: p.countryId, city: p.city, founded: year(), ownerId: p.id, editorId: null, seniorId: null,
+    standards: policy === 'careful' ? 0.75 : 0.55, policy, reputation: 40, audience: Math.round(k.start * (0.8 + r.next() * 0.4)), staff: [], finances: [], history: [{ year: year(), text: `Founded by ${p.firstName} ${p.lastName}.` }] };
+  S().outlets[id] = o;
+  const j = J(p);
+  j.owned = id;
+  j.history.push({ year: year(), text: `Founded ${title} (${k.name.toLowerCase()}).` });
+  milestone(`Founded ${title}, a ${k.name.toLowerCase()} of your own.`, 'career');
+  j.assigned = null;
+  assignYear(p);
+  return result(true, `${title} is launched, for ${fmtMoney(cost, country())}: about ${o.audience.toLocaleString('en-US')} ${k.medium === 'audio' ? 'listeners' : 'readers'} to begin with. You edit it yourself, ${policy === 'careful' ? 'carefully' : 'by ordinary standards'}.`);
+}
+/** Hires a real person onto the publication: a reporter brings in stories, an editor raises the bar. */
+export function hireStaff(role) {
+  const p = player();
+  const o = ownedOutlet(p);
+  if (!o) return result(false, 'You do not run a publication.', 'neutral');
+  if (!STAFF_PAY[role]) return result(false, 'No such role.', 'neutral');
+  if (role === 'editor' && o.staff.some((x) => x.role === 'editor')) return result(false, 'You have an editor.', 'neutral');
+  if (o.staff.length >= 6) return result(false, 'That is as big as it can grow for now.', 'neutral');
+  const n = makeNpc({ role: 'colleague', countryId: p.countryId, age: role === 'editor' ? 44 : 27, relationship: 55 });
+  n.occupation = role === 'editor' ? 'Editor' : 'Reporter';
+  n.flags.title = `${role === 'editor' ? 'Editor' : 'Reporter'} at ${o.name}, which you own`;
+  n.flags.newsroom = { outletId: o.id, role };
+  store.state.npcs[n.id] = n;
+  meet(n, n.flags.title, p);
+  const salary = Math.round(localWage(STAFF_PAY[role], country()));
+  o.staff.push({ npcId: n.id, role, salary, since: year() });
+  if (role === 'editor') { o.editorId = n.id; o.standards = Math.min(0.9, o.standards + 0.1); }
+  o.history.push({ year: year(), text: `Hired ${nameOf(n)} as ${role}.` });
+  return result(true, `${nameOf(n)} joins ${o.name} as ${role === 'editor' ? 'its editor' : 'a reporter'}, on ${fmtMoney(salary, country())} a year.`);
+}
+export function letGo(npcId) {
+  const o = ownedOutlet();
+  const x = o?.staff.find((y) => y.npcId === npcId);
+  if (!x) return result(false, 'They do not work for you.', 'neutral');
+  o.staff = o.staff.filter((y) => y !== x);
+  if (o.editorId === npcId) { o.editorId = null; o.standards = Math.max(0.5, o.standards - 0.1); }
+  const n = npc(npcId);
+  if (n) { n.meters.relationship = clamp(n.meters.relationship - 15); n.flags.title = `Used to work at ${o.name}`; }
+  o.history.push({ year: year(), text: `${nameOf(n)} left.` });
+  return result(true, `${nameOf(n)} clears their desk.`, 'neutral');
+}
+/** A publication's year: readers bring revenue, staff and running costs take it. Many lose money. */
+function ownedYear(o, p) {
+  const lived = year() - 1;
+  if (o.finances.some((f) => f.year === lived) || o.founded > lived) return [];
+  const k = OWN_KINDS[o.ownKind];
+  const c = country();
+  const pubs = myPubs(p).filter((x) => x.outletId === o.id && x.year === lived);
+  const r = seeded(`${o.id}/year/${lived}`);
+  const reporters = o.staff.filter((x) => x.role === 'reporter').length;
+  const good = pubs.filter((x) => !x.errors.length).reduce((n, x) => n + x.quality, 0);
+  const bad = pubs.filter((x) => x.errors.length && !x.corrections.length).length;
+  // Readers come for the work, and drift away without it.
+  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
+  o.audience = Math.max(30, Math.round(o.audience * growth + good * 3));
+  const revenue = Math.round(localWage(k.perReader * o.audience, c));
+  const costs = Math.round(localWage(k.upkeep, c)) + o.staff.reduce((n, x) => n + x.salary, 0);
+  const net = revenue - costs;
+  p.finance.cash += net;
+  if (net > 0) p.finance.lifetimeEarned = (p.finance.lifetimeEarned ?? 0) + net;
+  o.reputation = Math.round(clamp(o.reputation + good / 200 - bad * 5));
+  o.finances.push({ year: lived, revenue, costs, net, audience: o.audience });
+  return [`${o.name}'s year: ${fmtMoney(revenue, c)} in, ${fmtMoney(costs, c)} out: ${net >= 0 ? `${fmtMoney(net, c)} made` : `${fmtMoney(-net, c)} lost`}. ${o.audience.toLocaleString('en-US')} ${o.medium === 'audio' ? 'listeners' : 'readers'}.`];
+}
+/** Closes the publication. What it published stays published. */
+export function closePublication() {
+  const p = player();
+  const o = ownedOutlet(p);
+  if (!o) return result(false, 'You do not run a publication.', 'neutral');
+  for (const x of o.staff) { const n = npc(x.npcId); if (n) n.flags.title = `Used to work at ${o.name}`; }
+  o.staff = [];
+  o.closed = year();
+  o.history.push({ year: year(), text: 'Closed.' });
+  J(p).owned = null;
+  J(p).history.push({ year: year(), text: `Closed ${o.name}.` });
+  return result(true, `${o.name} publishes its last edition. The archive stays up.`, 'neutral');
+}
+/** Sells the publication: a buyer pays for its readers and its record. Their staff go with it. */
+export function sellPublication() {
+  const p = player();
+  const o = ownedOutlet(p);
+  if (!o) return result(false, 'You do not run a publication.', 'neutral');
+  const last = o.finances.at(-1);
+  const price = Math.max(0, Math.round((last?.revenue ?? 0) * 1.5 + localWage(OWN_KINDS[o.ownKind].perReader * o.audience * 0.5, country()) + (last?.net ?? 0)));
+  if (price <= 0) return result(false, 'Nobody wants to buy it as it is.', 'neutral');
+  p.finance.cash += price;
+  o.ownerId = null;
+  o.soldTo = 'a buyer';
+  o.sold = year();
+  o.history.push({ year: year(), text: `Sold for ${fmtMoney(price, country())}.` });
+  J(p).owned = null;
+  J(p).history.push({ year: year(), text: `Sold ${o.name}.` });
+  return result(true, `You sell ${o.name} for ${fmtMoney(price, country())}. It carries on under its new owner.`);
+}

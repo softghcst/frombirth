@@ -76,3 +76,16 @@ export const AWARDS = [
   { id: 'local', name: 'Local Reporting Prize', blurb: 'For local reporting that was accurate and mattered to the community.' },
   { id: 'investigation', name: 'Investigative Reporting Prize', blurb: 'For an investigation that stood up.' },
 ];
+
+/**
+ * What a journalist can start of their own. Money is in base units (made local and of its time by the game's money):
+ * cost to start, a year's running costs, what a reader is worth in a year, and readers to begin with.
+ */
+export const OWN_KINDS = {
+  paper: { name: 'Local newspaper', medium: 'print', from: 1700, cost: 30000, upkeep: 9000, perReader: 2.5, start: 1500 },
+  newsletter: { name: 'Newsletter', medium: 'online', needs: 'digital', cost: 800, upkeep: 400, perReader: 5, start: 250 },
+  podcast: { name: 'News podcast', medium: 'audio', needs: 'digital', cost: 2500, upkeep: 900, perReader: 1.6, start: 600 },
+  website: { name: 'News website', medium: 'online', needs: 'digital', cost: 12000, upkeep: 3500, perReader: 1.1, start: 1500 },
+};
+/** What staff are paid in a year (base units), for a publication of the player's own. */
+export const STAFF_PAY = { reporter: 32000, editor: 45000 };
