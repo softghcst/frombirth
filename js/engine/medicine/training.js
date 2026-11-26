@@ -555,7 +555,7 @@ export function findPost(p, m, specialtyId, preferId = null) {
   }
   m.stage = 'practice';
   if (p.career.employerId === preferId) endJob('finished training');
-  log(`No attending post in ${specialtyName(specialtyId)} opened in ${p.city} this year. You can apply to hospitals from My Medical Career.`, 'system', 'neutral');
+  log(`No attending post in ${specialtyName(specialtyId)} opened in ${p.city} this year. You can apply to hospitals from the Work tab.`, 'system', 'neutral');
   return null;
 }
 

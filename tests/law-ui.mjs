@@ -63,10 +63,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   // My Legal Career is on the Work tab's Special Careers screen.
   if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
   const rowBtn = page.locator('[data-act="law"]');
-  check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
+  check(await rowBtn.count() === 1 && /^Law\b/.test((await rowBtn.innerText()).trim()), `${label}: the Work tab has Law, named for the field before the player is in it (${(await rowBtn.innerText()).split('\n')[0]})`);
   await rowBtn.click(); await hub().waitFor();
   check(/Every case tells a story/i.test(await hub().innerText()), `${label}: the hub opens, with its subtitle`);
-  const guide = page.locator('#modal-root .modal', { hasText: 'Your Legal Career' }).last();
+  const guide = page.locator('#modal-root .modal', { hasText: 'How it works' }).last();
   check(await guide.count() === 1 && /Handle the Routine Steps/.test(await guide.innerText()), `${label}: the first time, a short guide explains how it works`);
   await guide.locator('[data-guideok]').click(); await page.waitForTimeout(80);
   check(await page.locator('#modal-root [data-guideok]').count() === 0, `${label}: and it closes`);

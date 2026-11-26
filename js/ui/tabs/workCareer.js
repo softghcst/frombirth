@@ -21,6 +21,7 @@ import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklif
 import { offers } from '../../engine/hiring.js';
 import { icon } from '../kit.js';
 import { leads } from '../../engine/recruiters.js';
+import { screenName } from '../careerNames.js';
 
 const kv = (rows) => rows.map(([a, b]) =>
   `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -74,8 +75,8 @@ export function careerButtons() {
   const list = [];
   const waiting = offers().length + leads().length;
   if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Jobs${waiting ? ` (${waiting} waiting)` : ''}`]);
-  if (medicineOpen(p)) list.push(['medicine', 'My Medical Career']);
-  if (investigationsOpen(p)) list.push(['investigations', 'My Investigations']);
+  if (medicineOpen(p)) list.push(['medicine', screenName('medicine', p)]);
+  if (investigationsOpen(p)) list.push(['investigations', screenName('investigations', p)]);
   if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {

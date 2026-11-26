@@ -197,7 +197,7 @@ export function hospitalYear() {
       m.offer = { rank: 'chief', year: year(), hospitalId: id };
       delete h.heads[dept];
       chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}; the search for a successor began.`);
-      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from My Medical Career.`, 'system', 'good');
+      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from the Work tab.`, 'system', 'good');
     } else {
       const pool = staffOf(e).filter((n) => n.alive && n.id !== head.id && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) && (n.life.job.level ?? 0) >= 1);
       const next = pool.sort((a, b) => (b.meters.intellect ?? 0) - (a.meters.intellect ?? 0))[0] ?? null;
@@ -366,7 +366,7 @@ export function medicineChoice(value, cast = {}) {
         const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
         if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
         if (m.job) { m.job = null; endJob('moved with their partner'); }
-        return `You move to ${o.city} together, and leave your post. You will need to find one there: My Medical Career, Find a Post.`;
+        return `You move to ${o.city} together, and leave your post. You will need to find one there: Find a Post, on the Work tab.`;
       }
       if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
       if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }

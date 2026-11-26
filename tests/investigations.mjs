@@ -165,7 +165,7 @@ section('recruitment: eligibility per agency, dated decisions, the academy over 
     `the same outcome on quarterly and yearly turns (${JSON.stringify([quarterly.stage, quarterly.last, quarterly.scene])} vs ${JSON.stringify([yearly.stage, yearly.last, yearly.scene])})`);
   check(yearly.months === '12' && quarterly.months === '12' && quarterly.lines.some((t) => /three more months/.test(t)), `the player hears how long it really was: three months at a time on quarterly turns, the whole year in the scene on a yearly one (${yearly.months})`);
   check(yearly.lines.every((t) => !/three more months/.test(t)), 'a yearly turn does not say three months when it was twelve');
-  check(quarterly.lines.some((t) => /My Investigations/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
+  check(quarterly.lines.some((t) => /on the Work tab/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
   check(yearly.scene && yearly.stage === 'field', 'after the last extension, a last chance to ask for');
   // Asking, or accepting: one final three months, or the job ends.
   store.state = JSON.parse(snapshot); setNow(start + 12); C.settleProbation();

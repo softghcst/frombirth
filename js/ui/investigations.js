@@ -58,6 +58,7 @@ import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
+import { screenName } from './careerNames.js';
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -781,7 +782,7 @@ function overviewPage(p, r) {
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const lines = settle(player()); // anything whose date has come, made known before the page is drawn
-  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
+  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: screenName('investigations') });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');
   const render = () => {
