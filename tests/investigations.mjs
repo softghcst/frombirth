@@ -85,7 +85,7 @@ function makeOfficer(agencyKind = 'municipal') {
   const a2 = A.agencyOf('municipal', 'us', p.city);
   check(a1.id === a2.id && a1.employerId === a2.employerId, 'a department is made once and keeps its id');
   check(A.kindsIn('us').includes('state') && A.kindsIn('us').includes('county') && !A.kindsIn('us').includes('national'), 'the US has municipal, county and state agencies');
-  check(A.kindsIn('br').join() === 'national' && A.agencyOf('national', 'br', 'São Paulo').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
+  check(A.kindsIn('ng').join() === 'national' && A.agencyOf('national', 'ng', 'Lagos').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
@@ -1166,9 +1166,9 @@ section('forensic psychology: a doctorate and license, consultations that never 
 
 // ---------- 24. Police outside the US ----------
 {
-  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('br').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
+  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('ng').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
   check(A.agencyOf('territorial', 'uk', 'London').name === 'Metropolitan Police Service' && A.agencyOf('prefectural', 'jp', 'Tokyo').name === 'Tokyo Metropolitan Police Department', 'forces have their real-world names');
-  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'br', 'São Paulo').simplified, 'modeled forces are not marked simplified; the rest are');
+  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'ng', 'Lagos').simplified, 'modeled forces are not marked simplified; the rest are');
   const p = life('uk', 24);
   p.city = 'London';
   const a = makeOfficer('territorial');
@@ -1535,6 +1535,24 @@ section('officer wellbeing: strain from the work, confidential support, health c
   check(!old.file.outcome, 'a show decides nothing about the case');
 }
 section('true-crime media: old cases taken up years later, public attention, people coming forward, and the investigator asked to take part');
+
+// ---------- 36. Police in more countries, and their unions' rules ----------
+{
+  const UN = await import('../js/engine/investigations/unions.js');
+  const want = { de: 'landespolizei', in: 'state_in', br: 'policia_civil', mx: 'policia_mx', kr: 'knpa', it: 'polizia_stato', es: 'policia_nacional_es' };
+  for (const [c, kind] of Object.entries(want)) check(A.kindsIn(c).join() === kind && D.SOURCES[D.AGENCY_KINDS[kind].source]?.verified === false, `${c}: its own police (${D.AGENCY_KINDS[kind].name}), source named and unverified`);
+  check(A.agencyOf('landespolizei', 'de', 'Berlin').name === 'Polizei Berlin' && A.agencyOf('policia_nacional_es', 'es', 'Barcelona').name === 'Mossos d\'Esquadra' && A.agencyOf('state_in', 'in', 'Mumbai').name === 'Mumbai City Police', 'real force names where cities have their own');
+  const p = life('de', 22);
+  p.city = 'Berlin';
+  const a = makeOfficer('landespolizei');
+  const r = core.I();
+  check(a.kind === 'landespolizei' && /Polizei/.test(p.career.title), `a German recruit serves in the state police (${p.career.title})`);
+  r.job.rank = 'sergeant';
+  check(C.rankName('lieutenant', r) === 'Polizeikommissar' && C.rankName('detective', r) === 'Kriminalkommissar', 'German ranks and detective ranks');
+  check(/Beamte/.test(UN.strikeNote('de')) && /trade unions/.test(UN.strikeNote('in')) && /may not strike/.test(UN.strikeNote('ng')), 'union rules differ by country, and police may not strike in any');
+  check(UN.unionOf(a).name === 'the Gewerkschaft der Polizei', 'a German department\'s union is the GdP');
+}
+section('police in Germany, India, Brazil, Mexico, South Korea, Italy and Spain, with their own forces, ranks and union rules');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
