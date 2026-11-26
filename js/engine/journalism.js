@@ -36,6 +36,7 @@ import { exists } from './fame.js';
 import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
 import { polity } from './polity.js';
+import { addGifts } from './aptitudes.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -115,8 +116,10 @@ export function J(p = player()) {
     const w = levelOf('writing');
     p.journalism = { outletId: null, beat: 'local', since: null, skills: { reporting: 15 + Math.round(w / 4), interviewing: 15 + Math.round(p.stats.charm / 5), verification: 15, writing: 15 + Math.round(w / 3) },
       rep: { accuracy: 50, trust: 50, recognition: 0 }, acts: { year: null, used: 0 }, school: { articles: 0, year: null }, intern: null, history: [], awards: [], applied: {} };
+    p.journalism.skills.broadcast = 15; // presenting: kept apart from reporting
+    addGifts(p.journalism.skills, 'journalism', p); // a gift for writing, acting or singing (engine/aptitudes.js)
   }
-  p.journalism.skills.broadcast ??= 15; // presenting: kept apart from reporting
+  p.journalism.skills.broadcast ??= 15;
   p.journalism.scenes ??= {};
   return p.journalism;
 }
