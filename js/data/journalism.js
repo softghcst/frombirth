@@ -24,6 +24,11 @@ export const BEATS = {
   business: { name: 'Business', blurb: 'Companies, jobs and money: from published filings, never anyone\'s bank account.' },
   science: { name: 'Science and health', blurb: 'Studies and what they really show. One study proves little.' },
   kpop: { name: 'K-pop', blurb: 'Groups, releases and music shows, as they really happened. Rumors stay rumors.' },
+  education: { name: 'Education', blurb: 'Schools, teachers and results: from published inspections, never a pupil\'s record.' },
+  environment: { name: 'Environment', blurb: 'Rivers, air and land: from public monitoring, and the people who live with it.' },
+  technology: { name: 'Technology', blurb: 'Companies that make things with code. Their users\' data stays private.' },
+  arts: { name: 'Arts and culture', blurb: 'Theaters, orchestras and galleries: seasons that really open, and what people think of them.' },
+  data: { name: 'Data', blurb: 'The figures behind the news: published statistics, read carefully.', era: 1950 },
   investigative: { name: 'Investigations', blurb: 'Long stories that may, or may not, stand up. From senior reporter.', minLevel: 2 },
 };
 

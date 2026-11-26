@@ -66,6 +66,7 @@ async function run(viewport) {
   check(await page.locator('[data-inv] [data-act="hintOk"]').count() === 0, `${w}px: the tip is gone once read`);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
   check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
+  check(await page.locator('[data-inv] [data-sec="more"]').count() === 1, `${w}px: paths not open yet wait behind one More careers row`);
   check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Departments' }).first().click();
   await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
@@ -110,6 +111,7 @@ async function run(viewport) {
   await dismissMessages(page);
   await page.locator('[data-inv] [data-act="openCase"]').first().click();
   await page.waitForSelector('[data-case]');
+  check(await page.locator('[data-case] [data-tab="actions"].on').count() === 1, `${w}px: a case being worked opens on its actions`);
   const tabs = await page.locator('[data-case] [data-tab]').allInnerTexts();
   check(tabs.some((t) => /Notebook/i.test(t)) && tabs.some((t) => /Evidence/i.test(t)) && !tabs.some((t) => /Court/i.test(t)), `${w}px: the case file has its tabs, and no court tab before any charge (${tabs.join(', ')})`);
   for (const t of tabs) { await page.locator('[data-case] [data-tab]', { hasText: t }).first().click(); await page.waitForTimeout(60); }
