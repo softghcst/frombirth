@@ -1317,6 +1317,49 @@ section('pay: overtime from the work done, once a year; federal availability pay
 }
 section('journalism: an editor\'s desk, editorial standards, corrections');
 
+// ---------- 30. Careers around the cases ----------
+{
+  const AL = await import('../js/engine/investigations/allied.js');
+  const DEG = { crime_analyst: 'criminology', probation: 'criminal_justice', victim_advocate: 'psychology', court_reporter: 'english', inspector_general: 'accounting', compliance: 'law', insurance: 'business' };
+  for (const id of Object.keys(AL.ALLIED)) {
+    const p = life('us', 30, { degree: DEG[id] });
+    if (id === 'inspector_general') p.career.experience = { audit: 4 };
+    const t = AL.takeUp(id);
+    check(t.ok && p.career.careerId === `ally_${id}` && p.career.title === AL.ALLIED[id].ranks[0], `${id}: taken up through its own door (${t.text})`);
+    AL.alliedYear(p);
+    const w = AL.openAllied(p)[0];
+    check(w, `${id}: the year brings work from real records`);
+    if (!w) continue;
+    const good = AL.ALLIED[id].options.find((o) => o.good);
+    const res = AL.doAllied(w.id, good.id);
+    check(res.tone === 'good' && AL.alliedOf(p).careful === 1 && !AL.doAllied(w.id, good.id).ok, `${id}: done soundly, once`);
+    // The specific consequence, in the records it touches.
+    if (id === 'crime_analyst') check(w.subject.every((x) => k.J().investigations[x].file.leads.some((l) => /names nobody/.test(l.text))), 'the analyst\'s pattern is a lead on each linked case, naming nobody');
+    if (id === 'probation') check(['completed', 'active'].includes(k.J().sentences[w.subject].status) && k.J().sentences[w.subject].supervisedBy === p.id, 'a real sentence, supervised');
+    if (id === 'victim_advocate') check(k.J().investigations[w.subject].file.done.support, 'the person harmed is supported, and chooses for themselves');
+    if (id === 'court_reporter') check(k.J().cases[w.subject].transcript?.certified, 'a certified transcript on the real case');
+    if (id === 'insurance') check(k.J().investigations[w.subject].file.template === 'arson', 'the claim is for a real fire');
+    store.state.year += 1;
+    AL.alliedYear(p);
+    const w2 = AL.openAllied(p)[0];
+    if (w2) {
+      const bad = AL.ALLIED[id].options.find((o) => !o.good);
+      check(AL.doAllied(w2.id, bad.id).tone === 'bad' && AL.alliedOf(p).misconduct === 1, `${id}: the wrong way is costly`);
+      const A = AL.alliedOf(p); A.since = store.state.year - 5; A.careful = 6;
+      check(!AL.alliedCareerYear(p).length, `${id}: no promotion with misconduct on the record`);
+    }
+  }
+  const young = life('us', 19);
+  check(Object.keys(AL.ALLIED).every((id) => AL.alliedBlock(id, young)), 'none of this work before 21');
+  // A forensic scientist who specializes in digital work is a digital forensic examiner.
+  const FL = await import('../js/engine/investigations/forensicLab.js');
+  const sci = life('us', 28, { degree: 'computer_science' });
+  hire(CAREER_BY_ID.forensics, 0, 60, 'test');
+  FL.labRecord(sci);
+  if (store.state.year >= 1995) { FL.specialize('digital'); check(sci.career.title === 'Digital forensic examiner', 'a digital specialist is a digital forensic examiner'); }
+}
+section('careers around the cases: analysts, probation, victim advocates, court reporters, inspectors general, compliance and insurance investigators, digital forensic examiners');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
