@@ -4,6 +4,7 @@
 // federal applications, private work, a forensic scientist's bench, professional standards and the
 // public record. Every section reads the investigations engine (engine/investigations); every case
 // is read through its role-based view (views.js), so nothing here shows what the character cannot know.
+import { navRow } from './kit.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -458,26 +459,38 @@ const CASE_VIEWS = {
   actions: (v, inv) => {
     const st = W.steps(inv);
     const left = W.workLeft(inv);
+    const f = inv.file;
+    const mine = f.leadId === player().id;
     const ground = RT.groundworkSteps(inv.id);
-    let b = (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the Groundwork', { arg: inv.id, cls: 'primary' }) : '')
-      + st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id)).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
-    if (!inv.file.outcome && !inv.file.courtCaseId) {
-      b += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
-      for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
-      b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
+    // Grouped, so a long case reads as a few kinds of work rather than one long list.
+    const groups = [];
+    const add = (title, html, note = '') => { if (html) groups.push(`<div class="section-label">${esc(title)}</div>${note ? muted(note) : ''}${stack(html)}`); };
+    const steps = st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id));
+    add('Investigate', (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the groundwork', { arg: inv.id, cls: 'primary' }) : '')
+      + steps.filter((s) => !String(s.id).startsWith('lab:')).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join(''), 'Scene, people and records. Each step reveals what it can, once.');
+    add('Laboratory', steps.filter((s) => String(s.id).startsWith('lab:')).map((s) => btn('step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join(''), 'Results come back on their own dates.');
+    let tools = '';
+    if (['drugs', 'firearms', 'robbery', 'counterfeit'].includes(f.template) && !f.outcome && mine) {
+      if (!f.informantId) tools += btn('recruit', 'Recruit an informant, registered with your supervisor', { arg: `${inv.id}|register` }) + btn('recruit', 'Recruit an informant off the books', { arg: `${inv.id}|off`, cls: 'danger' });
+      else { tools += btn('meetCI', 'Meet the informant', { arg: inv.id }); if (f.tip && !f.tip.corroborated) tools += btn('corroborate', 'Check the tip against independent evidence', { arg: inv.id }); }
+      if (rec()?.undercover?.status !== 'active') tools += btn('undercover', 'Volunteer to go undercover on this case', { arg: inv.id });
     }
-    if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
-    if (['drugs', 'firearms', 'robbery', 'counterfeit'].includes(inv.file.template) && !inv.file.outcome && inv.file.leadId === player().id) {
-      const ci = inv.file.informantId;
-      if (!ci) b += btn('recruit', 'Recruit an informant, registered with your supervisor', { arg: `${inv.id}|register` }) + btn('recruit', 'Recruit an informant off the books', { arg: `${inv.id}|off`, cls: 'danger' });
-      else { b += btn('meetCI', 'Meet the informant', { arg: inv.id }); if (inv.file.tip && !inv.file.tip.corroborated) b += btn('corroborate', 'Check the tip against independent evidence', { arg: inv.id }); }
-      if (rec()?.undercover?.status !== 'active') b += btn('undercover', 'Volunteer to go undercover on this case', { arg: inv.id });
+    if (['homicide', 'robbery'].includes(f.template) && !f.compared && !f.outcome && mine) tools += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
+    if (MD.patientOf(inv) && !f.medical && !f.outcome) for (const [how, label] of Object.entries(MD.ASK)) tools += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
+    add('Other tools', tools);
+    let wrap = '';
+    if (!f.outcome && !f.courtCaseId) {
+      wrap += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
+      for (const id of inv.suspectIds) wrap += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
+      wrap += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
-    if (['homicide', 'robbery'].includes(inv.file.template) && !inv.file.compared && !inv.file.outcome && inv.file.leadId === player().id) b += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
-    if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
-    if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
-    if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
-    return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
+    if (f.review?.status === 'open') wrap += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    add('Wrapping up', wrap, f.outcome || f.courtCaseId ? '' : 'The report comes before a referral. The prosecutor decides on charges.');
+    let court = '';
+    if (v.court && !f.cross && !f.outcome) court += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
+    if (v.court && !f.testimony && !f.outcome) court += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
+    add('Court', court);
+    return card('What you can do', muted(`${left} hours of work left on this case this year.`) + (groups.join('') || muted('Nothing more to do on this file now.')));
   },
 };
 function openCaseFile(api, invId, refreshHub) {
@@ -683,6 +696,37 @@ const ACTIONS = {
 };
 
 /** Opens My Investigations. */
+/** The home screen's groups: each section as a row, with what it is for, in an order a player can follow. */
+const GROUPS = [
+  ['Your work', ['cases', 'bench', 'death', 'competency', 'psych', 'books', 'hospital', 'stories', 'press', 'standards']],
+  ['Your career', ['agency', 'career', 'team']],
+  ['Case history', ['archive', 'cold', 'reviews']],
+  ['Other paths', ['federal', 'private', 'integrity', 'allied']],
+  ['The wider world', ['policy', 'legacy']],
+];
+const SECTION_INFO = {
+  cases: ['Your open cases, and the hours each has left this year', 'briefcase'], bench: ['Requests from real cases, waiting on your bench', 'sparkle'],
+  death: ['Deaths referred to you by investigators', 'health'], competency: ['Evaluations ordered by the courts', 'health'], psych: ['Consultations, risk assessments and care for officers', 'people'],
+  books: ['Engagements on companies\' books', 'coin'], hospital: ['Patients from police cases, and what the police may know', 'health'],
+  stories: ['Stories you are working on', 'news'], press: ['Cases in the public record, and reporters\' drafts', 'news'], standards: ['Complaints, and how they are decided', 'passport'],
+  agency: ['Your department, detective seats, the union and community meetings', 'home'], career: ['Your record, promotions, wellbeing and honors', 'trophy'], team: ['Your partner, supervisor and the people you work with', 'people'],
+  archive: ['Cases you finished', 'archive'], cold: ['Old cases that new science could reopen', 'archive'], reviews: ['Convictions whose kept evidence could be tested anew', 'archive'],
+  federal: ['FBI, DEA, ATF, Marshals, Secret Service, HSI, IRS-CI', 'globe'], private: ['A license, your own agency, corporate work', 'id'],
+  integrity: ['Reviewing convictions for an innocence organization or a prosecutor', 'passport'], allied: ['Analysts, probation, advocates, court reporters and more', 'people'],
+  policy: ['Budgets, oversight, sheriffs and national reform', 'globe'], legacy: ['Your family\'s investigative careers', 'family'],
+};
+/** The home screen: where the player stands, anything waiting on them, then every section as a row. */
+function home(p, r, list) {
+  const have = new Set(list.map(([id]) => id));
+  const label = Object.fromEntries(list);
+  const groups = GROUPS.map(([name, ids]) => [name, ids.filter((id) => have.has(id))]).filter(([, ids]) => ids.length);
+  const sub = (id) => {
+    if (id === 'cases' && r) { const open = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome); return open.length ? `${open.length} open case${open.length === 1 ? '' : 's'}` : SECTION_INFO.cases[0]; }
+    return SECTION_INFO[id]?.[0] ?? '';
+  };
+  return `${hint('overview')}${VIEWS.overview(p, r)}${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div><div class="nav-group">${ids.map((id) => navRow({ attrs: `data-sec="${id}"`, label: label[id], sub: sub(id), ico: SECTION_INFO[id]?.[1] ?? 'sparkle' })).join('')}</div>`).join('')}`;
+}
+
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const lines = settle(player()); // anything whose date has come, made known before the page is drawn
@@ -694,15 +738,19 @@ export function openInvestigations(api, start = 'overview') {
     const r = rec(p);
     const list = sectionsFor(p, r);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>
-      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${hint(st.section)}${VIEWS[st.section](p, r)}</div>
-      ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
+    // The home screen lists every section; a section is a screen of its own, and Back (in the bar) returns home.
+    const name = Object.fromEntries(list)[st.section];
+    root.innerHTML = st.section === 'overview'
+      ? `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>${home(p, r, list)}`
+      : `<button type="button" class="btn small" data-back>‹ My Investigations</button><h2 style="margin-top:0">${esc(name)}</h2>
+        <div>${hint(st.section)}${VIEWS[st.section](p, r)}</div>`;
+    root.innerHTML += stack('<button type="button" class="btn" data-close>Close</button>');
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };
   root.addEventListener('click', async (e) => {
     const t = e.target;
     if (t.closest('[data-close]')) { modal.close(); return; }
+    if (t.closest('[data-back]')) { st.section = 'overview'; render(); modal.el.scrollTop = 0; return; }
     const sec = t.closest('[data-sec]');
     if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
     const b = t.closest('[data-act]');

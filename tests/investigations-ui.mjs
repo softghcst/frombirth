@@ -77,7 +77,7 @@ async function run(viewport) {
   await closeHub(page);
   await openHub(page);
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Overview' }).first().click();
+  // The hub opens on its home screen: where you stand, and every section as a row.
   await page.locator('[data-inv] [data-act="acceptAcademy"]').first().click();
   await dismissMessages(page);
   const ac = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const r = store.state.player.investigator; return { status: r.academy?.status, career: store.state.player.career.careerId }; });
@@ -152,6 +152,9 @@ async function run(viewport) {
   check(/Cause of death and manner of death are different findings/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a forensic pathologist sees their referrals, cause and manner kept apart`);
   await page.locator('[data-inv] [data-act="death"]').first().click();
   await dismissMessages(page);
+  // Back, in the bar, returns to the home screen with its rows.
+  await page.locator('#modal-root .modal:has([data-inv]) .modal-back').click(); await page.waitForTimeout(100);
+  check(await page.locator('[data-inv] .section-label').count() >= 2 && await page.locator('[data-inv] [data-sec]').count() >= 4, `${w}px: Back returns to the home screen, its sections grouped as rows`);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
   check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
   check(await fits(page), `${w}px: the new pages fit the screen`);
