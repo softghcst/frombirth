@@ -84,7 +84,7 @@ function makeOfficer(agencyKind = 'municipal') {
   const a2 = A.agencyOf('municipal', 'us', p.city);
   check(a1.id === a2.id && a1.employerId === a2.employerId, 'a department is made once and keeps its id');
   check(A.kindsIn('us').includes('state') && A.kindsIn('us').includes('county') && !A.kindsIn('us').includes('national'), 'the US has municipal, county and state agencies');
-  check(A.kindsIn('fr').join() === 'national' && A.agencyOf('national', 'fr', 'Paris').simplified, 'elsewhere: one national police service, marked simplified');
+  check(A.kindsIn('br').join() === 'national' && A.agencyOf('national', 'br', 'São Paulo').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
@@ -1162,6 +1162,31 @@ section('national police reform: passed by the legislature, body cameras that re
   check(FP.psychCareerYear(p).length && p.career.title === FP.RANKS[1], 'promotion on careful work');
 }
 section('forensic psychology: a doctorate and license, consultations that never name anyone, risk assessments the board decides on, confidential care for officers');
+
+// ---------- 24. Police outside the US ----------
+{
+  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('br').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
+  check(A.agencyOf('territorial', 'uk', 'London').name === 'Metropolitan Police Service' && A.agencyOf('prefectural', 'jp', 'Tokyo').name === 'Tokyo Metropolitan Police Department', 'forces have their real-world names');
+  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'br', 'São Paulo').simplified, 'modeled forces are not marked simplified; the rest are');
+  const p = life('uk', 24);
+  p.city = 'London';
+  const a = makeOfficer('territorial');
+  const r = core.I();
+  check(a.kind === 'territorial' && r.job?.agencyId === a.id && /constable/i.test(p.career.title), `a UK recruit becomes a police constable (${p.career.title})`);
+  check(store.state.npcs[a.chiefId].occupation === 'Commissioner', 'the Metropolitan Police is led by a commissioner');
+  r.job.rankSince = store.state.year - 6; r.rep.integrity = 90; r.rep.skill = 90; r.rep.reports = 90; r.rep.ethics = 90; r.rep.reliability = 90; r.rep.teamwork = 90; r.skills.leadership = 60;
+  r.job.rank = 'senior';
+  const next = C.promotionOptions(p)[0];
+  check(next?.name === 'Sergeant', `the next rank is a UK rank (${next?.name})`);
+  r.job.rank = 'sergeant';
+  check(C.promotionOptions(p)[0]?.name === 'Inspector', 'and after sergeant, inspector');
+  check(C.rankName('detective_sergeant', r) === 'Detective sergeant' && C.rankName('detective', r) === 'Detective constable', 'detectives are detective constables and sergeants');
+  const fr = life('fr', 22);
+  const pn = A.agencyOf('police_nationale', 'fr', fr.city);
+  check(pn.name === `Police nationale, ${fr.city}` && !C.policeUnmet(pn, fr).some((x) => /age/.test(x)), 'a 22-year-old can apply to the Police nationale');
+  check(D.AGENCY_KINDS.gendarmerie.entry && D.AGENCY_KINDS.police_nationale.prosecutor && D.SOURCES.jp_police.verified === false, 'entry routes and the prosecuting authority are described; sources unverified');
+}
+section('police outside the US: the UK, Canada, Australia, France and Japan with their own forces, names, ranks and entry routes');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

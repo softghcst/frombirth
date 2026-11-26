@@ -394,8 +394,15 @@ export function becomeDetective(p, r, a, unitId) {
   meet(partner, 'Detective partner');
   meet(u.headId, 'Detective sergeant');
   r.stats.units = [...new Set([...r.stats.units, u.specialty])];
-  p.career.title = `${DETECTIVE_RANKS[r.job.rank]?.name ?? 'Detective'}, ${SPECIALTIES[u.specialty].name.toLowerCase()}`;
+  p.career.title = `${rankName(r.job.rank, r) ?? 'Detective'}, ${SPECIALTIES[u.specialty].name.toLowerCase()}`;
   note(`Became a detective in ${SPECIALTIES[u.specialty].name.toLowerCase()} at ${a.name}.`, 'career', { key: `detective:${a.id}:${u.specialty}`, milestone: `Became a detective: ${SPECIALTIES[u.specialty].name}.`, significance: 2 });
+}
+
+/** A rank's name where the player serves: a UK force has constables and inspectors, a Japanese one junsa and keibu. */
+export function rankName(rankId, r = rec()) {
+  if (r?.family === 'federal') return FEDERAL_RANKS[rankId]?.name ?? null;
+  const d = AGENCY_KINDS[agency(r?.job?.agencyId)?.kind];
+  return d?.rankNames?.[rankId] ?? d?.detectiveNames?.[rankId] ?? POLICE_RANKS[rankId]?.name ?? DETECTIVE_RANKS[rankId]?.name ?? null;
 }
 
 // ---------- Promotions ----------
@@ -407,7 +414,7 @@ export function promotionOptions(p = player()) {
   const table = r.family === 'federal' ? FEDERAL_RANKS : r.job.detective ? DETECTIVE_RANKS : POLICE_RANKS;
   const cur = table[r.job.rank];
   if (!cur) return [];
-  const next = Object.entries(table).filter(([, x]) => x.order === cur.order + 1).map(([id, x]) => ({ id, ...x }));
+  const next = Object.entries(table).filter(([, x]) => x.order === cur.order + 1).map(([id, x]) => ({ id, ...x, name: rankName(id, r) ?? x.name }));
   return next.map((x) => {
     const served = year() - (r.job.rankSince ?? year());
     let block = '';
@@ -451,11 +458,12 @@ export function settlePromotions(p = player()) {
     r.job.rank = app.rank;
     r.job.rankSince = year();
     while (p.career.level < x.level && promote()) { /* the payroll follows the rank */ }
-    p.career.title = x.name;
+    const title = rankName(app.rank, r) ?? x.name;
+    p.career.title = title;
     if (x.leader) grow('leadership', 5);
     if (app.rank === 'chief') { const a = agency(r.job.agencyId); if (a) { const old = npc(a.chiefId); if (old) { old.occupation = 'Retired chief of police'; old.flags.justice.retired = year(); } a.chiefId = me(); } }
-    note(`Promoted to ${x.name.toLowerCase()}.`, 'career', { key: `rank:${app.rank}:${app.ownerId}`, milestone: `Promoted to ${x.name.toLowerCase()}.`, significance: x.leader ? 2 : 1 });
-    out.push(`You are now ${x.name.toLowerCase()}.`);
+    note(`Promoted to ${title.toLowerCase()}.`, 'career', { key: `rank:${app.rank}:${app.ownerId}`, milestone: `Promoted to ${title.toLowerCase()}.`, significance: x.leader ? 2 : 1 });
+    out.push(`You are now ${title.toLowerCase()}.`);
   }
   for (const line of out) log(line, 'system', 'neutral');
   return out;
