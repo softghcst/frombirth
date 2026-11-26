@@ -686,8 +686,8 @@ export function lawChoice(value) {
     case 'childReads': {
       const kid = store.state.npcs[L.childReads];
       if (!kid) return '';
-      if (choice === 'tell') { kid.meters.relationship = clamp(kid.meters.relationship + 8); kid.flags.inspiredByLaw = true; return `${kid.firstName} listens to all of it. Later you find them reading about law schools.`; }
-      if (choice === 'lesson') { kid.meters.relationship = clamp(kid.meters.relationship + 6); kid.flags.inspiredByLaw = true; return `${kid.firstName} is quiet for a while, then asks a question you did not expect: a good one.`; }
+      if (choice === 'tell') { kid.meters.relationship = clamp(kid.meters.relationship + 8); kid.flags.inspiredByLaw = true; if (!kid.flags.ownPath) { kid.flags.inspiredBy = 'law'; kid.flags.inspiredTrack = 'lawyer'; } return `${kid.firstName} listens to all of it. Later you find them reading about law schools.`; }
+      if (choice === 'lesson') { kid.meters.relationship = clamp(kid.meters.relationship + 6); kid.flags.inspiredByLaw = true; if (!kid.flags.ownPath) { kid.flags.inspiredBy = 'law'; kid.flags.inspiredTrack = 'lawyer'; } return `${kid.firstName} is quiet for a while, then asks a question you did not expect: a good one.`; }
       return `${kid.firstName} looks a little disappointed, and puts the paper away.`;
     }
     case 'burnout': {
@@ -1114,7 +1114,7 @@ export function familyLegalLegacy(viewerId = archiveIdOf(player())) {
     by.get(e.subject).push(e);
   }
   return [...by.entries()].map(([id, list]) => {
-    const a = archived(id);
+    const a = archived(id) ?? (() => { const n = store.state.npcs[id]; return n ? { firstName: n.firstName, lastName: n.lastName, born: { year: n.birthYear ?? store.state.year - n.age } } : null; })();
     const me = id === archiveIdOf(p);
     return { id, name: me ? `${p.firstName} ${p.lastName}` : a ? `${a.firstName} ${a.lastName}` : 'A relative', born: me ? p.birthYear : a?.born?.year ?? null, died: me ? null : a?.died?.year ?? a?.died ?? null,
       you: me, milestones: list.sort((x, y) => x.year - y.year).map((e) => ({ year: e.year, title: e.title, text: e.text, public: e.privacy === 'public' })) };

@@ -9,6 +9,7 @@ import { makeBirthInfo, dayInYearJustLived, birthdayFromDate } from './birthTag.
 import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess, secondaryShare } from './history.js';
 import { rule as lawRule } from './rules.js';
 import { rng } from '../rng.js';
+import { recordEvent, archiveIdOf } from './chronicle.js';
 import { spouseFactor } from './couple.js';
 import * as kid from './kidschool.js';
 import { showMark } from './grades.js';
@@ -227,6 +228,10 @@ function chooseMajor(npc) {
   if ((t.music ?? 0) >= 70) return 'music';
   const gpa = npc.life.edu.gpa;
   const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa && majorOpen(m.id, worldYear()));
+  // A child who caught a parent's interest in law (a story in the old papers, engine/lawPractice.js) leans toward a
+  // subject that leads to law school.
+  const toLaw = open.filter((m) => m.tracks?.includes('law'));
+  if (npc.flags.inspiredBy === 'law' && toLaw.length && rng.chance(0.7)) return rng.pick(toLaw).id;
   return rng.pick(open.length ? open : MAJORS.filter((m) => !m.audition && m.minGpa <= 2.2 && majorOpen(m.id, worldYear()))).id;
 }
 
@@ -319,8 +324,9 @@ function tickEducation(npc, quiet = false) {
         kid.graduated(npc);
         if (!quiet) note(npc, `graduated from ${kid.uniName(npc) ?? 'university'} with a degree in ${MAJOR_BY_ID[e.majorId].name}`, true, 'good');
         const tracks = MAJOR_BY_ID[e.majorId].tracks;
-        if (tracks.length && e.gpa >= 3.3 && rng.chance(0.3)) {
-          e.stage = rng.pick(tracks); e.yearsLeft = e.stage === 'law' ? 3 : 4;
+        const lawBound = npc.flags.inspiredBy === 'law' && tracks.includes('law') && e.gpa >= 3.0 && rng.chance(0.7);
+        if (lawBound || (tracks.length && e.gpa >= 3.3 && rng.chance(0.3))) {
+          e.stage = lawBound ? 'law' : rng.pick(tracks); e.yearsLeft = e.stage === 'law' ? 3 : 4;
           if (!quiet) note(npc, `was accepted to ${e.stage} school`, true, 'good');
           return;
         }
@@ -330,6 +336,9 @@ function tickEducation(npc, quiet = false) {
       } else {
         e.degrees.push(e.stage);
         if (!quiet) note(npc, e.stage === 'medical' ? 'qualified as a doctor' : 'qualified as a lawyer', true, 'good');
+        // A child of the player's who becomes a lawyer joins the family's legal legacy (Family Archive).
+        if (e.stage === 'law' && npc.role === 'child') recordEvent({ key: `law:npcAdmitted:${npc.id}`, type: 'legal_career', subject: archiveIdOf(npc), title: 'Qualified as a lawyer',
+          text: `${npc.firstName} qualified as a lawyer${npc.flags.inspiredBy === 'law' ? ', following a parent into the law' : ''}.`, privacy: 'family', significance: 2 });
       }
       e.stage = 'done';
     }

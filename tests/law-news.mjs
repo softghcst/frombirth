@@ -34,4 +34,28 @@ check(ev && ev.cast.words.kid === kid.firstName && ev.cast.words.headline, `a ch
 const before = kid.meters.relationship;
 const text = lp.lawChoice('childReads:tell');
 check(kid.meters.relationship > before && kid.flags.inspiredByLaw && /law schools/.test(text), 'telling them the whole story brings you closer, and gives them ideas');
+// What the child does with that: a lean toward law school, and law, never a certainty.
+{
+  const { ensureLife, tickLives } = await import('../js/engine/npcLives.js');
+  let legacySeen = false;
+  const run = (inspired) => {
+    let lawyers = 0;
+    for (let i = 0; i < 30; i++) {
+      lawyer('lawyer');
+      const p = store.state.player; p.age = 50;
+      for (const id of [...p.npcIds]) { const n = store.state.npcs[id]; if (n?.role === 'child') n.alive = false; }
+      const k = makeNpc({ role: 'child', countryId: p.countryId, age: 17, relationship: 70 });
+      store.state.npcs[k.id] = k; p.npcIds.push(k.id);
+      ensureLife(k); k.life.edu.gpa = 3.6; k.meters.intellect = 75;
+      if (inspired) { k.flags.inspiredBy = 'law'; k.flags.inspiredTrack = 'lawyer'; }
+      for (let y = 0; y < 10; y++) { k.age += 1; store.state.pendingEvents = []; tickLives(); }
+      if (k.life.edu.degrees.includes('law')) { lawyers++; if (lp.familyLegalLegacy().some((x) => !x.you && x.name.includes(k.firstName) && x.milestones.some((m) => /Qualified as a lawyer/.test(m.title)))) legacySeen = true; }
+    }
+    return lawyers;
+  };
+  const a = run(true); const b = run(false);
+  check(legacySeen, 'a child who became a lawyer is in the family\'s legal legacy');
+  check(a > b && a < 30, `a child who caught the interest goes to law school far more often, but not always (${a} of 30, against ${b})`);
+}
+
 finish('Big cases make the papers; the family reads them later.');
