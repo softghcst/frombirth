@@ -381,7 +381,7 @@ async function schoolAct(id) {
 /** A short guide to the legal career: shown the first time the screen opens, and again from How It Works. */
 const GUIDE = [
   ['Education & Licensing', 'Law school term by term, then the bar exam. Nobody practices until they are admitted.'],
-  ['My Cases', 'Your docket. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
+  ['My Cases', 'Your cases. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
   ['In court', 'When a case reaches a hearing or trial, you choose your opening, your objections, your questions and your closing.'],
   ['Career Progress', 'Your five skills, named for your practice area, your reputation, and the bigger jobs: partner, District Attorney, judge.'],
   ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],

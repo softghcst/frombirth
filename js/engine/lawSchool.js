@@ -131,7 +131,7 @@ export function entranceEdge(p = player()) {
   return clamp((x.best - 152) / 60, -0.25, 0.35);
 }
 /** Why the player cannot apply to law school yet, or ''. */
-export const applyBlock = (p = player()) => { const x = entrance(p); return x?.required && !x.best ? `Needs an ${x.name} score first. Sit it from Law School on the Work tab.` : ''; };
+export const applyBlock = (p = player()) => { const x = entrance(p); return x?.required && !x.best ? `Needs ${/^[aeiou]/i.test(x.name) ? 'an' : 'a'} ${x.name} score first. Sit it from Law School on the Work tab.` : ''; };
 
 // ---------- Terms and courses ----------
 
@@ -317,8 +317,8 @@ export function finishMoot(answers, p = player()) {
   const score = pts + avg(L, ['appellate', 'oral', 'research']) / 40 + (rng.next() - 0.5);
   gain(p, { appellate: 3, oral: 2, research: 1 });
   const place = score >= 3.6 ? 'won' : score >= 2.4 ? 'reached the semifinal' : 'went out in the first round';
-  if (place === 'won') { L.honors = [...(L.honors ?? []), `Moot court champion, ${store.state.year}`]; canon(`law:moot:${aid()}:${store.state.year}`, 'Won the moot court competition', 'Argued and won the final before a bench of judges.', { sig: 2 }); }
-  return result(place !== 'went out in the first round', `You ${place} of the moot court competition.`, place === 'won' ? 'good' : 'neutral', { place });
+  if (place === 'won') { L.honors = [...(L.honors ?? []), `Practice court champion, ${store.state.year}`]; canon(`law:moot:${aid()}:${store.state.year}`, 'Won the practice court competition', 'Argued and won the final before a bench of judges.', { sig: 2 }); }
+  return result(place !== 'went out in the first round', `You ${place} of the practice court competition.`, place === 'won' ? 'good' : 'neutral', { place });
 }
 
 /** Mock trial: an objection and a cross-examination, from a training case file. */

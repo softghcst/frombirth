@@ -195,7 +195,7 @@ while (!m.training && guard++ < 4) { strong(m); year(); }
 check(m.school.graduated, 'graduated from medical school');
 check(!!m.training && m.training.kind === 'residency' && m.training.pgy === 1, `matched into residency (${m.match?.status})`);
 check(['doctor', 'surgery', 'psychiatry'].includes(p.career.careerId) && p.career.level === 0, 'a resident is paid at the first level of the career');
-check(/PGY-1/.test(p.career.title), `a first-year resident's title says PGY-1 (${p.career.title})`);
+check(/^Trainee doctor, .+\(year 1\)$/.test(p.career.title) && !/PGY|Resident|Intern/.test(p.career.title), `a first-year trainee's title says so in plain words (${p.career.title})`);
 check(m.people.supervisorIds.length > 0, 'a resident has a supervising physician');
 check(['med_school_interview', 'med_anatomy_exam', 'med_patient_remember', 'med_choosing_specialty', 'med_match_day', 'med_first_night'].every((id) => m.scenes[`story:${id}`]), `the story of becoming a doctor is told (${Object.keys(m.scenes).join(', ')})`);
 check(!core.storyOnce('med_first_night', {}, m), 'and each part of it only once');
@@ -591,7 +591,7 @@ section('choosing where to work: the country\'s hospitals, a profile, an offer, 
   train.startTraining('internship', 'internal', site.e.id);
   check(gm.training.kind === 'internship' && gm.training.years === 2, 'in the UK profile, two supervised years come before specialty training');
   for (let i = 0; i < 6 && (gm.training?.kind ?? 'internship') === 'internship'; i++) { strong(gm); year(); }
-  if (gm.training) check(/^Specialty trainee/.test(q.career.title) && !/PGY/.test(q.career.title), `UK titles are not US ones (${q.career.title})`);
+  if (gm.training) check(/^Trainee doctor/.test(q.career.title) && !/PGY|Resident/.test(q.career.title), `UK titles are plain words, not US ones (${q.career.title})`);
   check(gm.license.status === 'full' && /GMC/.test(gm.license.name), `registration follows the UK profile (${gm.license.name})`);
 }
 {
@@ -656,8 +656,8 @@ section('the Story Director: one beat a year, each once, about the real life');
   store.state.year = was;
 }
 check(ROTATIONS.filter((r) => (SPECIALTY_BY_ID[r.specialty]?.minYear ?? 0) > 1900).every((r) => ROTATION_BEFORE[r.id]), 'a rotation in a specialty founded later has a name for the years before it (no Emergency Medicine rotation in 1925)');
-check(/National Board Part III/.test(jurisdictionIn('us', 1960).license.name) && /USMLE/.test(jurisdictionIn('us', 2000).license.name) && !/USMLE|National Board/.test(jurisdictionIn('us', 1910).exams.map((x) => x.name).join()), 'US exams and the license go by their names of the time (USMLE from 1992, the National Boards from 1916)');
-check(!/Match/.test(jurisdictionIn('us', 1930).selection) && /Match/.test(jurisdictionIn('us', 1960).selection), 'no residency Match before 1952');
+check(/National licensing exam, part 3/.test(jurisdictionIn('us', 1960).license.name) && /^Licensing exam, part 3/.test(jurisdictionIn('us', 2000).license.name) && !/licensing exam/i.test(jurisdictionIn('us', 1910).exams.map((x) => x.name).join()) && !/USMLE|National Board/.test(JSON.stringify([jurisdictionIn('us', 2000), jurisdictionIn('us', 1960)])), 'US exams and the license in plain words, as they were in their time (the national licensing exams from 1916; no USMLE or National Board on screen)');
+check(!/match/i.test(jurisdictionIn('us', 1930).selection) && /national match/.test(jurisdictionIn('us', 1960).selection), 'no national match of trainees to hospitals before 1952');
 section('before 1940: an internship, then general practice');
 {
   // Osteopathic graduates before full practice rights: fewer places, and in community or regional hospitals.
