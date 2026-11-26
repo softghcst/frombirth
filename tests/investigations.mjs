@@ -1123,6 +1123,46 @@ section('police unions: one per department, dues, representation that never chan
 }
 section('national police reform: passed by the legislature, body cameras that record, independent complaints, decertification');
 
+// ---------- 23. Forensic psychology ----------
+{
+  const FP = await import('../js/engine/investigations/forensicPsych.js');
+  const p = life('us', 34, { degree: 'psychology' });
+  check(/doctorate/.test(FP.psychBlock(p)) && !FP.startPractice().ok, 'forensic psychology needs a doctorate in psychology');
+  p.education.degrees.push({ type: 'doctorate', majorId: 'psychology', age: 30 });
+  check(FP.startPractice().ok && p.career.careerId === 'forensic_psych' && p.career.title === FP.RANKS[0], 'a licensed psychologist takes up forensic practice');
+  // Real records to work from: an open case a detective is working, and the department's officers.
+  const a = A.agencyOf('municipal', p.countryId, p.city);
+  const det = Object.values(a.units)[0].memberIds[0];
+  W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
+  // A real prisoner serving a custodial sentence, from a real court case (most cases end otherwise: tried until one does).
+  for (let i = 0; i < 40 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
+  const lines = FP.psychYear(p);
+  const work = FP.openWork(p);
+  check(work.some((w) => w.kind === 'consult') && work.some((w) => w.kind === 'risk') && lines.length >= 2, `work from real records (${work.map((w) => w.kind)})`);
+  const consult = work.find((w) => w.kind === 'consult');
+  const inv = k.J().investigations[consult.invId];
+  const ev0 = inv.evidenceIds.length;
+  check(FP.doWork(consult.id, 'behavior').ok && inv.file.leads.some((l) => /names nobody/.test(l.text)) && inv.evidenceIds.length === ev0, 'a consultation describes behavior: a lead, never evidence, never a name');
+  const risk = work.find((w) => w.kind === 'risk');
+  const r1 = FP.doWork(risk.id, 'structured');
+  const sen = k.J().sentences[risk.sentenceId];
+  check(r1.ok && sen.parole?.assessment && ['released on parole', 'parole refused'].includes(sen.parole.decision), `the parole board decides, on a structured assessment of a real prisoner (${sen.parole?.decision})`);
+  const officer = work.find((w) => w.kind === 'officer');
+  if (officer) {
+    const n0 = Object.keys(core.W().complaints).length;
+    FP.doWork(officer.id, 'report');
+    check(Object.keys(core.W().complaints).length === n0 + 1 && FP.psychRecord(p).breaches === 1, 'telling a supervisor what an officer said in confidence brings a complaint');
+  }
+  check(!FP.doWork(consult.id, 'behavior').ok, 'each piece of work is done once');
+  // Promotion on careful work only.
+  const F = FP.psychRecord(p);
+  F.since = store.state.year - 5; F.careful = 5; F.breaches = 1;
+  check(!FP.psychCareerYear(p).length, 'no promotion after a breach of confidence');
+  F.breaches = 0; F.overreach = 0;
+  check(FP.psychCareerYear(p).length && p.career.title === FP.RANKS[1], 'promotion on careful work');
+}
+section('forensic psychology: a doctorate and license, consultations that never name anyone, risk assessments the board decides on, confidential care for officers');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

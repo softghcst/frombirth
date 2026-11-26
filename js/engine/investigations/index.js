@@ -31,6 +31,7 @@ import { settleWorkplace, workplaceYear } from './workplace.js';
 import { labYear, careerYear as labCareerYear } from './forensicLab.js';
 import { unionYear } from './unions.js';
 import { reformYear } from './reform.js';
+import { psychYear, psychCareerYear } from './forensicPsych.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -73,6 +74,7 @@ export function tickInvestigations() {
   if (p.career?.careerId === 'forensics') { for (const line of [...labYear(p), ...labCareerYear(p)]) log(line, 'system', 'neutral'); } else benchYear(p);
   forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
+  for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.

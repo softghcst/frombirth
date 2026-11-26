@@ -25,6 +25,7 @@ import * as LO from '../engine/investigations/local.js';
 import * as FL from '../engine/investigations/forensicLab.js';
 import * as UN from '../engine/investigations/unions.js';
 import * as RF from '../engine/investigations/reform.js';
+import * as FP from '../engine/investigations/forensicPsych.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -54,6 +55,7 @@ function sectionsFor(p, r) {
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
+  if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
   if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections'], ['stories', 'My Stories']);
   if (FM.examinerNow(p) || FM.referrals('death', p).length) out.push(['death', 'Death Investigations']);
@@ -245,6 +247,15 @@ const VIEWS = {
     }
     return out;
   },
+  psych(p) {
+    const F = FP.psychRecord(p);
+    if (!F?.active) { const why = FP.psychBlock(p); return card('Forensic psychology', muted('Consultations for detectives, risk assessments for the parole board, and care for officers after critical incidents. A psychologist describes behavior and risk; others decide.') + (why ? muted(why) : stack(btn('psychStart', 'Take up forensic practice')))); }
+    const work = FP.openWork(p);
+    const LABEL = { consult: 'Consultation', risk: 'Risk assessment for the parole board', officer: 'An officer after a critical incident' };
+    return card('Your practice', kv([['Position', p.career.title], ['Careful work', String(F.careful)], ['Overreach', String(F.overreach)], ['Confidentiality breaches', String(F.breaches)]]))
+      + (work.length ? work.map((w) => card(LABEL[w.kind], kv([[w.kind === 'consult' ? 'Case' : 'Person', w.kind === 'consult' ? (store.state.justice.investigations[w.invId]?.file?.title ?? '—') : nm(w.personId)]])
+        + stack(FP.OPTIONS[w.kind].map(([label, v]) => btn('psychWork', label, { arg: `${w.id}|${v}`, cls: ['name', 'impression', 'report'].includes(v) ? 'danger' : '' })).join('')))).join('') : muted('No work waiting. Referrals come as the year turns.'));
+  },
   bench(p) {
     const L = FL.labRecord(p);
     const list = FL.queue(p);
@@ -409,6 +420,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  psychStart: (a, x) => x.say(FP.startPractice()),
+  psychWork: (a, x) => { const [id, v] = a.split('|'); return x.say(FP.doWork(id, v)); },
   reform: (a, x) => x.say(RF.propose(a)),
   unionJoin: (a, x) => x.say(UN.join()),
   unionLeave: (a, x) => x.say(UN.leave()),

@@ -233,6 +233,9 @@ export const TRACKS = [
     L(['Special agent', 68, 88, 5], ['Senior special agent', 92, 120, 4], ['Supervisory special agent', 124, 155, 4], ['Special agent in charge', 160, 195, 0])),
   T('irs_agent', 'IRS-CI special agent', 'law', { agencyHire: true, req: { ...uni(), ...ADULT, cleanRecord: true }, schedule: 'regular', stress: 2, values: ['service', 'craft'], outside: false, countries: ['us'] },
     L(['Special agent', 66, 86, 5], ['Senior special agent', 90, 118, 4], ['Supervisory special agent', 122, 152, 4], ['Special agent in charge', 158, 192, 0])),
+  // Forensic psychology (engine/investigations/forensicPsych.js): entered with a doctorate and a license, not hired cold.
+  T('forensic_psych', 'Forensic psychology', 'health', { agencyHire: true, req: { ...uni('psychology'), ...ADULT }, schedule: 'regular', stress: 2, values: ['care', 'service'], aliases: ['Forensic psychologist'] },
+    L(['Forensic psychologist', 70, 95, 4], ['Senior forensic psychologist', 98, 125, 4], ['Director of forensic psychology', 128, 160, 0])),
   T('forensics', 'Forensic science', 'law', { req: uni('chemistry', 'biology', 'criminal_justice', 'forensic_science'), schedule: 'on_call', stress: 2, values: ['craft', 'service'], aliases: ['Forensic investigator'] },
     L(['Crime scene technician', 42, 54, 2], ['Forensic investigator', 58, 76, 4], ['Senior forensic scientist', 80, 104, 5], ['Head of forensics', 108, 140, 0])),
   T('pi', 'Private investigation', 'novelty', { req: { ...ADULT, cleanRecord: true }, schedule: 'irregular', values: ['autonomy', 'excitement'], aliases: ['Private investigator'] },
