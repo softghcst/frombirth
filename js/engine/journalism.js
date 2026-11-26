@@ -443,8 +443,8 @@ export function assignYear(p = player()) {
     // A correspondent posted abroad reports where they are posted; court, sports and music stay with the home desk.
     const abroad = !!j.posting && j.posting.countryId !== p.countryId;
     const b = abroad && ['court', 'sports', 'entertainment'].includes(beat) ? 'local' : beat;
-    const gen = { local: localStory, court: (pp, oo, rr, ww) => courtStory(pp, oo, rr, cases, ww), sports: sportsStory, entertainment: musicStory, politics: politicsStory, investigative: investigativeStory,
-      business: businessStory, science: scienceStory, kpop: kpopStory, education: educationStory, environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, war: warStory }[b] ?? localStory;
+    const gen = { local: localStory, court: (pp, oo, rr, ww) => courtStory(pp, oo, rr, cases, ww), sports: sportsStory, entertainment: (pp, oo, rr, ww) => (rr.chance(0.5) ? filmStory(pp, oo, rr, ww) ?? musicStory(pp, oo, rr, ww) : musicStory(pp, oo, rr, ww) ?? filmStory(pp, oo, rr, ww)), politics: politicsStory, investigative: investigativeStory,
+      business: businessStory, science: scienceStory, kpop: (pp, oo, rr, ww) => (rr.chance(0.35) && kpopAwardsStory(pp, oo, rr, ww)) || kpopStory(pp, oo, rr, ww), education: educationStory, environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, war: warStory }[b] ?? localStory;
     const s = gen(p, o, r, where) ?? localStory(p, o, r, where); // nothing on the beat this year: a local story instead
     made.push(s);
   }
@@ -1026,6 +1026,18 @@ function sceneOptions(p) {
   add('jn_old_editor', { words: { editor: old ? nameOf(old.n) : '', first: old?.n.firstName ?? '', outlet: bigger?.name ?? '' }, npcId: old?.npcId }, !!old && !!bigger);
   const war = eventsIn(p.countryId).find((e) => e.war);
   add('jn_war_assignment', { words: { war: war?.name ?? '', outlet: o.name } }, !!war && (p.career.level ?? 0) >= 1 && j.warAsked !== year());
+  const openOf = (f) => myStories(p).find((x) => open(x, p) && f(x));
+  const idolStory = openOf((x) => x.beat === 'kpop' && x.sources.some((y) => y.type === 'entertainer'));
+  add('jn_idol_interview', { words: { idol: idolStory?.sources.find((y) => y.type === 'entertainer')?.name ?? '', group: idolStory?.subject ?? '' }, npcId: idolStory?.sources.find((y) => y.type === 'entertainer')?.npcId }, !!idolStory);
+  const sportStory = openOf((x) => x.beat === 'sports' && x.sources.some((y) => y.type === 'athlete'));
+  add('jn_athlete_win', { words: { athlete: sportStory?.sources[0]?.name ?? '', subject: sportStory?.subject ?? '' } }, !!sportStory);
+  const film = openOf((x) => x.links.productionId);
+  add('jn_premiere', { words: { title: film?.subject ?? '' } }, !!film);
+  add('jn_guest_changes', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && (j.guests ?? []).filter((g) => !g.declined).length >= 2);
+  const oldCase = pubs.find((x) => x.links?.caseId && year() - x.year >= 10);
+  add('jn_old_case', { words: { headline: oldCase?.headline ?? '', year: String(oldCase?.year ?? '') } }, !!oldCase);
+  const lettered = pubs.find((x) => ['investigative', 'business', 'environment', 'technology'].includes(x.beat) && year() - x.year <= 2 && !x.letter);
+  add('jn_legal_letter', { words: { headline: lettered?.headline ?? '' } }, !!lettered);
   const soft = myStories(p).find((x) => open(x, p) && x.needsComment && x.links.employerId);
   add('jn_owner_pressure', { words: { outlet: o.name, subject: soft?.subject ?? '' } }, !!soft && pubs.length >= 3);
   add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
@@ -1142,6 +1154,26 @@ export function journalismChoice(value) {
     case 'oldeditor:no': return '';
     case 'war:yes': { j.warAsked = year(); const r = seeded(`${p.id}/war/${year()}`); const s = warStory(p, o, r, { countryId: p.countryId, city: p.city }); return s ? `"${s.title}" is in your assignments.` : ''; }
     case 'war:no': j.warAsked = year(); return 'Your editor understands. Nobody has to go.';
+    case 'idol:music': { const st = myStories(p).find((x) => open(x, p) && x.beat === 'kpop'); rel(npc(st?.sources.find((y) => y.type === 'entertainer')?.npcId), 6); grow('interviewing', 2); return ''; }
+    case 'idol:rumor': { const st = myStories(p).find((x) => open(x, p) && x.beat === 'kpop'); rel(npc(st?.sources.find((y) => y.type === 'entertainer')?.npcId), -8); j.rep.trust = clamp(j.rep.trust - 3); return ''; }
+    case 'athlete:fair': grow('interviewing', 2); return '';
+    case 'athlete:injury': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'premiere:honest': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'premiere:kind': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'guest:correct': j.rep.trust = clamp(j.rep.trust + 3); grow('broadcast', 1); return '';
+    case 'guest:let': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'oldcase:reread': { const x = myPubs(p).find((y) => y.links?.caseId && year() - y.year >= 10); if (x) j.history.push({ year: year(), text: `Went back to "${x.headline}", ${year() - x.year} years on. It is still in the archive, as it ran.` }); j.rep.accuracy = clamp(j.rep.accuracy + 1); return ''; }
+    case 'oldcase:leave': return '';
+    case 'letter:review': case 'letter:ignore': {
+      const x = myPubs(p).find((y) => ['investigative', 'business', 'environment', 'technology'].includes(y.beat) && year() - y.year <= 2 && !y.letter);
+      if (!x) return '';
+      x.letter = { year: year(), answer: value };
+      const wrong = x.errors.filter((id) => !x.corrections.length);
+      if (value === 'letter:ignore') { if (wrong.length) { j.rep.trust = clamp(j.rep.trust - 5); return 'The letter was right about one thing, and it stays uncorrected.'; } return ''; }
+      if (wrong.length) { const c = x.claims.find((y) => y.id === wrong[0]); x.corrections.push({ at: now(), text: `Correction: an earlier version of this story said "${c?.text ?? 'something'}". That was not right.` }); j.rep.accuracy = clamp(j.rep.accuracy + 2); return 'Your notes show the letter is right on one point. A correction runs. On the rest, the story stands.'; }
+      j.rep.trust = clamp(j.rep.trust + 2);
+      return 'Your notes hold up on every point. Your editor writes back: the story stands.';
+    }
     case 'owner:decline': j.rep.trust = clamp(j.rep.trust + 3); rel(ed, 2); j.history.push({ year: year(), text: 'Declined a request to soften a story, and wrote down why.' }); return '';
     case 'owner:review': rel(ed, 5); grow('verification', 1); return '';
     case 'owner:soften': j.rep.trust = clamp(j.rep.trust - 5); return '';
@@ -1567,7 +1599,14 @@ function kpopStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const rumor = lead ? addClaim(s, { text: `${npc(lead)?.firstName} is secretly dating someone`, kind: 'allegation', truth: false }) : null;
   addDoc(s, { title: `The agency's release announcement and official profile`, settles: [{ claimId: c1.id }, ...(c3 ? [{ claimId: c3.id }] : [])] });
   addDoc(s, { title: 'The music show results', settles: [{ claimId: c2.id }] });
-  for (const id of members.slice(0, 2)) addSource(s, { npcId: id, name: nameOf(npc(id)), role: `Of ${g.name}`, type: 'entertainer', willing: 0.45, knows: [{ claimId: c1.id, says: true }, ...(c3 ? [{ claimId: c3.id, says: true }] : []), ...(rumor ? [{ claimId: rumor.id, says: false }] : [])] });
+  // Members by their official positions as the agency lists them (two at most each): the leader first, then the mains.
+  const POS = (id) => (g.positions?.[id] ?? []);
+  const rank = (id) => (POS(id).includes('leader') ? 0 : POS(id).some((x) => /^main/.test(x)) ? 1 : POS(id).length ? 2 : 3);
+  const talk = [...members].sort((a2, b2) => rank(a2) - rank(b2)).slice(0, 3);
+  const roleOf = (id) => (POS(id).length ? `${POS(id).map((x) => x.replace(/_/g, ' ')).join(' and ').replace(/^./, (c) => c.toUpperCase())} of ${g.name}` : `Of ${g.name}`);
+  for (const id of talk) addSource(s, { npcId: id, name: nameOf(npc(id)), role: roleOf(id), type: 'entertainer', willing: 0.45, knows: [{ claimId: c1.id, says: true }, ...(c3 ? [{ claimId: c3.id, says: true }] : []), ...(rumor ? [{ claimId: rumor.id, says: false }] : [])] });
+  const prodId = rel.credits?.producer;
+  if (prodId && npc(prodId)?.alive) addSource(s, { npcId: prodId, name: nameOf(npc(prodId)), role: `Producer of "${rel.title}"`, type: 'entertainer', willing: 0.65, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: won }] });
   addSource(s, { institution: true, name: 'The agency', role: 'Press office', type: 'company', willing: 0.4, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: won }] });
   addSource(s, { institution: true, name: 'Fan accounts online', role: 'Unverified posts', type: 'citizen', willing: 0.95, knows: rumor ? [{ claimId: rumor.id, says: true }] : [] });
   return s;
@@ -1823,7 +1862,7 @@ export function pitchLead(beat) {
   if (!yes) return result(false, `${nameOf(ed) || 'Your editor'} hears you out, and says no: "Not this year. Bring me something firmer."`, 'neutral');
   const w = j.posting ? { countryId: j.posting.countryId, city: j.posting.city } : { countryId: p.countryId, city: p.city };
   const gens = { local: localStory, politics: politicsStory, investigative: investigativeStory, business: businessStory, science: scienceStory, education: educationStory,
-    environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, sports: sportsStory, entertainment: musicStory, kpop: kpopStory };
+    environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, sports: sportsStory, entertainment: (pp, oo, rr, ww) => (rr.chance(0.5) ? filmStory(pp, oo, rr, ww) ?? musicStory(pp, oo, rr, ww) : musicStory(pp, oo, rr, ww) ?? filmStory(pp, oo, rr, ww)), kpop: kpopStory };
   const s = (gens[beat] ?? localStory)(p, o, r, w) ?? localStory(p, o, r, w);
   s.pitched = { own: true };
   grow('reporting', 1);
@@ -2085,4 +2124,56 @@ function athleteStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
 /** The people the reporter has interviewed, and how they get on: a contact book built from real interviews. */
 export function contacts(p = player()) {
   return Object.entries(J(p).contacts ?? {}).map(([id, c]) => ({ npcId: id, n: npc(id), ...c })).filter((x) => x.n).sort((a, b) => b.times - a.times);
+}
+
+// ---------- Film and television: what really came out ----------
+
+/** A film or series that really came out (engine/entertainment.js): its reviews and takings, from the published figures. */
+function filmStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const E = store.state.ent;
+  if (!E) return null;
+  const list = Object.values(E.productions ?? {}).filter((x) => x.status === 'released' && x.tier !== 'student' && x.countryId === w.countryId && x.reception && x.reception.year >= year() - 1
+    && !Object.values(S().stories).some((y) => y.links.productionId === x.id && y.reporterId === p.id));
+  const x = list.length ? r.pick(list) : null;
+  if (!x) return null;
+  const rc = x.reception;
+  const what = x.kind === 'tv' ? 'series' : 'film';
+  const s = newStory(p, o, 'entertainment', `${x.title}: the ${what}, and what critics made of it`, { subject: x.title, links: { productionId: x.id } });
+  const c1 = addClaim(s, { text: `${x.title} came out in ${rc.year}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: 'Critics liked it', truth: rc.critics >= 65 });
+  const c3 = addClaim(s, { text: x.kind === 'tv' ? 'It found a big audience' : 'It made its money back', truth: x.kind === 'tv' ? rc.audience >= 65 : (rc.profit ?? 0) > 0 });
+  const c4 = addClaim(s, { text: 'The lead gives the performance of their career', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The published reviews', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: x.kind === 'tv' ? 'The published ratings' : 'The published box office figures', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The cast\'s contracts', public: false, why: 'What the cast were paid is between them and the studio.' });
+  const dir = npc(x.directorId);
+  if (dir?.alive) addSource(s, { npcId: dir.id, name: nameOf(dir), role: `Director of ${x.title}`, type: 'entertainer', willing: 0.6, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c4.id, says: true }] });
+  const lead = (x.cast ?? []).find((c) => c.kind === 'lead' && c.who && c.who !== 'player' && c.who !== p.id && npc(c.who)?.alive);
+  if (lead) addSource(s, { npcId: lead.who, name: nameOf(npc(lead.who)), role: `Plays ${lead.character} in ${x.title}`, type: 'entertainer', willing: 0.5, knows: [{ claimId: c1.id, says: true }, { claimId: c3.id, says: true }] });
+  const critic = person(w, r, 'Critic', [28, 70]);
+  addSource(s, { npcId: critic.id, name: nameOf(critic), role: 'A critic who reviewed it', type: 'expert', willing: 0.8, knows: [{ claimId: c2.id, says: rc.critics >= 65 }, { claimId: c4.id, says: rc.critics >= 75 }] });
+  return s;
+}
+
+/** The year-end K-pop awards as they were really given (engine/kpop.js). */
+export function kpopAwardsStory(p, o, r) {
+  const K = store.state.kpop;
+  const y = year() - 1;
+  const a = K?.awards?.[y];
+  if (!a || Object.values(S().stories).some((x) => x.links.kpopAwards === y && x.reporterId === p.id)) return null;
+  const grand = K.releases[a.grand];
+  const g = grand && K.groups[grand.groupId];
+  if (!g) return null;
+  const s = newStory(p, o, 'kpop', `${g.name} take the Grand Prize`, { subject: g.name, links: { kpopAwards: y, groupId: g.id } });
+  const c1 = addClaim(s, { text: `${g.name} won the Grand Prize for "${grand.title}"`, truth: true, important: true });
+  const rookie = a.rookie && K.groups[a.rookie];
+  const other = Object.values(K.groups).find((x) => x.debut?.year === y && x.id !== a.rookie);
+  const c2 = rookie || other ? addClaim(s, { text: `${(rookie ?? other).name} were named Rookie of the Year`, truth: !!rookie }) : null;
+  const c3 = addClaim(s, { text: 'It was the night of their career', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The awards\' published list of winners', settles: [{ claimId: c1.id }, ...(c2 ? [{ claimId: c2.id }] : [])] });
+  const members = g.members.filter((m) => m.to == null).map((m) => m.who).filter((id) => id !== 'player' && npc(id)?.alive);
+  const leader = members.find((id) => (g.positions?.[id] ?? []).includes('leader')) ?? members[0];
+  if (leader) addSource(s, { npcId: leader, name: nameOf(npc(leader)), role: (g.positions?.[leader] ?? []).includes('leader') ? `Leader of ${g.name}` : `Of ${g.name}`, type: 'entertainer', willing: 0.5, knows: [{ claimId: c1.id, says: true }, { claimId: c3.id, says: true }] });
+  addSource(s, { institution: true, name: 'The agency', role: 'Press office', type: 'company', willing: 0.6, knows: [{ claimId: c1.id, says: true }] });
+  return s;
 }

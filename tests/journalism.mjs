@@ -622,6 +622,63 @@ function report(s) {
   section('contacts who return, rival newsrooms, athletes from the record, conflicts of interest disclosed');
 }
 
+// 18. Films that really came out, K-pop members by their positions, the year-end awards as given, a lawyer's letter.
+{
+  const p = life(30, 2010);
+  hireMe(p);
+  const { advanceYear: adv } = await import('../js/engine/yearProcessor.js');
+  for (let y = 0; y < 3; y++) adv();
+  const prods = Object.values(store.state.ent?.productions ?? {}).filter((x) => x.status === 'released' && x.tier !== 'student' && x.countryId === p.countryId && x.reception);
+  let film = null;
+  for (let y = 0; y < 8 && !film && prods.length; y++) {
+    for (const x of prods) x.reception.year = store.state.year;
+    jn.J().beat = 'entertainment'; jn.J().assigned = null; store.state.year += 1;
+    film = jn.assignYear(p).find((x) => x.links.productionId);
+  }
+  check(!prods.length || film, `a film story when films came out (${prods.length})`);
+  if (film) {
+    const x = store.state.ent.productions[film.links.productionId];
+    check(film.claims[1].truth === (x.reception.critics >= 65) && film.docs.some((d) => !d.public && /contracts/.test(d.title)), 'what critics thought, from the real reviews; contracts private');
+    check(film.sources.every((y) => y.npcId ? store.state.npcs[y.npcId] : y.institution), 'the director, the lead and a critic are real people');
+  }
+  // K-pop: members by official position (two labels at most), the producer, and the year-end awards as given.
+  const k = life(30, 2020, 'kr');
+  hireMe(k);
+  const kp = await import('../js/engine/kpop.js');
+  kp.world();
+  for (let y = 0; y < 3; y++) adv();
+  const K = store.state.kpop;
+  const rel = Object.values(K.releases).find((r) => !r.solo && K.groups[r.groupId]?.debut && r.credits?.producer);
+  if (rel) {
+    rel.year = store.state.year;
+    jn.J().beat = 'kpop'; jn.J().assigned = null;
+    let ks = null;
+    for (let i = 0; i < 6 && !ks; i++) { jn.J().assigned = null; ks = jn.assignYear(k).find((x) => x.links.kpopRelease); if (!ks) store.state.year += 0; }
+    if (ks) {
+      const g = K.groups[ks.links.groupId];
+      const members = ks.sources.filter((x) => x.type === 'entertainer' && !/Producer/.test(x.role));
+      check(members.every((m) => { const pos = g.positions?.[m.npcId] ?? []; return pos.length <= 2 && (pos.length ? pos.every((x) => m.role.toLowerCase().includes(x.replace(/_/g, ' '))) : /^Of /.test(m.role)); }), 'members are described by their official positions only');
+    }
+  }
+  const yAw = Object.keys(K.awards ?? {}).map(Number).sort().at(-1);
+  if (yAw) {
+    store.state.year = yAw + 1;
+    const aw = jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), { chance: () => true, pick: (a) => a[0], int: (a) => a, next: () => 0.5 });
+    check(aw && K.releases[K.awards[yAw].grand].groupId === aw.links.groupId && aw.claims[0].truth, 'the Grand Prize story is about the group that really won it');
+    check(!jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), {}), 'one awards story a year');
+  } else check(false, 'setup: a year of K-pop awards');
+  // A lawyer's letter: the notes decide. A story with an error gets a correction; one without stands.
+  const q = life(30);
+  hireMe(q);
+  const good = { id: 'pub_l1', reporterId: q.id, beat: 'business', headline: 'Sound', errors: [], claims: [{ id: 'a', text: 'A', asFact: true }], corrections: [], sources: [], outletId: jn.J().outletId, readers: 1, at: 0, year: store.state.year, links: {} };
+  jn.S().pubs[good.id] = good;
+  check(/stands/.test(jn.journalismChoice('letter:review')) && good.letter && !good.corrections.length, 'a sound story stands');
+  const bad = { ...good, id: 'pub_l2', headline: 'Shaky', errors: ['a'], letter: undefined, corrections: [] };
+  jn.S().pubs[bad.id] = bad;
+  check(/correction/.test(jn.journalismChoice('letter:review')) && bad.corrections.length === 1, 'a story with an error is corrected');
+  section('films from the real reviews, idols by their positions, the awards as given, a lawyer\'s letter answered from the notes');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');

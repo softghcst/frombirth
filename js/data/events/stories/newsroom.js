@@ -147,6 +147,30 @@ export default [
     ['Ask for a proper editorial review', 'The story is read again on its evidence. What holds up stays.', 'owner:review', 'good'],
     ['Soften it', 'It runs a little gentler than the evidence. You know it, and so do some readers.', 'owner:soften', 'bad'],
   ]),
+  scene('jn_idol_interview', 'Twenty minutes with {idol} of {group}, a manager by the door and a list of approved topics on the table.', [
+    ['Ask about the music', '{idol} lights up talking about the recording. It is the best quote you get all year.', 'idol:music', 'good'],
+    ['Ask about the dating rumor', 'The manager ends the interview. A rumor is still a rumor.', 'idol:rumor', 'bad'],
+  ]),
+  scene('jn_athlete_win', 'The dressing room after the win: noise, steam, and {athlete} ready to talk.', [
+    ['Ask about the game', 'You get the quote everyone else wanted.', 'athlete:fair', 'good'],
+    ['Ask about the injury people are whispering about', '"That is private." It is, and they walk off.', 'athlete:injury', 'bad'],
+  ]),
+  scene('jn_premiere', 'The premiere of {title}: a red carpet, free drinks, and a director who is very charming to the press.', [
+    ['Write what you thought, plainly', 'Readers can trust a review that could have gone either way.', 'premiere:honest', 'good'],
+    ['Be kind: they were so nice', 'The review is warmer than the film.', 'premiere:kind'],
+  ]),
+  scene('jn_guest_changes', 'Live on {show}, a guest says the opposite of what they told you last year, and looks straight at the camera.', [
+    ['Put the earlier answer to them, calmly', 'They explain the change. Viewers can judge.', 'guest:correct', 'good'],
+    ['Let it go and move on', 'Nobody notices. You do.', 'guest:let'],
+  ]),
+  scene('jn_old_case', 'A case you covered in {year} is back in the news. "{headline}" is still in the archive, as it ran.', [
+    ['Read it again, carefully', 'It holds up better than you feared, and you remember the people in it.', 'oldcase:reread', 'good'],
+    ['Leave it to the people covering it now', 'It was a long time ago.', 'oldcase:leave'],
+  ]),
+  scene('jn_legal_letter', 'A lawyer\'s letter arrives about "{headline}": it says the story was wrong, and demands a retraction.', [
+    ['Go back through your notes, point by point', 'What the evidence holds stays. What it does not is corrected.', 'letter:review', 'good'],
+    ['Ignore it', 'Letters like this come in all the time.', 'letter:ignore'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],
