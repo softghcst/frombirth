@@ -110,7 +110,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       // Who is talking: the planner, the partner, or no one (what happens, told).
       const speaker = who === 'partner' ? { face: themFace(95), name: npc.firstName } : who === 'narrator' ? null : { face: plannerFace, name: planner };
       root.innerHTML = `
-        <div class="sv-scene">${stage({ kiss })}
+        <div class="sv-scene${body ? '' : ' wp-short'}">${stage({ kiss })}
           <div class="sv-talk">
             ${speaker ? `<div class="sv-speaker"><div class="sv-stylist">${speaker.face}</div>
               <div class="sv-bubble" aria-live="polite"><strong>${esc(speaker.name)}</strong><p>${esc(line)}</p></div></div>`
@@ -295,7 +295,12 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     /** The day: down the aisle, the vows, the kiss, confetti. */
     function aisle() {
       const music = { playlist: 'Your song', dj: 'The DJ fades the music down', band: 'The band', quartet: 'The string quartet' }[chosen('music')];
-      scene({ who: 'narrator', line: `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`, bill: false,
+      // The bride walks down the aisle; when both or neither are women, either of them might.
+      const women = [p.gender === 'female', npc.gender === 'female'];
+      const youWalk = women[0] !== women[1] ? women[0] : Math.random() < 0.5;
+      scene({ who: 'narrator', bill: false, line: youWalk
+        ? `${music} starts to play, and everyone stands. It's your turn: down the aisle, to ${npc.firstName}, waiting at the end of it.`
+        : `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`,
         replies: [{ label: 'Take their hand', primary: true, go: vows }] });
     }
     function vows() {
