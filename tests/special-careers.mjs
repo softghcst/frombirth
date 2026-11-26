@@ -27,7 +27,7 @@ const life = (age = 22) => {
   check(music.formAct('solo').ok && sc.current() === 'music', `forming an act makes music the career (${sc.current()})`);
   check(/One special career at a time/.test(sc.whyNot('acting')) && sc.whyNot('music') === '', 'acting waits while music is the career');
   check(sc.claim('sports') !== '', 'and so does sport');
-  check(sc.SPECIAL_CAREERS.length === 8, 'eight special careers');
+  check(sc.SPECIAL_CAREERS.length === 9, 'nine special careers');
   const r = sc.leave();
   check(r.ok && sc.current() === null && p.flags.specialPast?.[0]?.id === 'music', 'leaving it is recorded');
   check(sc.claim('acting') === '' && sc.current() === 'acting', 'then another can be taken up');

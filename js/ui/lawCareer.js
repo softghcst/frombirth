@@ -9,6 +9,9 @@ import { fitBar } from './fitBars.js';
 import * as ls from '../engine/lawSchool.js';
 import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
+import * as camp from '../engine/lawCampaign.js';
+import * as acad from '../engine/lawAcademy.js';
+import { openCampaign } from './lawCampaignScreen.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
 import { caseLaws, eraNotes } from '../engine/realLaw.js';
@@ -30,7 +33,6 @@ function tabs() {
   const out = [['overview', 'Overview'], ['education', 'Education & Licensing']];
   const anyCases = (L?.caseIds ?? []).length > 0;
   if (anyCases || t) out.push(['cases', 'My Cases']);
-  if (anyCases) out.push(['clients', 'Clients'], ['filings', 'Filings & Deadlines'], ['court', 'Courtroom']);
   if (t && !lp.mayPractice(p) && !['prosecutor', 'defender', 'gov_counsel'].includes(t)) out.push(['new', 'New Cases']);
   if (t) out.push(['progress', 'Career Progress'], ['office', t === 'own' ? 'Your Firm' : 'Office']);
   if ((L?.history ?? []).length || ls.admitted(p)) out.push(['history', 'Career History']);
@@ -46,6 +48,7 @@ function overview() {
   const lines = [];
   if (o.title) lines.push(kv('Position', `${o.title}${o.trackName ? `, ${o.trackName.toLowerCase()}` : ''}`));
   if (o.specialty) lines.push(kv('Practice', o.specialty.name));
+  if (p.law?.policeYears > 0) lines.push(kv('Before law', `${p.law.policeYears} year${p.law.policeYears === 1 ? '' : 's'} in law enforcement`));
   lines.push(kv('Admitted to practice', o.admitted ? (p.law.bar.admitted.legacy ? 'Yes (before records were kept)' : String(p.law.bar.admitted.year)) : 'Not yet'));
   if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.termsFor(p)}${S.probation ? ' · on probation' : ''}`));
   if (o.track) lines.push(kv('Open cases', `${o.workload.open}`), kv('Years of legal work', String(Math.round(o.years))));
@@ -85,9 +88,10 @@ function education() {
   if (S?.done || ls.hasLawDegree(p)) {
     const b = ls.barStatus(p);
     const att = L.bar.attempts;
-    parts.push(card(`The ${ls.barExamName(p)}`, `${kv('Status', b.stage === 'admitted' ? 'Admitted' : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
+    const adm = L.bar.admitted;
+    parts.push(card(`The ${ls.barExamName(p)}`, `${kv('Status', b.stage === 'admitted' ? (adm?.year && !adm.legacy ? `Admitted in ${adm.year}` : 'Admitted') : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
       ${b.stage === 'admitted' || b.stage === 'training' ? '' : `<div class="btn-stack">${!b.prepared ? `${btn('Take a Bar Course', 'data-law="prepCourse"')}${btn('Study on Your Own', 'data-law="prepSelf"')}` : ''}${b.stage === 'open' ? btn(`Sit the ${prof.exam}`, 'data-law="bar"', 'primary') : ''}</div>`}
-      <p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`));
+      ${b.stage === 'admitted' ? '' : `<p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`}`));
   }
   const rl = ls.canReadLaw(p);
   if (!rl || p.law?.readLaw) parts.push(card('Reading the law', p.law?.readLaw ? kv('Status', p.law.readLaw.done ? 'Done: you may be examined for the bar' : `In ${nameOf(p.law.readLaw.mentorId)}'s office, ${Math.max(0, p.law.readLaw.until - ls.nowM())} months to go`)
@@ -95,6 +99,17 @@ function education() {
   if (!parts.length) parts.push(`<p class="muted">${esc(p.education.degrees.some((d) => d.type === 'university') ? 'Apply to law school from Plan What Comes Next.' : 'Law school comes after a first degree.')}</p>`);
   const note = prof.depth === 'full' ? '' : `<p class="muted">${esc(prof.name)}: ${esc(prof.note ?? 'a simplified model of how lawyers qualify here.')}</p>`;
   const era = eraNotes(p.countryId);
+  // After law school: a clerkship with a judge, or the academy.
+  if (ls.admitted(p)) {
+    const cw = acad.clerkshipWhy(p); const pw = acad.professorWhy(p);
+    const C = L.clerkship;
+    const duties = acad.professorDuties(p);
+    parts.push(card('Beyond Practice', `${C ? kv('Clerkship', C.done ? 'Done' : `Clerking for Judge ${store.state.npcs[C.judgeId]?.lastName ?? ''}`) : ''}
+      ${L.professor ? kv('Law faculty', `${p.career?.careerId === 'academic' ? p.career.title : 'Former professor'} · ${L.professor.articles} article${L.professor.articles === 1 ? '' : 's'}${L.professor.tenure ? ` · tenure ${L.professor.tenure}` : ''}`) : ''}
+      ${row(`data-acad="clerk" ${cw ? 'disabled' : ''}`, 'Apply for a Judicial Clerkship', cw || 'A year working for a judge: research, drafting, and how courts decide.')}
+      ${row(`data-acad="professor" ${pw ? 'disabled' : ''}`, 'Apply to Teach Law', pw || 'A faculty vote after a job talk. Then teaching, writing, and tenure in year six.')}
+      ${duties.length ? `<div class="section-label">This term</div>${duties.map((d) => row(`data-profduty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')}` : ''}`));
+  }
   return parts.join('') + note + (era.length ? card(`The law in ${store.state.year}`, era.map((x) => `<p class="muted">${esc(x)}</p>`).join('')) : '');
 }
 
@@ -105,43 +120,40 @@ function myCases() {
   const closed = all.filter((c) => c.done).reverse().slice(0, 12);
   const line = (c) => row(`data-case="${c.id}"`, c.title, `${lc.roleName(c)} · ${COMPLEXITY[c.level]} · ${c.done ? c.outcome?.text ?? 'Closed' : lc.STAGE_NAME[lc.stageOf(c)] ?? ''}${c.awaiting && !c.done ? ' · needs you' : ''}`);
   const w = lc.workload();
-  return `${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
+  // One page for the docket: what needs you now (hearings, then filings due), the open cases, the closed ones, the clients.
+  const court = open.filter((c) => c.awaiting && c.awaiting.since <= ls.nowM());
+  const due = filingRows().filter((r) => r.due - ls.nowM() <= 3);
+  const needs = court.length || due.length ? `<div class="section-label">Needs you</div>${court.map((c) => row(`data-case="${c.id}"`, `In court: ${c.title}`, `${lc.forumName(c)}${c.jury ? ' · jury' : ''}`)).join('')}${due.map(filingRow).join('')}` : '';
+  const clientRows = clients(true);
+  return `${needs}${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
     ${lp.trackOf() ? fitBar('Workload', Math.min(100, w.points / w.capacity * 70)) : ''}
+    ${open.some(lc.hasRoutine) ? `<div class="btn-row">${btn('Handle Routine Work on All Cases', 'data-routineall', 'primary')}</div>` : ''}
     ${lp.trackOf() ? `<div class="btn-row law-load">${btn('Ask for Support', 'data-load="support"')}${btn('Take Leave', 'data-load="leave"')}</div>` : ''}
-    ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}`;
+    ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}
+    ${clientRows ? `<div class="section-label">Clients</div>${clientRows}` : ''}`;
 }
 
 /** Everyone the player has represented, and where their case stands. */
-function clients() {
+function clients(quiet = false) {
   const all = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c?.clientId);
   const seen = new Map();
   for (const c of all) { const x = seen.get(c.clientId) ?? { id: c.clientId, cases: [] }; x.cases.push(c); seen.set(c.clientId, x); }
-  if (!seen.size) return '<p class="empty">No clients yet. A prosecutor and agency counsel act for the government, not for clients.</p>';
+  if (!seen.size) return quiet ? '' : '<p class="empty">No clients yet. A prosecutor and agency counsel act for the government, not for clients.</p>';
   return [...seen.values()].map((x) => `<button type="button" class="tree-row" data-npcperson="${x.id}"><strong>${esc(nameOf(x.id))}</strong><small>${esc(x.cases.map((c) => `${c.title}: ${c.done ? c.outcome?.kind ?? 'closed' : lc.STAGE_NAME[lc.stageOf(c)] ?? ''}`).join(' · '))}</small></button>`).join('');
 }
 
 /** Every filing still to make, across all open cases, soonest first. */
-function filingsPage() {
-  const rows = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done)
+function filingRows() {
+  return ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done)
     .flatMap((c) => [...lc.proceduralDue(c).map((pf) => ({ c, name: pf.name, due: pf.deadline.due })), ...(c.deadlines.filter((d) => d.id === 'filing' && d.met == null).map((d) => ({ c, name: d.label, due: d.due })))])
     .sort((a, b) => a.due - b.due);
-  if (!rows.length) return '<p class="empty">Nothing due.</p>';
-  return rows.map((r) => row(`data-case="${r.c.id}"`, r.name, `${r.c.title} · ${r.due - ls.nowM() > 0 ? `due in ${r.due - ls.nowM()} month${r.due - ls.nowM() === 1 ? '' : 's'}` : 'due now'}`)).join('');
 }
-
-/** Days in court waiting for the player, and the ones coming. */
-function courtPage() {
-  const open = ls.lawOf().caseIds.map(lc.caseById).filter((c) => c && !c.done);
-  const now = open.filter((c) => c.awaiting && c.awaiting.since <= ls.nowM());
-  const later = open.filter((c) => c.awaiting && c.awaiting.since > ls.nowM());
-  return `${now.length ? `<div class="section-label">Waiting for you</div>${now.map((c) => row(`data-case="${c.id}"`, c.title, `${lc.forumName(c)}${c.jury ? ' · jury' : ''}`)).join('')}` : '<p class="empty">No hearing is waiting for you.</p>'}
-    ${later.length ? `<div class="section-label">Set for later</div>${later.map((c) => row(`data-case="${c.id}"`, c.title, `Retrial in ${c.awaiting.since - ls.nowM()} months`)).join('')}` : ''}`;
-}
+const filingRow = (r) => row(`data-case="${r.c.id}"`, r.name, `${r.c.title} · ${r.due - ls.nowM() > 0 ? `due in ${r.due - ls.nowM()} month${r.due - ls.nowM() === 1 ? '' : 's'}` : 'due now'}`);
 
 function newCases() {
   const list = lp.offers();
   if (!list.length) return '<p class="empty">No new cases this half-year. More come in time.</p>';
-  return list.map((o) => `<div class="card law-offer"><h3>${esc(o.prominent ? 'A Prominent Client' : o.returning ? 'A Former Client Returns' : KIND_NAME[o.kind] ?? 'A New Case')}</h3>
+  return list.map((o) => `<div class="card law-offer"><h3>${esc(o.personal ? `Your ${o.personal.replace(/^./, (x) => x.toUpperCase())} Asks for Help` : o.prominent ? 'A Prominent Client' : o.returning ? 'A Former Client Returns' : KIND_NAME[o.kind] ?? 'A New Case')}</h3>
     <p>${esc(o.summary)}</p>${kv('Complexity', COMPLEXITY[o.level])}${kv('Expected fee', fmtMoney(o.fee, country()))}${o.second ? kv('Your part', 'Second chair, under a supervisor') : ''}
     <div class="btn-row">${btn('Accept', `data-accept="${o.id}"`, 'primary')}${btn('Refer', `data-refer="${o.id}"`)}${btn('Decline', `data-decline="${o.id}"`)}</div></div>`).join('');
 }
@@ -154,9 +166,18 @@ function progress() {
   return `${card(o.title ?? 'Your practice', `${kv('Practice area', o.specialty?.name ?? 'None chosen')}${kv('Years of legal work', String(Math.round(o.years)))}${kv('Cases you lead', `up to ${o.capName}`)}
     ${btn('Change Practice Area', 'data-law="specialty"')}`)}
     ${ns ? card('Next step', `${kv('Next', ns.title)}${ns.yearsLeft ? kv('Years to go', String(ns.yearsLeft)) : ''}${ns.missing.length ? `<p class="muted">Also needed: ${esc(ns.missing.join('; '))}.</p>` : '<p class="muted">Eligible. It depends on your reviews and on a place opening up.</p>'}`) : ''}
+    ${campaignCard()}
     ${ops.length ? card('Opportunities', ops.map((x) => row(`data-seek="${x.id}" ${x.why ? 'disabled' : ''}`, x.name, x.why || (x.how ? `Chosen by: ${x.how}` : ''))).join('')) : ''}
-    ${card('Skills', o.skills.map((s) => fitBar(s.name, s.v)).join(''))}
+    ${card(o.specialty ? `Skills in ${o.specialty.name}` : 'Skills', o.skills.map((s) => fitBar(s.name, s.v)).join('') + (o.specialty ? '<p class="muted">Named for your practice area. Change areas and they take new names; what you have learned stays.</p>' : ''))}
     ${card('Reputation', o.rep.map((r) => fitBar(r.name, r.v)).join('') + '<p class="muted">Built from how you work, not how many cases you win.</p>')}`;
+}
+
+/** A race in progress: a short card here; the trail itself is its own screen (ui/lawCampaignScreen.js). */
+function campaignCard() {
+  const c = camp.campaignOf();
+  if (!c) return '';
+  const stage = c.round > camp.ROUNDS ? 'Election Day is here' : `Stretch ${c.round} of ${camp.ROUNDS}`;
+  return card(`Running for ${c.title}`, `${kv('Now', stage)}<div class="btn-row">${btn('Open the Campaign', 'data-campopen', 'primary')}</div>`);
 }
 
 function office() {
@@ -168,11 +189,13 @@ function office() {
     return card(f.name, `${kv('Founded', String(f.founded))}${kv('Staff', String(f.staff))}${kv('Firm cash', fmtMoney(f.cash, country()))}
       ${kv('Fees', lp.FEE_STRATEGIES[L.fees ?? 'standard'].name)}${kv('Malpractice cover', L.malpractice ? 'Insured' : 'None')}
       <div class="btn-row">${btn('Advertise', 'data-firm="ads"')}${btn('Set Fees', 'data-firm="fees"')}${btn(L.malpractice ? 'Drop Malpractice Cover' : 'Insure Against Malpractice', 'data-firm="insure"')}</div>
-      <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`);
+      <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`)
+      + card('Your Lawyers', `${f.associates.length ? f.associates.map((a) => row(`data-partner="${a.id}" ${a.canPartner ? '' : 'disabled'}`, a.name, a.partner ? `Partner since ${a.partnerSince}` : a.canPartner ? `Associate since ${a.since} · Make Partner` : `Associate since ${a.since}`)).join('') : '<p class="empty">Just you, for now.</p>'}
+        <div class="btn-row">${btn('Hire an Associate', 'data-firm="hire"')}</div><p class="muted">Associates carry cases and bring in fees. Pass someone over for too long, and they may leave.</p>`);
   }
   const duties = lp.leaderDuties(p);
   const lead = duties.length ? card('Your duties this half-year', duties.map((d) => row(`data-duty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')) : '';
-  const bench = t === 'judiciary' ? card('The bench', `<p class="muted">Civil and family matters come before you as well as criminal trials. Rule on the evidence; know when to step aside.</p>${btn('Hear a Civil or Family Matter', 'data-bench', 'primary')}${(p.law?.benchRecord ?? []).slice(-5).reverse().map((r) => kv(String(r.year), `${r.title}: ${r.reversed ? 'reversed on appeal' : r.right ? 'upheld' : 'stood'}`)).join('')}`) : '';
+  const bench = t === 'judiciary' ? card('The bench', `<p class="muted">Criminal trials, civil disputes and family matters all come before you. Rule on the evidence; know when to step aside.</p>${btn('Hear the Next Matter', 'data-bench', 'primary')}${(p.law?.benchRecord ?? []).slice(-5).reverse().map((r) => kv(String(r.year), `${r.title}: ${r.reversed ? 'reversed on appeal' : r.right ? 'upheld' : 'stood'}`)).join('')}`) : '';
   const sup = lp.supervisor(p);
   const v = lp.officeView(p);
   return lead + bench + card(p.career.title, `${kv('Employer', v.employer?.name ?? employer(p.career.employerId)?.name ?? 'Your office')}${v.employer?.founded ? kv('Founded', String(v.employer.founded)) : ''}${kv('Reports to', `${sup.firstName} ${sup.lastName}, ${sup.flags.title.toLowerCase()}`)}
@@ -200,14 +223,15 @@ function casePage(c) {
   const next = c.done ? 'Closed' : c.awaiting ? (c.awaiting.what === 'trial' ? 'Trial: waiting for you' : 'Hearing: waiting for you') : `${lc.STAGE_NAME[c.stages[c.stageIdx + 1]?.s] ?? 'Next stage'} ${c.due - ls.nowM() > 0 ? `in ${c.due - ls.nowM()} month${c.due - ls.nowM() === 1 ? '' : 's'}` : 'next'}`;
   return `<div class="eyebrow">${esc(lc.roleName(c))}</div><h2>${esc(c.title)}</h2>
     <p class="muted">${esc(c.summary)}</p>
-    ${card('The case', `${kv('Stage', c.done ? 'Closed' : lc.STAGE_NAME[st] ?? st)}${kv('Where', lc.forumName(c))}${c.jury ? kv('Decided by', 'A jury') : ''}${kv('Complexity', COMPLEXITY[c.level])}${kv('Fee', { salary: 'Salaried: no fee', hourly: 'By the hour', flat: 'A flat fee', contingency: `A share of any award (${Math.round((lc.contingencyRule(c.templateId, c.countryId).share ?? 0) * 100)}%)` }[c.fee.model] ?? c.fee.model)}${kv('Next', next)}
+    ${card('The case', `${kv('Stage', c.done ? 'Closed' : lc.STAGE_NAME[st] ?? st)}${kv('Where', lc.forumName(c))}${c.jury ? kv('Decided by', 'A jury') : ''}${kv('Complexity', COMPLEXITY[c.level])}${kv('Fee', { salary: 'Salaried: no fee', pro_bono: 'No fee: you are doing this for family or a friend', hourly: 'By the hour', flat: 'A flat fee', contingency: `A share of any award (${Math.round((lc.contingencyRule(c.templateId, c.countryId).share ?? 0) * 100)}%)` }[c.fee.model] ?? c.fee.model)}${kv('Next', next)}
       ${c.clientId ? `<button type="button" class="tree-row" data-npcperson="${c.clientId}"><strong>${esc(nameOf(c.clientId))}</strong><small>Client${c.clientAccount ? ` · ${esc(c.clientAccount)}` : ''}</small></button>` : kv('Client', c.role === 'prosecution' ? 'The government (the people of the state)' : c.role === 'agency' ? 'The agency' : '—')}
       ${c.parties.otherId ? `<button type="button" class="tree-row" data-npcperson="${c.parties.otherId}"><strong>${esc(nameOf(c.parties.otherId))}</strong><small>Other party</small></button>` : c.vars.otherOrg && c.kind !== 'criminal' ? kv('Other party', c.vars.otherOrg) : ''}
       ${c.role === 'prosecution' ? `<button type="button" class="tree-row" data-npcperson="${c.parties.defendantId}"><strong>${esc(nameOf(c.parties.defendantId))}</strong><small>Defendant · not guilty unless proved</small></button>` : ''}
+      ${c.knownOfficer ? `<p class="muted">${esc(nameOf(c.knownOfficer.id))}, the ${esc(c.knownOfficer.role.toLowerCase())}, is someone you worked beside on the force.</p>` : ''}
       ${c.judgeId ? `<button type="button" class="tree-row" data-npcperson="${c.judgeId}"><strong>${esc(nameOf(c.judgeId))}</strong><small>Judge</small></button>` : ''}
       ${c.otherCounselId ? `<button type="button" class="tree-row" data-npcperson="${c.otherCounselId}"><strong>${esc(nameOf(c.otherCounselId))}</strong><small>Opposing counsel</small></button>` : ''}
       ${c.supervisorId ? `<button type="button" class="tree-row" data-npcperson="${c.supervisorId}"><strong>${esc(nameOf(c.supervisorId))}</strong><small>${c.clinic ? 'Clinic supervisor' : 'Supervising attorney'}</small></button>` : ''}`)}
-    ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${acts.map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
+    ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${lc.hasRoutine(c) ? btn('Handle the Routine Steps', 'data-cact="routine"', 'primary') : ''}${acts.filter((a) => !lc.hasRoutine(c) || !['interview', 'review'].includes(a.id) && !a.id.startsWith('proc:')).map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
     ${(() => { const laws = caseLaws(c); return card('The law', laws.length ? laws.map(({ law }) => `<div class="law-ev"><strong>${esc(law.name)}</strong><small>${esc(law.summary)}${law.note ? ` ${esc(law.note)}` : ''}</small></div>`).join('')
       : '<p class="muted">Pathways does not list this country\'s laws for this kind of case: the rules here are simplified.</p>'); })()}
     ${card('Evidence', ev || '<p class="muted">No evidence in this file.</p>')}
@@ -222,6 +246,7 @@ function casePage(c) {
 // ---------- Interactions ----------
 
 async function caseAction(c, id) {
+  if (id === 'routine') return say(lc.routine(c));
   if (id === 'interview') return say(lc.interview(c));
   if (id === 'delegate') return say(lp.delegate(c.id));
   if (id === 'review') return say(lc.review(c));
@@ -345,6 +370,22 @@ async function schoolAct(id) {
  * @param {{changed:Function, openNpc?:Function}} api
  * @param {{tab?:string, caseId?:string}} [start]
  */
+/** A short guide to the legal career: shown the first time the screen opens, and again from How It Works. */
+const GUIDE = [
+  ['Education & Licensing', 'Law school term by term, then the bar exam. Nobody practices until they are admitted.'],
+  ['My Cases', 'Your docket. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
+  ['In court', 'When a case reaches a hearing or trial, you choose your opening, your objections, your questions and your closing.'],
+  ['Career Progress', 'Your five skills, named for your practice area, your reputation, and the bigger jobs: partner, District Attorney, judge.'],
+  ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],
+];
+export function openGuide() {
+  const m = openModal(`<div class="eyebrow">How it works</div><h2>Your Legal Career</h2>
+    ${GUIDE.map(([t, d], i) => `<div class="kv law-guide"><span><strong>${i + 1}. ${esc(t)}</strong></span></div><p class="muted">${esc(d)}</p>`).join('')}
+    <div class="btn-row">${btn('Got It', 'data-guideok', 'primary')}</div>`, { dismissable: true });
+  m.el.querySelector('[data-guideok]').addEventListener('click', () => m.close());
+  return m;
+}
+
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
@@ -355,15 +396,16 @@ export function openLawCareer(api, start = {}) {
     if (!ts.some(([id]) => id === tab)) tab = 'overview';
     const c = caseId ? lc.caseById(caseId) : null;
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
-      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2>
+      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2><button type="button" class="btn small" data-guide>How It Works</button>
         <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-        <div class="law-page">${{ overview, education, cases: myCases, clients, filings: filingsPage, court: courtPage, new: newCases, progress, office, history }[tab]()}</div>`;
+        <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
   const changed = () => { api.changed?.(); draw(); };
   m.el.addEventListener('click', async (e) => {
     const t = e.target.closest('button');
     if (!t || t.disabled) return;
     let r;
+    if (t.hasAttribute('data-guide')) { openGuide(); return undefined; }
     if (t.dataset.tab) { tab = t.dataset.tab; caseId = null; return draw(); }
     if (t.hasAttribute('data-back')) { caseId = null; tab = 'cases'; return draw(); }
     if (t.dataset.case) { caseId = t.dataset.case; return draw(); }
@@ -373,9 +415,17 @@ export function openLawCareer(api, start = {}) {
     if (t.dataset.decline) { await say(lp.decline(t.dataset.decline)); return changed(); }
     if (t.dataset.seek) {
       const op = lp.opportunities().find((x) => x.id === t.dataset.seek);
+      if (op?.campaign) {
+        if (!(await confirmModal({ title: op.name, body: `Chosen by: ${op.how}. There is a filing fee, three stretches of campaigning with a debate, and then the count.`, yes: 'File to Run', no: 'Not Now' }))) return undefined;
+        const r2 = camp.declare(op.id); changed();
+        if (!r2.ok) return say(r2);
+        await say(r2); openCampaign({ changed }); return undefined;
+      }
       if (!(await confirmModal({ title: op.name, body: `${op.how ? `Chosen by: ${op.how}. ` : ''}It may not go your way, and you cannot try again for a while.`, yes: 'Go Ahead', no: 'Not Now' }))) return undefined;
       await say(lp.seek(t.dataset.seek)); return changed();
     }
+    if (t.hasAttribute('data-campopen')) { openCampaign({ changed }); return undefined; }
+    if (t.hasAttribute('data-routineall')) { await say(lc.routineAll()); return changed(); }
     if (t.dataset.cact) { const c = lc.caseById(caseId); if (c) await caseAction(c, t.dataset.cact); return changed(); }
     if (t.dataset.duty) {
       const d = lp.leaderDuties().find((x) => x.id === t.dataset.duty);
@@ -386,9 +436,25 @@ export function openLawCareer(api, start = {}) {
     if (t.hasAttribute('data-bench')) {
       const c = lp.benchMatter();
       if (!c) { await messageModal({ body: 'Your civil list is done for this half-year.' }); return changed(); }
+      if (c.benchCriminal) {
+        // A criminal trial: the judge's rulings in order, then the verdict, then (if guilty) the sentence.
+        const answers = {};
+        for (const st of lp.trialSteps(c)) {
+          const a = await pickModal({ title: st.title, body: st.text, options: st.options.map(([l, v]) => ({ value: v, label: l })) });
+          if (a == null) return changed();
+          answers[st.id] = a;
+        }
+        const s = await pickModal({ title: 'If the jury convicts: the sentence', body: `The law sets a range for ${(lc.template(c).offense ?? 'this offense').replace(/_/g, ' ')}. What will you impose if the verdict is guilty?`, options: lp.sentenceOptions(c).map(([l, v]) => ({ value: v, label: l })) });
+        if (s == null) return changed();
+        answers.sentence = s;
+        await say(lp.presideTrial(c.id, answers));
+        return changed();
+      }
       const known = [c.clientId, c.parties.otherId].map((id) => store.state.npcs[id]).find((n) => n && (player().npcIds.includes(n.id) || n.flags.formerClientOf === player().id));
-      const a = await pickModal({ title: c.title, body: `${c.summary}\n\nThe evidence: ${c.evidence.map((e) => e.label).join('; ')}.${known ? `\n\nYou know ${known.firstName} ${known.lastName}.` : ''}`,
-        options: [...lp.rulingOptions(c).map(([l, v]) => ({ value: v, label: l })), ...(known ? [{ value: 'recuse', label: 'Step aside' }] : [])] });
+      const donor = c.donorConflict ? store.state.npcs[c.donorConflict.id] : null;
+      const tie = donor ? `\n\n${donor.firstName} ${donor.lastName}'s firm gave ${fmtMoney(c.donorConflict.amount, country())} to your election campaign.` : known ? `\n\nYou know ${known.firstName} ${known.lastName}.` : '';
+      const a = await pickModal({ title: c.title, body: `${c.summary}\n\nThe evidence: ${c.evidence.map((e) => e.label).join('; ')}.${tie}`,
+        options: [...lp.rulingOptions(c).map(([l, v]) => ({ value: v, label: l })), ...(known || donor ? [{ value: 'recuse', label: 'Step aside' }] : [])] });
       if (a != null) await say(lp.rule(c.id, a));
       return changed();
     }
@@ -402,6 +468,15 @@ export function openLawCareer(api, start = {}) {
       if (a) await say(lp.advertise(a));
       return changed();
     }
+    if (t.dataset.acad) { await say(t.dataset.acad === 'clerk' ? acad.applyClerkship() : acad.applyProfessor()); return changed(); }
+    if (t.dataset.profduty) {
+      const d = acad.professorDuties().find((x) => x.id === t.dataset.profduty);
+      const a = await pickModal({ title: d.name, body: d.text, options: d.options.map(([l, v]) => ({ value: v, label: l })) });
+      if (a) await say(acad.professorDuty(d.id, a));
+      return changed();
+    }
+    if (t.dataset.firm === 'hire') { await say(lp.hireAssociate()); return changed(); }
+    if (t.dataset.partner) { if (await confirmModal({ title: 'Make them a partner?', body: 'They will share in the firm\'s profits from now on.', yes: 'Make Partner', no: 'Not Yet' })) await say(lp.makePartner(t.dataset.partner)); return changed(); }
     if (t.dataset.firm === 'insure') { await say(lp.setMalpractice(!player().law?.malpractice)); return changed(); }
     if (t.dataset.load) { await say(t.dataset.load === 'support' ? lp.askSupport() : lp.takeLeave()); return changed(); }
     if (t.dataset.sact) { await schoolAct(t.dataset.sact); return changed(); }
@@ -409,6 +484,9 @@ export function openLawCareer(api, start = {}) {
     return undefined;
   });
   draw();
+  // The first time: a short guide, once per player (it can be opened again from How It Works).
+  const p = player();
+  if (!p.flags.lawGuideSeen) { p.flags.lawGuideSeen = true; openGuide(); }
   return m;
 }
 
@@ -432,5 +510,6 @@ export function openLegalLegacy() {
   return openModal(`<div class="eyebrow">Professional legacy</div><h2>Legal careers in the family</h2>
     ${list.length ? list.map((x) => card(`${x.name}${years(x)}${x.you ? ' · you' : ''}`, x.milestones.map((m) => kv(String(m.year), m.title)).join(''))).join('')
       : '<p class="empty">Nobody in the family has practiced law yet.</p>'}
+    ${(() => { const h = lp.legalHeadlines().slice(0, 8); return h.length ? card('In the papers', h.map((x) => kv(String(x.year), `${x.outlet}: ${x.text}`)).join('')) : ''; })()}
     <p class="muted">Clients' confidential matters are not kept here: only the career, and cases that were public.</p>`, { dismissable: true });
 }

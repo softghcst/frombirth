@@ -58,7 +58,7 @@ export default [
     choices: [
       { label: 'See a doctor', outcomes: [any('You make an appointment.', 'neutral', { type: 'ailment', value: 'doctor' })] },
       { label: 'Rest it off', outcomes: [any('You go to bed early.', 'neutral', { type: 'ailment', value: 'rest' })] },
-      { label: 'Ignore it', outcomes: [any('You carry on.', 'neutral', { type: 'ailment', value: 'ignore' })] },
+      { label: 'Ignore it', outcomes: [any('You decide it will pass.', 'neutral', { type: 'ailment', value: 'ignore' })] },
     ],
   },
 
@@ -206,6 +206,25 @@ export default [
   },
   disagreement('partner'),
   disagreement('spouse'),
+  {
+    id: 'kin_child_sick', category: 'family', ageRange: [16, 120], queuedOnly: true, cast: { kid: 'child' },
+    text: '{kid} has {ailment}, and is miserable with it.',
+    choices: [
+      { label: 'Take them to the doctor', outcomes: [any('You sit in the waiting room with {kid} on your lap.', 'good', health({ do: 'kinAilment', how: 'doctor', with: 'kid' }))] },
+      { label: 'Stay home and look after them', outcomes: [any('A day of soup, cartoons and a hot forehead under your hand.', 'good', health({ do: 'kinAilment', how: 'home', with: 'kid' }))] },
+      { label: 'Send them in anyway: you cannot miss work', outcomes: [any('{kid} goes in, pale and quiet. The school calls at lunchtime.', 'bad', health({ do: 'kinAilment', how: 'school', with: 'kid' }))] },
+    ],
+  },
+  {
+    id: 'kin_broken_hip', category: 'family', ageRange: [12, 120], queuedOnly: true, cast: { who: 'relative' },
+    text: '{who} has fallen and broken a hip. They are in the hospital, and frightened about what comes next.',
+    choices: [
+      { label: 'Visit, and keep visiting', outcomes: [any('You come most days. Some days you just sit there together.', 'good', health({ do: 'kinAilment', how: 'visit', with: 'who' }))] },
+      { label: 'Help them at home while they get back on their feet', outcomes: [any('Weeks of stairs, appointments and patience, on both sides.', 'good', health({ do: 'kinAilment', how: 'home', with: 'who' }))] },
+      { label: 'Pay for help at home', outcomes: [any('You arrange someone to come in every day.', 'neutral', health({ do: 'kinAilment', how: 'pay', with: 'who' }))] },
+      { label: 'Send a card', outcomes: [any('You send a card. They put it on the windowsill.', 'neutral', health({ do: 'kinAilment', how: 'card', with: 'who' }))] },
+    ],
+  },
   {
     id: 'loved_one_shares', category: 'family', ageRange: [8, 120], queuedOnly: true, cast: { who: 'relative' },
     text: '{who} asks if you have a minute, then tells you they have been getting help for their mental health, and wanted you to know.',

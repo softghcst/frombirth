@@ -386,7 +386,7 @@ function contacts() {
 /** Work & School actions that open another screen or a list to choose from, and their icons. */
 const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
   clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
-  myfame: 'star', myidol: 'star', fame: 'sparkle', investigations: 'compass' };
+  myfame: 'star', myidol: 'star', fame: 'sparkle', investigations: 'compass', medicine: 'book' };
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */
@@ -432,6 +432,7 @@ function specialCareers(p, list) {
     modeling: fromAge(p.age, 14),
     writing: fromAge(p.age, 14) || (fameEng.exists('publishing') ? '' : 'There is no publishing here yet'),
     sports: fromAge(p.age, 4),
+    journalism: fromAge(p.age, 10),
     kpop: fromAge(p.age, 12) || (y < 1996 ? 'K-pop begins in the 1990s' : ''),
     politics: fromAge(p.age, 14),
   };
@@ -489,8 +490,12 @@ export default {
     { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling']); }
 
     const work = careerButtons();
+    // Before residency, a medical career is study: it sits with School (premedical years, classes, rotations, the Match).
+    const m = p.medicine;
+    const medStudy = has(work, 'medicine') && !m?.training && !m?.job && !(m?.completed ?? []).length;
+    if (medStudy) school.unshift(['medicine', `My Medical Career: ${e.enrolled && ['medical', 'podiatric'].includes(e.stage) ? 'classes, rotations, exams and the Match' : 'premedical years and applying'}`]);
     // Your job's own actions stay with the job; finding work and the special careers have lists of their own below.
-    const jobOnly = work.filter(([id]) => !FIND.has(id) && !SPECIAL.has(id));
+    const jobOnly = work.filter(([id]) => !FIND.has(id) && !SPECIAL.has(id) && !(medStudy && id === 'medicine'));
 
     // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
     // `more`: rows that belong in the same list, after the links (Work keeps athletics, politics and the rest there).

@@ -14,6 +14,7 @@ import { rec, W, now, year, me, nextId, result, seeded, nameOfId } from './core.
 import { agencyOf, kindsIn, lab } from './agencies.js';
 import { openCase, investigation, incidentOf } from './casework.js';
 import { publicRecord } from './views.js';
+import { afterReport } from './forensicLab.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -116,6 +117,7 @@ export function benchReport(id, how = 'careful') {
   it.custody.push({ at: now(), by: me(), act: `examined: ${LAB_RESULTS[shown].toLowerCase()}` });
   f.log.push({ at: now(), text: `Laboratory report from ${p.firstName} ${p.lastName}: ${text}` });
   b.status = 'reported';
+  afterReport(b, how);
   return result(true, how === 'overstate' && outcome === 'inconclusive' ? 'You reported a result the work did not support. If it is tested in court, it will not hold, and neither will your credibility.' : `Reported to ${nm(b.detectiveId)}: ${text}`, how === 'overstate' && outcome === 'inconclusive' ? 'bad' : 'good');
 }
 
@@ -149,6 +151,7 @@ export const STORY_STEPS = {
   sources: { label: 'Talk to people willing to talk', sub: 'Witnesses, neighbors, family: only those who agree.' },
   comment: { label: 'Ask the agency and the defense for comment', sub: 'They may decline; say so if they do.' },
   verify: { label: 'Verify every claim against a second source', sub: 'Slower, and the story is right.' },
+  standards: { label: 'Review the story against editorial standards', sub: 'What is fact, what is someone\'s account, who should not be named.' },
   sealed: { label: 'Get hold of the police case file', restricted: 'Case files, sealed records and what a client told their lawyer are not available to a reporter. Asking an officer to leak them puts both of you in the wrong.' },
 };
 export function storyStep(id, step) {
@@ -172,6 +175,12 @@ export function storyStep(id, step) {
     s.claims.push({ text: own?.text ?? `${nm(w.id)} says they remember the night well.`, sourced: false, accurate: own?.accurate ?? true });
     return result(true, `${nm(w.id)} agreed to talk: ${s.claims.at(-1).text} (Their own account. It may be mistaken.)`, 'neutral');
   }
+  if (step === 'standards') {
+    // Accounts are attributed as accounts; people the law protects (the person harmed in a family case) are not named.
+    for (const cl of s.claims) if (!cl.sourced) cl.attributed = true;
+    s.protected = inv.file.sensitive ? true : false;
+    return result(true, `Every account is attributed to the person who gave it${s.protected ? '; the person harmed is not named' : ''}. What is fact and what is memory is clear on the page.`, 'neutral');
+  }
   if (step === 'comment') { s.claims.push({ text: 'The agency said it does not comment on individual cases; the defense said the record speaks for itself.', sourced: true }); return result(true, s.claims.at(-1).text, 'neutral'); }
   for (const cl of s.claims) if (!cl.sourced && cl.accurate !== false) cl.sourced = true; // verified against a second source
   const wrong = s.claims.filter((cl) => cl.accurate === false);
@@ -188,12 +197,19 @@ export function publishStory(id) {
   const verified = s.steps.includes('verify');
   const keep = verified ? s.claims.filter((cl) => cl.accurate !== false) : s.claims;
   s.published = now();
-  s.accuracy = keep.every((cl) => cl.accurate !== false) ? (verified ? 'verified' : 'accurate, unverified') : 'contains an error';
+  // A wrong account published as someone's account (attributed) is not the paper's error; published as fact, it is.
+  s.accuracy = keep.every((cl) => cl.accurate !== false || cl.attributed) ? (verified ? 'verified' : 'accurate, unverified') : 'contains an error';
   const p = player();
   p.career.performance = clamp((p.career.performance ?? 50) + (s.accuracy === 'verified' ? 5 : s.accuracy === 'contains an error' ? -6 : 1));
   const inv = investigation(s.invId);
   const c = k.J().cases[s.caseId];
   if (verified && c?.stage === 'sentenced') inv.file.publicAttention = year();
+  // A careful story about an open case can bring someone forward: a lead for the investigator, never a fact or an arrest.
+  if (verified && !['sentenced', 'acquitted', 'dismissed', 'quashed'].includes(c?.stage) && seeded(`${s.id}/lead`).chance(0.4)) {
+    inv.file.leads.push({ id: `story_${s.id}`, text: 'After the story ran, a reader called the station: they saw something that night and never told anyone. It needs checking.', why: 'A published story', status: 'open', at: now() });
+    s.lead = true;
+  }
+  if (verified) { s.verifiedCount = true; const n = myStories(p).filter((x) => x.accuracy === 'verified').length; if (n >= 3 && (p.career.level ?? 0) >= 3 && !/Investigative/.test(p.career.title)) p.career.title = 'Investigative editor'; }
   return result(true, s.accuracy === 'contains an error' ? 'Published. One claim in it was wrong: a witness\'s memory reported as fact. A correction is owed.' : `Published (${s.accuracy}).${inv.file.publicAttention === year() ? ' Readers are asking questions about the conviction; whether anyone reviews it is for the authorities.' : ''}`, s.accuracy === 'contains an error' ? 'bad' : 'good');
 }
 /** Runs a correction for a story that got something wrong. */
@@ -204,4 +220,30 @@ export function correctStory(id) {
   const p = player();
   p.career.performance = clamp((p.career.performance ?? 50) + 3);
   return result(true, 'The correction ran, as prominently as the error. Readers trust a paper that corrects itself.');
+}
+
+// ---------- The editor's desk ----------
+//
+// An editor (the journalism track's editor rank) reads reporters' drafts before they run. A draft may report a
+// witness's memory as fact; sending it back for verification is the job. Running it means a correction later.
+const drafts = () => { const w = W(); w.drafts ??= {}; return w.drafts; };
+export const myDrafts = (p = player()) => Object.values(drafts()).filter((d) => d.editorId === me(p) && d.status === 'waiting');
+export function editorYear(p = player()) {
+  if (p.career?.careerId !== 'journalist' || (p.career.level ?? 0) < 3 || myDrafts(p).length) return [];
+  const pub = publicCases(p)[0];
+  if (!pub) return [];
+  const reporter = Object.values(store.state.npcs).find((n) => n.alive && n.occupation === 'Court reporter') ?? null;
+  const id = nextId('draft');
+  const r = seeded(`${id}/draft`);
+  drafts()[id] = { id, editorId: me(p), reporterId: reporter?.id ?? null, title: pub.title, unverified: r.chance(0.6), wrong: r.chance(0.4), status: 'waiting', at: now() };
+  return [`A reporter's draft on ${pub.title} is waiting for you.`];
+}
+export function editDraft(id, how) {
+  const d = drafts()[id];
+  if (!d || d.status !== 'waiting' || d.editorId !== me()) return result(false, 'That draft is not on your desk.', 'neutral');
+  d.status = how;
+  const p = player();
+  if (how === 'back') { p.career.performance = clamp((p.career.performance ?? 50) + 3); return result(true, d.unverified ? 'You send it back: one account is reported as fact, and needs a second source. It runs a week later, right.' : 'You send it back for one more check. It was right already; it runs a little later.'); }
+  if (d.unverified && d.wrong) { p.career.performance = clamp((p.career.performance ?? 50) - 6); d.correction = now(); return result(true, 'It runs. One account in it was wrong, and stated as fact. The paper prints a correction under your name as editor.', 'bad'); }
+  return result(true, 'It runs as written.', 'neutral');
 }

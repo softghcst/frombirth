@@ -14,13 +14,26 @@ const level = (p, id) => Math.round(p.skills?.[id] ?? 0);
 export const languagesOf = (countryId) => Object.entries(SPOKEN).filter(([, where]) => where.includes(countryId)).map(([id]) => id);
 
 /**
+ * The languages someone grew up speaking: those of the country they were born in (Spanish for a Puerto Rican, French
+ * and Arabic for a Moroccan). A parent's other language is learned at home, at a child's own pace (globalLife.js
+ * tickHeritage), not given. English is everyone's common tongue in the game, and is never a skill to learn.
+ */
+export const nativeLanguages = (p = player()) => languagesOf(p.birthCountryId);
+/** Gives someone their native languages, spoken fully, from birth (and to an older life when it loads). */
+export function giveNativeLanguages(p) {
+  p.skills ??= {};
+  for (const id of nativeLanguages(p)) if (SKILL_BY_ID[id]) p.skills[id] = 100;
+  return p;
+}
+
+/**
  * How well the player speaks the language of a country, 0–100.
  * null: no language is needed there. Someone born there speaks it natively.
  */
 export function speaks(countryId, p = player()) {
   const list = languagesOf(countryId);
   if (!list.length) return null;
-  if (p.birthCountryId === countryId) return 100;
+  if (p.birthCountryId === countryId || list.some((id) => nativeLanguages(p).includes(id))) return 100;
   // The same language is spoken where they were born: a Brazilian in Portugal, an Austrian in Germany.
   if (list.some((id) => languagesOf(p.birthCountryId).includes(id))) return 100;
   return Math.max(...list.map((id) => level(p, id)));
@@ -42,7 +55,8 @@ export function visaEdge(countryId, p = player()) {
 /** What it does to the odds of being hired, where the player lives now. */
 export function hiringEdge(p = player()) {
   // Each language spoken well is something for the application; three is as many as anyone counts.
-  const known = Object.keys(SPOKEN).concat('sign_language').filter((id) => level(p, id) >= 60).length;
+  const own = nativeLanguages(p); // a second language counts; the one they were raised in is expected
+  const known = Object.keys(SPOKEN).concat('sign_language').filter((id) => !own.includes(id) && level(p, id) >= 60).length;
   let edge = Math.min(3, known) * 0.03;
   const here = speaks(p.countryId, p);
   if (here != null && here < 40) edge -= 0.18; // an interview in a language you cannot follow

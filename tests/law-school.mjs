@@ -171,7 +171,27 @@ rng.seed(20261125);
   const L = p.law;
   check(L.bar.admitted?.legacy && p.career.careerId === 'lawyer' && p.career.level === 2, 'a working lawyer keeps the job and is treated as admitted');
   check(L.history.length === 0 && lp.stats().completed === 0 && lp.stats().legacyUnknown, 'no past cases are invented; earlier statistics are marked unknown');
-  check(L.skills.oral > 40, 'their years show in their skills');
+  check(L.skills.courtroom > 40, 'their years show in their skills');
+}
+
+// Five skills to follow, not twenty; finer ones count toward their group; older saves are folded in.
+{
+  const { LEGAL_SKILLS } = await import('../js/data/law.js');
+  const p = graduate();
+  const L = ls.lawOf(p);
+  check(LEGAL_SKILLS.length === 5 && Object.keys(L.skills).length === 5, `five legal skills (${LEGAL_SKILLS.map((s) => s.name).join(', ')})`);
+  const before = L.skills.courtroom;
+  ls.gain(p, { cross: 3, oral: 2 });
+  check(L.skills.courtroom > before && !('cross' in L.skills), 'practice at cross-examination counts toward Courtroom');
+  p.law.skills = { oral: 40, cross: 60, research: 30, writing: 50, ethics: 70, negotiation: 20, counseling: 44 };
+  const S = ls.lawOf(p).skills;
+  check(Object.keys(S).length === 5 && S.courtroom === 50 && S.research === 40 && S.clients === 44 && S.ethics === 70, `an older save's twenty skills are folded into five (${JSON.stringify(S)})`);
+  // The same five, named for the line of work.
+  const { skillsFor, SKILL_NAMES, SPECIALTIES } = await import('../js/data/law.js');
+  const fam = skillsFor('family', 'lawyer').map((x) => x.name); const div = skillsFor('divorce', 'lawyer').map((x) => x.name);
+  check(fam.includes('Custody Hearings') && div.includes('Divorce Trials') && fam.join() !== div.join(), `family law and divorce law have their own names (${fam.join(', ')} / ${div.join(', ')})`);
+  check(skillsFor(null, 'judiciary').some((x) => x.name === 'Judicial Ethics') && skillsFor('prosecution', 'prosecutor')[3].name === 'Victims & Witnesses', 'a judge and a prosecutor see their own names');
+  check(SPECIALTIES.every((sp) => SKILL_NAMES[sp.id]?.length === 5) && Object.values(SKILL_NAMES).every((n) => n.length === 5), 'every practice area names all five, and never more');
 }
 
 finish('Law school and the bar hold.');

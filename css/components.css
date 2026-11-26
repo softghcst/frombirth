@@ -401,7 +401,7 @@ button.tree-row:active { background: var(--accent-soft); }
 .character-avatar { display: block; overflow: hidden; }
 .world-modal { max-width: 560px; width: 100%; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .world-search { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: inherit; font: inherit; }
-.world-groups { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; -webkit-overflow-scrolling: touch; }
+.world-groups { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; } /* every tab in view on a phone, none hidden off the edge */
 .world-group { flex: none; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; min-height: 40px; padding: 4px 12px; font-size: 0.85rem; cursor: pointer; }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
@@ -1268,9 +1268,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .gl-pair { display: grid; gap: 4px; }
 
 /* My Legal Career (ui/lawCareer.js) */
-.law-tabs { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.law-tabs { margin: 6px 0 12px; flex-wrap: wrap; gap: 6px; } /* every tab in view on a phone, none hidden off the edge */
 .law-tabs .av-chip { flex: none; }
 .law-row { width: 100%; }
+.camp-steps { margin: 6px 0 12px; flex-wrap: wrap; gap: 6px; }
+.camp-steps .av-chip { flex: none; cursor: default; }
+.camp-steps .av-chip.done { opacity: 0.55; }
 .law-ev { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
 .law-ev:last-child { border-bottom: 0; }
 .law-ev small { color: var(--muted); }
@@ -1395,6 +1398,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-kiss .wp-person:last-child { transform: translateX(-7%) rotate(-5deg); }
 .wp-kiss-heart { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); font-size: 2.4rem; color: #E2557A;
   text-shadow: 0 2px 0 #23140f; animation: sv-pop .5s var(--ease) both, wp-beat 1s ease-in-out .5s infinite; }
+/* A moment with only a line and a reply or two (the aisle, the vows, the kiss): the scene grows to fill the screen, and the words sit under it. */
+.wp-short .sv-stage { flex: 1 1 auto; height: auto; min-height: min(42vh, 330px); }
+.wp-short .sv-talk { flex: 0 0 auto; }
 .wp-steps { display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
 .wp-steps i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .wp-steps i.done { background: var(--accent); }
@@ -1489,6 +1495,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-postcard-screen.sv-still .wp-postcard { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
 
+/* Journalism: a claim's status in the reporter's notebook (js/ui/journalism.js). */
+.hl-pill.bad { background: var(--bad-soft, rgba(220, 80, 80, 0.15)); color: var(--bad); }
+.jn-claim .kv span:first-child { white-space: normal; }
+.jn-claim small { display: block; margin-top: 4px; line-height: 1.35; }
+.jn-article p { line-height: 1.5; }
+
 /* The journey: a map of the world, the route drawn as the plane (ship, train, car) follows it (js/ui/journey.js). */
 .journey-screen { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #5FA9D6; cursor: pointer; animation: sv-fade-in .3s ease both; }
 .journey-screen.journey-out { animation: sv-fade-out .35s ease forwards; }
@@ -1512,3 +1524,5 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-hm .chip.on { background: var(--accent); color: #FFFFFF; }
 .wp-hm-note { margin: 0; color: var(--bad, #B23A48); font-size: .9rem; }
 .wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.more-talents { margin-top: 4px; }
+.more-talents summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }

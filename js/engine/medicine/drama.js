@@ -34,6 +34,7 @@ import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 import { storyBeat, dramaSetting } from '../storyDirector.js';
 import { familyPatientChoice } from './healthLink.js';
+import { kinAilmentChoice } from '../health/kinAilments.js';
 import { startCare } from '../health/kincare.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
@@ -125,7 +126,8 @@ function eligible(p, m) {
   if (sad) out.push({ id: 'med_family_answers', cast: {} });
   if (m.job && hospital(m.job.hospitalId)?.teaching && !(m.research?.projects?.length)) out.push({ id: 'med_research_offer', cast: {} });
   if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
-  if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
+  // Drug companies paying doctors to speak at conferences abroad: a postwar practice, from about the mid-1950s.
+  if (m.job && year() >= 1955) out.push({ id: 'med_industry_gift', cast: {} });
   if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
   // Relationships at work, and their consequences years later.
   const hereNow = m.job?.hospitalId ?? t?.hospitalId;
@@ -396,7 +398,7 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'join') return doResearch('project').text;
       return '';
     case 'gift':
-      if (how === 'decline') { grow('integrity', 1, m); return 'You decline. Your prescribing stays yours.'; }
+      if (how === 'decline') { grow('integrity', 1, m); return 'Your prescribing stays yours.'; }
       grow('integrity', -3, m);
       if (roll(0.3)) { m.discipline.push({ year: year(), what: 'Accepted hospitality from a company whose products you prescribe, against hospital policy.' }); return 'A compliance review finds it. It goes on your record.'; }
       return 'The trip is lovely. You notice, later, how often their name comes to mind.';
@@ -453,6 +455,11 @@ export function medicineChoice(value, cast = {}) {
       if (who) { who.flags.medReconciled = true; if (how === 'yes') { who.meters.relationship = clamp(who.meters.relationship + 15); remember(who, 'medReconciled', `Made peace with you, years after a disagreement (${year()}).`); } }
       return '';
     case 'familyPatient': return familyPatientChoice(how, npc(cast.who), startCare, cast.words?.condId);
+    case 'familyAilment':
+      // A relative's broken bone or bad flu: seen properly, a look and some advice, or treating family yourself (a boundary).
+      if (how === 'seen') grow('professionalism', 1, m);
+      if (how === 'self') grow('integrity', -1, m);
+      return kinAilmentChoice(how, npc(cast.who), cast.words?.ailmentId);
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

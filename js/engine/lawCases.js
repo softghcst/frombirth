@@ -13,9 +13,12 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { lawOf, nowM, gain, profileFor, canon } from './lawSchool.js';
-import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES } from '../data/law.js';
+import { CASE_TEMPLATES, SPECIALTY_BY_ID, ETHICS, COMPLEXITY, LEGAL_CAREERS, CONTINGENCY, NO_CONTINGENCY_KINDS, PROCEDURE, OBJECTIONS, OBJECTION_GROUNDS, CHILD_ROLES, skillId } from '../data/law.js';
 import { gain as fameGain } from './fame.js';
 import * as realLaw from './realLaw.js';
+import { policeWitness } from './lawPolice.js';
+import * as world from './polity.js';
+import { report } from './news.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -116,18 +119,21 @@ export function createCase(templateId, o = {}) {
     c.vars.charge = OFFENSE_BY_ID[o.offenseId ?? T.offense]?.name ?? T.offense;
   } else {
     // A returning client is the same person, with their history intact; a divorce or custody case may be a real couple.
-    const couple = T.kind === 'family' && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
-    const client = couple ? couple[0] : (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client' });
+    const couple = T.kind === 'family' && !T.noCouple && !o.clientId && rng.chance(0.7) ? realCouple(countryId, p) : null;
+    const client = couple ? couple[0] : (o.clientId && store.state.npcs[o.clientId]?.alive) ? store.state.npcs[o.clientId] : party(countryId, { title: 'Client', ...(templateId === 'guardianship' ? { age: rng.int(55, 72) } : {}) });
     if (couple) c.realCouple = true;
     c.clientId = role === 'agency' ? null : client.id;
     c.vars.client = nameOf(client.id);
     if (['family', 'child'].includes(T.kind)) {
-      const other = couple ? couple[1] : party(countryId, { title: T.kind === 'family' ? 'Spouse' : 'Parent' });
-      other.flags.spouseId = client.id; client.flags.spouseId = other.id; // a marriage on the record, between two real people
+      const other = couple ? couple[1] : party(countryId, { title: T.otherTitle ?? (T.kind === 'family' ? 'Spouse' : 'Parent') });
+      // A marriage on the record, between two real people, where the case is about one (not a protective order, an
+      // adoption by a stepparent, or a grandparent's guardianship).
+      if (!T.noCouple) { other.flags.spouseId = client.id; client.flags.spouseId = other.id; }
       c.parties.otherId = other.id;
       c.vars.other = nameOf(other.id);
       const kid = party(countryId, { age: rng.int(6, 15), title: 'Child' });
-      kid.flags.parentIds = [client.id, other.id];
+      kid.flags.parentIds = T.noCouple ? [other.id] : [client.id, other.id];
+      if (templateId === 'guardianship') kid.flags.grandparentId = client.id;
       c.parties.childId = kid.id;
       c.vars.child = first(kid.id);
       c.vars.childAge = String(kid.age);
@@ -149,10 +155,12 @@ export function createCase(templateId, o = {}) {
       const origin = rng.pick(home);
       client.flags.originCountryId = origin; // where the client came from: a real country in the world
       client.countryId = countryId;
-      if (templateId === 'removal') {
-        // Their papers, in the citizenship engine's own form: a citizen of where they came from, on a lapsed visa here.
+      if (templateId === 'removal' || templateId === 'asylum') {
+        // Their papers, in the citizenship engine's own form: a citizen of where they came from, on a lapsed visa here
+        // (or, seeking asylum, newly arrived with their claim pending).
         client.citizenships = [{ jurisdictionId: origin, how: 'birth', year: client.birthYear ?? store.state.year - (client.age ?? 30) }];
-        client.residency = { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year - Number(c.vars.years), expired: true };
+        client.residency = templateId === 'asylum' ? { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year, asylumPending: true }
+          : { jurisdictionId: countryId, status: 'temporary_resident', since: store.state.year - Number(c.vars.years), expired: true };
       } else {
         client.citizenships = [{ jurisdictionId: origin, how: 'birth' }, { jurisdictionId: countryId, how: 'naturalization', year: store.state.year - rng.int(3, 15) }];
         const rel = party(origin, { title: c.vars.relation[0].toUpperCase() + c.vars.relation.slice(1), age: rng.int(25, 70) });
@@ -208,7 +216,20 @@ export function createCase(templateId, o = {}) {
   if (c.evidenceFault) c.evidence.push({ id: 'fault', kind: 'witness_statement', label: `Evidence that ${c.vars.other} deserted the marriage, the fault ground pleaded`, favors: 'client', weight: 3, reliability: 55, admissibility: 'ok', status: 'admitted', reviewed: false });
   // The witnesses of a referred case are its real witnesses; otherwise the template's people are made.
   c.witnesses = o.witnesses ? o.witnesses.map((w) => ({ ...w, examined: false })) : (T.witnesses ?? []).map((w) => ({ ...w, npcId: party(countryId, { title: w.role, kind: 'witness' }).id, examined: false }));
-  for (const w of c.witnesses) if (store.state.npcs[w.npcId]) store.state.npcs[w.npcId].flags.justice.caseIds.push(id);
+  // The police in a criminal case are the local department's real officers and detectives (engine/lawPolice.js).
+  if (T.kind === 'criminal' && !o.witnesses) {
+    for (const w of c.witnesses.filter((x) => /detective|officer|police/i.test(x.role))) {
+      const cop = policeWitness(countryId, p.city, /detective/i.test(w.role));
+      if (!cop) continue;
+      w.npcId = cop.id;
+      if (cop.known) {
+        c.knownOfficer = { id: cop.id, role: w.role };
+        note(c, `${nameOf(cop.id)}, the ${w.role.toLowerCase()}, is someone you worked beside on the force.`);
+        if (c.role === 'defense') c.bonus = (c.bonus ?? 0) + 0.03; // you know how they write reports, and where they cut corners
+      }
+    }
+  }
+  for (const w of c.witnesses) { const n = store.state.npcs[w.npcId]; if (n) { n.flags.justice ??= { caseIds: [] }; (n.flags.justice.caseIds ??= []).push(id); } }
   // A filing deadline for the first stage that needs one.
   const fileAt = c.stages.findIndex((s) => ['filing', 'pretrial', 'pleadings', 'drafting', 'review', 'diligence'].includes(s.s));
   if (fileAt >= 0) c.deadlines.push({ id: 'filing', label: fill(T.motion?.name ?? 'Main filing', c), due: c.opened + c.stages.slice(0, fileAt + 1).reduce((s, x) => s + x.months, 0), met: null });
@@ -230,7 +251,7 @@ export function createCase(templateId, o = {}) {
 export function contingencyRule(templateId, countryId) {
   const T = CASE_TEMPLATES[templateId];
   const r = CONTINGENCY[countryId];
-  if (NO_CONTINGENCY_KINDS.includes(T.kind)) return { allowed: false, why: 'Never allowed in criminal, family or child matters.' };
+  if (NO_CONTINGENCY_KINDS.includes(T.kind) || T.criminal) return { allowed: false, why: 'Never allowed in criminal, family or child matters.' };
   if (!r) return { allowed: false, why: 'Not modeled for this country: billed by the hour instead.' };
   if (!r.allowed) return { allowed: false, why: r.note };
   return { allowed: true, share: r.byTemplate?.[templateId] ?? r.cap, why: r.note };
@@ -256,6 +277,7 @@ const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judg
 export function forumName(c) {
   const era = c.forum === 'trial' && c.kind === 'criminal' ? realLaw.courtName(c.countryId, 'trial') : c.forum === 'family' ? realLaw.courtName(c.countryId, 'family') : c.forum === 'immigration' ? realLaw.courtName(c.countryId, 'immigration') : null;
   if (era) return era;
+  if (template(c)?.supreme) return realLaw.courtName(c.countryId, 'supreme') ?? 'The highest court';
   return { trial: 'Trial court', family: 'Family court', juvenile: 'Juvenile court', agency: 'Agency review', immigration: 'Immigration court', tribunal: 'Employment tribunal', probate: 'Probate court', tax: 'Tax tribunal', appeal: 'Court of Appeal', none: 'No court: a transaction' }[c.forum] ?? 'Court';
 }
 /** Strength of each side's case from the evidence still in it: weight × reliability, for what is admitted. */
@@ -294,7 +316,31 @@ const canNegotiate = (c) => !c.done && !c.negotiation.accepted && (template(c).s
 
 // ---------- Working a case ----------
 
-const skillIn = (ids) => { const L = lawOf(player()); return ids.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / ids.length; };
+const skillIn = (ids) => { const L = lawOf(player()); const g = [...new Set(ids.map(skillId))]; return g.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / g.length; };
+
+/**
+ * The routine steps of a case, done in one go: meeting the client, going through the evidence, and the procedural
+ * filings that are due, done properly. The choices that matter (research, the main filing, deals, court, ethics) stay
+ * with the player.
+ */
+export function routine(c) {
+  if (c.done) return result(false, 'This case is closed.', 'neutral');
+  const lines = [];
+  if (c.clientId && !c.tasks.interview) { interview(c); lines.push(c.kind === 'child' ? `Met ${first(c.clientId)}.` : 'Interviewed the client.'); }
+  if (!c.tasks.review) { review(c); lines.push('Went through the evidence.'); }
+  for (const pf of proceduralDue(c)) { fileProcedure(c, pf.id, 'strong'); lines.push(`Filed: ${pf.name}.`); }
+  if (!lines.length) return result(false, 'Nothing routine is waiting on this case.', 'neutral');
+  return result(true, lines.join(' '), 'good', { lines });
+}
+/** Every open case's routine steps at once. */
+export function routineAll() {
+  const done = [];
+  for (const c of lawOf(player()).caseIds.map(caseById).filter((x) => x && !x.done)) { const r = routine(c); if (r.ok) done.push(c.title); }
+  return done.length ? result(true, `Routine work done on ${done.length === 1 ? done[0] : `${done.length} cases`}. What is left needs your judgment.`, 'good', { cases: done })
+    : result(false, 'Nothing routine is waiting.', 'neutral');
+}
+/** Whether a case has routine steps waiting. */
+export const hasRoutine = (c) => !c.done && ((c.clientId && !c.tasks.interview) || !c.tasks.review || proceduralDue(c).length > 0);
 
 /** Interviewing the client: their account (not necessarily the whole truth), and what they want. */
 export function interview(c) {
@@ -384,7 +430,8 @@ export function file(c, kind, o = {}) {
     f.law = rule?.law?.name ?? null;
     // Where the law of the time gives no way to leave the evidence out, no judge does it.
     const barred = !!(rule && !rule.allowed && target);
-    const granted = !barred && rng.chance(clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
+    // The Supreme Court takes few of the cases it is asked to hear: a strong petition is still a long shot.
+    const granted = !barred && rng.chance(T.cert ? (merit ? 0.1 + quality * 0.2 : 0.01) : clamp(merit ? 0.45 + quality * 0.5 : 0.1 + quality * 0.2, 0.05, 0.92));
     f.ruling = granted ? 'granted' : 'denied';
     if (merit && !granted && rng.chance(0.5 + (75 - jskill) / 100)) c.errors.push({ kind: 'motion', text: `The ${f.name.toLowerCase()} was denied though it had merit.` });
     if (granted && target) {
@@ -396,6 +443,14 @@ export function file(c, kind, o = {}) {
     text = granted ? (target && target.status === 'excluded' ? `Granted. The ${thing} is out of the case.${rule ? ` (${rule.law.name})` : ''}` : 'Granted.') : `Denied.${rule && !rule.allowed ? ` ${rule.why}` : ''}`;
   }
   c.hearings.push({ m: nowM(), kind: 'motion', result: f.ruling });
+  if (T.cert && kind !== 'delay') {
+    if (f.ruling !== 'granted') {
+      note(c, `${f.name}: denied.`);
+      const out = close(c, { kind: 'cert_denied', text: 'The Supreme Court declined to hear the case. The lower court\'s decision stands.', favorable: -0.3, trial: false });
+      return result(false, 'Review denied. The Court takes only a small share of the cases it is asked to hear; the decision below stands.', 'neutral', { filing: f, outcome: out?.outcome });
+    }
+    text = 'Review granted. The case will be briefed on the merits and argued before the full Court.';
+  }
   note(c, `${f.name}: ${text}`);
   return result(f.ruling === 'granted' || f.ruling === 'n/a', text, f.ruling === 'struck' ? 'bad' : f.ruling === 'granted' ? 'good' : 'neutral', { filing: f });
 }
@@ -508,10 +563,11 @@ export function currentOffer(c) {
       ? { text: `The prosecutor offers a plea to ${lesser}.`, value: s, kind: 'plea' }
       : { text: `The defense will plead to ${lesser}.`, value: s, kind: 'plea' };
   }
+  if (T.offer) return { text: fill(T.offer, c), value: s, kind: c.kind === 'transaction' ? 'terms' : 'settlement' };
   if (c.kind === 'family') return { text: T.kind === 'family' && c.templateId === 'divorce' ? `${first(c.parties.otherId)} offers ${Math.round(clamp(40 + s * 25, 35, 62))}% of the shared property to ${first(c.clientId)}.` : `${first(c.parties.otherId)} proposes a shared parenting plan.`, value: s, kind: 'settlement', share: Math.round(clamp(40 + s * 25, 35, 62)) };
   if (c.kind === 'child') return { text: c.templateId === 'juvenile' ? 'The prosecutor agrees to diversion if the damage is repaired.' : 'The agency proposes services at home, with reviews every three months.', value: s, kind: 'agreement' };
   if (c.kind === 'transaction') return { text: c.templateId === 'acquisition' ? 'The seller will give an indemnity and take 4% off the price.' : 'The other side agrees to mutual notice of three months.', value: s, kind: 'terms' };
-  const claim = localCost(c.templateId === 'injury' ? 60000 : c.templateId === 'dismissal' ? 45000 : 18000, COUNTRIES[c.countryId]);
+  const claim = localCost(T.claim ?? (c.templateId === 'injury' ? 60000 : c.templateId === 'dismissal' ? 45000 : 18000), COUNTRIES[c.countryId]);
   return { text: `They offer ${fmtMoney(Math.round(claim * clamp(s * 0.9, 0.2, 0.85)), COUNTRIES[c.countryId])} to settle.`, value: s, kind: 'settlement', amount: Math.round(claim * clamp(s * 0.9, 0.2, 0.85)), claim };
 }
 /** Accept or decline what is offered. A client may refuse a deal the lawyer recommends: their case, their decision. */
@@ -553,9 +609,11 @@ export function courtroom(c) {
   const phases = [];
   if (c.forum === 'appeal') {
     // An appeal is argued on the record before a panel of judges: no witnesses, no jury, and questions from the bench.
-    phases.push({ id: 'opening', title: 'Oral argument', options: [['Lead with the error in the record, and why it changed the result', 'evidence'], ['Argue the jury got the facts wrong', 'merits'], ['Keep it short and rely on the brief', 'brief']].map(([t, v]) => ({ text: t, v })) });
-    phases.push({ id: 'bench', title: 'A question from the bench', text: 'A judge interrupts: "Counsel, the jury heard other evidence. Why would the email have changed anything?"', options: [['Answer directly: point to what only the email showed', 'strong'], ['Steer back to your outline', 'dodge'], ['Say the judge has misread the record', 'rude']].map(([t, v]) => ({ text: t, v })) });
-    phases.push({ id: 'closing', title: 'Rebuttal', options: [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']].map(([t, v]) => ({ text: t, v })) });
+    // Each appeal words its own argument and the question from the bench (data/law.js); the first appeal's are the default.
+    const A = T.argument ?? {};
+    phases.push({ id: 'opening', title: 'Oral argument', options: (A.opening ?? [['Lead with the error in the record, and why it changed the result', 'evidence'], ['Argue the jury got the facts wrong', 'merits'], ['Keep it short and rely on the brief', 'brief']]).map(([t, v]) => ({ text: fill(t, c), v })) });
+    phases.push({ id: 'bench', title: A.benchTitle ?? 'A question from the bench', text: fill(A.bench ?? 'A judge interrupts: "Counsel, the jury heard other evidence. Why would the email have changed anything?"', c), options: (A.answers ?? [['Answer directly: point to what only the email showed', 'strong'], ['Steer back to your outline', 'dodge'], ['Say the judge has misread the record', 'rude']]).map(([t, v]) => ({ text: fill(t, c), v })) });
+    phases.push({ id: 'closing', title: 'Rebuttal', options: (A.rebuttal ?? [['Answer their best point, briefly', 'evidence'], ['Repeat your opening', 'sympathy'], ['Accuse the trial judge of bias', 'improper']]).map(([t, v]) => ({ text: fill(t, c), v })) });
     return { title: c.title, what: 'hearing', jury: false, judge: nameOf(c.judgeId), opposing: nameOf(c.otherCounselId), phases };
   }
   if (c.jury) phases.push({ id: 'jury', title: 'Jury selection', text: 'Twelve people from the community, questioned by both sides and the judge.', options: [['Ask about experience with the police and with eyewitnesses', 'fair'], ['Try to keep off anyone who looks like a homeowner', 'improper'], ['Strike jurors because of their race', 'race'], ['Accept the first twelve', 'quick']].map(([t, v]) => ({ text: t, v })) });
@@ -565,7 +623,7 @@ export function courtroom(c) {
   // A case from a real investigation has its own cross-examination: its eyewitness, and what they could really see.
   const X = c.cross ?? T.cross;
   const crossW = X && !pros ? c.witnesses.find((w) => w.id === X.witness) : null;
-  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(X.text, c), options: X.options.map(([t, v]) => ({ text: fill(t, c), v })), good: X.good ?? crossW.weakness, real: !!c.cross });
+  if (crossW) phases.push({ id: 'cross', title: `Cross-examination: ${nameOf(crossW.npcId)}, ${crossW.role.toLowerCase()}`, text: fill(X.text, c) + (c.knownOfficer?.id === crossW.npcId ? ' You rode with them for years. They know you know their habits.' : ''), options: X.options.map(([t, v]) => ({ text: fill(t, c), v })), good: X.good ?? crossW.weakness, real: !!c.cross });
   else if (pros && c.kind === 'criminal') phases.push({ id: 'direct', title: 'Direct examination of your witness', text: `${nameOf(c.witnesses[0]?.npcId)} takes the stand.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   else if (c.witnesses.some((w) => w.side === 'client')) phases.push({ id: 'direct', title: 'Direct examination', text: `${nameOf(c.witnesses.find((w) => w.side === 'client').npcId)} takes the stand for your side.`, options: [['Short, open questions that let them tell it', 'open'], ['Lead them through it word by word', 'leading'], ['Skip them', 'skip']].map(([t, v]) => ({ text: t, v })) });
   // A second moment to object, from the run of a trial: sometimes the question is perfectly proper.
@@ -702,7 +760,7 @@ function decide(c, adv, lines, o = {}) {
     }
     const won = share >= 0.5;
     const kindMap = { family: won ? 'orders' : 'orders', child: won ? 'orders' : 'orders', immigration: won ? 'approved' : 'denied', civil: c.forum === 'appeal' ? (won ? 'reversed' : 'affirmed') : won ? 'judgment' : 'judgment_against', transaction: won ? 'closed' : 'closed_risk' };
-    const text = {
+    let text = {
       family: c.templateId === 'divorce' ? (won ? 'The court divided the property fairly, counting the account that was hidden.' : 'The court divided the property; the hidden account was not proved.')
         : won ? `The court adopted a parenting plan built around ${c.vars.child}'s school and routines.` : `The court adopted the other parent's plan, with time for ${first(c.clientId)}.`,
       child: c.templateId === 'juvenile' ? (won ? `${c.vars.child} was diverted: the damage repaired, and no formal finding.` : `A formal finding, with supervision for ${c.vars.child}.`)
@@ -714,6 +772,7 @@ function decide(c, adv, lines, o = {}) {
         : won ? 'Judgment for your client.' : 'Judgment for the other side.',
       transaction: won ? 'Signed and closed, with the risks covered.' : 'Signed, though some risk was left in the agreement.',
     }[c.kind];
+    if (T.won) text = fill(won ? T.won : T.lost, c); // a case with outcomes worded for itself
     lines.push(text);
     out = { kind: kindMap[c.kind], text, favorable: won ? 1 : -0.5, trial: c.forum === 'trial', amount: c.kind === 'civil' && won ? currentOffer(c).claim : 0 };
     if (c.kind === 'transaction' && !won) c.risk = 'A liability left uncovered in the agreement.';
@@ -753,6 +812,7 @@ export function discipline(level) {
   const L = lawOf(player());
   (L.discipline ??= []).push({ level, m: nowM(), year: store.state.year });
   if (level === 'suspended') { L.suspendedUntil = nowM() + 12; canon(`law:suspended:${player().id}:${nowM()}`, 'Suspended from practice', 'Suspended for a year by the bar for professional misconduct.', { privacy: 'public', sig: 2 }); }
+  if (level === 'disbarred') report(world.polity(player().countryId), 'disbarred', {});
   if (level === 'disbarred') { L.bar.disbarred = nowM(); (player().flags.licenses ?? []).splice((player().flags.licenses ?? []).indexOf('law'), 1); canon(`law:disbarred:${player().id}`, 'Disbarred', 'Struck off for serious professional misconduct.', { privacy: 'public', sig: 3 }); }
   const text = { reprimand: 'The bar issued a formal reprimand.', suspended: 'The bar suspended you from practice for a year.', disbarred: 'You were disbarred.' }[level];
   log(text, 'system', 'bad');
@@ -772,6 +832,14 @@ export function close(c, out, lines = []) {
   c.stageIdx = c.stages.length;
   note(c, `Outcome: ${out.text}`);
   // What the result changes in the world, on the people's and companies' own records.
+  const N = (id) => store.state.npcs[id];
+  // Acting for someone you know: they remember how it went.
+  if (c.personal && N(c.clientId)) { const n = N(c.clientId); n.meters.relationship = clamp(n.meters.relationship + (out.favorable > 0 ? 10 : out.favorable < 0 ? -6 : 2)); }
+  // An adoption makes a parent; a guardianship a guardian; a protective order goes on the other person's record.
+  if (out.favorable > 0 && c.templateId === 'adoption' && N(c.parties.childId)) { const kid = N(c.parties.childId); kid.flags.parentIds = [...new Set([...(kid.flags.parentIds ?? []), c.clientId])]; kid.flags.adoptedBy = c.clientId; kid.flags.adoptedYear = store.state.year; }
+  if (c.templateId === 'asylum' && N(c.clientId)?.residency) { N(c.clientId).residency.asylumPending = false; if (out.favorable > 0) { N(c.clientId).residency.status = 'permanent_resident'; N(c.clientId).flags.refugee = store.state.year; } }
+  if (out.favorable > 0 && c.templateId === 'guardianship' && N(c.parties.childId)) N(c.parties.childId).flags.guardianId = c.clientId;
+  if (out.favorable > 0 && c.templateId === 'protective_order' && N(c.parties.otherId)) N(c.parties.otherId).flags.protectiveOrder = { protects: c.clientId, year: store.state.year };
   if (c.templateId === 'divorce' && ['orders', 'settlement'].includes(out.kind)) {
     for (const id of [c.clientId, c.parties.otherId]) { const n = store.state.npcs[id]; if (!n) continue; n.flags.divorced = store.state.year; n.flags.spouseId = null; if (n.life) { n.life.married = false; n.life.partnerId = null; } }
   }
@@ -801,7 +869,7 @@ export function close(c, out, lines = []) {
   // The fee, once. Salaried lawyers are paid by their employer (the career engine); a private practice bills.
   if (!c.fee.paid) {
     c.fee.paid = true;
-    if (c.fee.model !== 'salary') {
+    if (c.fee.model !== 'salary' && c.fee.model !== 'pro_bono') {
       const c0 = COUNTRIES[c.countryId];
       const strategy = { premium: 1.5, accessible: 0.7 }[L.fees] ?? 1; // your own firm's fee strategy
       const base = Math.round(localCost([0, 1500, 4000, 9000, 22000, 60000][c.level], c0) * (c.track === 'own' ? strategy : 1));
@@ -819,6 +887,15 @@ export function close(c, out, lines = []) {
   if (isFirst && !c.clinic) canon(`law:firstCase:${p.id}`, 'First case', open ? `${c.title}: ${out.text}` : `A ${c.kind === 'transaction' ? 'transaction' : `${c.kind} matter`}, as ${(ROLE_NAME[c.role] ?? 'counsel').toLowerCase()}.`, { privacy: 'family', sig: 2 });
   // A big public case puts a lawyer's name in the papers (engine/fame.js): fame, which is not the same as a good name.
   if (open && (c.level >= 4 || c.prominent)) { fameGain({ audience: 'public', amount: c.prominent ? 5 : 3, countryId: c.countryId, lasting: 0.2, why: `${c.title}` }, p); L.rep.recognition = clamp(L.rep.recognition + 2); }
+  // In the news: what happened in open court, never a confidential file (engine/news.js).
+  if (!c.clinic && (open || (c.forum === 'appeal' && out.kind !== 'settlement'))) { // an appeal is argued in public, on the record
+    const T = template(c);
+    const w = world.polity(c.countryId);
+    const words = { case: c.title };
+    if (T.supreme) report(w, out.favorable > 0 ? 'supreme_win' : 'supreme_loss', words);
+    else if (c.templateId === 'criminal_appeal' && out.favorable > 0) report(w, 'conviction_overturned', words);
+    else if (c.level >= 3 && c.jury) report(w, out.favorable > 0 ? 'courtWin' : 'courtLoss', words);
+  }
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.
@@ -940,7 +1017,8 @@ export function capacity(p = player()) {
   const staff = firm ? (firm.staff ?? []).filter((s) => store.state.npcs[s.id]?.alive).length + (firm.others ?? 0) : 0;
   const team = LEGAL_CAREERS.includes(p.career?.careerId) ? (p.career.level ?? 0) * 1.5 : 0;
   const support = (L.support?.until ?? 0) > nowM() ? 3 : 0; // a supervisor's help, for a while
-  return 6 + Math.min(6, L.history.length / 8) + staff * 3 + team + support;
+  const associates = firm ? (L.associates ?? []).filter((a) => store.state.npcs[a.id]?.alive).length : 0; // your firm's lawyers share the work
+  return 6 + Math.min(6, L.history.length / 8) + staff * 3 + associates * 2 + team + support;
 }
 /** Open complexity points against capacity. */
 export function workload(p = player()) {

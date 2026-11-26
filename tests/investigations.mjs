@@ -32,6 +32,7 @@ const DR = await import('../js/engine/investigations/drama.js');
 const IX = await import('../js/engine/investigations/index.js');
 const WP = await import('../js/engine/investigations/workplace.js');
 const biz = await import('../js/engine/business.js');
+const E2 = (await import('../js/engine/employers.js')).jobs;
 
 rng.seed(20261125);
 const problems = [];
@@ -84,7 +85,7 @@ function makeOfficer(agencyKind = 'municipal') {
   const a2 = A.agencyOf('municipal', 'us', p.city);
   check(a1.id === a2.id && a1.employerId === a2.employerId, 'a department is made once and keeps its id');
   check(A.kindsIn('us').includes('state') && A.kindsIn('us').includes('county') && !A.kindsIn('us').includes('national'), 'the US has municipal, county and state agencies');
-  check(A.kindsIn('fr').join() === 'national' && A.agencyOf('national', 'fr', 'Paris').simplified, 'elsewhere: one national police service, marked simplified');
+  check(A.kindsIn('br').join() === 'national' && A.agencyOf('national', 'br', 'São Paulo').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
@@ -986,6 +987,378 @@ section('corporate investigators: a real company, internal matters, no police po
   check(WP.SQUADS.usms.length && WP.SQUADS.irs.length, 'each new agency has its own squads');
 }
 section('a homicide from the first night to the verdict, scene by scene; the Marshals, the Secret Service, HSI and IRS Criminal Investigation');
+
+// ---------- 20. The forensic scientist's working life ----------
+{
+  const FL = await import('../js/engine/investigations/forensicLab.js');
+  const p = life('us', 27, { degree: 'chemistry' });
+  hire(CAREER_BY_ID.forensics, 0, 60, 'test');
+  const L = FL.labRecord(p);
+  check(L && FL.specialize('fingerprints').ok && !FL.specialize('dna').ok, 'a scientist chooses one discipline');
+  const lines = FL.labYear(p);
+  const q = FL.queue(p);
+  check(q.length >= 2 && q.every((b) => b.due > b.received && k.J().investigations[b.invId]?.file), `requests from real cases, with due dates (${lines.length})`);
+  check(q.filter((b) => b.discipline === 'fingerprints').length >= 1, 'most requests are in the scientist\'s discipline');
+  FL.setPolicy('serious');
+  const sq = FL.queue(p);
+  check(!sq.some((b, i) => !b.serious && sq.slice(i + 1).some((x) => x.serious)), 'serious cases first, when that is the policy');
+  // Proficiency: once a year; looking for the answer is a failure.
+  const pt = FL.proficiency('careful');
+  check(pt.ok && !FL.proficiency('careful').ok, 'one proficiency test a year');
+  store.state.year += 1;
+  FL.proficiency('peek');
+  check(!L.accredited && L.suspended === store.state.year && /off casework/i.test(FL.labYear(p)[0]), 'asking for the answer fails the test, and takes the scientist off casework');
+  store.state.year += 1;
+  FL.proficiency('careful');
+  if (L.proficiency.at(-1).passed) { FL.careerYear(p); check(L.accredited, 'a passed test restores accreditation'); }
+  // Reports: careful work counts; a case may go to court, and the scientist explains the report there.
+  let court = null;
+  for (let i = 0; i < 12 && !court; i++) {
+    if (!FL.queue(p).length) { L.suspended = null; FL.labYear(p); }
+    const b = FL.queue(p)[0];
+    if (!b) break;
+    for (const s2 of Object.keys(X.BENCH_STEPS)) X.benchStep(b.id, s2);
+    X.benchReport(b.id, 'careful');
+    court = FL.courtDates(p)[0] ?? null;
+  }
+  check(L.careful >= 1 && L.reports >= 1, 'careful reports are counted toward promotion');
+  if (court) {
+    const perf = p.career.performance;
+    const res = FL.testify(court.b.id, { method: 'honest', contamination: 'honest', bias: 'honest', certainty: 'honest' });
+    check(res.tone === 'good' && p.career.performance > perf && !FL.testify(court.b.id, {}).ok, 'explaining a report within its limits, once, keeps the scientist\'s word good');
+  }
+  // Overclaiming in court is found out, and the scientist's other cases are reviewed.
+  const b2 = (() => { L.suspended = null; FL.labYear(p); return FL.queue(p)[0]; })();
+  if (b2) {
+    for (const s2 of Object.keys(X.BENCH_STEPS)) X.benchStep(b2.id, s2);
+    X.benchReport(b2.id, 'careful');
+    const inv = W.investigation(b2.invId);
+    if (!inv.file.courtCaseId) { const c = k.openCaseFor(inv, inv.file.poi[0]); inv.file.courtCaseId = c.id; }
+    const n0 = L.reviews.length;
+    const res = FL.testify(b2.id, { method: 'claim', contamination: 'claim', bias: 'claim', certainty: 'claim' });
+    check(res.tone === 'bad' && L.reviews.length === n0 + 1 && L.exposed >= 1, 'claiming certainty the method cannot give is found out, and the cases are reviewed');
+  }
+  // Promotion needs years, passed tests, careful reports and nothing overstated.
+  L.since = store.state.year - 3; L.careful = Math.max(L.careful, 3); L.accredited = true; L.exposed = 0;
+  L.proficiency.push({ year: store.state.year - 1, passed: true }, { year: store.state.year, passed: true });
+  const lvl = p.career.level;
+  FL.careerYear(p);
+  check(p.career.level === lvl + 1 && p.career.title === FL.RANKS[lvl + 1], `promoted on the record (${p.career.title})`);
+}
+section('the forensic scientist: a discipline, a backlog from real cases, proficiency and accreditation, testimony within the science, promotion on the record');
+
+// ---------- 21. Police unions ----------
+{
+  const UN = await import('../js/engine/investigations/unions.js');
+  const p = life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  const u = UN.unionOf(a);
+  check(u && store.state.npcs[u.repId] && u.contract.until > store.state.year && UN.unionOf(a) === u, 'a department has one union, with a real representative and a contract');
+  const cash = p.finance.cash;
+  check(UN.join().ok && !UN.join().ok && r.union.member, 'an officer joins once');
+  UN.unionYear(); check(p.finance.cash < cash, 'members pay dues');
+  // Discipline: the finding stays the evidence's; a dismissal may be reduced at arbitration.
+  let reduced = 0; let upheld = 0;
+  for (let i = 0; i < 12; i++) {
+    const c = { id: `cx${i}`, action: 'dismissal' };
+    const out = UN.represent(c, r);
+    if (out.action === 'dismissal') upheld += 1; else reduced += 1;
+  }
+  check(reduced > 0 && upheld > 0, `arbitration sometimes reduces a dismissal, sometimes upholds it (${reduced}/${upheld})`);
+  // Records removed by contract do not count as a prior record.
+  r.discipline = [{ year: store.state.year - 6, finding: 'substantiated' }, { year: store.state.year, finding: 'substantiated' }];
+  check(UN.priorRecord(r).length === 2, 'records kept: both count');
+  u.contract.records = 'removed after three years';
+  check(UN.priorRecord(r).length === 1, 'records removed after three years: the old one does not');
+  r.discipline = [];
+  // The representative bargains; work to rule takes hours from cases.
+  r.union.since = store.state.year - 6; r.rep.teamwork = 90; r.skills.leadership = 90;
+  for (let i = 0; i < 8 && !r.union.rep; i++) { UN.standForRep(); store.state.year += 1; }
+  check(r.union.rep && u.repId === p.id, 'a member can be elected representative');
+  u.contract.until = store.state.year;
+  check(UN.talks()?.side === 'union' && UN.stancesFor('union').length === 3, 'the representative sits at the table when the contract ends');
+  const res = UN.bargain('training');
+  check(res.ok && u.contract.training && u.contract.until === store.state.year + 3, 'a contract is agreed, with what was bargained for');
+  u.stalled = store.state.year;
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const h = W.workLeft(inv);
+  for (let i = 0; i < 6 && u.action !== store.state.year; i++) { r.union.voted = null; UN.vote('yes'); }
+  if (u.action === store.state.year) check(W.workLeft(inv) === Math.max(0, h - 2), 'working to rule takes hours from every case');
+  check(/may not strike/.test(UN.NO_STRIKE), 'police may not strike: the rule is shown');
+}
+section('police unions: one per department, dues, representation that never changes a finding, records clauses, the representative at the table, working to rule');
+
+// ---------- 22. National police reform ----------
+{
+  const RF = await import('../js/engine/investigations/reform.js');
+  const p = life('us', 45);
+  check(!RF.propose('bodycams').ok, 'only the legislature or the head of government passes national reform');
+  p.politics = { officeId: 'head' };
+  let passed = false;
+  for (let i = 0; i < 8 && !passed; i++) { RF.propose('bodycams'); passed = RF.inForce('us', 'bodycams'); if (!passed) store.state.year += 1; }
+  check(passed && !RF.propose('bodycams').ok, 'the head of government puts a measure to a vote; once law, it stays law');
+  // Body cameras: pressing a witness is on camera, and brings a complaint.
+  p.politics = null;
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const n0 = Object.values(core.W().complaints).filter((c) => c.subjectId === p.id).length;
+  W.act(inv.id, `interview:${Object.keys(inv.file.witnesses)[0]}`, { question: 'press' });
+  check(inv.file.recorded && Object.values(core.W().complaints).filter((c) => c.subjectId === p.id).length === n0 + 1, 'under body-camera law, pressing a witness is recorded and brings a complaint');
+  // Independent complaints and decertification.
+  core.W().reform.us.independent = { year: store.state.year }; core.W().reform.us.decertify = { year: store.state.year };
+  r.discipline.push({ year: store.state.year, finding: 'substantiated' });
+  const id = 'complaint_ref';
+  core.W().complaints[id] = { id, subjectId: p.id, kind: 'fabrication', text: 'A test.', opened: core.now(), due: core.now(), status: 'open', true: true };
+  for (const c of Object.values(core.W().complaints)) if (c.id !== id && c.status === 'open' && c.subjectId === p.id) c.status = 'decided';
+  O.settleComplaints();
+  const c = core.W().complaints[id];
+  check(c.reviewer === 'independent', 'complaints are decided by an independent body');
+  if (c.action === 'dismissal') check(RF.decertified(p) && C.policeUnmet(a, p).some((x) => /certification/.test(x)), 'an officer dismissed for misconduct is decertified: no department may hire them');
+  check(RF.reformList('us').length === 4, 'four measures a country can pass');
+}
+section('national police reform: passed by the legislature, body cameras that record, independent complaints, decertification');
+
+// ---------- 23. Forensic psychology ----------
+{
+  const FP = await import('../js/engine/investigations/forensicPsych.js');
+  const p = life('us', 34, { degree: 'psychology' });
+  check(/doctorate/.test(FP.psychBlock(p)) && !FP.startPractice().ok, 'forensic psychology needs a doctorate in psychology');
+  p.education.degrees.push({ type: 'doctorate', majorId: 'psychology', age: 30 });
+  check(FP.startPractice().ok && p.career.careerId === 'forensic_psych' && p.career.title === FP.RANKS[0], 'a licensed psychologist takes up forensic practice');
+  // Real records to work from: an open case a detective is working, and the department's officers.
+  const a = A.agencyOf('municipal', p.countryId, p.city);
+  const det = Object.values(a.units)[0].memberIds[0];
+  W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
+  // A real prisoner serving a custodial sentence, from a real court case (most cases end otherwise: tried until one does).
+  for (let i = 0; i < 40 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
+  const lines = FP.psychYear(p);
+  const work = FP.openWork(p);
+  check(work.some((w) => w.kind === 'consult') && work.some((w) => w.kind === 'risk') && lines.length >= 2, `work from real records (${work.map((w) => w.kind)})`);
+  const consult = work.find((w) => w.kind === 'consult');
+  const inv = k.J().investigations[consult.invId];
+  const ev0 = inv.evidenceIds.length;
+  check(FP.doWork(consult.id, 'behavior').ok && inv.file.leads.some((l) => /names nobody/.test(l.text)) && inv.evidenceIds.length === ev0, 'a consultation describes behavior: a lead, never evidence, never a name');
+  const risk = work.find((w) => w.kind === 'risk');
+  const r1 = FP.doWork(risk.id, 'structured');
+  const sen = k.J().sentences[risk.sentenceId];
+  check(r1.ok && sen.parole?.assessment && ['released on parole', 'parole refused'].includes(sen.parole.decision), `the parole board decides, on a structured assessment of a real prisoner (${sen.parole?.decision})`);
+  const officer = work.find((w) => w.kind === 'officer');
+  if (officer) {
+    const n0 = Object.keys(core.W().complaints).length;
+    FP.doWork(officer.id, 'report');
+    check(Object.keys(core.W().complaints).length === n0 + 1 && FP.psychRecord(p).breaches === 1, 'telling a supervisor what an officer said in confidence brings a complaint');
+  }
+  check(!FP.doWork(consult.id, 'behavior').ok, 'each piece of work is done once');
+  // Promotion on careful work only.
+  const F = FP.psychRecord(p);
+  F.since = store.state.year - 5; F.careful = 5; F.breaches = 1;
+  check(!FP.psychCareerYear(p).length, 'no promotion after a breach of confidence');
+  F.breaches = 0; F.overreach = 0;
+  check(FP.psychCareerYear(p).length && p.career.title === FP.RANKS[1], 'promotion on careful work');
+}
+section('forensic psychology: a doctorate and license, consultations that never name anyone, risk assessments the board decides on, confidential care for officers');
+
+// ---------- 24. Police outside the US ----------
+{
+  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('br').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
+  check(A.agencyOf('territorial', 'uk', 'London').name === 'Metropolitan Police Service' && A.agencyOf('prefectural', 'jp', 'Tokyo').name === 'Tokyo Metropolitan Police Department', 'forces have their real-world names');
+  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'br', 'São Paulo').simplified, 'modeled forces are not marked simplified; the rest are');
+  const p = life('uk', 24);
+  p.city = 'London';
+  const a = makeOfficer('territorial');
+  const r = core.I();
+  check(a.kind === 'territorial' && r.job?.agencyId === a.id && /constable/i.test(p.career.title), `a UK recruit becomes a police constable (${p.career.title})`);
+  check(store.state.npcs[a.chiefId].occupation === 'Commissioner', 'the Metropolitan Police is led by a commissioner');
+  r.job.rankSince = store.state.year - 6; r.rep.integrity = 90; r.rep.skill = 90; r.rep.reports = 90; r.rep.ethics = 90; r.rep.reliability = 90; r.rep.teamwork = 90; r.skills.leadership = 60;
+  r.job.rank = 'senior';
+  const next = C.promotionOptions(p)[0];
+  check(next?.name === 'Sergeant', `the next rank is a UK rank (${next?.name})`);
+  r.job.rank = 'sergeant';
+  check(C.promotionOptions(p)[0]?.name === 'Inspector', 'and after sergeant, inspector');
+  check(C.rankName('detective_sergeant', r) === 'Detective sergeant' && C.rankName('detective', r) === 'Detective constable', 'detectives are detective constables and sergeants');
+  const fr = life('fr', 22);
+  const pn = A.agencyOf('police_nationale', 'fr', fr.city);
+  check(pn.name === `Police nationale, ${fr.city}` && !C.policeUnmet(pn, fr).some((x) => /age/.test(x)), 'a 22-year-old can apply to the Police nationale');
+  check(D.AGENCY_KINDS.gendarmerie.entry && D.AGENCY_KINDS.police_nationale.prosecutor && D.SOURCES.jp_police.verified === false, 'entry routes and the prosecuting authority are described; sources unverified');
+}
+section('police outside the US: the UK, Canada, Australia, France and Japan with their own forces, names, ranks and entry routes');
+
+// ---------- 25. Conviction review careers ----------
+{
+  const IG = await import('../js/engine/investigations/integrity.js');
+  const ls = await import('../js/engine/lawSchool.js');
+  const p = life('us', 34);
+  check(/admission|investigative/.test(IG.postBlock('innocence', p)) && /prosecutor/.test(IG.postBlock('ciu', p)), 'review work needs the post: a lawyer or seasoned investigator; a prosecutor for a unit');
+  ls.lawOf(p).bar.admitted = { year: store.state.year };
+  check(IG.takePost('innocence').ok, 'an admitted lawyer joins an innocence organization');
+  // A real conviction with kept evidence that can be tested anew (made by the courts' own work if needed).
+  const lines = IG.integrityYear(p);
+  const m = IG.openMatters(p)[0];
+  check(m && k.J().cases[m.caseId]?.stage === 'sentenced', `a matter is a real conviction (${lines[0]})`);
+  if (m) {
+    check(!IG.step(m.id, 'timeline').ok && IG.step(m.id, 'record').ok && IG.step(m.id, 'timeline').ok, 'the trial record comes first, then the timeline');
+    check(!IG.step(m.id, 'reanalysis').ok, 'no testing before experts say what could be tested');
+    IG.step(m.id, 'experts');
+    const rq = IG.step(m.id, 'reanalysis');
+    if (m.lab) {
+      check(!IG.step(m.id, 'refer').ok, 'the result comes on its date, not before');
+      store.state.year += 1;
+    }
+    const before = k.J().cases[m.caseId].stage;
+    const res = IG.step(m.id, 'refer');
+    const after = k.J().cases[m.caseId].stage;
+    check(res.ok && m.status === 'closed' && (m.outcome === 'exonerated' ? after === 'quashed' : after === before), `the court decides; nothing changes without it (${m.outcome}, ${rq.text.slice(0, 40)})`);
+    check(ls.lawOf(p).history.some((h) => h.kind === 'post-conviction'), 'the matter is in the lawyer\'s own case history');
+  }
+}
+section('conviction review: a post, not a promotion; real convictions; the record, the timeline, experts, testing on its date; the appeal court decides; the lawyer\'s record');
+
+// ---------- 26. Accountants and auditors ----------
+{
+  const BK = await import('../js/engine/investigations/books.js');
+  const p = life('us', 31, { degree: 'accounting' });
+  hire(CAREER_BY_ID.audit, 0, 60, 'test');
+  check(BK.bookRole(p) === 'audit', 'an auditor reviews books');
+  BK.booksYear(p);
+  const g = BK.engagements(p)[0];
+  check(g && E2().employers[g.employerId], 'an engagement at a real company');
+  BK.bookStep(g.id, 'discrepancy');
+  const perf = p.career.performance;
+  // Concluding fraud from a discrepancy alone is not a finding.
+  g.truth = 'error';
+  const res = BK.concludeBooks(g.id, 'fraud');
+  check(res.tone === 'bad' && p.books.unfounded === 1 && p.career.performance < perf, 'calling a discrepancy fraud without verifying it is an unfounded referral');
+  // A verified fraud, referred, opens a real police investigation of the same company.
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g2 = BK.engagements(p)[0];
+  g2.truth = 'fraud';
+  for (const s2 of Object.keys(BK.BOOK_STEPS)) BK.bookStep(g2.id, s2);
+  BK.concludeBooks(g2.id, 'fraud');
+  const inv = g2.referredInvId && k.J().investigations[g2.referredInvId];
+  check(inv && inv.file.template === 'fraud' && inv.file.employerId === g2.employerId && inv.file.leadId !== p.id, 'a verified fraud referral opens a police investigation of that company, worked by a detective');
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g3 = BK.engagements(p)[0];
+  g3.truth = 'loss';
+  BK.bookStep(g3.id, 'verify');
+  check(BK.concludeBooks(g3.id, 'loss').tone === 'good', 'a failed investment found and reported as a loss, not a crime');
+}
+section('accountants and auditors: real companies, discrepancies that are not proof, verified findings, referrals that open real investigations');
+
+// ---------- 27. Hospitals and patient privacy ----------
+{
+  const MD = await import('../js/engine/investigations/medical.js');
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(inv.id);
+  check(MD.patientOf(inv) === inv.file.reportingId, 'the person robbed is the patient');
+  const eth = r.rep.ethics;
+  MD.requestMedical(inv.id, 'informal');
+  check(!inv.file.medical && r.rep.ethics < eth, 'asking hospital staff informally gets nothing, and costs ethics');
+  let got = false;
+  for (const how of ['consent', 'order']) { MD.requestMedical(inv.id, how); if (inv.file.medical) { got = true; break; } }
+  check(!got || (inv.file.medical.how && inv.file.log.some((x) => /documented injuries/.test(x.text))), 'with consent or an order, only the documented findings are shared');
+  // A physician at the hospital: the patient, and the police's request.
+  const doc = life('us', 40);
+  doc.medicine = { job: { hospitalId: null } };
+  const inv2 = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  doc.medicine.job.hospitalId = MD.hospitalFor(inv2, doc);
+  const lines = MD.hospitalYear(doc);
+  const q = MD.myRequests(doc)[0];
+  check(q && lines.length, 'a patient from a real case arrives at the physician\'s hospital');
+  if (q) { const perf = doc.career.performance ?? 50; MD.answerRequest(q.id, 'chart'); check(doc.flags.privacyBreach === 1 && (doc.career.performance ?? 50) < perf, 'handing the police the whole chart is a privacy breach'); }
+}
+section('hospitals: the patient is treated by the medical side; police get findings only with consent or an order; a physician who hands over the chart breaches privacy');
+
+// ---------- 28. Overtime and availability pay ----------
+{
+  const PY = await import('../js/engine/investigations/pay.js');
+  const p = life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  p.career.salary = 60000;
+  store.state.year += 1; // a year that has not been paid yet
+  const cash = p.finance.cash;
+  const l1 = PY.payYear(p);
+  check(l1.some((x) => /Overtime/.test(x)) && p.finance.cash > cash && !PY.payYear(p).length, 'an officer is paid overtime once for each year');
+  const fed = life('us', 30, { degree: 'accounting' });
+  hire(CAREER_BY_ID.fbi_agent, 0, 60, 'test');
+  const rf = core.I();
+  rf.family = 'federal'; rf.stage = 'agent';
+  rf.job = { agencyKind: 'fbi', officeId: A.officeOf('fbi', A.federalCities()[0]).id, rank: 'agent', since: store.state.year - 2 };
+  fed.career.salary = 80000;
+  const c2 = fed.finance.cash;
+  PY.payYear(fed);
+  check(fed.finance.cash - c2 === 20000, 'a federal criminal investigator is paid availability pay (25%), not overtime');
+  check(CAREER_BY_ID.police.pensionAfter === 25 && CAREER_BY_ID.fbi_agent.pensionAfter === 20, 'police and federal pensions have their own service years');
+}
+section('pay: overtime from the work done, once a year; federal availability pay; pension service years');
+
+// ---------- 29. The editor's desk, standards, and a story that brings a lead ----------
+{
+  const p = life('us', 38, { degree: 'journalism' });
+  hire(CAREER_BY_ID.journalist, 3, 60, 'test');
+  X.npcCourtCase(p);
+  const lines = X.editorYear(p);
+  const d = X.myDrafts(p)[0];
+  check(d && lines.length, 'an editor has reporters\' drafts to read');
+  if (d) { d.unverified = true; d.wrong = true; check(X.editDraft(d.id, 'run').tone === 'bad' && d.correction, 'running an unverified account as fact brings a correction under the editor\'s name'); }
+  check(X.STORY_STEPS.standards, 'editorial standards are a step of every story');
+}
+section('journalism: an editor\'s desk, editorial standards, corrections');
+
+// ---------- 30. Careers around the cases ----------
+{
+  const AL = await import('../js/engine/investigations/allied.js');
+  const DEG = { crime_analyst: 'criminology', probation: 'criminal_justice', victim_advocate: 'psychology', court_reporter: 'english', inspector_general: 'accounting', compliance: 'law', insurance: 'business' };
+  for (const id of Object.keys(AL.ALLIED)) {
+    const p = life('us', 30, { degree: DEG[id] });
+    if (id === 'inspector_general') p.career.experience = { audit: 4 };
+    const t = AL.takeUp(id);
+    check(t.ok && p.career.careerId === `ally_${id}` && p.career.title === AL.ALLIED[id].ranks[0], `${id}: taken up through its own door (${t.text})`);
+    AL.alliedYear(p);
+    const w = AL.openAllied(p)[0];
+    check(w, `${id}: the year brings work from real records`);
+    if (!w) continue;
+    const good = AL.ALLIED[id].options.find((o) => o.good);
+    const res = AL.doAllied(w.id, good.id);
+    check(res.tone === 'good' && AL.alliedOf(p).careful === 1 && !AL.doAllied(w.id, good.id).ok, `${id}: done soundly, once`);
+    // The specific consequence, in the records it touches.
+    if (id === 'crime_analyst') check(w.subject.every((x) => k.J().investigations[x].file.leads.some((l) => /names nobody/.test(l.text))), 'the analyst\'s pattern is a lead on each linked case, naming nobody');
+    if (id === 'probation') check(['completed', 'active'].includes(k.J().sentences[w.subject].status) && k.J().sentences[w.subject].supervisedBy === p.id, 'a real sentence, supervised');
+    if (id === 'victim_advocate') check(k.J().investigations[w.subject].file.done.support, 'the person harmed is supported, and chooses for themselves');
+    if (id === 'court_reporter') check(k.J().cases[w.subject].transcript?.certified, 'a certified transcript on the real case');
+    if (id === 'insurance') check(k.J().investigations[w.subject].file.template === 'arson', 'the claim is for a real fire');
+    store.state.year += 1;
+    AL.alliedYear(p);
+    const w2 = AL.openAllied(p)[0];
+    if (w2) {
+      const bad = AL.ALLIED[id].options.find((o) => !o.good);
+      check(AL.doAllied(w2.id, bad.id).tone === 'bad' && AL.alliedOf(p).misconduct === 1, `${id}: the wrong way is costly`);
+      const A = AL.alliedOf(p); A.since = store.state.year - 5; A.careful = 6;
+      check(!AL.alliedCareerYear(p).length, `${id}: no promotion with misconduct on the record`);
+    }
+  }
+  const young = life('us', 19);
+  check(Object.keys(AL.ALLIED).every((id) => AL.alliedBlock(id, young)), 'none of this work before 21');
+  // A forensic scientist who specializes in digital work is a digital forensic examiner.
+  const FL = await import('../js/engine/investigations/forensicLab.js');
+  const sci = life('us', 28, { degree: 'computer_science' });
+  hire(CAREER_BY_ID.forensics, 0, 60, 'test');
+  FL.labRecord(sci);
+  if (store.state.year >= 1995) { FL.specialize('digital'); check(sci.career.title === 'Digital forensic examiner', 'a digital specialist is a digital forensic examiner'); }
+}
+section('careers around the cases: analysts, probation, victim advocates, court reporters, inspectors general, compliance and insurance investigators, digital forensic examiners');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

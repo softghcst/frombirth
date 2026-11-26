@@ -36,13 +36,15 @@ export async function seeDoctor(api) {
   const price = (n) => (!n ? 'Free' : med.parentsPayCare(p) ? `Your parents pay ${fmtMoney(n, c)}` : fmtMoney(n, c));
   const pick = await pickModal({
     title: 'The doctor',
-    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}${k.model.name}. ${k.how}` : `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
+    // The health system in a sentence, and what this patient (or their family) pays of a bill.
+    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}Health care here: ${k.model.name.toLowerCase()}. ${k.model.line} As a child you are covered, and your family pays ${Math.round(k.share * 100)}% of a bill.`
+      : `Health care here: ${k.model.name.toLowerCase()}. ${k.how === k.model.line ? k.how : `${k.model.line} ${k.how}`} You pay ${Math.round(k.share * 100)}% of a bill.`,
     options: [
       ...list.map((x) => ({ value: x.id, label: `Treat your ${x.name.replace(/^an? /, '')}`, disabled: x.seen || !x.affordable || (x.manage && x.managed),
         sub: x.manage && x.managed ? 'Under control. Nothing more to do.' : x.seen ? 'Already seen this year.'
-          : `${price(x.cost)}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
-      { value: 'checkup', label: 'Have a check-up', sub: `${price(med.careCost(200))}. Makes illness less likely next year.` },
-      ...(p.age >= MENTAL_CARE_AGE ? [{ value: 'therapy', label: kid ? 'See a children\'s therapist' : 'See a therapist', sub: `${price(med.careCost(1200))} for a year of sessions. Lifts your mood.` }] : []),
+          : `${x.who ? `${x.who}. ` : ''}${price(x.cost)}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
+      { value: 'checkup', label: 'Have a check-up', sub: `${med.familyDoctorHere() ? `${med.familyDoctorHere()}. ` : ''}${price(med.checkUpPrice())}. Catches things early.` },
+      ...(p.age >= MENTAL_CARE_AGE ? [{ value: 'therapy', label: kid ? 'See a children\'s therapist' : 'See a therapist', sub: 'An assessment first; therapy is planned from there, in My Health.' }] : []),
       ...(!kid && k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
       ...(!kid && k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
     ],

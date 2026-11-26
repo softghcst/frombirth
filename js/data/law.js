@@ -96,24 +96,68 @@ export const NO_CONTINGENCY_KINDS = ['criminal', 'family', 'child'];
 // ---------- Skills ----------
 
 /** The lawyer's craft, kept apart from fame and from how many cases were won. */
+// Five skills to keep track of, not twenty: the many things lawyers do are grouped into these. Courses, cases and
+// scenes may name a finer skill (cross-examination, drafting...); it counts toward its group (SKILL_GROUP).
 export const LEGAL_SKILLS = [
-  { id: 'research', name: 'Legal research' }, { id: 'writing', name: 'Legal writing' },
-  { id: 'interpretation', name: 'Reading statutes' }, { id: 'analysis', name: 'Case analysis' },
-  { id: 'evidence', name: 'Weighing evidence' }, { id: 'counseling', name: 'Client counseling' },
-  { id: 'negotiation', name: 'Negotiation' }, { id: 'oral', name: 'Oral advocacy' },
-  { id: 'procedure', name: 'Courtroom procedure' }, { id: 'examination', name: 'Witness examination' },
-  { id: 'cross', name: 'Cross-examination' }, { id: 'strategy', name: 'Trial strategy' },
-  { id: 'appellate', name: 'Appellate writing' }, { id: 'ethics', name: 'Professional ethics' },
-  { id: 'management', name: 'Case management' }, { id: 'leadership', name: 'Leadership' },
-  { id: 'drafting', name: 'Contract drafting' }, { id: 'family', name: 'Family procedure' },
-  { id: 'immigration', name: 'Immigration procedure' }, { id: 'business', name: 'Business law' },
+  { id: 'research', name: 'Research & Writing' }, { id: 'courtroom', name: 'Courtroom' },
+  { id: 'negotiation', name: 'Negotiation' }, { id: 'clients', name: 'Client Care' }, { id: 'ethics', name: 'Ethics & Judgment' },
 ];
+/** Finer skills named in the data, and the skill each counts toward. */
+export const SKILL_GROUP = {
+  writing: 'research', interpretation: 'research', analysis: 'research', appellate: 'research', drafting: 'research',
+  oral: 'courtroom', procedure: 'courtroom', examination: 'courtroom', cross: 'courtroom', strategy: 'courtroom', evidence: 'courtroom', advocacy: 'courtroom',
+  counseling: 'clients', management: 'clients', family: 'clients', immigration: 'clients', business: 'clients', leadership: 'ethics',
+};
+export const skillId = (id) => SKILL_GROUP[id] ?? id;
+
+/**
+ * What the five skills are called in each line of work: the same five underneath (research, courtroom, negotiation,
+ * clients, ethics), named for what they mean there. A specialty's names win; then the track's; then the plain ones.
+ */
+export const SKILL_NAMES = {
+  default: ['Research & Writing', 'Courtroom', 'Negotiation', 'Client Care', 'Ethics & Judgment'],
+  criminal_defense: ['Case Research', 'Trial Defense', 'Plea Bargaining', 'Client Trust', 'Ethics & Judgment'],
+  public_defense: ['Case Prep', 'Trial Defense', 'Plea Bargaining', 'Client Trust', 'Fairness Under Pressure'],
+  prosecution: ['Building the Case', 'Trial Advocacy', 'Plea Offers', 'Victims & Witnesses', 'Prosecutorial Ethics'],
+  family: ['Family Code', 'Custody Hearings', 'Mediation', 'Supporting Families', 'Children\'s Best Interests'],
+  divorce: ['Property & Support Law', 'Divorce Trials', 'Settlement Talks', 'Clients in Crisis', 'Discretion'],
+  child_welfare: ['Child Welfare Law', 'Dependency Hearings', 'Case Planning', 'Working With Families', 'The Child\'s Interests'],
+  juvenile_defense: ['Juvenile Law', 'Juvenile Court', 'Diversion Deals', 'Young Clients', 'Second Chances'],
+  immigration: ['Immigration Law', 'Immigration Court', 'Working With Agencies', 'Clients Far From Home', 'Ethics & Judgment'],
+  civil_litigation: ['Research & Briefs', 'Trial Work', 'Settlement', 'Client Care', 'Ethics & Judgment'],
+  personal_injury: ['Proving Damages', 'Jury Trials', 'Insurance Talks', 'Injured Clients', 'Ethics & Judgment'],
+  corporate: ['Deal Drafting', 'Disputes', 'Dealmaking', 'Client Relations', 'Compliance'],
+  employment: ['Workplace Law', 'Hearings & Trials', 'Settlements', 'Workers & Employers', 'Ethics & Judgment'],
+  estate: ['Wills & Trusts', 'Probate Court', 'Family Agreements', 'Grieving Families', 'Ethics & Judgment'],
+  appellate: ['Briefs & Records', 'Oral Argument', 'Settling on Appeal', 'Client Counsel', 'Candor to the Court'],
+  civil_rights: ['Constitutional Law', 'Trial Work', 'Settlements & Reform', 'Communities', 'Ethics & Judgment'],
+  real_estate: ['Titles & Contracts', 'Property Disputes', 'Closings', 'Buyers & Sellers', 'Ethics & Judgment'],
+  ip: ['Patents & Trademarks', 'IP Litigation', 'Licensing Deals', 'Creators & Companies', 'Ethics & Judgment'],
+  tax: ['Tax Code', 'Tax Court', 'Settling With the Agency', 'Client Finances', 'Compliance'],
+  environmental: ['Environmental Law', 'Hearings & Trials', 'Permits & Agreements', 'Communities', 'Ethics & Judgment'],
+  government: ['Statutes & Rules', 'Agency Hearings', 'Interagency Talks', 'Serving the Public', 'Public Ethics'],
+  legal_aid: ['Legal Research', 'Hearings', 'Negotiation', 'Clients in Need', 'Ethics & Judgment'],
+  judiciary: ['Legal Analysis', 'Running the Courtroom', 'Settlement Conferences', 'Fairness to the Parties', 'Judicial Ethics'],
+  student: ['Research & Writing', 'Moot Court & Trial', 'Negotiation', 'Client Counseling', 'Professional Responsibility'],
+};
+/** The five skills with the names they carry in a line of work: [{ id, name }]. */
+export const skillsFor = (specialtyId, track) => {
+  const names = (track === 'judiciary' && SKILL_NAMES.judiciary) || SKILL_NAMES[specialtyId] || SKILL_NAMES[track] || SKILL_NAMES.default;
+  return LEGAL_SKILLS.map((s, i) => ({ id: s.id, name: names[i] }));
+};
 export const SKILL_NAME = Object.fromEntries(LEGAL_SKILLS.map((s) => [s.id, s.name]));
 
 /** What a reputation is made of: several things, not a win count. */
 export const REPUTATION = [
   { id: 'integrity', name: 'Integrity' }, { id: 'clients', name: 'Client trust' }, { id: 'advocacy', name: 'Advocacy' },
   { id: 'preparation', name: 'Preparation' }, { id: 'reliability', name: 'Reliability' }, { id: 'recognition', name: 'Recognition' },
+];
+/** What the player sees: four bars, each the average of the parts of a reputation it gathers. */
+export const REPUTATION_SHOWN = [
+  { id: 'integrity', name: 'Integrity', parts: ['integrity'] },
+  { id: 'trust', name: 'Client Trust', parts: ['clients', 'reliability'] },
+  { id: 'skill', name: 'Name in Court', parts: ['advocacy', 'preparation'] },
+  { id: 'recognition', name: 'Recognition', parts: ['recognition'] },
 ];
 
 // ---------- Law school ----------
@@ -182,7 +226,7 @@ export const ELECTIVES = [
     q('Police search a car without a warrant or consent and find stolen goods. What does the defense lawyer consider?',
       ['A motion to suppress the evidence as unlawfully obtained', 'Asking the police to apologize', 'Pleading guilty right away', 'Nothing can be done'], 0,
       'Evidence found in an unlawful search may be excluded, depending on the rules that apply.') ] },
-  { id: 'family_law', name: 'Family Law', skills: { family: 4, negotiation: 1 }, leads: ['family'], exam: [
+  { id: 'family_law', name: 'Family Law', skills: { family: 4, negotiation: 1 }, leads: ['family', 'divorce'], exam: [
     q('In deciding custody, what does a family court usually put first?',
       ['The best interests of the child', 'Which parent earns more', 'Which parent filed first', 'Which parent has the better lawyer'], 0,
       'Custody is decided on the child\'s interests, not wealth or tactics.') ] },
@@ -270,26 +314,27 @@ export const BAR_PASS = 0.62;
  * a government legal office, or a practice of one's own.
  */
 export const SPECIALTIES = [
-  { id: 'criminal_defense', name: 'Criminal Defense', tracks: ['lawyer', 'own'], cases: ['burglary_hale', 'burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['flat', 'hourly'] },
-  { id: 'public_defense', name: 'Public Defense', tracks: ['defender'], cases: ['burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['salary'] },
-  { id: 'prosecution', name: 'Criminal Prosecution', tracks: ['prosecutor'], cases: ['burglary', 'theft', 'assault', 'homicide'], playable: true, skills: ['evidence', 'examination', 'ethics'], fees: ['salary'] },
-  { id: 'family', name: 'Family & Divorce Law', tracks: ['lawyer', 'own'], cases: ['divorce', 'custody'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
-  { id: 'child_welfare', name: 'Child Welfare Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['dependency'], playable: true, skills: ['family', 'counseling'], fees: ['salary', 'flat'] },
-  { id: 'juvenile_defense', name: 'Juvenile Defense', tracks: ['defender', 'lawyer'], cases: ['juvenile'], playable: true, skills: ['counseling', 'procedure'], fees: ['salary', 'flat'] },
-  { id: 'immigration', name: 'Immigration Law', tracks: ['lawyer', 'own'], cases: ['family_petition', 'removal'], playable: true, skills: ['immigration', 'research'], fees: ['flat', 'hourly'] },
-  { id: 'civil_litigation', name: 'Civil Litigation', tracks: ['lawyer', 'own'], cases: ['contract_dispute', 'injury'], playable: true, skills: ['research', 'negotiation', 'oral'], fees: ['hourly', 'contingency'] },
-  { id: 'personal_injury', name: 'Personal Injury', tracks: ['lawyer', 'own'], cases: ['injury'], playable: true, skills: ['negotiation', 'evidence'], fees: ['contingency'] },
+  { id: 'criminal_defense', name: 'Criminal Defense', tracks: ['lawyer', 'own'], cases: ['burglary_hale', 'burglary', 'theft', 'assault', 'homicide', 'fraud', 'drug_supply', 'criminal_appeal'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['flat', 'hourly'] },
+  { id: 'public_defense', name: 'Public Defense', tracks: ['defender'], cases: ['burglary', 'theft', 'assault', 'homicide', 'drug_supply', 'criminal_appeal'], playable: true, skills: ['evidence', 'cross', 'counseling'], fees: ['salary'] },
+  { id: 'prosecution', name: 'Criminal Prosecution', tracks: ['prosecutor'], cases: ['burglary', 'theft', 'assault', 'homicide', 'fraud', 'drug_supply'], playable: true, skills: ['evidence', 'examination', 'ethics'], fees: ['salary'] },
+  { id: 'family', name: 'Family Law', tracks: ['lawyer', 'own'], cases: ['custody', 'custody', 'divorce', 'protective_order', 'adoption', 'guardianship'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
+  { id: 'divorce', name: 'Divorce Law', tracks: ['lawyer', 'own'], cases: ['divorce', 'divorce', 'custody', 'prenup', 'support_change'], playable: true, skills: ['family', 'negotiation', 'counseling'], fees: ['hourly', 'flat'] },
+  { id: 'child_welfare', name: 'Child Welfare Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['dependency', 'reunification'], playable: true, skills: ['family', 'counseling'], fees: ['salary', 'flat'] },
+  { id: 'juvenile_defense', name: 'Juvenile Defense', tracks: ['defender', 'lawyer'], cases: ['juvenile', 'juvenile_fight'], playable: true, skills: ['counseling', 'procedure'], fees: ['salary', 'flat'] },
+  { id: 'immigration', name: 'Immigration Law', tracks: ['lawyer', 'own'], cases: ['family_petition', 'removal', 'asylum'], playable: true, skills: ['immigration', 'research'], fees: ['flat', 'hourly'] },
+  { id: 'civil_litigation', name: 'Civil Litigation', tracks: ['lawyer', 'own'], cases: ['contract_dispute', 'injury', 'car_crash'], playable: true, skills: ['research', 'negotiation', 'oral'], fees: ['hourly', 'contingency'] },
+  { id: 'personal_injury', name: 'Personal Injury', tracks: ['lawyer', 'own'], cases: ['injury', 'car_crash'], playable: true, skills: ['negotiation', 'evidence'], fees: ['contingency'] },
   { id: 'corporate', name: 'Corporate Law', tracks: ['lawyer', 'own'], cases: ['acquisition', 'supply_deal'], playable: true, skills: ['drafting', 'business', 'negotiation'], fees: ['hourly'] },
-  { id: 'employment', name: 'Employment Law', tracks: ['lawyer', 'own'], cases: ['dismissal'], playable: true, skills: ['negotiation', 'interpretation'], fees: ['hourly', 'contingency'] },
+  { id: 'employment', name: 'Employment Law', tracks: ['lawyer', 'own'], cases: ['dismissal', 'wage_claim'], playable: true, skills: ['negotiation', 'interpretation'], fees: ['hourly', 'contingency'] },
   { id: 'estate', name: 'Estate Planning & Probate', tracks: ['lawyer', 'own'], cases: ['will', 'probate'], playable: true, skills: ['drafting', 'counseling'], fees: ['flat', 'hourly'] },
-  { id: 'appellate', name: 'Appellate Practice', tracks: ['lawyer', 'defender', 'prosecutor', 'gov_counsel', 'own'], cases: ['appeal_brief'], playable: true, skills: ['appellate', 'oral'], fees: ['hourly', 'salary'] },
-  { id: 'civil_rights', name: 'Civil Rights', tracks: ['lawyer', 'own'], cases: ['police_conduct'], playable: true, skills: ['interpretation', 'oral'], fees: ['contingency', 'hourly'] },
+  { id: 'appellate', name: 'Appellate Practice', tracks: ['lawyer', 'defender', 'prosecutor', 'gov_counsel', 'own'], cases: ['appeal_brief', 'criminal_appeal', 'criminal_appeal', 'verdict_appeal', 'supreme_court'], playable: true, skills: ['appellate', 'oral'], fees: ['hourly', 'salary'] },
+  { id: 'civil_rights', name: 'Civil Rights', tracks: ['lawyer', 'own'], cases: ['police_conduct', 'housing_bias'], playable: true, skills: ['interpretation', 'oral'], fees: ['contingency', 'hourly'] },
   { id: 'real_estate', name: 'Real Estate Law', tracks: ['lawyer', 'own'], cases: ['closing_defect', 'boundary'], playable: true, skills: ['drafting'], fees: ['flat'] },
   { id: 'ip', name: 'Intellectual Property', tracks: ['lawyer', 'own'], cases: ['trademark', 'license_deal'], playable: true, skills: ['interpretation', 'business'], fees: ['hourly'] },
   { id: 'tax', name: 'Tax Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['tax_appeal', 'restructure'], playable: true, skills: ['interpretation', 'business'], fees: ['hourly'] },
-  { id: 'environmental', name: 'Environmental Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['permit_case'], playable: true, skills: ['interpretation'], fees: ['hourly', 'salary'] },
-  { id: 'government', name: 'Government & Administrative Law', tracks: ['gov_counsel'], cases: ['agency_review'], playable: true, skills: ['interpretation', 'procedure'], fees: ['salary'] },
-  { id: 'legal_aid', name: 'Public Interest / Legal Aid', tracks: ['lawyer'], cases: ['divorce', 'family_petition', 'dismissal'], playable: true, skills: ['counseling', 'negotiation'], fees: ['salary'] },
+  { id: 'environmental', name: 'Environmental Law', tracks: ['lawyer', 'gov_counsel', 'own'], cases: ['permit_case', 'pollution'], playable: true, skills: ['interpretation'], fees: ['hourly', 'salary'] },
+  { id: 'government', name: 'Government & Administrative Law', tracks: ['gov_counsel'], cases: ['agency_review', 'records_request'], playable: true, skills: ['interpretation', 'procedure'], fees: ['salary'] },
+  { id: 'legal_aid', name: 'Public Interest / Legal Aid', tracks: ['lawyer'], cases: ['divorce', 'family_petition', 'dismissal', 'eviction', 'wage_claim'], playable: true, skills: ['counseling', 'negotiation'], fees: ['salary'] },
 ];
 export const SPECIALTY_BY_ID = Object.fromEntries(SPECIALTIES.map((s) => [s.id, s]));
 
@@ -426,6 +471,63 @@ export const CASE_TEMPLATES = {
     research: q('What standard decides where {child} lives?', ['The child\'s best interests', 'Which parent earns more', 'Which parent filed first', 'Which parent is liked by the judge'], 0, 'Custody turns on the child\'s best interests: stability, care, the child\'s needs and, at some ages, wishes.'),
     motion: { name: 'Proposed parenting plan', target: null, options: [['A plan built around {child}\'s school and routines', 'strong'], ['A plan giving {client} everything', 'weak'], ['Accept {other}\'s plan', 'concede'], ['Delay', 'delay']] },
     settle: true,
+  },
+  // Divorce Law: the agreement before the marriage, and the change after it.
+  prenup: {
+    kind: 'transaction', level: 1, title: 'A premarital agreement for {client}', jury: false, forum: 'none',
+    summary: '{client} is getting married and wants an agreement on what stays separate if the marriage ends. Their partner has their own lawyer.',
+    stages: [['intake', 0], ['disclosure', 1], ['drafting', 1], ['signing', 1], ['done', 0]],
+    evidence: [E('assets', 'financial_record', 'A full list of {client}\'s assets and debts', 'client', 3, 90), E('counsel', 'document', 'Confirmation the other side had a lawyer of their own', 'client', 3, 95)],
+    witnesses: [],
+    research: q('What most often lets a court set aside a premarital agreement?', ['One side hid assets, or signed under pressure without time or a lawyer', 'It was signed on a weekday', 'It was typed, not handwritten', 'One side earns more'], 0, 'Courts look for full disclosure, time to consider, and independent advice. Without them, an agreement may not hold.'),
+    motion: { name: 'Draft agreement', target: null, options: [['Full disclosure from both sides, signed weeks before the wedding', 'strong'], ['Sign it the night before the wedding', 'weak'], ['A template from the internet', 'concede'], ['Delay', 'delay']] },
+    transaction: true, offer: 'The other side asks that savings during the marriage be shared.',
+    won: 'Signed with full disclosure and time to think: an agreement that will hold.', lost: 'Signed, but in a hurry. A court may not enforce all of it.',
+  },
+  support_change: {
+    kind: 'family', level: 2, title: 'In re the Marriage of {client} and {other}: support', jury: false, forum: 'family',
+    summary: '{client} lost their job last year and can no longer pay the support ordered in the divorce. {other} says the job loss was a choice.',
+    stages: [['intake', 0], ['filing', 1], ['disclosure', 2], ['negotiation', 1], ['hearing', 2], ['judgment', 0]],
+    evidence: [E('layoff', 'document', 'The layoff letter from {client}\'s employer', 'client', 4, 95), E('search', 'document', 'Records of {client}\'s job applications since', 'client', 3, 80), E('lifestyle', 'witness_statement', '{other} says {client} still takes expensive trips', 'other', 2, 50)],
+    witnesses: [W('employer', 'Former employer\'s HR manager', 'client', 85)],
+    research: q('When does a court usually change a support order?', ['When there is a substantial change in circumstances that was not chosen to avoid paying', 'Whenever the payer asks', 'Only if both sides agree', 'Never, once a divorce is final'], 0, 'Support can be changed for a real, substantial change, like an involuntary job loss. A court looks at whether it was chosen.'),
+    motion: { name: 'Motion to modify support', target: null, options: [['Show the layoff and the search for work since', 'strong'], ['Ask to stop paying entirely', 'weak'], ['Keep paying what you cannot afford', 'concede'], ['Delay', 'delay']] },
+    opening: [['Show the layoff, and every job applied for since', 'evidence'], ['Say {other} only wants the money', 'improper'], ['Keep it brief', 'brief']],
+    settle: true, offer: '{other} agrees to lower support for a year while {client} looks for work.',
+    won: 'Support is lowered while {client} looks for work, and reviewed in a year.', lost: 'The court kept the support order as it was: it found the change was not proved.',
+  },
+  // Family Law: protection, adoption and guardianship.
+  protective_order: {
+    kind: 'family', level: 2, title: '{client} v. {other}: protective order', jury: false, forum: 'family', noCouple: true, otherTitle: 'Former partner',
+    summary: '{client} asks the court for a protective order against {other}, a former partner who keeps turning up at their home and work.',
+    stages: [['intake', 0], ['filing', 0], ['hearing', 1], ['judgment', 0]],
+    evidence: [E('texts', 'phone_record', 'Months of threatening messages from {other}', 'client', 4, 90), E('police', 'document', 'A police report from the last visit', 'client', 3, 85), E('denial', 'witness_statement', '{other} says the visits were to return belongings', 'other', 2, 45)],
+    witnesses: [W('neighbor', 'Neighbor who saw the last visit', 'client', 75)],
+    research: q('What does {client} usually have to show for a protective order?', ['That the abuse or threats happened, more likely than not', 'Proof beyond a reasonable doubt', 'That {other} has a criminal record', 'Nothing: it is granted on request'], 0, 'A civil protective order is decided on the balance of probabilities, not the criminal standard. A temporary order can come first, the same day.'),
+    motion: { name: 'Petition for a temporary protective order', target: null, options: [['Ask for a temporary order today, with the messages attached', 'strong'], ['Ask for an order with no evidence attached', 'weak'], ['Wait for the full hearing', 'concede'], ['Delay', 'delay']] },
+    opening: [['Walk the judge through the messages and the police report', 'evidence'], ['Call {other} a monster, without pointing to the evidence', 'improper'], ['Keep it brief', 'brief']],
+    won: 'The court granted a protective order: {other} must stay away from {client}\'s home and work.', lost: 'The court did not grant the order on this evidence. {client} can come back if anything happens again.',
+  },
+  adoption: {
+    kind: 'family', level: 2, title: 'In re the Adoption of {child}', jury: false, forum: 'family', noCouple: true, otherTitle: 'Birth parent',
+    summary: '{client} has raised {child}, aged {childAge}, as a stepparent for years and wants to adopt. {child}\'s other birth parent, {other}, has not been in touch.',
+    stages: [['intake', 0], ['filing', 1], ['evaluation', 2], ['hearing', 1], ['judgment', 0]],
+    evidence: [E('homestudy', 'expert_opinion', 'A home study: a stable, loving home', 'client', 4, 90), E('contact', 'document', 'Years with no contact or support from {other}', 'client', 3, 80), E('consent', 'document', 'A late letter from {other} objecting', 'other', 3, 60)],
+    witnesses: [W('social', 'Home study social worker', 'client', 85)],
+    research: q('{other} objects. When can an adoption go ahead without a birth parent\'s consent?', ['When the law finds consent is not needed, such as long abandonment, and adoption is in the child\'s best interests', 'Never', 'Whenever the stepparent earns more', 'If the child is over five'], 0, 'Consent is the rule. Long abandonment or a court finding can make it unnecessary, and the child\'s interests decide the rest.'),
+    motion: { name: 'Petition for stepparent adoption', target: 'consent', options: [['Show the years without contact, and what the adoption means for {child}', 'strong'], ['Say {other} has no rights at all', 'weak'], ['Drop the case if {other} objects', 'concede'], ['Delay', 'delay']] },
+    won: 'The adoption was granted. {client} is now {child}\'s parent in law, as they long were in fact.', lost: 'The court did not grant the adoption over {other}\'s objection, for now.',
+  },
+  guardianship: {
+    kind: 'family', level: 3, title: 'In re the Guardianship of {child}', jury: false, forum: 'family', noCouple: true, otherTitle: 'Parent',
+    summary: '{child}, aged {childAge}, has lived with their grandparent {client} since {other} went into treatment. {client} asks to be made guardian so they can sign for school and doctors.',
+    stages: [['intake', 0], ['filing', 1], ['evaluation', 2], ['negotiation', 1], ['hearing', 1], ['judgment', 0]],
+    evidence: [E('school', 'school_record', '{child}\'s school record since moving in', 'client', 3, 90), E('treatment', 'medical_record', 'A letter from {other}\'s treatment program', 'other', 3, 85), E('wishes', 'witness_statement', '{child} wants to stay where they are, for now', 'client', 3, 70)],
+    witnesses: [W('teacher', '{child}\'s teacher', 'client', 80)],
+    research: q('{other} is getting better and may want {child} back one day. What fits?', ['A guardianship that the court can end when the parent is ready, with visits meanwhile', 'Ending {other}\'s parental rights', 'An adoption by {client}', 'Nothing: grandparents need no order'], 0, 'Guardianship gives day-to-day authority without ending a parent\'s rights, so a family can come back together.'),
+    motion: { name: 'Petition for guardianship', target: null, options: [['Ask for guardianship with visits, to end when {other} is ready', 'strong'], ['Ask to cut {other} out entirely', 'weak'], ['Go on without any order', 'concede'], ['Delay', 'delay']] },
+    settle: true, offer: '{other} agrees to the guardianship, with visits every weekend.',
+    won: '{client} is {child}\'s guardian, with visits for {other} and a path home when they are ready.', lost: 'The court made a shorter order and will look again in six months.',
   },
   dependency: {
     kind: 'child', level: 3, title: 'In re {child}, a minor', jury: false, forum: 'juvenile', role: 'childAttorney',
@@ -656,7 +758,182 @@ Object.assign(CASE_TEMPLATES, {
     research: q('What will the appeal court ask about the ruling that kept the email out?', ['Whether it was an error, and whether the error affected the result', 'Whether the jury liked {client}', 'What new witnesses would say', 'Whether the trial judge was experienced'], 0, 'An appeal reviews errors on the record and asks whether they mattered. It does not hear new witnesses.'),
     motion: { name: 'Appellate brief', target: 'harmless', options: [['Argue the ruling was wrong and changed the outcome, citing the record', 'strong'], ['Argue the jury got the facts wrong', 'weak'], ['Ask for a new trial with new witnesses', 'improper'], ['Delay', 'delay']] },
   },
+  criminal_appeal: {
+    kind: 'civil', criminal: true, level: 3, title: '{client} v. The State: appeal', jury: false, forum: 'appeal', appeal: true,
+    summary: '{client} was convicted of robbery and is in prison. Reading the transcript, you find the judge told the jury that reasonable doubt means "more likely than not".',
+    stages: [['intake', 0], ['record', 2], ['briefing', 3], ['argument', 2], ['decision', 0]],
+    evidence: [E('transcript', 'document', 'The transcript of the judge\'s instructions to the jury', 'client', 5, 95), E('objection', 'document', 'The trial lawyer\'s objection to the instruction, on the record', 'client', 3, 90), E('proof', 'document', 'The evidence against {client} at trial', 'other', 3, 80)],
+    witnesses: [],
+    research: q('The judge misstated reasonable doubt. Can the State argue the mistake made no difference?', ['Usually not: a wrong standard of proof undermines the whole verdict', 'Yes, if the evidence was strong', 'Only if {client} testified', 'Yes, if the jury took long to decide'], 0, 'A jury told the wrong standard of proof has not found guilt beyond a reasonable doubt at all, whatever the evidence.'),
+    motion: { name: 'Appellate brief', target: 'proof', options: [['Argue the instruction lowered the standard of proof, citing the transcript', 'strong'], ['Argue {client} is innocent', 'weak'], ['Ask the appeal court to hear new witnesses', 'improper'], ['Delay', 'delay']] },
+    argument: {
+      opening: [['Read the instruction aloud, then the standard the law requires', 'evidence'], ['Say {client} never got a fair chance in life', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A judge asks: "Counsel, the evidence was substantial. Why isn\'t this harmless?"',
+      answers: [['A jury given the wrong standard never found guilt beyond reasonable doubt: there is no verdict to measure', 'strong'], ['Say the evidence was weak after all', 'dodge'], ['Tell the judge they have not read the brief', 'rude']],
+    },
+    won: 'Reversed: the conviction is set aside, and {client} gets a new trial with a proper instruction.', lost: 'Affirmed: the appeal court held the instruction, read as a whole, did not mislead the jury.',
+  },
+  verdict_appeal: {
+    kind: 'civil', level: 4, title: '{otherOrg} v. {client}: appeal', jury: false, forum: 'appeal', appeal: true,
+    summary: 'A jury awarded {client} a million in damages against {otherOrg}, which you represent, and forty times that in punitive damages. You appeal the punitive award.',
+    stages: [['intake', 0], ['record', 2], ['briefing', 3], ['argument', 2], ['decision', 0]],
+    evidence: [E('verdict', 'document', 'The verdict form: one million actual, forty million punitive', 'client', 4, 95), E('conduct', 'document', 'Evidence of how {otherOrg} treated {client}', 'other', 4, 85), E('comparable', 'document', 'Penalties set by law for the same conduct', 'client', 3, 90)],
+    witnesses: [],
+    research: q('What will the appeal court weigh in a punitive award forty times the actual harm?', ['How bad the conduct was, the ratio to the actual harm, and the penalties the law sets for it', 'How rich the company is', 'Whether the jury was angry', 'How long the trial took'], 0, 'Punitive damages must be reasonable and proportionate; a very high ratio to the actual harm needs special justification.'),
+    motion: { name: 'Appellate brief', target: 'conduct', options: [['Argue the ratio is out of all proportion, comparing the penalties set by law', 'strong'], ['Argue the company did nothing wrong at all', 'weak'], ['Attack the jurors', 'improper'], ['Delay', 'delay']] },
+    argument: {
+      opening: [['Set the forty-to-one ratio against the penalties the law sets for the same conduct', 'evidence'], ['Argue the jury was biased against big companies', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A judge asks: "The jury found your client acted badly. Why shouldn\'t it pay for that?"',
+      answers: [['It should, in proportion: the actual award stands; the punitive one must bear some relation to it', 'strong'], ['Insist the company did nothing wrong', 'dodge'], ['Say juries cannot be trusted with these cases', 'rude']],
+    },
+    settle: true, offer: '{client} offers to accept a lower punitive award to end the appeal.',
+    won: 'The punitive award was cut to a sum in proportion to the harm. The actual damages stand.', lost: 'Affirmed: the award stands in full.',
+  },
+  supreme_court: {
+    kind: 'civil', level: 5, title: '{client} v. {otherOrg}', jury: false, forum: 'appeal', appeal: true, supreme: true, cert: true,
+    summary: 'Two appeal courts have decided the same question in opposite ways: whether an employer may read a worker\'s private messages on a personal phone used for work. {client} lost below. You ask the highest court to hear it.',
+    stages: [['intake', 0], ['briefing', 3], ['argument', 3], ['decision', 0]],
+    evidence: [E('split', 'document', 'The two appeal court decisions that disagree', 'client', 4, 95), E('record', 'document', 'The record of {client}\'s case', 'client', 3, 90), E('policy', 'document', '{otherOrg}\'s phone policy, which {client} signed', 'other', 3, 85)],
+    witnesses: [],
+    research: q('What makes the highest court most likely to take a case?', ['A question of wide importance on which lower courts disagree', 'That the case was unfair to {client}', 'That the amount of money is large', 'That the lawyer is well known'], 0, 'The highest court chooses its cases. A split between lower courts on an important question is the classic reason to take one.'),
+    motion: { name: 'Petition for review', target: null, options: [['Show the split between the courts and why the question matters to everyone', 'strong'], ['Argue {client} was treated unfairly', 'weak'], ['File a hundred pages', 'concede'], ['Delay', 'delay']] },
+    argument: {
+      benchTitle: 'Questions from the justices',
+      opening: [['Frame the question for every worker and employer, not only for {client}', 'evidence'], ['Tell {client}\'s story at length', 'merits'], ['Rely on the brief', 'brief']],
+      bench: 'A justice asks: "If we rule for you, what line do employers draw tomorrow morning?"',
+      answers: [['Give a clear rule: work accounts yes, private messages only with a warrant-like reason', 'strong'], ['Say that is for employers to work out', 'dodge'], ['Say the question misunderstands the case', 'rude']],
+    },
+    won: 'The Court ruled for {client}: the decision sets the rule for the whole country.', lost: 'The Court ruled against {client}, settling the question the other way for everyone.',
+  },
 });
+
+// ---------- More cases, so each practice area has variety ----------
+Object.assign(CASE_TEMPLATES, {
+  fraud: {
+    kind: 'criminal', offense: 'fraud', level: 3, title: 'The State v. {client}',
+    summary: '{client}, a bookkeeper, is accused of billing a client company for work that was never done. {client} says a manager approved every invoice.',
+    stages: [['intake', 0], ['discovery', 3], ['pretrial', 2], ['trial', 3], ['verdict', 0]], forum: 'trial', jury: true,
+    evidence: [E('invoices', 'financial_record', 'Invoices for work nobody can find a record of', 'other', 4, 85), E('approvals', 'message', 'Emails in which a manager signs off on the invoices', 'client', 3, 80), E('bank', 'financial_record', 'Payments into {client}\'s account', 'other', 3, 90)],
+    witnesses: [W('manager', 'Finance manager', 'other', 60, 'approved'), W('auditor', 'Forensic auditor', 'other', 80)],
+    research: q('Fraud needs more than a false invoice. What must the prosecution prove?', ['That {client} knowingly deceived the company to gain from it', 'That the company lost money', 'That {client} kept the books', 'That an invoice was wrong'], 0, 'Fraud turns on dishonest intent: knowing the claim was false. Approval by someone else can cast doubt on that.'),
+    motion: { name: 'Motion to compel the company\'s approval records', target: null, options: [['Ask for every approval email the company holds', 'strong'], ['Ask for every email ever sent', 'weak'], ['Accept what was disclosed', 'concede'], ['Delay', 'delay']] },
+    opening: [['The burden is on the prosecution', 'burden'], ['Every invoice was approved by a manager', 'theory'], ['Promise the manager will confess on the stand', 'overpromise'], ['Brief', 'brief']],
+    cross: { witness: 'manager', text: 'The finance manager says they never approved the invoices.', options: [['Show them their own approval emails', 'approved'], ['Ask how long they have worked there', 'repeat'], ['Ask about their divorce', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    objection: { by: 'prosecution', text: 'The prosecutor asks the auditor: "And bookkeepers like this one usually steal, in your experience?"', valid: 'relevance', options: [['Object: relevance and prejudice', 'relevance'], ['Object: hearsay', 'hearsay'], ['Object: leading', 'leading'], ['Let it go', 'none']] },
+    closing: [['The approvals show {client} did not deceive anyone', 'evidence'], ['Ask for sympathy', 'sympathy'], ['Attack the company', 'improper'], ['Intent was not proven', 'burden']],
+  },
+  drug_supply: {
+    kind: 'criminal', offense: 'drug_supply', level: 3, title: 'The State v. {client}',
+    summary: '{client} is charged with possessing drugs to sell, after police stopped their car for a broken taillight and searched it.',
+    stages: [['intake', 0], ['discovery', 2], ['pretrial', 2], ['trial', 3], ['verdict', 0]], forum: 'trial', jury: true,
+    evidence: [E('bag', 'physical', 'A bag of pills found under the seat', 'other', 4, 80, 'challengeable', 'unlawful_search'), E('cash', 'physical', 'Cash in small bills in the glovebox', 'other', 2, 70), E('owner', 'document', 'The car is registered to {client}\'s cousin', 'client', 3, 95)],
+    witnesses: [W('officer', 'Arresting officer', 'other', 60, 'consent')],
+    research: q('The officer stopped the car for a taillight and searched it without a warrant. What matters?', ['Whether there was consent, probable cause, or another lawful basis for the search', 'Whether the taillight was really broken', 'How many pills there were', 'Whether {client} was polite'], 0, 'A stop for a traffic fault does not by itself allow a full search. Without consent or probable cause, the evidence may be excluded.'),
+    motion: { name: 'Motion to suppress the search', target: 'bag', options: [['Challenge the search: no consent and no probable cause', 'strong'], ['Say the pills were planted', 'weak'], ['Concede the search', 'concede'], ['Delay', 'delay']] },
+    opening: [['The burden is on the prosecution', 'burden'], ['Someone else\'s car, someone else\'s bag', 'theory'], ['Promise the cousin will confess', 'overpromise'], ['Brief', 'brief']],
+    cross: { witness: 'officer', text: 'The officer says {client} agreed to the search.', options: [['Ask why the consent form is blank', 'consent'], ['Ask about their training', 'repeat'], ['Ask about their politics', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    objection: { by: 'prosecution', text: 'The prosecutor asks the officer: "Everybody in that neighborhood deals, don\'t they?"', valid: 'relevance', options: [['Object: relevance and prejudice', 'relevance'], ['Object: hearsay', 'hearsay'], ['Object: leading', 'leading'], ['Let it go', 'none']] },
+    closing: [['The car and the bag are not {client}\'s', 'evidence'], ['Ask for sympathy', 'sympathy'], ['Attack the police', 'improper'], ['Possession was not proven', 'burden']],
+  },
+  reunification: {
+    kind: 'child', level: 3, title: 'In re {child}, a minor: review', jury: false, forum: 'juvenile', role: 'parentAttorney',
+    summary: '{child}, aged {childAge}, has been in foster care for a year. You represent {client}, the parent, who has finished a treatment program and wants {child} home.',
+    stages: [['intake', 0], ['review', 2], ['services', 2], ['hearing', 2], ['judgment', 0]],
+    evidence: [E('program', 'document', 'A certificate from the treatment program, and clean tests since', 'client', 4, 90), E('visits', 'document', 'Records of every supervised visit attended', 'client', 3, 90), E('housing', 'document', 'A note that {client}\'s housing is not yet confirmed', 'other', 3, 85)],
+    witnesses: [W('caseworker', 'Caseworker', 'other', 70)],
+    research: q('What does the court usually look for before a child goes home?', ['That the problems that led to removal have been addressed, and the home is safe now', 'That the parent is wealthy', 'That the foster family agrees', 'That a year has passed'], 0, 'The goal is usually reunification, once the reasons for removal are resolved and the home is safe.'),
+    motion: { name: 'Motion to return {child} home', target: 'housing', options: [['Show the program, the visits and a signed lease', 'strong'], ['Ask for {child} back today, whatever the housing', 'weak'], ['Accept another six months in care', 'concede'], ['Delay', 'delay']] },
+    settle: true, offer: 'The agency proposes a trial return home, with visits from the caseworker.',
+    won: '{child} goes home to {client}, with support from the agency for the first months.', lost: '{child} stays in care for now, with more visits and a review in six months.',
+  },
+  juvenile_fight: {
+    kind: 'child', level: 2, title: 'In re {child}, a juvenile', jury: false, forum: 'juvenile', role: 'juvenileDefense',
+    summary: '{child}, aged {childAge}, is accused of hitting another student in a fight at school. {child} says the other student had been bullying them for months.',
+    stages: [['intake', 0], ['review', 1], ['hearing', 2], ['judgment', 0]],
+    evidence: [E('video', 'recording', 'A phone video of the end of the fight', 'other', 3, 70), E('reports', 'school_record', 'Three earlier reports of bullying {child} made to the school', 'client', 3, 90)],
+    witnesses: [W('counselor', 'School counselor', 'client', 80)],
+    research: q('What helps a youth court decide what happens to {child}?', ['The whole story: the bullying, the reports, and what would help {child} now', 'Only the video', 'Whether {child} has good grades', 'Whether the other parents are angry'], 0, 'Youth courts look at the circumstances and at what will help a young person, not only at the act.'),
+    motion: { name: 'Request for diversion with mediation', target: null, options: [['Ask for diversion: mediation and counseling, with the bullying reports attached', 'strong'], ['Ask for dismissal because the other student started it', 'weak'], ['Accept a formal finding', 'concede'], ['Delay', 'delay']] },
+    settle: true, offer: 'The prosecutor agrees to diversion if {child} takes part in mediation.',
+    won: '{child} was diverted to mediation and counseling: no formal finding, and the school must act on the bullying.', lost: 'A formal finding, with a period of supervision for {child}.',
+  },
+  asylum: {
+    kind: 'immigration', level: 3, title: 'In the Matter of {client}, Asylum', jury: false, forum: 'immigration',
+    summary: '{client} fled their country after being threatened for their political work, and asks for asylum here.',
+    stages: [['intake', 0], ['filing', 2], ['hearing', 4], ['decision', 0]],
+    evidence: [E('threats', 'message', 'Threatening messages {client} received at home', 'client', 4, 75), E('reports', 'document', 'Human rights reports on how such activists are treated there', 'client', 3, 90), E('gap', 'document', 'A first statement that leaves out one arrest', 'other', 3, 85)],
+    witnesses: [W('expert', 'Country conditions expert', 'client', 85)],
+    research: q('What must {client} usually show for asylum?', ['A well-founded fear of persecution for a protected reason, such as political opinion', 'That life here is better', 'That they have a job offer', 'That they arrived legally'], 0, 'Refugee status rests on a well-founded fear of persecution for race, religion, nationality, political opinion or membership of a particular social group.'),
+    motion: { name: 'Asylum application with supporting evidence', target: 'gap', options: [['File a full account that explains the earlier gap, with the reports', 'strong'], ['File the first statement as it is', 'weak'], ['Ask for voluntary departure', 'concede'], ['Delay', 'delay']] },
+    agency: true, won: 'Asylum granted: {client} is safe here, with a path to permanent residence.', lost: 'Asylum denied. An appeal is possible, and {client} cannot be sent back while it is heard.',
+  },
+  car_crash: {
+    kind: 'civil', level: 2, title: '{client} v. {otherOrg}', jury: true, forum: 'trial',
+    summary: '{client} was hit by a delivery van from {otherOrg} at a crossing and hurt their back. The driver says {client} stepped out without looking.',
+    stages: [['intake', 0], ['demand', 1], ['pleadings', 2], ['discovery', 3], ['negotiation', 2], ['trial', 3], ['judgment', 0]],
+    evidence: [E('medical', 'medical_record', 'Medical records of the back injury and therapy', 'client', 4, 95), E('dashcam', 'recording', 'Another driver\'s dashcam: the van ran a red light', 'client', 4, 85), E('phone', 'phone_record', '{client} was on a call as they crossed', 'other', 2, 80)],
+    witnesses: [W('driver', 'Van driver', 'other', 55, 'red_light')],
+    research: q('{client} was on the phone while crossing. What is the likely effect?', ['It may reduce what {client} recovers, if it contributed, but the driver\'s red light still counts', 'It ends the claim', 'Nothing', 'It doubles the damages'], 0, 'Many places weigh each side\'s share of fault and reduce damages accordingly.'),
+    motion: { name: 'Complaint for negligence', target: null, options: [['Claim damages, built on the dashcam and the medical records', 'strong'], ['Claim a vast sum for pain and suffering', 'weak'], ['Drop it', 'concede'], ['Delay', 'delay']] },
+    cross: { witness: 'driver', text: 'The driver says the light was yellow.', options: [['Play the dashcam frame by frame', 'red_light'], ['Ask about their driving record', 'repeat'], ['Ask about their salary', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    settle: true, claim: 80000,
+  },
+  wage_claim: {
+    kind: 'civil', level: 2, title: '{client} v. {otherOrg}', jury: false, forum: 'tribunal',
+    summary: '{client} worked fifty-hour weeks at {otherOrg} for two years and was never paid overtime. The company says {client} was a manager.',
+    stages: [['intake', 0], ['filing', 1], ['disclosure', 2], ['negotiation', 2], ['hearing', 2], ['judgment', 0]],
+    evidence: [E('timesheets', 'business_record', 'Timesheets showing fifty-hour weeks', 'client', 4, 90), E('duties', 'document', '{client}\'s job description: stocking shelves and the till', 'client', 3, 85), E('title', 'document', 'A job title of "assistant manager"', 'other', 2, 90)],
+    witnesses: [W('owner', 'Store owner', 'other', 60, 'duties')],
+    research: q('The company calls {client} a manager to avoid paying overtime. What decides it?', ['What {client} actually did day to day, not the job title', 'The job title alone', 'Whether {client} wore a uniform', 'How long the company has existed'], 0, 'Exemptions from overtime turn on real duties and pay, not on what a job is called.'),
+    motion: { name: 'Claim for unpaid overtime', target: null, options: [['Claim two years of overtime from the timesheets', 'strong'], ['Claim ten years', 'weak'], ['Drop it', 'concede'], ['Delay', 'delay']] },
+    cross: { witness: 'owner', text: 'The owner says {client} managed the store.', options: [['Ask who hired, fired or set schedules', 'duties'], ['Ask how long they have owned it', 'repeat'], ['Ask about their car', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    settle: true, claim: 30000, won: 'The tribunal found {client} was owed overtime, and ordered it paid.', lost: 'The tribunal accepted that {client}\'s duties were managerial.',
+  },
+  housing_bias: {
+    kind: 'civil', level: 3, title: '{client} v. {otherOrg}', jury: true, forum: 'trial',
+    summary: '{client} was told an apartment run by {otherOrg} was taken. A friend who asked an hour later was offered it.',
+    stages: [['intake', 0], ['pleadings', 2], ['discovery', 3], ['negotiation', 2], ['trial', 3], ['judgment', 0]],
+    evidence: [E('tester', 'witness_statement', 'The friend\'s account of being offered the same apartment', 'client', 4, 85), E('listing', 'document', 'The listing, still online that evening', 'client', 3, 90), E('waitlist', 'business_record', 'A waiting list the company says it followed', 'other', 2, 55)],
+    witnesses: [W('agent', 'Leasing agent', 'other', 55, 'waitlist')],
+    research: q('What makes a housing discrimination claim strong here?', ['Being turned away while someone similar is offered the same home, soon after', 'That the rent was high', 'That the building was old', 'That {client} disliked the agent'], 0, 'Paired testing, where two similar applicants are treated differently, is classic evidence of discrimination.'),
+    motion: { name: 'Complaint for housing discrimination', target: null, options: [['Claim, built on the friend\'s account and the listing', 'strong'], ['Claim the whole company is racist without evidence', 'weak'], ['Drop it', 'concede'], ['Delay', 'delay']] },
+    cross: { witness: 'agent', text: 'The agent says the waiting list decided it.', options: [['Ask why the list was not mentioned to the friend', 'waitlist'], ['Ask about their training', 'repeat'], ['Ask about their family', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    settle: true, claim: 60000, offer: '{otherOrg} offers a payment and to change how it handles applications.',
+  },
+  pollution: {
+    kind: 'civil', level: 3, title: 'Residents of {city} v. {otherOrg}', jury: true, forum: 'trial',
+    summary: 'You represent {client} and neighbors along a creek where {otherOrg}\'s plant discharges. Fish have died and children have rashes.',
+    stages: [['intake', 0], ['pleadings', 2], ['discovery', 4], ['negotiation', 2], ['trial', 3], ['judgment', 0]],
+    evidence: [E('samples', 'forensic', 'Water samples over the permitted limit', 'client', 4, 85), E('permit', 'document', '{otherOrg}\'s discharge permit and its limits', 'client', 3, 95), E('upstream', 'document', 'A farm upstream that also drains into the creek', 'other', 2, 70)],
+    witnesses: [W('chemist', 'Company chemist', 'other', 60, 'sampling')],
+    research: q('What is usually the strongest proof against a polluter with a permit?', ['Discharges over the permit\'s own limits, shown by reliable samples', 'That the plant is ugly', 'That the company is profitable', 'That neighbors are upset'], 0, 'A permit sets limits. Going over them, shown by sound sampling, is a violation in itself.'),
+    motion: { name: 'Complaint for permit violations and nuisance', target: null, options: [['Claim on the samples over the permit limits', 'strong'], ['Ask the court to close the plant forever', 'weak'], ['Drop it', 'concede'], ['Delay', 'delay']] },
+    cross: { witness: 'chemist', text: 'The company chemist says their own tests were within the limits.', options: [['Ask where and when their samples were taken', 'sampling'], ['Ask about their degree', 'repeat'], ['Ask about their salary', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    settle: true, claim: 150000, offer: '{otherOrg} offers a cleanup, monitoring, and payments to the residents.',
+  },
+  records_request: {
+    kind: 'civil', level: 2, title: 'A records request from {client}', jury: false, forum: 'agency', gov: true,
+    summary: 'A reporter, {client}, has asked for the agency\'s emails about a contract. Some contain staff home addresses. You advise the agency.',
+    stages: [['intake', 0], ['review', 2], ['decision', 0]],
+    evidence: [E('emails', 'message', 'Two hundred emails about the contract', 'client', 3, 95), E('private', 'document', 'Staff home addresses in some of them', 'client', 3, 95)],
+    witnesses: [],
+    research: q('How should the agency answer a records request that includes some private details?', ['Release the records, removing only what an exemption covers, such as home addresses', 'Refuse the whole request', 'Release everything, addresses included', 'Wait until the reporter gives up'], 0, 'Freedom of information laws favor disclosure, with narrow exemptions applied line by line.'),
+    motion: { name: 'Response to the request', target: null, options: [['Release the emails, with home addresses removed', 'strong'], ['Refuse everything, citing privacy', 'weak'], ['Release it all as is', 'concede'], ['Delay', 'delay']] },
+    agency: true, won: 'The emails were released on time, with only home addresses removed. Nobody could fault it.', lost: 'The response was challenged, and the agency had to release more than it wanted, late.',
+  },
+  eviction: {
+    kind: 'civil', level: 1, title: '{otherOrg} v. {client}', jury: false, forum: 'tribunal',
+    summary: '{client}, a tenant, fell two months behind on rent after an illness. The landlord, {otherOrg}, changed the locks while {client} was out.',
+    stages: [['intake', 0], ['filing', 1], ['hearing', 1], ['judgment', 0]],
+    evidence: [E('lease', 'contract', 'The lease', 'client', 3, 95), E('locks', 'photograph', 'Photos of the new lock and {client}\'s things in the hall', 'client', 4, 90), E('arrears', 'financial_record', 'The two months of unpaid rent', 'other', 3, 95)],
+    witnesses: [W('neighbor', 'Neighbor who saw the locks changed', 'client', 80)],
+    research: q('The landlord changed the locks without going to court. What follows?', ['A landlord usually needs a court order to evict; changing the locks without one is unlawful', 'It is allowed after one month of arrears', 'It is allowed if the tenant is out', 'The tenant must now pay double'], 0, 'Self-help eviction is unlawful in most places: a landlord must go through the courts.'),
+    motion: { name: 'Emergency motion to restore {client} to the home', target: null, options: [['Ask the court to restore {client} now, with a plan to pay the arrears', 'strong'], ['Ask for the rent to be canceled', 'weak'], ['Accept the eviction', 'concede'], ['Delay', 'delay']] },
+    settle: true, claim: 6000, offer: '{otherOrg} agrees to let {client} back in, with the arrears paid over six months.',
+    won: '{client} is back in their home, with time to pay what is owed.', lost: 'The court found for the landlord on the arrears, though the lockout itself was wrong.',
+  },
+});
+
 
 // ---------- Procedural filings ----------
 

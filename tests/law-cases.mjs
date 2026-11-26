@@ -189,7 +189,7 @@ const npc = (id) => store.state.npcs[id];
   const r = lc.argue(pc, { objection2: 'hearsay' });
   check(pp.valid === 'none' && /question was proper/.test((r.lines ?? []).join(' ') + r.text), 'objecting to a proper question is overruled, and the jury notices');
   let mis = null; let partial = null; let cut = false;
-  for (let i = 0; i < 200 && (!mis || !partial || !cut); i++) { // a hung jury needs proof within a hair of the bar: rare, so look long enough
+  for (let i = 0; i < 240 && (!mis || !partial || !cut); i++) { // a hung jury needs proof within a hair of the bar: rare, so look long enough
     lawyer('lawyer');
     const t = lc.createCase(i % 2 ? 'contract_dispute' : 'burglary_hale', { role: i % 2 ? undefined : 'defense' });
     t.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };
@@ -316,6 +316,19 @@ const npc = (id) => store.state.npcs[id];
   const playable = SPECIALTIES.filter((s) => s.playable);
   check(playable.every((s) => s.cases.length && s.cases.every((id) => CASE_TEMPLATES[id])), 'every playable specialty has real cases');
   check(SPECIALTIES.filter((s) => !s.playable).every((s) => !s.cases.length), 'specialties without cases are not called playable');
+}
+
+// One button for the routine steps; the choices that matter stay with the player.
+{
+  lawyer('lawyer');
+  const c = lc.createCase('divorce');
+  check(lc.hasRoutine(c), 'a new case has routine steps waiting');
+  const r = lc.routine(c);
+  check(r.ok && c.tasks.interview && c.tasks.review && !lc.hasRoutine(c), `the routine steps are done in one go (${r.text})`);
+  check(!c.research && !c.filings.some((f) => f.main), 'research and the main filing are left to the player');
+  const c2 = lc.createCase('contract_dispute');
+  const all = lc.routineAll();
+  check(all.ok && c2.tasks.review, 'every open case at once');
 }
 
 finish('The legal case engine holds.');
