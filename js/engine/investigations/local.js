@@ -128,9 +128,9 @@ export function settleClaims() {
     if (!driver || !store.state.npcs[f.reportingId]?.alive) { f.claimId = 'none'; continue; }
     const id = `claim_${inv.id}`;
     claims()[id] = { id, invId: inv.id, familyId: f.reportingId, driverId: driver, deceasedId: f.victimId, hospitalId: f.hospitalId ?? null, countryId: inc?.countryId, city: inc?.city,
-      outcome: f.outcome.kind, finding: f.outcome.finding ?? null, opened: now(), due: now() + 12, status: 'open', lawCaseId: null };
+      outcome: f.outcome.kind, finding: f.outcome.finding ?? null, opened: f.outcome.at ?? now(), due: (f.outcome.at ?? now()) + 12, status: 'open', lawCaseId: null };
     f.claimId = id;
-    f.log.push({ at: now(), text: `${store.state.npcs[f.reportingId].firstName} ${store.state.npcs[f.reportingId].lastName} began a claim against the driver for the loss.` });
+    f.log.push({ at: f.outcome.at ?? now(), text: `${store.state.npcs[f.reportingId].firstName} ${store.state.npcs[f.reportingId].lastName} began a claim against the driver for the loss.` });
   }
   for (const c of Object.values(claims())) {
     if (c.status !== 'open' || c.due > now()) continue;

@@ -29,7 +29,8 @@ const life = (age = 23, year = 2024, country = 'us') => {
   return p;
 };
 const hireMe = (p) => {
-  for (let y = 0; y < 8 && !jn.isReporter(p); y++) {
+  // Applications are a fair chance, not a sure thing: keep applying, as a real graduate would, until a newsroom says yes.
+  for (let y = 0; y < 30 && !jn.isReporter(p); y++) {
     for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
@@ -579,6 +580,46 @@ function report(s) {
   jn.S().pubs.pub_share = { id: 'pub_share', reporterId: q.id, links: {}, headline: 'A story to share', outlet: 'Gazette', year: store.state.year, at: 0, corrections: [], errors: [], claims: [], sources: [], readers: 1, beat: 'local' };
   check(content.sourceOptions().some((x) => x.type === 'article' && x.key === 'article:pub_share'), 'a published article can be shared from Digital Life');
   section('wartime reporting only in a real war and never forced; old subjects return; articles can be shared');
+}
+
+// 17. Contacts who come back, a rival on the same story, an athlete's real record, conflicts of interest.
+{
+  const p = life(30);
+  hireMe(p);
+  // An expert interviewed once is a contact, and the next data story calls the same economist.
+  jn.J().beat = 'data';
+  let eco = null;
+  for (let y = 0; y < 6 && !eco; y++) {
+    jn.J().assigned = null; store.state.year += 1;
+    const s = jn.assignYear(p).find((x) => x.beat === 'data');
+    const src = s?.sources.find((x) => /economist/i.test(x.role));
+    if (src && jn.interview(s.id, src.id, ['saw']).ok) eco = src.npcId;
+  }
+  check(eco && jn.contacts(p).some((c) => c.npcId === eco && c.times === 1), 'an expert who talked is in the contact book');
+  let again = false;
+  for (let y = 0; y < 8 && !again; y++) { jn.J().assigned = null; store.state.year += 1; again = jn.assignYear(p).some((x) => x.sources.some((y2) => y2.npcId === eco)); }
+  check(again, 'the same economist comes back in a later story');
+  // A rival: first is rewarded with readers only if it is out before them; errors are not excused.
+  let raced = null;
+  for (let y = 0; y < 10 && !raced; y++) { jn.J().beat = 'business'; jn.J().assigned = null; store.state.year += 1; raced = jn.assignYear(p).find((x) => x.race); }
+  check(raced && jn.notebook(raced.id).race.outlet && !jn.notebook(raced.id).race.over, 'some stories have a rival newsroom on them, named');
+  // An athlete profile from the saved record, with their medical records closed.
+  const sp = await import('../js/engine/sports.js');
+  sp.ensure();
+  const ath = Object.values(store.state.npcs).find((n) => n.alive && n.age >= 20 && p.npcIds.includes(n.id) && ['parent', 'sibling'].includes(n.role));
+  store.state.sports.athletes[ath.id] = { id: ath.id, name: `${ath.firstName} ${ath.lastName}`, countryId: p.countryId, sports: { tennis: { id: 'tennis', since: store.state.year - 15, level: 'club', wins: 30, losses: 12, peak: 60 } } };
+  jn.J().beat = 'sports'; jn.J().assigned = null; store.state.year += 1;
+  const a = jn.assignYear(p).find((x) => x.links.athleteId === ath.id);
+  check(a && a.claims[2].truth === true && a.docs.some((d) => !d.public && /medical/.test(d.title)), 'an athlete profile from their real record, injuries private');
+  // They are family: a conflict of interest, which can be disclosed.
+  if (a) {
+    check(/your (parent|sibling)/.test(jn.notebook(a.id).conflict), `a story about a relative is a conflict (${jn.notebook(a.id).conflict})`);
+    check(jn.disclose(a.id).ok && jn.notebook(a.id).disclosed && !jn.disclose(a.id).ok, 'disclosed, once');
+  }
+  // Separate measures: fame is not accuracy.
+  const j = jn.J();
+  check(['accuracy', 'trust', 'recognition'].every((k) => typeof j.rep[k] === 'number'), 'accuracy, trust and recognition are kept apart');
+  section('contacts who return, rival newsrooms, athletes from the record, conflicts of interest disclosed');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

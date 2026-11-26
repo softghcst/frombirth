@@ -596,7 +596,7 @@ export function settleLabs(inv) {
   const out = [];
   for (const req of f.labs.filter((x) => x.status === 'pending' && x.due <= now())) {
     req.status = 'reported';
-    req.reported = now();
+    req.reported = req.due;
     const it = f.items.find((x) => x.id === req.itemId);
     const ev = k.J().evidence[it.evidenceId];
     const d = LAB[req.discipline];
@@ -782,38 +782,39 @@ export function settleCourt(inv) {
   if (TERMINAL.includes(c.stage)) return f.outcome || !lawCaseFor(c.id) ? null : courtOutcome(inv, c);
   if ((c.trialDue ?? 0) > now()) return null;
   const r = rec();
+  const at = c.trialDue ?? now(); // the court sat on its date, however long the turn that reached it
   // Disclosure: what the report left out reaches the defense one way or another; when it does, the case cannot go on.
   if (f.report?.omitted.length && seeded(`${inv.id}/disclosure`).chance(0.65)) {
     k.move(c, 'dismissed', 'Dismissed: evidence favorable to the defense was not disclosed.');
     c.verdict = { outcome: 'dismissed', year: year() };
-    f.outcome = { kind: 'dismissed', at: now(), why: 'disclosure' };
-    if (f.leadId === me() && r) { r.stats.dismissed += 1; complain(inv, 'disclosure', 'Evidence favorable to the defense was left out of the case report.'); }
-    f.log.push({ at: now(), text: 'The court dismissed the case: the defense was not told of statements in the investigation that did not fit.' });
+    f.outcome = { kind: 'dismissed', at, why: 'disclosure' };
+    if (f.leadId === me() && r) { r.stats.dismissed += 1; complain(inv, 'disclosure', 'Evidence favorable to the defense was left out of the case report.', at); }
+    f.log.push({ at, text: 'The court dismissed the case: the defense was not told of statements in the investigation that did not fit.' });
     return 'dismissed';
   }
   if (f.cross?.caught || f.testimony?.how === 'overstate' && !f.cross && seeded(`${inv.id}/cross`).chance(0.6)) {
     for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e && e.pointsTo === c.defendantId) e.reliability = Math.round(e.reliability * 0.7 * 100) / 100; }
     if (r) regard('reliability', -6);
-    f.log.push({ at: now(), text: 'Under cross-examination, the investigator\'s account went beyond the file. The court weighed the evidence with that in mind.' });
+    f.log.push({ at, text: 'Under cross-examination, the investigator\'s account went beyond the file. The court weighed the evidence with that in mind.' });
   }
   // Statements taken by pressure are challenged, and the court decides whether to hear them.
   for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e?.tainted) { e.admissible = false; c.rulings.push({ evidenceId: id, challenged: true, admitted: false, year: year() }); } }
   for (let i = 0; i < 8 && !TERMINAL.includes(c.stage); i++) k.runToEnd(c);
-  return courtOutcome(inv, c);
+  return courtOutcome(inv, c, at);
 }
 /** Records the court's decision in the case file, and in the lead investigator's record. */
-function courtOutcome(inv, c) {
+function courtOutcome(inv, c, at = now()) {
   const f = inv.file;
   const r = rec();
   const convicted = c.stage === 'sentenced';
-  f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at: now() };
+  f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at };
   const inc = incidentOf(inv);
   if (convicted && inc.truth.perpetratorId !== c.defendantId) inc.wrongful = true;
   if (f.leadId === me() && r) {
     if (convicted) r.stats.convicted += 1; else if (c.stage === 'acquitted') r.stats.acquitted += 1; else r.stats.dismissed += 1;
     r.stats.completed += 1;
   }
-  f.log.push({ at: now(), text: `The court's decision: ${convicted ? `${nm(c.defendantId)} was convicted.` : c.stage === 'acquitted' ? `${nm(c.defendantId)} was acquitted.` : 'the case ended without a conviction.'}` });
+  f.log.push({ at, text: `The court's decision: ${convicted ? `${nm(c.defendantId)} was convicted.` : c.stage === 'acquitted' ? `${nm(c.defendantId)} was acquitted.` : 'the case ended without a conviction.'}` });
   return f.outcome.kind;
 }
 
@@ -883,8 +884,8 @@ export function settleCase(inv) {
   }
   const f = inv.file;
   if (f && inv.stage === 'suspended' && !f.coldSince && f.inactive != null && now() - f.inactive >= 36) {
-    f.coldSince = now();
-    f.log.push({ at: now(), text: 'Classified as a cold case. All records, evidence and statements are preserved.' });
+    f.coldSince = f.inactive + 36; // the day it became cold, however long the turn
+    f.log.push({ at: f.coldSince, text: 'Classified as a cold case. All records, evidence and statements are preserved.' });
     if (f.leadId === me() && rec()) rec().stats.cold += 1;
   }
   return out;
@@ -951,10 +952,10 @@ export function assignCase(p = player()) {
 }
 
 /** A complaint against the investigator, opened by the agency (engine/investigations/oversight.js decides it). */
-function complain(inv, kind, text) {
+function complain(inv, kind, text, at = now()) {
   const w = W();
   const id = nextId('complaint');
-  w.complaints[id] = { id, subjectId: me(), kind, text, invId: inv.id, opened: now(), status: 'open', finding: null, investigatorId: null, due: now() + 4, true: true };
+  w.complaints[id] = { id, subjectId: me(), kind, text, invId: inv.id, opened: at, status: 'open', finding: null, investigatorId: null, due: at + 4, true: true };
 }
 
 /** Everything the player's cases need from the calendar. Called from the year and whenever the hub opens. */

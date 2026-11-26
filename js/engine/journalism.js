@@ -273,8 +273,12 @@ export const myPubs = (p = player()) => Object.values(S().pubs).filter((x) => x.
 
 function newStory(p, o, beat, title, extra) {
   const id = nextId('story');
+  // On some stories a rival newsroom is working on the same thing: the reporter learns of it, and must decide.
+  const rr = seeded(`${id}/race`);
+  const rivals = !['local', 'war'].includes(beat) && o ? outletsHere(p).filter((x) => x.id !== o.id && !x.ownerId) : [];
+  const race = rivals.length && rr.chance(0.25) ? { outlet: rr.pick(rivals).name, by: now() + rr.int(2, 5) } : null;
   const s = { id, beat, title, reporterId: p.id, outletId: o?.id ?? null, editorId: o?.editorId ?? null, created: now(), year: year(), deadline: beat === 'investigative' ? null : now() + 9,
-    status: 'assigned', claims: [], sources: [], docs: [], evidence: [], interviews: [], comment: null, legal: null, draft: null, review: null, pubId: null, links: {}, ...extra };
+    status: 'assigned', claims: [], sources: [], docs: [], evidence: [], interviews: [], comment: null, legal: null, draft: null, review: null, pubId: null, links: {}, race, ...extra };
   S().stories[id] = s;
   return s;
 }
@@ -340,7 +344,7 @@ function courtStory(p, o, r, cases, w = { countryId: p.countryId, city: p.city }
 function sportsStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const seasons = Object.values(store.state.sports?.seasons ?? {}).filter((x) => x.champion && x.year >= year() - 2 && !Object.values(S().stories).some((s) => s.links.seasonId === x.id && s.reporterId === p.id));
   const season = seasons.sort((a, b) => b.year - a.year)[0];
-  if (!season) return null;
+  if (!season) return athleteStory(p, o, r, w); // no league season to report: an athlete's real record instead
   const team = store.state.sports.teams?.[season.champion];
   const name = team?.name ?? 'The champions';
   const s = newStory(p, o, 'sports', `${name} win the ${season.name}`, { subject: name, links: { seasonId: season.id } });
@@ -472,7 +476,8 @@ export function notebook(id) {
       heard: s.evidence.filter((e) => e.claimId === c.id).map((e) => ({ from: e.type === 'doc' ? s.docs.find((d) => d.id === e.docId)?.title : sourceLabel(s, e.sourceId, e.attribution), says: e.says, offRecord: !!e.offRecord })) })),
     sources: s.sources.filter((x) => !x.hidden).map((x) => ({ id: x.id, name: x.name, role: x.role, npcId: x.npcId ?? null, institution: !!x.institution, asked: s.interviews.some((i) => i.sourceId === x.id), agreed: s.interviews.find((i) => i.sourceId === x.id)?.accepted ?? null, wantsConfidential: x.wantsConfidential })),
     docs: s.docs.filter((d) => !d.secret || d.found).map((d) => ({ id: d.id, title: d.title, public: d.public, why: d.why ?? '', read: s.evidence.some((e) => e.docId === d.id) })),
-    comment: s.comment, legal: s.legal, draft: s.draft, review: s.review, pubId: s.pubId, needsComment: !!s.needsComment, needsLegal: !!s.needsLegal };
+    comment: s.comment, legal: s.legal, draft: s.draft, review: s.review, pubId: s.pubId, needsComment: !!s.needsComment, needsLegal: !!s.needsLegal,
+    race: s.race ? { outlet: s.race.outlet, by: s.race.by, over: now() > s.race.by } : null, conflict: conflictOf(s, player())?.text ?? null, disclosed: !!s.disclosed };
 }
 function sourceLabel(s, sourceId, attribution) {
   const x = s.sources.find((y) => y.id === sourceId);
@@ -496,11 +501,13 @@ export function interview(storyId, sourceId, questions = ['saw'], attribution = 
   if (src.wantsConfidential && attribution === 'record') return result(false, `${src.name} will talk, but not on the record. Agree to keep them unnamed, or do without them.`, 'neutral');
   if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
   const r = seeded(`${s.id}/${src.id}/${year()}`);
-  const yes = r.next() < clamp(src.willing + (J(p).skills.interviewing - 40) / 250, 0.05, 0.95);
+  const known = src.npcId ? J(p).contacts?.[src.npcId] : null;
+  const yes = r.next() < clamp(src.willing + (J(p).skills.interviewing - 40) / 250 + (known ? Math.min(0.2, known.trust / 250) : 0), 0.05, 0.95);
   const rec = { sourceId, year: year(), at: now(), accepted: yes, attribution, questions, said: [] };
   s.interviews.push(rec);
   s.status = s.status === 'assigned' ? 'reporting' : s.status;
   if (!yes) return result(false, `${src.name} does not want to talk to a reporter. That is their right.`, 'neutral');
+  if (src.npcId) { const c = ((J(p).contacts ??= {})[src.npcId] ??= { since: year(), times: 0, trust: 40, stories: [] }); c.times += 1; if (!c.stories.includes(s.id)) c.stories.push(s.id); }
   grow('interviewing', 2);
   const off = attribution === 'off';
   const lines = [];
@@ -671,6 +678,13 @@ export function publish(storyId, o2 = {}) {
       return { name: att === 'record' ? x.name : `${x.role} (not named)`, attribution: att, npcId: att === 'record' ? x.npcId ?? null : null };
     }), errors, quality, readers: Math.round(o.audience * (0.3 + quality / 140)), complaint: null, corrections: [], links: { ...s.links } };
   S().pubs[id] = pub;
+  // Sources whose terms were kept trust the reporter a little more (a confidential name is never printed).
+  for (const x of s.sources) { const c = x.npcId && J(p).contacts?.[x.npcId]; if (c && s.interviews.some((i) => i.sourceId === x.id && i.accepted)) c.trust = clamp(c.trust + (errors.length ? -4 : 6)); }
+  // A rival was on it: first is not the same as right, but it does change who reads it.
+  if (s.race) { if (now() <= s.race.by) { pub.exclusive = true; pub.readers = Math.round(pub.readers * 1.3); j.rep.recognition = clamp(j.rep.recognition + 3); } else { pub.scooped = s.race.outlet; pub.readers = Math.round(pub.readers * 0.7); } }
+  // A conflict of interest not disclosed may come out.
+  const cof = conflictOf(s, p);
+  if (cof && !s.disclosed && seeded(`${id}/conflict`).chance(0.6)) { pub.conflictOut = cof.text; j.rep.trust = clamp(j.rep.trust - 8); j.history.push({ year: year(), text: `It came out that "${pub.headline}" involved ${cof.text}, undisclosed.` }); }
   s.pubId = id;
   s.status = 'published';
   // A freelance fee is paid once, for this piece, under its contract; never again for the same work.
@@ -1012,6 +1026,8 @@ function sceneOptions(p) {
   add('jn_old_editor', { words: { editor: old ? nameOf(old.n) : '', first: old?.n.firstName ?? '', outlet: bigger?.name ?? '' }, npcId: old?.npcId }, !!old && !!bigger);
   const war = eventsIn(p.countryId).find((e) => e.war);
   add('jn_war_assignment', { words: { war: war?.name ?? '', outlet: o.name } }, !!war && (p.career.level ?? 0) >= 1 && j.warAsked !== year());
+  const soft = myStories(p).find((x) => open(x, p) && x.needsComment && x.links.employerId);
+  add('jn_owner_pressure', { words: { outlet: o.name, subject: soft?.subject ?? '' } }, !!soft && pubs.length >= 3);
   add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
   return out;
 }
@@ -1126,6 +1142,9 @@ export function journalismChoice(value) {
     case 'oldeditor:no': return '';
     case 'war:yes': { j.warAsked = year(); const r = seeded(`${p.id}/war/${year()}`); const s = warStory(p, o, r, { countryId: p.countryId, city: p.city }); return s ? `"${s.title}" is in your assignments.` : ''; }
     case 'war:no': j.warAsked = year(); return 'Your editor understands. Nobody has to go.';
+    case 'owner:decline': j.rep.trust = clamp(j.rep.trust + 3); rel(ed, 2); j.history.push({ year: year(), text: 'Declined a request to soften a story, and wrote down why.' }); return '';
+    case 'owner:review': rel(ed, 5); grow('verification', 1); return '';
+    case 'owner:soften': j.rep.trust = clamp(j.rep.trust - 5); return '';
     case 'first:ask': rel(ed, 5); grow('reporting', 2); return '';
     case 'first:alone': grow('reporting', 1); return '';
     case 'refused:respect': j.rep.trust = clamp(j.rep.trust + 2); return '';
@@ -1300,7 +1319,10 @@ function ownedYear(o, p) {
   const research = o.research ?? 0;
   const bureaus = (o.bureaus ?? []).length;
   const pushy = o.investor?.pushy ? 0.04 : 0; // sensational coverage: readers now, trust later
-  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) + research * 0.025 + bureaus * 0.05 + pushy - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
+  // Loyalty is its own thing: readers who stay, because the work holds up. A small loyal readership can last.
+  const fixedRight = pubs.filter((x) => x.errors.length && x.corrections.length).length;
+  o.loyalty = Math.round(clamp((o.loyalty ?? 50) + good / 300 + fixedRight - bad * 6 - (pushy ? 5 : 0) + (o.research ?? 0)));
+  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) + research * 0.025 + bureaus * 0.05 + pushy + (o.loyalty - 50) / 400 - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
   o.audience = Math.max(30, Math.round(o.audience * growth + good * 3));
   const revenue = Math.round(localWage(k.perReader * o.audience, c));
   const costs = Math.round(localWage(k.upkeep * (1 + research * 0.35 + bureaus * 0.4), c)) + o.staff.reduce((n, x) => n + x.salary, 0);
@@ -1347,7 +1369,14 @@ export function sellPublication() {
 
 // ---------- More beats: education, environment, technology, arts, data ----------
 
-const person = (w, r, job, age = [28, 62]) => { const n = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(age[0], age[1]) }); n.occupation = job; store.state.npcs[n.id] = n; return n; };
+// An expert, an official or a critic the reporter has spoken to before comes back: the same person, a contact now.
+const RECURRING = /^(Economist|Environmental scientist|Critic|Independent researcher|Business analyst|Official at the city hall)$/;
+const person = (w, r, job, age = [28, 62]) => {
+  if (RECURRING.test(job)) {
+    const c = Object.keys(J(player()).contacts ?? {}).map(npc).find((n) => n?.alive && n.occupation === job && n.flags?.contactCountry === w.countryId);
+    if (c && r.chance(0.7)) return c;
+  }
+  const n = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(age[0], age[1]) }); n.occupation = job; n.flags.contactCountry = w.countryId; store.state.npcs[n.id] = n; return n; };
 const employersOf = (w, families) => cityEmployers(w.countryId, w.city).filter((x) => families.includes(x.family));
 
 /** An education story: a real school in the city (or a college that employs people there), its published inspection. */
@@ -2000,4 +2029,60 @@ export const atWarHere = (p = player()) => atWar(p.countryId);
 /** Articles the player published lately, for sharing on their own accounts (Digital Life's own posting). */
 export function shareableArticles(p = player()) {
   return myPubs(p).filter((x) => year() - x.year <= 1).map((x) => ({ type: 'article', key: `article:${x.id}`, text: x.headline, topic: 'work' }));
+}
+
+// ---------- Conflicts of interest ----------
+
+const CLOSE = { parent: 'your parent', sibling: 'your sibling', child: 'your child', spouse: 'your spouse', partner: 'your partner', grandparent: 'your grandparent', grandchild: 'your grandchild', friend: 'a friend of yours', bestFriend: 'your best friend' };
+/** Whether a story is about, or sourced from, someone close to the reporter. @returns {{npcId:string, text:string}|null} */
+export function conflictOf(s, p = player()) {
+  if (!s) return null;
+  for (const x of s.sources) {
+    const n = x.npcId && npc(x.npcId);
+    if (n && p.npcIds.includes(n.id) && CLOSE[n.role]) return { npcId: n.id, text: `${CLOSE[n.role]}, ${nameOf(n)}` };
+  }
+  return null;
+}
+/** Tells the editor, and the readers: the story says so plainly. */
+export function disclose(storyId) {
+  const p = player();
+  const s = story(storyId);
+  if (!open(s, p)) return result(false, 'That story is not open.', 'neutral');
+  const c = conflictOf(s, p);
+  if (!c) return result(false, 'There is nothing to disclose.', 'neutral');
+  if (s.disclosed) return result(false, 'You have disclosed it.', 'neutral');
+  s.disclosed = true;
+  J(p).rep.trust = clamp(J(p).rep.trust + 1);
+  return result(true, `You tell your editor that the story involves ${c.text}. It will say so, plainly, where readers can see it.`, 'neutral');
+}
+
+// ---------- Athletes: a profile from the saved record ----------
+
+/** An athlete with a real record (engine/sports.js), interviewed about it. Nothing is added to the record. */
+function athleteStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const A = Object.values(store.state.sports?.athletes ?? {}).filter((a) => a.id !== p.id && a.countryId === w.countryId && npc(a.id)?.alive && Object.keys(a.sports ?? {}).length
+    && !Object.values(S().stories).some((x) => x.links.athleteId === a.id && x.reporterId === p.id));
+  const a = A.length ? r.pick(A) : null;
+  if (!a) return null;
+  const e = Object.values(a.sports).sort((x, y) => (y.peak ?? 0) - (x.peak ?? 0))[0];
+  const sportName = e.id.replace(/_/g, ' ');
+  const n = npc(a.id);
+  const s = newStory(p, o, 'sports', `${a.name}: a life in ${sportName}`, { subject: a.name, links: { athleteId: a.id } });
+  const c1 = addClaim(s, { text: `${a.name} has played ${sportName} since ${e.since}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `${a.name} reached ${e.level} level`, truth: true });
+  const c3 = addClaim(s, { text: `${a.name} has won more than they have lost`, truth: (e.wins ?? 0) > (e.losses ?? 0) });
+  const c4 = addClaim(s, { text: `${sportName.replace(/^./, (c) => c.toUpperCase())} gave them everything`, kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The published club and competition records', settles: [{ claimId: c1.id }, { claimId: c2.id }, { claimId: c3.id }] });
+  addDoc(s, { title: `${a.name}'s medical records`, public: false, why: 'An athlete\'s injuries are theirs to disclose. The records stay private.' });
+  addSource(s, { npcId: n.id, name: nameOf(n), role: `The ${sportName} player`, type: 'athlete', willing: 0.75, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c4.id, says: true }, { claimId: c3.id, says: true }] });
+  const coach = person(w, r, `Coached ${a.name}`, [40, 70]);
+  addSource(s, { npcId: coach.id, name: nameOf(coach), role: 'A coach who worked with them', type: 'athlete', willing: 0.7, knows: [{ claimId: c2.id, says: true }, { claimId: c3.id, says: s.claims[2].truth }] });
+  return s;
+}
+
+// ---------- Contacts ----------
+
+/** The people the reporter has interviewed, and how they get on: a contact book built from real interviews. */
+export function contacts(p = player()) {
+  return Object.entries(J(p).contacts ?? {}).map(([id, c]) => ({ npcId: id, n: npc(id), ...c })).filter((x) => x.n).sort((a, b) => b.times - a.times);
 }

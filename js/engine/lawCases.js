@@ -86,11 +86,14 @@ export function createCase(templateId, o = {}) {
   const prof = profileFor(countryId);
   LC(); // the store and its counter exist before the first id is drawn
   const id = `lc_${++k.J().lawSeq}`;
+  // Opened on its own date: a case the office assigned in a half-year a long turn passed through starts then, not at
+  // the turn (engine/lawPractice.js openWindow).
+  const start = o.at ?? nowM();
   const role = o.role ?? (T.kind === 'criminal' ? 'defense' : T.role ?? (T.gov ? 'agency' : ROLE_FOR[T.kind]));
-  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: nowM(), openedYear: store.state.year, role, lawyerId: o.lawyerId ?? p.id,
+  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: start, openedYear: Math.floor(start / 12), role, lawyerId: o.lawyerId ?? p.id,
     supervisorId: o.supervisorId ?? null, clinic: !!o.clinic, assigned: !!o.assigned, specialty: o.specialty ?? null,
     track: o.track ?? (o.clinic ? 'clinic' : LEGAL_CAREERS.includes(p.career?.careerId) ? p.career.careerId : null), // the job it was done in
-    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: nowM() + T.stages[0][1],
+    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: start + T.stages[0][1],
     jury: !!T.jury && (T.kind === 'criminal' ? prof.juries.criminal : T.kind === 'civil' ? prof.juries.civil : false), forum: T.forum,
     vars: {}, parties: {}, evidence: [], witnesses: [], filings: [], deadlines: [], hearings: [], tasks: {}, research: null,
     negotiation: { offers: [], accepted: null }, court: null, awaiting: null, outcome: null, appeal: null, errors: [], ethics: null,
