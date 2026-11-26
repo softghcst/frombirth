@@ -142,6 +142,11 @@ export default [
     ['Take it', 'You will report from home. The censor will read it first.', 'war:yes'],
     ['Say no', 'Your editor nods. There are other stories.', 'war:no'],
   ]),
+  scene('jn_owner_pressure', 'Word comes down from the people who own {outlet}: could the story about {subject} be "less harsh"? Nobody says what happens if it is not.', [
+    ['Decline, and write down why', 'You keep a note of the request and your answer. Your editor backs you.', 'owner:decline', 'good'],
+    ['Ask for a proper editorial review', 'The story is read again on its evidence. What holds up stays.', 'owner:review', 'good'],
+    ['Soften it', 'It runs a little gentler than the evidence. You know it, and so do some readers.', 'owner:soften', 'bad'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],
