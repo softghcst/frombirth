@@ -60,6 +60,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     store.notify();
   });
   await page.click('.tab-btn[data-tab="work"]'); await page.waitForTimeout(200);
+  // My Legal Career is on the Work tab's Special Careers screen.
+  if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
   const rowBtn = page.locator('[data-act="law"]');
   check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
   await rowBtn.click(); await hub().waitFor();
@@ -173,7 +175,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await ok();
   await hub().getByText(/Outcome/).first().waitFor({ timeout: 10000 }).catch(() => {}); // the case page redraws after the verdict, however busy the machine
   check(/Outcome|retrial|Retrial|mistrial/i.test(await hub().innerText()), `${label}: the case shows its outcome (or, after a hung jury, the retrial to come)`);
-  await hub().locator('[data-back]').click();
+  await page.locator('#modal-root .modal:has(.law-hub) .modal-back').click(); // the bar's Back steps back a level
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
   // The Family Archive keeps the legal career.

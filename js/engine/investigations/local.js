@@ -56,6 +56,8 @@ export function placeCase(inv, o) {
     if (v) { v.alive = false; v.flags.diedYear = year(); v.flags.causeOfDeath = 'Struck by a car'; }
     if (h) { f.hospitalId = h.id; f.log.push({ at: now(), text: `${v ? `${v.firstName} ${v.lastName}` : 'The pedestrian'} was taken to ${h.name} and died there that night.` }); }
   }
+  // A homicide's victim is dead: their record says so, once, as the game's own death would.
+  if (f.template === 'homicide' && f.victimId) { const v = store.state.npcs[f.victimId]; if (v?.alive) { v.alive = false; v.flags.diedYear = year(); v.flags.causeOfDeath = 'Homicide'; } }
   if (f.template === 'cyber') {
     let accts = [];
     try { accts = activeAccountsOf(f.reportingId); } catch { accts = []; }

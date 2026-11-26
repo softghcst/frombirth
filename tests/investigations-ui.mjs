@@ -60,6 +60,10 @@ async function run(viewport) {
     Object.assign(core.I(p).skills, { interviewing: 60, ethics: 60, reasoning: 60, writing: 60, law: 50 });
   });
   await openHub(page);
+  check(await page.locator('[data-inv] [data-act="hintOk"]').count() === 1, `${w}px: the first visit shows a short tip`);
+  await page.locator('[data-inv] [data-act="hintOk"]').first().click();
+  await page.waitForTimeout(80);
+  check(await page.locator('[data-inv] [data-act="hintOk"]').count() === 0, `${w}px: the tip is gone once read`);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
   check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
   check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
