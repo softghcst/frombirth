@@ -1534,3 +1534,7 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
 .more-talents { margin-top: 4px; }
 .more-talents summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+
+/* Journalism: a button with a line under it reads left to right, the label first and whole, the line beneath. */
+.jn-page .btn:has(> small) { flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; gap: 2px; }
+.jn-page .btn:has(> small) small { opacity: 0.7; }

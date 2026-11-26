@@ -77,6 +77,63 @@ export default [
     ['Enjoy it', 'Your phone does not stop for a week.', 'viral:enjoy', 'good'],
     ['Remind people of the full interview', 'The whole thing says more than the clip.', 'viral:back', 'good'],
   ]),
+  scene('jn_first_byline', 'There it is, in {outlet}: "{headline}", and under it, your name.', [
+    ['Cut it out and keep it', 'It goes in a drawer, where you will find it in forty years.', 'byline:frame', 'good'],
+    ['Get on with the next one', 'A byline is a beginning.', 'byline:work'],
+  ]),
+  scene('jn_two_sources', 'Two people tell you opposite things about "{title}". Both sound sure.', [
+    ['Keep digging for a record', 'If there is a record, it will settle it.', 'disagree:dig', 'good'],
+    ['Go with the one who sounds surer', 'Sounding sure is not evidence.', 'disagree:pick', 'bad'],
+  ]),
+  scene('jn_no_comment', '{subject} will not answer your calls. Your deadline will not wait for them.', [
+    ['Say plainly that they did not respond', 'Readers can judge a silence for themselves.', 'nocomment:note', 'good'],
+    ['Try once more, in person', 'Their office takes your card.', 'nocomment:chase'],
+  ]),
+  scene('jn_headline_debate', '{editor} wants a punchier headline on your story. The punchier one says a little more than the story does.', [
+    ['Keep it accurate', 'Fewer clicks, no complaints.', 'headline:straight', 'good'],
+    ['Go with the punchier one', 'More people read it. Some of them notice.', 'headline:punchy'],
+  ]),
+  scene('jn_correction', 'A correction runs under "{headline}". Colleagues are kind about it, mostly.', [
+    ['Own it, and work out what went wrong', 'You change how you check that kind of thing.', 'correction:own', 'good'],
+    ['Keep your head down', 'It passes. Something of it stays.', 'correction:quiet'],
+  ]),
+  scene('jn_one_editor_job', 'An editor\'s job is opening at {outlet}, one only. {first} wants it too.', [
+    ['Go for it', 'It may be awkward with {first} for a while.', 'editorjob:go'],
+    ['Back {first} for it', '{first} will not forget it.', 'editorjob:back', 'good'],
+  ]),
+  scene('jn_divided', 'A story has split the newsroom at {outlet}: half think it should run, half think it is not ready.', [
+    ['Say what you think in the meeting', 'Not everyone agrees with you. Everyone heard you.', 'divided:speak'],
+    ['Stay out of it', 'It is not your story.', 'divided:out'],
+  ]),
+  scene('jn_new_generation', 'A new junior reporter keeps asking you how to do things, which is to say how you learned to do them.', [
+    ['Take them under your wing', 'You remember someone doing the same for you.', 'mentor:yes', 'good'],
+    ['Point them to the style guide', 'You have a lot on.', 'mentor:no'],
+  ]),
+  scene('jn_first_live', 'Your first live report: "{headline}". The red light comes on.', [
+    ['Breathe, and say it plainly', 'Afterwards, your hands shake a little. Nobody watching could tell.', 'live:steady', 'good'],
+    ['Rush it', 'You get through it. You watch it back once, and never again.', 'live:shaky'],
+  ]),
+  scene('jn_breaking', 'Something is happening across the city and {outlet} wants you on air now, before anything is confirmed.', [
+    ['Say only what is confirmed', '"We do not know yet" is a true sentence.', 'breaking:confirmed', 'good'],
+    ['Fill the air with what people are saying', 'Some of it turns out wrong, on the record.', 'breaking:guess', 'bad'],
+  ]),
+  scene('jn_national_offer', 'A national network has been watching {show}. They want you to anchor their evening news.', [
+    ['Take it', 'Your face goes national.', 'national:take', 'good'],
+    ['Stay with your newsroom', 'Your viewers here would miss you.', 'national:stay'],
+  ]),
+  scene('jn_investor', 'An investor wants a share of {outlet}: {amount} now, for a quarter of its profits after.', [
+    ['Take the money', 'The investment helps you grow.', 'investor:take', 'good'],
+    ['Take more money, and their wish for "punchier" stories', 'More readers for a while, and less trust.', 'investor:take_push'],
+    ['Keep it yours', 'You thank them, and keep every share.', 'investor:no'],
+  ]),
+  scene('jn_first_hire', '{first} turns up for their first day at {outlet}, the first person you have ever hired.', [
+    ['Show them around yourself', '{first} will remember the welcome.', 'hire:welcome', 'good'],
+    ['Hand them the style guide', 'There is work to do.', 'hire:brief'],
+  ]),
+  scene('jn_expands', '{outlet} has outgrown its first office. Somebody brings cake to the new one.', [
+    ['Make a speech', 'Short, and nobody minds.', 'expand:celebrate', 'good'],
+    ['Look over the new costs', 'Bigger costs more.', 'expand:careful'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],

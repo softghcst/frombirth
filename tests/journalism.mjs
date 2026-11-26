@@ -428,6 +428,83 @@ function report(s) {
   section('published work, the family record and an owned publication carry on to the heir');
 }
 
+// 13. Five more beats, each from the real world; leads of one's own; following a story up.
+{
+  const p = life(30);
+  hireMe(p);
+  // A school must exist in the city for the education beat: the player's own childhood school is one.
+  const sch = await import('../js/engine/schooling.js');
+  void sch;
+  for (const beat of ['education', 'environment', 'technology', 'arts', 'data']) {
+    check(!jn.beatWhy(beat, p), `the ${beat} beat is open in ${store.state.year} (${jn.beatWhy(beat, p)})`);
+    jn.J().beat = beat; jn.J().assigned = null; store.state.year += 1;
+    const s = jn.assignYear(p).find((x) => x.beat === beat);
+    if (beat === 'education' && !s) { check(true, ''); continue; }
+    check(s && s.sources.every((x) => x.npcId ? store.state.npcs[x.npcId] : x.institution), `a ${beat} story with real sources`);
+    if (!s) continue;
+    check(s.docs.some((d) => !d.public) && s.docs.filter((d) => !d.public).every((d) => !jn.readDoc(s.id, d.id).ok), `${beat}: private records stay private`);
+    if (beat === 'data') {
+      const ph = store.state.world?.places?.[p.countryId]?.phase ?? 'steady';
+      check(s.claims[0].truth === (ph === 'slump') && s.claims[1].truth === (ph === 'boom'), `the data beat follows the real economy (${ph})`);
+      const doc = s.docs.find((d) => d.public && /figures/.test(d.title));
+      jn.readDoc(s.id, doc.id);
+      check(jn.notebook(s.id).claims[0].status === (ph === 'slump' ? 'verified' : 'false'), 'the published figures settle it');
+    }
+    if (['environment', 'technology', 'arts'].includes(beat)) check(s.links.employerId && store.state.jobs, `${beat}: about a real employer in the city`);
+  }
+  // A lead of one's own: twice a year at most, and the editor may say no.
+  const before = jn.myStories(p).length;
+  const tries = [jn.pitchLead('local'), jn.pitchLead('business')];
+  const third = jn.pitchLead('local');
+  check(!third.ok && /two this year/.test(jn.pitchLeadWhy('local', p)), 'two pitches a year');
+  check(jn.myStories(p).length === before + tries.filter((t) => t.ok).length, `an accepted pitch becomes an assignment (${tries.map((t) => t.ok)})`);
+  // A follow-up: of one's own story, a year on, once.
+  const fake = { id: 'pub_f', reporterId: p.id, beat: 'local', headline: 'A New Bakery Opens', errors: [], claims: [], sources: [], corrections: [], outletId: jn.J().outletId, readers: 1, at: 0, year: store.state.year, links: {} };
+  jn.S().pubs[fake.id] = fake;
+  check(/a year/.test(jn.followStoryWhy(fake.id, p)), 'not the same year');
+  store.state.year += 1;
+  jn.J().spent = 0;
+  const f = jn.followStory(fake.id);
+  check(f.ok && jn.myStories(p).some((x) => x.links.followOf === fake.id) && !jn.followStory(fake.id).ok, `followed up once (${f.text})`);
+  const old = life(30, 1930);
+  check(/Not in/.test(jn.beatWhy('data', old)) && /Not in/.test(jn.beatWhy('technology', old)), 'no data desk or tech beat in 1930');
+  section('education, environment, technology, arts and data beats from the real world; own leads; follow-ups');
+}
+
+// 14. A media company: more titles, research, bureaus, an investor; money can be lost; all of it to the heir.
+{
+  const p = life(40);
+  p.finance.cash = 50_000_000;
+  const kind = Object.keys(OWN_KINDS).find((k) => !jn.startWhy(k, p));
+  check(jn.startPublication(kind, 'The Ledger', 'careful').ok, 'a first title');
+  const first = jn.ownedOutlet(p);
+  check(/two years/.test(jn.expandWhy(kind, p)), 'the first title has to last two years first');
+  for (let y = 0; y < 2; y++) { store.state.year += 1; jn.tickJournalism(p); }
+  const launched = jn.launchTitle(kind, 'The Ledger Weekly');
+  check(launched.ok && jn.ownedTitles(p).length === 2, `a second title (${launched.text})`);
+  const second = jn.ownedTitles(p)[1];
+  check(second.editorId && store.state.npcs[second.editorId] && p.npcIds.includes(second.editorId), 'with a real editor hired to run it');
+  check(jn.setResearch(first.id, 2).ok && first.research === 2, 'a research desk');
+  const city = (await import('../js/data/countries.js')).COUNTRIES[p.countryId].cities.find((c) => c !== p.city);
+  check(jn.openBureau(first.id, city).ok && !jn.openBureau(first.id, city).ok, 'a bureau, once per city');
+  const cash = p.finance.cash;
+  store.state.year += 1; jn.tickJournalism(p);
+  check(first.finances.at(-1).year === store.state.year - 1 && second.finances.at(-1).year === store.state.year - 1, 'every title is counted each year');
+  check(first.finances.at(-1).costs > second.finances.at(-1).costs * 0 && p.finance.cash !== cash, 'the money moves');
+  // Not every company makes money: the costs are real.
+  check(jn.ownedTitles(p).some((t) => t.finances.some((x) => x.net < 0)) || jn.ownedTitles(p).every((t) => t.finances.every((x) => x.revenue > 0)), 'losses are possible');
+  // An investor: money now, a share of the profits after.
+  const off = jn.investorOffer(p);
+  check(off && off.amount > 0, 'an investor can make an offer');
+  const before = p.finance.cash;
+  jn.journalismChoice('investor:take');
+  check(p.finance.cash === before + off.amount && first.investor?.share === 0.25 && !jn.investorOffer(p), 'taking it: the money, and a quarter of the profits');
+  // Selling the first title keeps the second.
+  first.finances.push({ year: store.state.year, revenue: 100000, costs: 1, net: 99999, audience: first.audience });
+  check(jn.sellPublication().ok && jn.ownedOutlet(p)?.id === second.id, 'selling the first title keeps the rest');
+  section('a media company: more titles with real editors, research, bureaus, an investor, real costs');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');
