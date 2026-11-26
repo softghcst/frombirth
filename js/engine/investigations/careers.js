@@ -19,6 +19,7 @@ import { ensureCareer } from '../worklife.js';
 import { residency, rightToLive } from '../citizenship.js';
 import { relocate, moveBlock } from '../cities.js';
 import { techAvailable } from '../digital/tech.js';
+import { storyBeat } from '../storyDirector.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, once, reputationOf, skillAvg, working, dateWords } from './core.js';
 import { agency, agencyOf, agenciesHere, office, officeOf, federalCities, vacancies, staffer, employerOf } from './agencies.js';
 import { trainingBonus } from './policing.js';
@@ -272,17 +273,85 @@ function graduate(p, r) {
   return 'graduated';
 }
 
+/** Extensions of field training a department gives before it decides: about a year of them. */
+export const FTO_EXTENSIONS = 4;
+const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
+
+/**
+ * The field training officer's reviews, one at the end of each stretch of training that has passed: the first at the
+ * end of field training, then every three months. Every review whose date has come is held, in order, however long
+ * the turn (a year's turn holds four at once), each with its own roll, so the outcome is the same at any turn length.
+ * The player hears once: signed off, or how many months were added and what to work on. After the last extension the
+ * department decides: a narrow pass, or a last chance to ask for (a scene, inv_fto_last_chance).
+ */
+function fieldReviews(p, r, j) {
+  const fto = name(r.people.ftoId);
+  const score = (at) => skillAvg(FTO_SKILLS, r) + (r.acted.field ?? 0) + seeded(`${me()}/fto/${at}`).int(-10, 10);
+  let added = 0;
+  while (r.stage === 'field' && now() >= j.fieldEnd) {
+    const s = score(j.fieldEnd);
+    if (s >= 30) {
+      r.stage = 'probation';
+      // Probation runs on past a late sign-off: at least six months as a probationary officer on their own.
+      j.probationEnd = Math.max(j.probationEnd ?? 0, j.fieldEnd + 6);
+      note(`${fto} signed off your field training${(j.ftoExtensions ?? 0) ? ` after ${j.ftoExtensions * 3} extra months` : ''}.`, 'career', { log: true });
+      return;
+    }
+    if ((j.ftoExtensions ?? 0) >= FTO_EXTENSIONS) {
+      if (s >= 22) {
+        r.stage = 'probation';
+        j.probationEnd = Math.max(j.probationEnd ?? 0, j.fieldEnd + 6);
+        note(`At the last review, ${fto} signed off your field training, just. Your sergeant will be watching your probation closely.`, 'career', { log: true });
+        regard('reliability', -2);
+        return;
+      }
+      j.ftoLastChance = j.fieldEnd;
+      const asked = storyBeat('inv_fto_last_chance', { words: { fto, months: String(j.ftoExtensions * 3) } }, { source: 'investigations', must: true });
+      if (!asked) ftoLetGo(p, r);
+      return;
+    }
+    j.ftoExtensions = (j.ftoExtensions ?? 0) + 1;
+    j.fieldEnd += 3;
+    added += 3;
+  }
+  if (!added) return;
+  // What is holding them back, and the patrol work that builds it (My Investigations).
+  const weakest = [...FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+  const act = Object.values(PATROL).find((x) => x.skills.includes(weakest));
+  const left = FTO_EXTENSIONS - j.ftoExtensions;
+  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" in My Investigations is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
+}
+
+/** The department lets a trainee go who has not passed field training. */
+function ftoLetGo(p, r) {
+  note('The department let you go at the end of field training.', 'career', { log: true, milestone: 'Did not complete police field training.' });
+  jobEnded(p, r, 'dismissed');
+  quitCareer();
+}
+
+/** The last-chance conversation (inv_fto_last_chance): one final three months, or not. */
+export function ftoLastChance(ask) {
+  const p = player();
+  const r = rec(p);
+  const j = r?.job;
+  if (!j?.ftoLastChance || r.stage !== 'field') return null;
+  const at = j.ftoLastChance;
+  delete j.ftoLastChance;
+  if (ask && seeded(`${me()}/fto-last/${at}`).chance(clamp(0.35 + (r.skills.ethics ?? 0) / 200 + (r.skills.teamwork ?? 0) / 300, 0.2, 0.8))) {
+    j.fieldEnd = at + 3;
+    j.ftoExtensions = FTO_EXTENSIONS - 1; // one review more: pass it, or the decision is final
+    return 'The captain agrees to three more months. Your field training officer says it plainly: this is the last.';
+  }
+  ftoLetGo(p, r);
+  return ask ? 'The captain listens, and says no. You hand in your badge at the front desk.' : 'You hand in your badge at the front desk.';
+}
+
 /** Field training and probation, as the calendar reaches their ends. */
 export function settleProbation(p = player()) {
   const r = rec(p);
   if (!r?.job || r.family !== 'police') return null;
   const j = r.job;
-  if (r.stage === 'field' && j.fieldEnd && now() >= j.fieldEnd) {
-    const roll = seeded(`${me()}/fto/${j.fieldEnd}`);
-    const ok = skillAvg(['writing', 'observation', 'interviewing', 'ethics'], r) + (r.acted.field ?? 0) + roll.int(-10, 10) >= 30;
-    if (ok) { r.stage = 'probation'; note(`${name(r.people.ftoId)} signed off your field training.`, 'career', { log: true }); }
-    else { j.fieldEnd = now() + 3; log(`${name(r.people.ftoId)} wants three more months of field training before signing you off.`, 'system', 'neutral'); }
-  }
+  if (r.stage === 'field' && j.fieldEnd && now() >= j.fieldEnd && !j.ftoLastChance) fieldReviews(p, r, j);
   if (r.stage === 'probation' && j.probationEnd && now() >= j.probationEnd) {
     r.stage = 'officer';
     j.rank = 'officer';
