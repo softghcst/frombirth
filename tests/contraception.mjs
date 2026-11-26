@@ -70,6 +70,8 @@ section('registry: unique ids, typical and perfect use, sources with jurisdictio
   check(yrs('iud_lng52') === 8 && yrs('iud_lng52', 'us', 2015) === 5 && yrs('iud_lng52', 'de') === 5, `the larger hormonal IUD: 8 years in the US now, 5 before 2022 and elsewhere (${yrs('iud_lng52')})`);
   check(yrs('iud_lng13') === 3 && yrs('iud_lng19') === 5 && yrs('iud_copper') === 10, 'each hormonal IUD has its own duration; copper 10');
   check(yrs('implant') === 3 && yrs('implant', 'us', 1995) === 5, 'the implant: 3 years now, 5 for the earlier multi-rod implant');
+  check(yrs('implant', 'uk') === 5, 'the implant: 5 years under NHS guidance (checked 2026-11-26)');
+  check(D.METHOD_BY_ID.cervical_cap.typical === 22 && Object.values(D.SOURCES).filter((x) => x.verified).every((x) => x.confirmed), 'figures as checked against the CDC (cervical cap 22%); every verified source says what it confirmed');
   check(D.METHODS.filter((m) => m.procedure === 'iud').every((m) => m.durations.length), 'no IUD is assumed to expire after one shared duration');
 }
 section('durations: per device, per year and per country, not a universal three years');

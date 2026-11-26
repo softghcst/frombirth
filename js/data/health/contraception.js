@@ -9,10 +9,10 @@
 // Age Up: engine/health/contraception.js turns them into a relative risk against using no method (85% a year), applied
 // to the game's own exposure model (engine/children.js surpriseChance, engine/bonds.js maybeConceive) month by month.
 //
-// VERIFICATION. The figures were compiled from the sources in SOURCES on 2026-11-26. The CDC and NHS pages could not
-// be fetched from the build environment that day (network blocked), so they are marked `verified: false` until someone
-// re-checks them against the live pages. Device durations change (approvals are extended); they live in `durations`,
-// versioned by year and country, and the UI shows only what this file says.
+// VERIFICATION. On 2026-11-26 the figures were checked against the live CDC, NHS and FDA pages (`verified: true`
+// below, with what each page confirmed). Sources not read that day stay `verified: false`. Device durations change
+// (approvals are extended); they live in `durations`, versioned by year and country, and the UI shows only what this
+// file says.
 //
 // ELIGIBILITY. `mec` follows the shape of the US Medical Eligibility Criteria (US MEC 2024): 1 no restriction, 2
 // advantages generally outweigh risks, 3 risks usually outweigh advantages (needs a clinician's careful judgment), 4 an
@@ -21,11 +21,16 @@
 // a clinician's conversation, never a universal ban.
 
 export const SOURCES = {
-  cdc_about: { url: 'https://www.cdc.gov/contraception/about/', name: 'CDC: Contraception', applies: 'United States', checked: '2026-11-26', verified: false },
+  cdc_about: { url: 'https://www.cdc.gov/contraception/about/', name: 'CDC: Contraception', applies: 'United States', checked: '2026-11-26', verified: true,
+    confirmed: 'Typical-use failure for every method here (LNG IUD 0.1–0.4%, cervical cap 22%, fertility awareness 2–23%); implant over 3 years; LNG IUD 3 to 8 years by device; copper IUD 10 years; vasectomy about 12 weeks to a zero count' },
   cdc_mec: { url: 'https://www.cdc.gov/contraception/hcp/usmec/', name: 'CDC: US Medical Eligibility Criteria for Contraceptive Use (2024)', applies: 'United States', checked: '2026-11-26', verified: false },
-  cdc_spr: { url: 'https://www.cdc.gov/contraception/hcp/usspr/', name: 'CDC: US Selected Practice Recommendations for Contraceptive Use (2024)', applies: 'United States', checked: '2026-11-26', verified: false },
+  cdc_spr: { url: 'https://www.cdc.gov/contraception/hcp/usspr/', name: 'CDC: US Selected Practice Recommendations for Contraceptive Use (2024)', applies: 'United States', checked: '2026-11-26', verified: true,
+    confirmed: 'Injection every 13 weeks, up to 2 weeks late without backup; emergency pills within 5 days (levonorgestrel less effective at 4–5 days, ulipristal more effective then); copper IUD within 5 days; backup 2 days for norethindrone pills, 7 for drospirenone; semen test 8–16 weeks after vasectomy, 80% clear by 12 weeks' },
   acog: { url: 'https://www.acog.org/womens-health/faqs/birth-control', name: 'ACOG: Birth control FAQs', applies: 'United States', checked: '2026-11-26', verified: false },
-  nhs: { url: 'https://www.nhs.uk/contraception/', name: 'NHS: Contraception guide', applies: 'United Kingdom', checked: '2026-11-26', verified: false },
+  nhs: { url: 'https://www.nhs.uk/contraception/', name: 'NHS: Contraception guide', applies: 'United Kingdom', checked: '2026-11-26', verified: true,
+    confirmed: 'Implant 5 years; IUS 3 to 8 years by type; copper IUD 5 or 10 years by type; injection 8 to 13 weeks; emergency pill within 3 or 5 days by type, free from NHS pharmacies; internal condoms 79% typical, 95% perfect; diaphragm or cap 92–96% with correct use; fertility awareness 76% typical; free and confidential, including under 16' },
+  fda: { url: 'https://www.fda.gov/consumers/womens-health-topics/birth-control', name: 'FDA: Birth control', applies: 'United States', checked: '2026-11-26', verified: true,
+    confirmed: 'Copper IUD up to 10 years; hormonal IUD 8 years or more, by type' },
   owh: { url: 'https://womenshealth.gov/a-z-topics/birth-control-methods', name: 'US Office on Women\'s Health: Birth control methods', applies: 'United States', checked: '2026-11-26', verified: false },
 };
 
@@ -48,11 +53,11 @@ const B = (o) => ({ hormonal: false, hormone: null, sti: false, procedure: null,
 export const METHODS = [
   B({ id: 'implant', name: 'Arm implant', category: 'larc', hormonal: true, hormone: 'progestin', mechanism: 'A small rod under the skin of the upper arm releases a progestin that mainly stops ovulation.',
     typical: 0.1, perfect: 0.1, access: 'procedure', procedure: 'implant', remove: 'implant', from: 1990, sources: ['cdc_about', 'cdc_spr', 'nhs'],
-    durations: [{ from: 1990, years: 5, note: 'the earlier multi-rod implant' }, { from: 1999, years: 3, note: 'the single-rod implant' }, { from: 2006, years: 3, countries: ['us'] }],
+    durations: [{ from: 1990, years: 5, note: 'the earlier multi-rod implant' }, { from: 1999, years: 3, note: 'the single-rod implant' }, { from: 2006, years: 3, countries: ['us'] }, { from: 2026, years: 5, countries: ['uk'], note: 'NHS guidance as checked 2026-11-26 (first year of the change not known: not invented)' }],
     maintenance: 'Nothing day to day. Removed or replaced by a trained clinician when due or whenever you want.', onsetWeeks: 1,
     cost: { device: 850, placement: 250, removal: 220 }, sideEffects: ['irregular_bleeding', 'spotting', 'headache', 'mood', 'acne', 'arm_site'], bleeding: { pattern: 'unpredictable', amenorrhea: 0.22, irregular: 0.45 } }),
   B({ id: 'iud_lng52', name: 'Hormonal IUD (larger)', family: 'iud_hormonal', category: 'larc', hormonal: true, hormone: 'progestin', mechanism: 'A small device in the uterus releases a progestin locally; it thickens cervical mucus and thins the lining.',
-    typical: 0.1, perfect: 0.1, access: 'procedure', procedure: 'iud', remove: 'iud', from: 1990, sources: ['cdc_about', 'cdc_spr', 'acog'],
+    typical: 0.1, perfect: 0.1, access: 'procedure', procedure: 'iud', remove: 'iud', from: 1990, sources: ['cdc_about', 'cdc_spr', 'acog', 'fda'],
     durations: [{ from: 1990, years: 5 }, { from: 2022, years: 8, countries: ['us'] }, { from: 2024, years: 8, countries: ['uk'] }],
     maintenance: 'Nothing day to day. Checked if anything feels wrong; removed or replaced by a trained clinician.', onsetWeeks: 1,
     cost: { device: 900, placement: 260, removal: 200 }, sideEffects: ['spotting', 'irregular_bleeding', 'cramping_early', 'headache', 'acne'], bleeding: { pattern: 'lighter', amenorrhea: 0.2, irregular: 0.3 } }),
@@ -112,7 +117,7 @@ export const METHODS = [
     typical: 17, perfect: 16, access: 'clinic', from: 1882, sources: ['cdc_about', 'nhs'], supply: { months: 24, rxMonths: 24, base: 100 }, adherence: 'each_time',
     maintenance: 'Used each time, with spermicide. Replaced every couple of years.', combinable: ['*'], cost: { visit: 120 }, sideEffects: ['irritation', 'uti'] }),
   B({ id: 'cervical_cap', name: 'Cervical cap', category: 'barrier', barrier: true, mechanism: 'A small reusable cap over the cervix, used with spermicide. Less effective after a vaginal birth.',
-    typical: 17, perfect: 14, parousTypical: 29, access: 'clinic', from: 1900, sources: ['cdc_about'], supply: { months: 12, rxMonths: 12, base: 90 }, adherence: 'each_time',
+    typical: 22, perfect: 14, parousTypical: 29, access: 'clinic', from: 1900, sources: ['cdc_about'], supply: { months: 12, rxMonths: 12, base: 90 }, adherence: 'each_time',
     maintenance: 'Used each time, with spermicide.', combinable: ['*'], cost: { visit: 120 }, sideEffects: ['irritation'] }),
   B({ id: 'spermicide', name: 'Spermicide', category: 'barrier', barrier: true, mechanism: 'A gel, foam or film placed before sex. On its own, one of the less effective methods.',
     typical: 21, perfect: 16, access: 'otc', from: 1885, sources: ['cdc_about'], supply: { months: 1, base: 12, otc: true }, adherence: 'each_time',
@@ -137,7 +142,7 @@ export const UNSPECIFIED = { id: 'unspecified', name: 'Birth control (not specif
  * expected pregnancies still happening (game approximation of published ranges; ulipristal is the more effective pill). */
 export const EMERGENCY = [
   { id: 'ec_lng', name: 'Levonorgestrel emergency pill', windowHours: 72, from: 1999, access: 'pharmacy', residual: 0.4, base: 45, sources: ['cdc_spr', 'nhs'],
-    note: 'Works best the sooner it is taken; it prevents or delays ovulation and does not end an established pregnancy.' },
+    note: 'Works best the sooner it is taken; it prevents or delays ovulation and does not end an established pregnancy. (Licensed for 3 days; CDC: up to 5, less effective after day 4.)' },
   { id: 'ec_upa', name: 'Ulipristal emergency pill', windowHours: 120, from: 2009, access: 'clinic', residual: 0.3, base: 60, sources: ['cdc_spr', 'nhs'],
     note: 'Effective for up to five days. Delays ovulation; it does not end an established pregnancy.' },
   { id: 'ec_cu_iud', name: 'Copper IUD as emergency contraception', windowHours: 120, from: 1976, access: 'procedure', residual: 0.01, methodId: 'iud_copper', sources: ['cdc_spr', 'nhs'],

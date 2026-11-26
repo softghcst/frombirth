@@ -5,11 +5,13 @@ game. Nothing in it is medical advice. The screens never tell a player how to us
 
 ## Clinical review status
 
-**No clinician has reviewed this content.** It was compiled on 2026-11-26 from the public guidance listed below.
-The build environment could not fetch the CDC, ACOG, NHS or Office on Women's Health pages that day (the network
-was blocked), so every source in `js/data/health/contraception.js` is marked `verified: false`. Re-check the figures
-against the live pages before calling them current. Device durations change as approvals are extended. They are
-kept in the data file, versioned by year and country, and the UI only shows what that file says.
+**No clinician has reviewed this content.** On 2026-11-26 the figures were checked against the live CDC
+(contraception overview, Selected Practice Recommendations), NHS (method pages) and FDA (birth control) pages. Each
+source in `js/data/health/contraception.js` records what it confirmed. That check changed three things: the cervical
+cap's typical-use rate (22%, CDC), the implant's duration in the UK (5 years, NHS), and how often a vasectomy is
+confirmed at the first test (80% by 12 weeks, CDC). The US MEC, ACOG and Office on Women's Health pages were not
+read that day and stay unverified. Where the sources differ (fertility awareness: CDC 2–23%, NHS 24% typical use),
+the game uses the CDC figure and says so.
 
 ## Sources
 
