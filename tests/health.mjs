@@ -628,6 +628,24 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   const { addCondition } = await import('../js/engine/health/ailments.js');
   const { checkUp, therapy } = await import('../js/engine/health/visits.js');
   {
+    // A doctor's visit for an ailment is an appointment in the record: a real clinician, a bill, a claim.
+    const q = adult(34); q.finance.cash = 1e6;
+    const { seeDoctor } = await import('../js/engine/health/visits.js');
+    addCondition('flu', q);
+    const cash = q.finance.cash;
+    seeDoctor('flu');
+    const v = R.healthOf(q).appointments.find((x) => x.kind === 'visit' && x.status === 'attended');
+    const gpNpc = v && store.state.npcs[v.providerId];
+    check(v && gpNpc?.flags.clinician.profession === 'gp' && R.healthOf(q).ledger.some((x) => x.ref === `appt:${v.id}`) && q.finance.cash === cash - v.paid, 'seeing the doctor about the flu is an appointment with the family doctor, in the bills');
+    check(q.health.insurance.claims.some((x) => x.ref === `appt:${v.id}`), 'and it is claimed against cover like any other bill');
+    addCondition('broken_arm', q);
+    seeDoctor('broken_arm');
+    const bone = R.healthOf(q).appointments.find((x) => x.kind === 'visit' && /broken arm/i.test(x.what ?? ''));
+    check(bone && store.state.npcs[bone.providerId]?.flags.clinician.profession === 'doctor', 'a broken arm is seen by a hospital doctor');
+    const c2 = checkUp();
+    check(c2.ok && R.healthOf(q).appointments.some((x) => x.kind === 'checkup' && x.status === 'attended' && x.outcome), `a check-up is an appointment too (${c2.text})`);
+  }
+  {
     const q = adult(30); q.finance.cash = 1e6;
     const r = therapy();
     check(r.ok && R.healthOf(q).appointments.some((x) => x.kind === 'assessment' && x.concern === 'mental'), 'therapy from the doctor screen books a Health Engine assessment, not a separate mood boost');
