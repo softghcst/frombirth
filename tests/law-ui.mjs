@@ -169,7 +169,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
-  check(/Outcome/.test(await hub().innerText()), `${label}: the case shows its outcome`);
+  check(/Outcome|retrial|Retrial|mistrial/i.test(await hub().innerText()), `${label}: the case shows its outcome (or, after a hung jury, the retrial to come)`);
   await hub().locator('[data-back]').click();
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
