@@ -12,7 +12,7 @@ import * as sch from '../../engine/schooling.js';
 import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
-import { politicsCard, politicsAction } from '../politics.js';
+import { politicsAction } from '../politics.js';
 import { openAthletics } from '../sports.js';
 import * as special from '../../engine/specialCareer.js';
 import * as fameEng from '../../engine/fame.js';
@@ -447,11 +447,9 @@ function specialCareers(p, list) {
     return navRow({ attrs: `data-act="sc:${c.id}"`, label: c.name, sub: now === c.id ? 'Your career' : c.blurb, ico: c.ico, tone: now === c.id ? 'peach' : '' });
   });
   const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';
-  const politics = !now || now === 'politics' ? politicsCard() : '';
   return `<div class="card"><h3>Special careers</h3>
     <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career. You can follow one at a time.'}</p>
-    <div class="nav-group">${rows.join('')}${useFame}</div></div>
-    ${politics ? `<div id="politics-card">${politics}</div>` : ''}`;
+    <div class="nav-group">${rows.join('')}${useFame}</div></div>`;
 }
 
 /** Opposite choices, shown side by side: Study harder | Slack off. */

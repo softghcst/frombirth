@@ -389,7 +389,7 @@ export function openGuide() {
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
-  const m = openModal('<div class="law-hub"></div>', { dismissable: true });
+  const m = openModal('<div class="law-hub"></div>', { dismissable: true, full: true, title: 'My Legal Career' });
   const host = m.el.querySelector('.law-hub');
   const draw = () => {
     const ts = tabs();

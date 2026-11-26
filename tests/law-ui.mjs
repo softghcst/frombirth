@@ -173,7 +173,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await ok();
   await hub().getByText(/Outcome/).first().waitFor({ timeout: 10000 }).catch(() => {}); // the case page redraws after the verdict, however busy the machine
   check(/Outcome|retrial|Retrial|mistrial/i.test(await hub().innerText()), `${label}: the case shows its outcome (or, after a hung jury, the retrial to come)`);
-  await hub().locator('[data-back]').click();
+  await page.locator('#modal-root .modal:has(.law-hub) .modal-back').click(); // the bar's Back steps back a level
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
   // The Family Archive keeps the legal career.

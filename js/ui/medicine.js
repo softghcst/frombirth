@@ -548,7 +548,7 @@ const ACTIONS = {
 /** Opens My Medical Career, at a tab (and, coming back from a profile, at the same place it was left). */
 export function openMedicine(api, start = 'overview') {
   const st = typeof start === 'string' ? { section: start } : { section: 'overview', ...start };
-  const modal = openModal('<div data-med></div>', { dismissable: true });
+  const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: 'My Medical Career' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-med]');
   const render = () => {

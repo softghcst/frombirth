@@ -482,7 +482,7 @@ const CASE_VIEWS = {
 };
 function openCaseFile(api, invId, refreshHub) {
   const st = { tab: 'overview' };
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: W.investigation(invId)?.file?.title ?? 'Case file' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-case]');
   const render = () => {
@@ -490,7 +490,7 @@ function openCaseFile(api, invId, refreshHub) {
     const v = V.view(inv, 'investigator');
     if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
     const tabs = caseTabs(v);
-    root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
+    root.innerHTML = `
       <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
@@ -686,7 +686,7 @@ const ACTIONS = {
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const lines = settle(player()); // anything whose date has come, made known before the page is drawn
-  const modal = openModal('<div data-inv></div>', { dismissable: true });
+  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');
   const render = () => {
@@ -694,7 +694,7 @@ export function openInvestigations(api, start = 'overview') {
     const r = rec(p);
     const list = sectionsFor(p, r);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
+    root.innerHTML = `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>
       <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${hint(st.section)}${VIEWS[st.section](p, r)}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
