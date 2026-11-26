@@ -22,6 +22,12 @@ import * as FM from '../engine/investigations/forensicMed.js';
 import * as PO from '../engine/investigations/policing.js';
 import * as WP from '../engine/investigations/workplace.js';
 import * as LO from '../engine/investigations/local.js';
+import * as FL from '../engine/investigations/forensicLab.js';
+import * as UN from '../engine/investigations/unions.js';
+import * as RF from '../engine/investigations/reform.js';
+import * as FP from '../engine/investigations/forensicPsych.js';
+import { LAB } from '../data/investigations.js';
+const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
 
@@ -49,11 +55,12 @@ function sectionsFor(p, r) {
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
+  if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
   if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections'], ['stories', 'My Stories']);
   if (FM.examinerNow(p) || FM.referrals('death', p).length) out.push(['death', 'Death Investigations']);
   if (FM.evaluatorNow(p) || FM.referrals('competency', p).length) out.push(['competency', 'Competency Evaluations']);
-  if (r?.family !== 'federal' && (A.agency(r?.job?.agencyId)?.chiefId === p.id || ['council', 'mayor'].includes(p.politics?.officeId) || (r?.stats.years ?? 0) >= 8)) out.push(['policy', 'Public Safety']);
+  if (r?.family !== 'federal' && (A.agency(r?.job?.agencyId)?.chiefId === p.id || ['council', 'mayor', 'seat', 'head'].includes(p.politics?.officeId) || (r?.stats.years ?? 0) >= 8)) out.push(['policy', 'Public Safety']);
   if (legacies().length) out.push(['legacy', 'Family Legacy']);
   return out;
 }
@@ -81,7 +88,7 @@ const VIEWS = {
       ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
-      ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : 'Simplified: one national or regional police service, no federal careers'],
+      ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
     ]) + muted('Investigative careers here are gameplay. Agency rules are simplified and not verified against the agencies themselves.'));
     if (!r?.job) out += waysIn(p);
     if (!r?.job) {
@@ -108,6 +115,7 @@ const VIEWS = {
         const no = C.policeUnmet(a, p);
         const d = AGENCY_KINDS[a.kind];
         out += card(a.name, kv([['Kind', d.name], ['Academy', `${d.academyMonths} months`], ['Field training', `${d.fieldMonths} months`], ['Minimum age', String(d.minAge)], ...(d.maxAge ? [['Maximum age', String(d.maxAge)]] : [])])
+          + (d.entry ? muted(d.entry) : '') + (d.prosecutor ? muted(`Charging decisions are made by ${d.prosecutor}.`) : '')
           + (a.simplified ? muted('Simplified: this country\'s police recruitment is not modeled in detail.') : '')
           + (no.length ? muted(no[0]) : stack(btn('applyPolice', 'Submit an application', { arg: a.id }))));
       }
@@ -125,6 +133,16 @@ const VIEWS = {
       const vac = A.vacancies(a, 'detective');
       out += card(r.job.detective ? 'Unit transfers' : 'Detective selection', (no.length ? muted(no[0]) : vac.length ? vac.map((v) => kv([[SPECIALTIES[v.unit].name, SPECIALTIES[v.unit].years ? `Needs ${SPECIALTIES[v.unit].years} years as a detective` : 'Open to qualified officers']])
         + stack(btn('applyDetective', `Apply for ${SPECIALTIES[v.unit].name.toLowerCase()}`, { arg: v.id }))).join('') : muted('No detective seats are open this year.')));
+    }
+    if (r.family === 'police' && !['academy'].includes(r.stage)) {
+      const un = UN.unionOf(a);
+      const mem = UN.membership(p);
+      const t = UN.talks(p);
+      out += card('The union', kv([['Union', un.name], ['Representative', un.repId === p.id ? 'You' : nm(un.repId)], ['Contract', `to ${un.contract.until}: ${un.contract.raise}% raise; disciplinary records ${un.contract.records}${un.contract.bodycams ? '; body cameras' : ''}`],
+        ['You', mem?.member ? `A member since ${mem.since}` : 'Not a member'], ...(un.stalled ? [['Talks', 'Stalled']] : []), ...(un.action === store.state.year ? [['This year', 'Working to rule']] : [])])
+        + muted(UN.NO_STRIKE)
+        + stack((mem?.member ? btn('unionLeave', 'Leave the union') + (mem.rep ? '' : btn('unionRep', 'Stand for representative')) + (un.stalled && mem.voted !== store.state.year ? btn('unionVote', 'Vote on working to rule') : '') : btn('unionJoin', 'Join the union'))
+          + (t ? btn('bargain', t.side === 'union' ? 'Bargain for your colleagues' : 'Bargain for the department') : '')));
     }
     const hoodsHere = LO.meetingsHere(p);
     if (!['academy'].includes(r.stage) && hoodsHere.length) {
@@ -230,12 +248,32 @@ const VIEWS = {
     }
     return out;
   },
+  psych(p) {
+    const F = FP.psychRecord(p);
+    if (!F?.active) { const why = FP.psychBlock(p); return card('Forensic psychology', muted('Consultations for detectives, risk assessments for the parole board, and care for officers after critical incidents. A psychologist describes behavior and risk; others decide.') + (why ? muted(why) : stack(btn('psychStart', 'Take up forensic practice')))); }
+    const work = FP.openWork(p);
+    const LABEL = { consult: 'Consultation', risk: 'Risk assessment for the parole board', officer: 'An officer after a critical incident' };
+    return card('Your practice', kv([['Position', p.career.title], ['Careful work', String(F.careful)], ['Overreach', String(F.overreach)], ['Confidentiality breaches', String(F.breaches)]]))
+      + (work.length ? work.map((w) => card(LABEL[w.kind], kv([[w.kind === 'consult' ? 'Case' : 'Person', w.kind === 'consult' ? (store.state.justice.investigations[w.invId]?.file?.title ?? '—') : nm(w.personId)]])
+        + stack(FP.OPTIONS[w.kind].map(([label, v]) => btn('psychWork', label, { arg: `${w.id}|${v}`, cls: ['name', 'impression', 'report'].includes(v) ? 'danger' : '' })).join('')))).join('') : muted('No work waiting. Referrals come as the year turns.'));
+  },
   bench(p) {
-    const list = X.bench(p).filter((b) => b.status === 'open');
-    return list.length ? list.map((b) => { const inv = W.investigation(b.invId); const it = inv.file.items.find((x) => x.id === b.itemId);
-      return card(`${it.label} (${inv.file.title})`, kv([['Requested by', nm(b.detectiveId)], ['Done', b.steps.join(', ') || 'nothing yet']])
+    const L = FL.labRecord(p);
+    const list = FL.queue(p);
+    const tested = L?.proficiency.find((x) => x.year === store.state.year);
+    let head = L ? card('Your laboratory', kv([['Position', p.career.title], ['Discipline', L.discipline ? FL_LAB(L.discipline) : 'Not chosen yet'], ['Accreditation', L.accredited ? 'Accredited' : 'Under review'],
+      ['Waiting on your bench', String(list.length)], ['Overdue', String(list.filter((b) => b.overdue).length)], ['Reports written', String(L.reports)], ['Order of work', L.policy === 'serious' ? 'Serious cases first' : 'In the order they came']])
+      + stack((L.discipline ? '' : btn('specialize', 'Choose a discipline'))
+        + (tested ? '' : btn('proficiency', 'Sit this year\'s proficiency test'))
+        + btn('labPolicy', L.policy === 'serious' ? 'Work them in order instead' : 'Put serious cases first', { arg: L.policy === 'serious' ? 'age' : 'serious' }))) : '';
+    for (const { b, inv, c } of FL.courtDates(p)) {
+      const it = inv.file.items.find((x) => x.id === b.itemId);
+      head += card(`In court: ${inv.file.title}`, kv([['Your report', `${it?.label ?? 'an item'}: ${FL_LAB(b.discipline)}`], ['Defendant', nm(c.defendantId)]]) + muted('You explain what the laboratory found. The court decides what it means.') + stack(btn('labTestify', 'Take the stand', { arg: b.id })));
+    }
+    return head + (list.length ? list.map((b) => { const inv = W.investigation(b.invId); const it = inv.file.items.find((x) => x.id === b.itemId);
+      return card(`${it.label} (${inv.file.title})`, kv([['Requested by', nm(b.detectiveId)], ['Examination', FL_LAB(b.discipline)], ...(b.due ? [['Due', `${dateWords(b.due)}${b.overdue ? ' (overdue)' : ''}`]] : []), ['Done', b.steps.join(', ') || 'nothing yet']])
         + stack(Object.entries(X.BENCH_STEPS).map(([id, d]) => btn('bench', d.label, { arg: `${b.id}|${id}` })).join('') + btn('benchReport', 'Report the finding as it is', { arg: `${b.id}|careful` }) + btn('benchReport', 'Report it as stronger than it is', { arg: `${b.id}|overstate`, cls: 'danger' }))); }).join('')
-      : muted('Nothing on your bench. Requests arrive as the year turns.');
+      : muted('Nothing on your bench. Requests arrive as the year turns.'));
   },
   standards(p) {
     const mine = O.complaints().filter((c) => c.subjectId === p.id);
@@ -269,6 +307,10 @@ const VIEWS = {
     if (a.chiefId === p.id) out += card('Set this year\'s priority', stack(Object.entries(PO.FOCUS).map(([id, x]) => btn('focus', `${x.name}: ${x.sub}`, { arg: id })).join('')));
     if (['council', 'mayor'].includes(p.politics?.officeId)) out += card('A civilian oversight board', '<p><b>For:</b></p>' + PO.BOARD_ARGUMENTS.for.map((x) => `<p>• ${esc(x)}</p>`).join('') + '<p><b>Against:</b></p>' + PO.BOARD_ARGUMENTS.against.map((x) => `<p>• ${esc(x)}</p>`).join('')
       + stack(btn('board', a.oversight?.board ? 'Propose ending the board' : 'Propose creating a board', { arg: a.oversight?.board ? 'end' : 'create' })));
+    const reforms = RF.reformList(p.countryId).filter((x) => x.available);
+    const canPropose = !RF.canPropose(p);
+    out += card('National police reform', reforms.map((x) => kv([[x.name, x.passed ? `Law since ${x.passed}` : 'Not law']]) + muted(x.text)
+      + (canPropose && !x.passed ? stack(btn('reform', 'Put it to the legislature', { arg: x.id })) : '')).join('') + (canPropose ? '' : muted('Laws for the whole country are passed by its legislature. A member, or the head of government, can put a measure forward.')));
     if (p.countryId === 'us' && r?.family === 'police') { const why = PO.sheriffBlock(p); out += card('Run for sheriff', why ? muted(why) : stack(btn('sheriff', 'Stand for election as sheriff'))); }
     return out;
   },
@@ -379,6 +421,42 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  psychStart: (a, x) => x.say(FP.startPractice()),
+  psychWork: (a, x) => { const [id, v] = a.split('|'); return x.say(FP.doWork(id, v)); },
+  reform: (a, x) => x.say(RF.propose(a)),
+  unionJoin: (a, x) => x.say(UN.join()),
+  unionLeave: (a, x) => x.say(UN.leave()),
+  unionRep: (a, x) => x.say(UN.standForRep()),
+  unionVote: async (a, x) => {
+    const how = await pickModal({ title: 'Work to rule?', body: 'Officers would do exactly what the rules require, and no more. Cases would get fewer hours.', options: [{ value: 'yes', label: 'Vote yes' }, { value: 'no', label: 'Vote no' }] });
+    if (how) await x.say(UN.vote(how));
+  },
+  bargain: async (a, x) => {
+    const t = UN.talks();
+    const s = t && await pickModal({ title: 'The contract talks', body: t.side === 'union' ? 'You speak for your colleagues.' : 'You speak for the department.', options: UN.stancesFor(t.side).map((o) => ({ value: o.id, label: o.label })) });
+    if (s) await x.say(UN.bargain(s));
+  },
+  specialize: async (a, x) => {
+    const id = await pickModal({ title: 'Choose a discipline', body: 'Most of your requests will be in it. You can still be sent others.', options: FL.disciplinesNow().map((d) => ({ value: d.id, label: d.name })) });
+    if (id) await x.say(FL.specialize(id));
+  },
+  proficiency: async (a, x) => {
+    const how = await pickModal({ title: 'The proficiency test', body: 'A blind sample. Nobody tells you the answer.', options: [
+      { value: 'careful', label: 'Work it like casework', sub: 'Every control, every note.' },
+      { value: 'quick', label: 'Get through it quickly', sub: 'There is a backlog.' },
+      { value: 'peek', label: 'Ask a colleague what the answer is', sub: 'It would be easy.' }] });
+    if (how) await x.say(FL.proficiency(how));
+  },
+  labPolicy: (a, x) => x.say(FL.setPolicy(a)),
+  labTestify: async (a, x) => {
+    const answers = {};
+    for (const q of FL.FORENSIC_CROSS) {
+      const v = await pickModal({ title: 'Cross-examination', body: `Defense counsel: ${q.q}`, options: q.options.map(([label, value]) => ({ value, label })) });
+      if (!v) return;
+      answers[q.id] = v;
+    }
+    await x.say(FL.testify(a, answers));
+  },
   corporate: (a, x) => x.say(WP.joinCorporate(a)),
   meeting: async (a, x) => {
     const how = await pickModal({ title: 'The community meeting', body: 'A church hall, folding chairs, a microphone that works some of the time.', options: [

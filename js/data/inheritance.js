@@ -109,6 +109,7 @@ export const INHERITANCE = {
   ke: NONE({ src: 'wiki', note: 'Estate duty was abolished in 1982.' }),
   ru: NONE({ src: 'author' }), pe: NONE({ src: 'author' }), ma: NONE({ src: 'author', note: 'Registration duties on property are not modeled.' }),
   gt: NONE({ src: 'author' }), cu: NONE({ src: 'author' }), ht: NONE({ src: 'author' }), ad: NONE({ src: 'author' }), ws: NONE({ src: 'author' }),
+  fj: NONE({ src: 'author' }), pf: NONE({ src: 'author' }), mv: NONE({ src: 'author' }), mu: NONE({ src: 'author' }), sc: NONE({ src: 'author' }),
   aw: NONE({ src: 'author' }), bz: NONE({ src: 'author' }), dj: NONE({ src: 'author' }), ir: NONE({ src: 'author' }), sy: NONE({ src: 'author' }),
   af: NONE({ src: 'author' }), np: NONE({ src: 'author' }), dz: NONE({ src: 'author' }),
 };

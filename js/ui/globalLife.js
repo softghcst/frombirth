@@ -135,6 +135,43 @@ const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'b
  * @param {object} api  the shell's api (changed, ...)
  * @param {{view?:string, params?:object}} [start]
  */
+/** The way there, as a scene: home, any changes of plane or ports of call, and the destination, on a map. */
+export async function journeyOf(trip) {
+  try {
+    const { openJourney, overOf } = await import('./journey.js');
+    const legs = trip.itinerary?.out ?? [];
+    const stops = legs.length ? [legs[0].from, ...legs.map((l) => l.to)] : [trip.origin, trip.destination];
+    if (trip.type === 'cruise') stops.push(...travel.portCalls(trip).map((x) => ({ countryId: x.countryId, city: x.port })));
+    const kind = { honeymoon: 'Off on the honeymoon', vacation: 'Off on vacation', getaway: 'A weekend away', business: 'Off on business' }[trip.type];
+    await openJourney({ stops, over: trip.type === 'cruise' ? 'sea' : overOf(legs[0]?.mode ?? trip.mode), title: kind });
+  } catch { /* no map: on with the trip */ }
+}
+
+/**
+ * Off on a booked trip, now: the journey on a map, its moments one at a time, each answered, then home, with a notice
+ * of how it went (and, home from a honeymoon, the postcard). Also how a honeymoon booked with the wedding begins.
+ * @returns {Promise<{ok:boolean, text?:string}>}
+ */
+export async function goOnTrip(api, id, changed = () => api?.changed?.()) {
+  const start = travel.beginTrip(id);
+  if (!start.ok) return start;
+  changed();
+  const trip = start.trip;
+  await journeyOf(trip); // the plane (or ship, train, car) on its way there, on a map (js/ui/journey.js)
+  const scenes = travel.tripScenes(trip);
+  let previous = null;
+  for (const [i, sc] of scenes.entries()) {
+    const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
+    previous = travel.chooseTripScene(id, sc.id, index);
+    changed();
+  }
+  const end = travel.finishTrip(id);
+  changed();
+  await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+  if (trip.type === 'honeymoon' || trip.honeymoon) { const { honeymoonPostcard } = await import('./weddingPlanner.js'); await honeymoonPostcard(api, trip); changed(); }
+  return { ok: true };
+}
+
 export function openExplore(api, start = {}) {
   const p = player();
   if (NAV.slot !== store.state.slotId) { NAV.slot = store.state.slotId; NAV.stack = []; NAV.ui = {}; }
@@ -573,21 +610,8 @@ export function openExplore(api, start = {}) {
       if (t('[data-passportbook]')) return openPassportBook();
       if ((x = t('[data-depart]'))) {
         // Off on the trip: its moments one at a time, each answered, then home.
-        const id = x.dataset.depart;
-        const start = travel.beginTrip(id);
-        if (!start.ok) return tell(start);
-        changed(); render(modal.el.scrollTop);
-        const trip = start.trip;
-        const scenes = travel.tripScenes(trip);
-        let previous = null;
-        for (const [i, sc] of scenes.entries()) {
-          const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
-          previous = travel.chooseTripScene(id, sc.id, index);
-          changed();
-        }
-        const end = travel.finishTrip(id);
-        changed();
-        await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+        const r = await goOnTrip(api, x.dataset.depart, changed);
+        if (!r.ok) return tell(r);
         return render(modal.el.scrollTop);
       }
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));

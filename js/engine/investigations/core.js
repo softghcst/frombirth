@@ -151,7 +151,7 @@ export function migrateInvestigations(state) {
   W(state);
   const p = state.player;
   const job = p.career?.careerId;
-  const legacy = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent'].includes(job);
+  const legacy = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent', 'usms_deputy', 'usss_agent', 'hsi_agent', 'irs_agent'].includes(job);
   if (!p.investigator && legacy) {
     const save = store.state;
     store.state = state;
@@ -167,7 +167,7 @@ export function migrateInvestigations(state) {
       r.stage = job === 'detective' ? 'detective' : r.family === 'federal' ? 'agent' : 'officer';
       // The employer the career engine already holds stays the employer; the agency record wraps it on first use.
       r.job = { agencyId: null, employerId: p.career.employerId ?? null, rank, detective: job === 'detective', specialty: job === 'detective' ? 'general' : null,
-        since: state.year - (p.career.yearsInRole ?? 0), rankSince: state.year, legacy: true, agencyKind: r.family === 'federal' ? { fbi_agent: 'fbi', dea_agent: 'dea', atf_agent: 'atf' }[job] : null };
+        since: state.year - (p.career.yearsInRole ?? 0), rankSince: state.year, legacy: true, agencyKind: r.family === 'federal' ? { fbi_agent: 'fbi', dea_agent: 'dea', atf_agent: 'atf', usms_deputy: 'usms', usss_agent: 'usss', hsi_agent: 'hsi', irs_agent: 'irs' }[job] : null };
       r.stats.years = p.career.yearsInField ?? p.career.yearsInRole ?? 0;
       r.history.push({ year: state.year, age: p.age, text: 'In the job since before this record was kept.', kind: 'career' });
     } finally { store.state = save; }

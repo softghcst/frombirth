@@ -204,7 +204,9 @@ export function placeChance(specialtyId, m = med()) {
   const s = SPECIALTY_BY_ID[specialtyId];
   const strength = applicationStrength(specialtyId, m);
   const tries = (m.match?.tries ?? 0);
-  return clamp(0.55 + (strength - 55) / 40 - s.compete * 0.55 - (tries > 0 ? 0.05 : 0), 0.04, 0.95);
+  // Before full practice rights (ERA.doFullRights), an osteopathic graduate's places were mostly in osteopathic hospitals.
+  const doBefore = m.route === 'do' && year() < ERA.doFullRights ? 0.12 : 0;
+  return clamp(0.55 + (strength - 55) / 40 - s.compete * 0.55 - (tries > 0 ? 0.05 : 0) - doBefore, 0.04, 0.95);
 }
 
 /**
@@ -266,10 +268,12 @@ export function runMatch(kind, wanted) {
  * Applying only at home keeps to the player's own city.
  */
 function pickSite(id, m, p) {
-  const here = trainingSites(id, p.countryId, p.city).map((x) => ({ ...x, city: p.city }));
+  // Before full practice rights, an osteopathic graduate trains in a community or regional hospital, not a university one.
+  const doOnly = m.route === 'do' && year() < ERA.doFullRights ? (x) => ['community', 'regional', 'government'].includes(x.h.kind) : () => true;
+  const here = trainingSites(id, p.countryId, p.city).filter(doOnly).map((x) => ({ ...x, city: p.city }));
   const strength = applicationStrength(id, m);
   if (m.local || p.age < 18) return here.length ? (strength >= 70 ? here[0] : here[here.length - 1]) : null;
-  const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => trainingSites(id, p.countryId, c.name).map((x) => ({ ...x, city: c.name })));
+  const away = citiesOf(p.countryId).filter((c) => c.name !== p.city).flatMap((c) => trainingSites(id, p.countryId, c.name).filter(doOnly).map((x) => ({ ...x, city: c.name })));
   const all = [...here, ...away];
   if (!all.length) return null;
   if (strength >= 70) return [...all].sort((a, b) => b.h.resources - a.h.resources || (a.city === p.city ? -1 : 1))[0];
@@ -324,7 +328,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   const m = M();
   const j = jurisdiction(p.countryId);
   const s = SPECIALTY_BY_ID[specialtyId] ?? null;
-  const years = kind === 'internship' ? j.internship : s.years;
+  const years = kind === 'internship' ? Math.max(1, j.internship) : s.years;
   const careerSpec = kind === 'internship' ? 'internal' : specialtyId;
   const career = careerFor(careerSpec);
   const e = employer(hospitalId);
@@ -338,6 +342,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   // The supervising physician is the person the player reports to; the people beside them are co-residents.
   const boss = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.flags.tag === 'boss');
   if (boss) {
+    boss.flags.medSpecialty ??= careerSpec;
     boss.flags.title = kind === 'fellowship' ? 'Fellowship director' : 'Supervising attending';
     boss.flags.medRole = 'supervisor';
     m.people.supervisorIds = [...new Set([...m.people.supervisorIds, boss.id])];
@@ -345,6 +350,7 @@ export function startTraining(kind, specialtyId, hospitalId) {
   const peers = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'coworker' && n.flags.workedWith === e.name);
   for (const n of peers) {
     n.flags.title = kind === 'fellowship' ? 'Co-fellow' : 'Co-resident'; n.flags.medRole = 'peer'; n.age = clamp(n.age, p.age - 3, p.age + 6);
+    n.flags.medSpecialty ??= careerSpec;
     remember(n, `medTrained:${e.id}`, `You trained together at ${e.name}${s ? `, in ${s.name}` : ''}, from ${year()}.`);
   }
   if (boss) remember(boss, `medSupervised:${e.id}`, `Supervised your ${kind === 'fellowship' ? 'fellowship' : 'training'} at ${e.name}, from ${year()}.`);
@@ -469,8 +475,15 @@ function licenseCheck(p, m, t) {
 function finishTraining(p, m, t) {
   const e = employer(t.hospitalId);
   if (t.kind === 'internship') {
-    log('Your internship is complete. Now for specialty training.', 'system', 'good');
     m.training = null;
+    // General practice straight from the internship, where that was the way (before family medicine replaced it).
+    if (m.afterInternship === 'gp' && year() <= ERA.gpUntil) {
+      log('Your internship is complete. You go into general practice.', 'system', 'good');
+      m.completed.push({ specialtyId: 'general', kind: 'gp', hospitalId: t.hospitalId, hospital: e?.name, from: t.startYear, to: year(), chief: false });
+      note(`Completed an internship at ${e?.name ?? 'the hospital'}, and went into general practice.`, 'career', { key: 'done:general', milestone: 'Qualified as a general practitioner.', significance: 2 });
+      return findPost(p, m, 'general', t.hospitalId);
+    }
+    log('Your internship is complete. Now for specialty training.', 'system', 'good');
     const wanted = m.school?.apply?.length ? m.school.apply : defaultApplications(m);
     if (!runMatch('residency', wanted)) { m.stage = 'graduate'; endJob('finished internship'); }
     return;
@@ -603,13 +616,29 @@ function startAfterSchool(p, m) {
   const j = jurisdiction(p.countryId);
   // Where the license comes with graduation (afterTraining 0), it is sat now, before any training place.
   if (j.license.afterTraining === 0 && m.route !== 'dpm') licenseCheck(p, m, null);
-  if (m.route !== 'dpm' && j.internship > 0 && !m.completed.length && !(m.evaluations ?? []).some((x) => x.kind === 'internship')) {
+  // Before about 1940, an internship came first everywhere, and most went on into general practice (ERA.gpEra).
+  const oldWay = year() < ERA.gpUntil; // the rotating internship, until family medicine (1969)
+  if (m.route !== 'dpm' && (j.internship > 0 || oldWay) && !m.completed.length && !(m.evaluations ?? []).some((x) => x.kind === 'internship')) {
     const site = trainingSites('internal', p.countryId, p.city)[0];
-    log(`Every graduate here works ${j.internship === 1 ? 'a supervised year' : `${j.internship} supervised years`} before specialty training.`, 'system', 'neutral');
+    if (oldWay) {
+      m.afterInternship ??= year() < ERA.gpEra ? 'gp' : 'residency';
+      log(year() < ERA.gpEra ? 'Like nearly every new doctor of the time, you begin with a year as a hospital intern. Most go on into general practice; a few train further as specialists.'
+        : 'You begin with a year as a hospital intern, as new doctors still do. After it, general practice or a specialty residency.', 'system', 'neutral');
+    }
+    else log(`Every graduate here works ${j.internship === 1 ? 'a supervised year' : `${j.internship} supervised years`} before specialty training.`, 'system', 'neutral');
     return startTraining('internship', 'internal', site.e.id);
   }
   const wanted = m.school.apply?.length ? m.school.apply : defaultApplications(m);
   return runMatch('residency', wanted);
+}
+
+/** After an internship before family medicine existed: general practice, or a specialty residency. */
+export function setAfterInternship(choice) {
+  const m = M();
+  if (!['gp', 'residency'].includes(choice)) return result(false, 'There is no such route.', 'neutral');
+  if (choice === 'gp' && year() > ERA.gpUntil) return result(false, 'General practice is now trained as family medicine, a residency of its own.', 'neutral');
+  m.afterInternship = choice;
+  return result(true, choice === 'gp' ? 'After your internship you will go into general practice.' : 'After your internship you will apply for a specialty residency.', 'neutral');
 }
 
 /** Whether a graduate wants to keep applying each year (they can stop and do something else). */

@@ -30,6 +30,8 @@ import { meet } from './careers.js';
 import { labMonths, hoursBonus } from './policing.js';
 import { lawyerOnIt, lawCaseFor } from './legal.js';
 import { realBusiness, neighborWitness, placeCase } from './local.js';
+import { workingToRule } from './unions.js';
+import { inForce } from './reform.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -57,6 +59,7 @@ export function templatesFor(specialty, p = player()) {
   const r = rec(p);
   return Object.entries(TEMPLATES).filter(([, t]) => {
     if (t.tech && !techAvailable(t.tech, year(), p.countryId)) return false;
+    if (t.federalOnly) return false; // a federal agency's own cases, never a police unit's
     if (t.minRank === 'senior_detective' && !['senior_detective', 'detective_sergeant', 'detective_lieutenant', 'agent', 'senior_agent', 'supervisory'].includes(r?.job?.rank) && (r?.stats.completed ?? 0) < 3) return false;
     if (specialty === 'general' || specialty === 'major') return !t.inquiry || specialty === 'general';
     return t.specialty === specialty || (specialty === 'property' && t.offenseId === 'burglary') || (specialty === 'special_victims' && t.specialty === 'family') || (specialty === 'major' && ['robbery', 'homicide', 'arson'].includes(t.specialty));
@@ -340,7 +343,8 @@ export function workLeft(inv) {
   // Extra hours this year: support approved, a partner's routine work, a task force; and this year's priority (workplace.js).
   const r = rec();
   const pri = r?.priority?.year === year() && r.caseIds.includes(inv.id) ? (r.priority.invId === inv.id ? 2 : -1) : 0;
-  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri - used);
+  const rule = workingToRule(inv.agencyId) ? -2 : 0; // the union is working to rule (unions.js)
+  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri + rule - used);
 }
 const spend = (f) => { f.work[year()] = (f.work[year()] ?? 0) + 1; };
 
@@ -482,6 +486,8 @@ export function interview(inv, wid, q) {
     if (named) {
       const ev = k.addEvidence(incidentOf(inv), 'witness', named, { sourceId: wid, reliability: 0.2, summary: `${nm(wid)}, pressed hard, gave ${nm(named)}'s name.` });
       ev.tainted = 'leading';
+      // Where body cameras are the law, the interview is recorded: the pressure is on camera, and a complaint follows (reform.js).
+      if (inForce(incidentOf(inv).countryId, 'bodycams') && !f.recorded) { f.recorded = true; ev.recorded = true; complain(inv, 'conduct', 'A recorded interview shows a witness pressed until their account changed.'); }
       inv.evidenceIds.push(ev.id);
     }
     f.log.push({ at: now(), text: `Pressed ${nm(wid)} hard. ${named ? 'They gave a name, but it was the one you suggested.' : 'They shut down.'}` });
@@ -914,7 +920,7 @@ export function assignCase(p = player()) {
   const unit = r.job.specialty ?? 'general';
   const fed = r.family === 'federal';
   // Each federal agency works its own jurisdiction: the FBI fraud, cybercrime, corruption, violent crime; the DEA drugs; the ATF firearms and arson.
-  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'] };
+  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'], usms: ['fugitive'], usss: ['counterfeit', 'fraud', 'cyber'], hsi: ['drugs', 'firearms', 'fraud'], irs: ['tax', 'fraud'] };
   const pool = fed ? (FED_POOL[r.job.agencyKind] ?? FED_POOL.fbi).filter((t) => !TEMPLATES[t].tech || techAvailable(TEMPLATES[t].tech, year(), p.countryId)) : templatesFor(unit);
   if (!pool.length) return null;
   const roll = seeded(`${me(p)}/assign/${year()}/${r.caseIds.length}`);

@@ -438,6 +438,30 @@ const POSTCARDS = {
     <path d="M0 130 Q80 100 160 124 T300 116 V200 H0z" fill="url(#${id}-hill)"/>${Array.from({ length: 8 }, (_, i) => `<path d="M${-20 + i * 44} 200 Q${60 + i * 30} 150 ${120 + i * 22} 128" fill="none" stroke="#5E7D3A" stroke-width="4" stroke-dasharray="7 5"/>`).join('')}
     <path d="M208 120 l14 -10 14 10z" fill="#C8643E" stroke="#23140f" stroke-width="1"/><rect x="211" y="120" width="22" height="12" fill="#F3E2C6" stroke="#23140f" stroke-width="1"/>
     ${[[246, 132, 30], [256, 134, 22]].map(([x, y, h]) => `<path d="M${x} ${y} q-${h / 6} -${h * 0.5} 0 -${h} q${h / 6} ${h * 0.5} 0 ${h}z" fill="url(#${id}-cyp)"/>`).join('')}${car(110, 178, 0.85, hex)}`,
+  // For anywhere else: a city at dusk, a tropical beach, the mountains, a cruise ship.
+  city: (id, hex) => `<defs>${sky(id, '#F2A07A', '#FFE0BC')}${lin(`${id}-river`, [[0, '#F3B69A'], [1, '#4E7FB0']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="220" cy="118" r="22" fill="#FFE08A" opacity=".9"/>
+    <g stroke="#23140f" stroke-width="1" stroke-linejoin="round">
+      ${[[10, 96, 24, '#8A7AA8'], [36, 110, 20, '#9E8CB8'], [58, 84, 26, '#7E6E9E'], [88, 120, 18, '#A898C4'], [108, 70, 22, '#6E5E8E'], [132, 104, 24, '#8A7AA8'], [158, 92, 20, '#9E8CB8'], [180, 112, 26, '#7E6E9E'], [208, 100, 22, '#8A7AA8'], [232, 80, 24, '#6E5E8E'], [258, 108, 22, '#9E8CB8'], [282, 96, 20, '#7E6E9E']].map(([x, y, w, c]) => `<rect x="${x}" y="${y}" width="${w}" height="${150 - y}" fill="${c}"/>${Array.from({ length: Math.floor((150 - y) / 12) }, (_, r) => `<rect x="${x + 4}" y="${y + 6 + r * 12}" width="${w - 8}" height="4" fill="#FFE59A" opacity="${(r + x) % 3 ? 0.85 : 0.25}" stroke="none"/>`).join('')}`).join('')}
+      <path d="M116 70 l3 -22 l3 22z" fill="#6E5E8E"/></g>
+    <rect y="150" width="300" height="50" fill="url(#${id}-river)"/>${sparkleSea(162, 7)}
+    <path d="M0 152 Q75 128 150 152 Q225 128 300 152" fill="none" stroke="#3B3030" stroke-width="3"/>${[30, 60, 90, 120, 180, 210, 240, 270].map((x) => `<path d="M${x} ${152 - Math.sin((x % 150) / 150 * Math.PI) * 24} V152" stroke="#3B3030" stroke-width="1.2"/>`).join('')}
+    ${[[40, 140], [150, 132], [250, 140]].map(([x, y]) => `<circle cx="${x}" cy="${y - 8}" r="3" fill="${hex}" stroke="#23140f" stroke-width=".6"/>`).join('')}`,
+  beach: (id, hex) => POSTCARDS['the Seychelles'](id, hex),
+  mountains: (id, hex) => `<defs>${sky(id, '#7FB2E6', '#E3EFFB')}${lin(`${id}-mtn`, [[0, '#8E9CC2'], [1, '#5E6E9A']])}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/>${cloud(240, 74, 44)}
+    <path d="M0 150 L60 80 L110 130 L170 62 L240 128 L300 92 V200 H0z" fill="url(#${id}-mtn)" stroke="#3E4E7A" stroke-width="1"/><path d="M50 92 l10 -12 10 12 -6 -2 -4 4 -4 -4z M160 74 l10 -12 10 12 -5 -2 -5 4 -5 -4z M290 100 l10 -8 v10z" fill="#FFFFFF"/>
+    <path d="M0 160 Q150 140 300 160 V200 H0z" fill="#7DB86E"/>${[20, 40, 250, 272, 290].map((x, i) => pine(x, 174 - (i % 2) * 6, 34)).join('')}
+    <g transform="translate(140 168)"><path d="M-16 0 l16 -14 16 14z" fill="${hex}" stroke="#23140f" stroke-width="1"/><rect x="-12" y="0" width="24" height="16" fill="#C98D5B" stroke="#23140f" stroke-width="1"/><rect x="-3" y="5" width="6" height="11" fill="#5A3A22"/><rect x="5" y="3" width="5" height="5" fill="#FFE08A"/></g>`,
+  cruise: (id, hex) => `<defs>${sky(id, '#F79B7A', '#FFE3B3')}${sea(id, '#4FA8D0', '#1E6E98')}</defs>
+    <rect width="300" height="200" fill="url(#${id}-sky)"/><circle cx="70" cy="120" r="26" fill="#FFD36E"/>${cloud(230, 70, 54, '#FFE9D8', '#E8B8A8', 0.9)}
+    <rect y="128" width="300" height="72" fill="url(#${id}-sea)"/>${sparkleSea(150)}
+    <g transform="translate(150 140)" stroke="#23140f" stroke-width="1.2" stroke-linejoin="round">
+      <path d="M-92 0 h176 l-16 26 h-150z" fill="#FFFFFF"/><path d="M-90 8 h172" stroke="${hex}" stroke-width="5"/>
+      <rect x="-70" y="-16" width="136" height="16" fill="#FFFFFF"/><rect x="-50" y="-30" width="96" height="14" fill="#FFFFFF"/><rect x="-26" y="-42" width="52" height="12" fill="#FFFFFF"/>
+      <rect x="8" y="-60" width="12" height="18" fill="${hex}"/><rect x="8" y="-60" width="12" height="4" fill="#23140f"/>
+      ${Array.from({ length: 12 }, (_, i) => `<circle cx="${-64 + i * 11}" cy="-8" r="2" fill="#7FB5E0" stroke-width=".5"/>`).join('')}${Array.from({ length: 8 }, (_, i) => `<circle cx="${-44 + i * 12}" cy="-23" r="2" fill="#7FB5E0" stroke-width=".5"/>`).join('')}</g>
+    <path d="M40 176 q30 -6 60 0 M190 182 q30 -6 60 0" stroke="#FFFFFF" stroke-width="1.5" fill="none" opacity=".7"/>`,
   'Around the World': (id, hex) => `<defs>${sky(id, '#4A6AB0', '#A9CDF0')}${rad(`${id}-globe`, [[0, '#7FC6E8'], [1, '#2E7BB8']], 0.4, 0.35, 0.7)}</defs>
     <rect width="300" height="200" fill="url(#${id}-sky)"/>${[[30, 70], [270, 66], [90, 92], [210, 96]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#FFF"/>`).join('')}
     <circle cx="150" cy="188" r="74" fill="url(#${id}-globe)" stroke="#23140f" stroke-width="1.5"/><path d="M104 150 q16 -10 26 4 q6 12 -6 20 q-14 4 -18 -8z M166 140 q18 2 24 16 q2 14 -12 20 q-12 -2 -10 -16z" fill="#7DBA68" stroke="#3F7A3A" stroke-width="1"/>
@@ -448,18 +472,106 @@ const POSTCARDS = {
     <path d="M30 120 Q150 60 270 110" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="5 6"/><g transform="translate(256 104) rotate(24)"><path d="M-14 0 h26 l6 -3 v6 l-6 -3z M-2 0 l-8 -12 h5 l10 12z M-2 0 l-8 12 h5 l10 -12z" fill="#FFFFFF" stroke="#23140f" stroke-width="1"/></g>`,
 };
 
+/** The countries with a card of their own: their best-known coast or island. */
+const COUNTRY_CARDS = { gr: 'Santorini', id: 'Bali', mx: 'Tulum', pf: 'Bora Bora', mv: 'the Maldives', fj: 'Fiji', mu: 'Mauritius', sc: 'the Seychelles' };
+
 /**
- * The honeymoon postcard (300 x 200): a cartoon of where they went, "Greetings from" across the sky, a stamp in the
- * corner in the couple's color.
+ * Which picture a postcard from a place shows: the country's own, or by what kind of place it is (a cruise, a warm
+ * coast, the mountains, a city). `lat` is the place's latitude, `coastal` whether it is on the sea.
  */
-export function postcardFront(honeymoon, place, hex) {
+export function postcardArt({ countryId, cruise = false, lat = 40, coastal = true, alpine = false }) {
+  if (cruise) return 'cruise';
+  if (COUNTRY_CARDS[countryId]) return COUNTRY_CARDS[countryId];
+  if (alpine) return 'mountains';
+  if (coastal && Math.abs(lat) < 27) return 'beach';
+  return 'city';
+}
+
+/**
+ * The postcard (300 x 200): a cartoon of the place (`art`, a key of POSTCARDS), "Greetings from" and its name
+ * (`title`) across the sky, a stamp in the couple's color.
+ */
+/**
+ * The postcards painted for the game (assets/postcards/<code>.webp, from the prompts in assets/CHATGPT_POSTCARD_PROMPT.md):
+ * a country's code, or a general card (city, beach, mountains, cruise). Listed here as each arrives; any other place
+ * keeps its drawn card.
+ */
+export const POSTCARD_PHOTOS = new Set([
+  'ad', 'ae', 'af', 'ao', 'ar', 'at', 'au', 'aw', 'bd', 'be', 'beach', 'bo', 'br', 'bs', 'bz', 'ca', 'cd', 'ch', 'city', 'cl', 'cn', 'co', 'cr', 'cruise', 'cu', 'cz', 'de', 'dj', 'dk', 'do', 'dz', 'ec', 'ee', 'eg', 'es', 'et', 'fi', 'fj', 'fr', 'ge', 'gh', 'gr', 'gt', 'gy', 'hk', 'hr', 'ht', 'hu', 'id', 'ie', 'il', 'in', 'iq', 'ir', 'it', 'jm', 'jo', 'jp', 'ke', 'kr', 'kw', 'kz', 'lb', 'ma', 'mc', 'mn', 'mountains', 'mu', 'mv', 'mx', 'my', 'ng', 'ni', 'nl', 'no', 'np', 'nz', 'pa', 'pe', 'pf', 'pg', 'ph', 'pk', 'pl', 'pr', 'pt', 'py', 'qa', 'ro', 'rs', 'ru', 'sa', 'sc', 'se', 'sg', 'sk', 'sv', 'sy', 'th', 'tn', 'tr', 'tw', 'ua', 'ug', 'uk', 'us', 'uy', 've', 'vn', 'ws', 'za', 'zw',
+]);
+
+/**
+ * How each painted card is lettered: the United States and Canada have theirs, any other card takes a style by its
+ * name, so they are not all alike.
+ */
+const PHOTO_LETTERING = { us: 'print', ca: 'retro' };
+/**
+ * The ink each painting is lettered in: a color of its own scene (a roof, a boat, the sea) that stands out against the
+ * corner the words sit in; picked from each painting's colors, darkened or lightened just enough to read (Canada's in
+ * the red of its canoe). A drawn card is lettered in the couple's color.
+ */
+const PHOTO_INK = {
+  ad: '#5A5C1E', ae: '#4A1F12', af: '#0060AB', ao: '#605F1B', ar: '#08608C', at: '#585E24', au: '#504118', aw: '#055973',
+  bd: '#4E5209', be: '#945526', beach: '#154A53', bo: '#0D55AC', br: '#1C4A98', bs: '#65681B', bz: '#8B521C', ca: '#D2352C',
+  cd: '#424312', ch: '#8F541B', city: '#504221', cl: '#0058CC', cn: '#8A551C', co: '#95390F', cr: '#5A6819', cruise: '#154F85',
+  cu: '#8D3A18', cz: '#50411E', de: '#9D3410', dj: '#0C5B5C', dk: '#975220', do: '#085B66', dz: '#56551C', ec: '#226A82',
+  ee: '#9D5324', eg: '#685322', es: '#514C08', et: '#8D4426', fi: '#F9D19E', fj: '#850B01', fr: '#993515', ge: '#5E5E1B',
+  gh: '#286484', gr: '#C21747', gt: '#C01A3D', gy: '#475014', hk: '#EA542D', hr: '#12607D', ht: '#565A1C', hu: '#FECD4B',
+  id: '#4D4F16', ie: '#0B587B', il: '#615017', in: '#565316', iq: '#743415', ir: '#5F5B15', it: '#C0482E', jm: '#486217',
+  jo: '#FFA95C', jp: '#AB3822', ke: '#4E3C13', kr: '#8D2715', kw: '#1B6268', kz: '#555E20', lb: '#624D1B', ma: '#7E2A19',
+  mc: '#5E541C', mn: '#063E70', mountains: '#A52400', mu: '#085460', mv: '#98511D', mx: '#626514', my: '#0D3336', ng: '#5E5D1F',
+  ni: '#A03214', nl: '#C82E17', no: '#9B2B08', np: '#706625', nz: '#1F5F69', pa: '#4E590F', pe: '#5D5D23', pf: '#4A4F1C',
+  pg: '#444918', ph: '#106257', pk: '#885A28', pl: '#AE2A1E', pr: '#196E7F', pt: '#904C1B', py: '#993515', qa: '#EBB849',
+  ro: '#A83B15', rs: '#5B4A0C', ru: '#873C21', sa: '#853313', sc: '#424910', se: '#A33514', sg: '#FBD04C', sk: '#B8432C',
+  sv: '#00569E', sy: '#0358AD', th: '#525F16', tn: '#0F5399', tr: '#A12A19', tw: '#256468', ua: '#00457C', ug: '#565F19',
+  uk: '#94371E', us: '#7D2625', uy: '#B03A5B', ve: '#465D23', vn: '#B72B13', ws: '#0D5E59', za: '#0F62A1', zw: '#2F6B2A',
+};
+const LETTERING = ['print', 'ribbon', 'script', 'retro'];
+
+export function postcardFront(art, title, hex, countryId = null) {
   const id = 'pc';
-  const draw = POSTCARDS[place] ?? POSTCARDS['Around the World'];
-  const name = place.replace(/^the /, 'The ');
-  const big = name.length > 14 ? 24 : 32;
-  return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
-    <text x="20" y="34" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width="3" paint-order="stroke">Greetings from</text>
-    <text x="18" y="${34 + big}" font-family="Georgia, serif" font-weight="700" font-size="${big}" fill="${hex}" stroke="#23140f" stroke-width="4" paint-order="stroke" letter-spacing=".5">${name.replace(/&/g, '&amp;')}</text>
+  const photo = [countryId, { 'the Seychelles': 'beach', 'the Maldives': 'beach' }[art] ?? art].find((k) => k && POSTCARD_PHOTOS.has(k));
+  const draw = photo ? () => `<image href="./assets/postcards/${photo}.webp" width="300" height="200" preserveAspectRatio="xMidYMid slice"/>` : POSTCARDS[art] ?? POSTCARDS.city;
+  const name = String(title).replace(/^the /, 'The ');
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let hash = 0; for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const style = PHOTO_LETTERING[photo] ?? LETTERING[hash % LETTERING.length];
+  const ink = PHOTO_INK[photo] ?? hex;
+  // A halo round the letters, dark under a light ink and cream under a dark one, so they read over any part of the scene.
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(ink.slice(i, i + 2), 16));
+  const halo = 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1E2235' : '#FFF8EC';
+  const lined = (w) => `fill="${ink}" stroke="${halo}" stroke-width="${w}" stroke-linejoin="round" paint-order="stroke"`;
+  // A name set in `size`, at most `max` wide: squeezed to fit only when it would run past it (`em` its width per letter).
+  const sized = (size, em, max) => { const w = name.length * size * em; return w > max ? { size: Math.max(size * 0.6, size * max / w), fit: max } : { size, fit: 0 }; };
+  const len = (f) => (f.fit ? ` textLength="${n1(f.fit)}" lengthAdjust="spacingAndGlyphs"` : '');
+  const caps = (y) => `<text x="20" y="${y}" font-family="Montserrat, 'Nunito Sans', sans-serif" font-weight="600" font-size="8" letter-spacing="3" ${lined(2)}>GREETINGS FROM</text>`;
+  let words;
+  if (style === 'ribbon') {
+    // A cream ribbon, notched at its end, edged in a dashed line of the ink.
+    const f = sized(20, 0.62, 200);
+    const w = n1(Math.max(150, Math.min(230, (f.fit || name.length * f.size * 0.62) + 40)));
+    const ribbon = `M10 20 h${w} l-10 22 l10 22 h-${w} z`;
+    words = `<g filter="url(#pc-sh)"><path d="${ribbon}" fill="#FFF8EC"/></g><path d="${ribbon}" fill="none" stroke="${ink}" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="22" y="37" font-family="'Great Vibes', cursive" font-size="16" fill="${ink}" opacity=".85">Greetings from</text>
+      <text x="22" y="58" font-family="'Abril Fatface', Georgia, serif" font-size="${n1(f.size)}" letter-spacing=".5" fill="${ink}"${len(f)}>${esc(name)}</text>`;
+  } else if (style === 'script') {
+    // A flowing hand beneath small spaced capitals.
+    const f = sized(name.length > 8 ? 40 : 52, 0.5, 205);
+    words = `<g filter="url(#pc-sh)">${caps(32)}<text x="16" y="74" font-family="Sacramento, 'Great Vibes', cursive" font-size="${n1(f.size)}" ${lined(2.6)}${len(f)}>${esc(name)}</text></g>`;
+  } else if (style === 'retro') {
+    // "Greetings from" in a bold script, the name in tall capitals.
+    const f = sized(44, 0.45, 205);
+    words = `<g filter="url(#pc-sh)"><text x="20" y="34" font-family="Lobster, cursive" font-size="18" ${lined(2.6)}>Greetings from</text>
+      <text x="18" y="72" font-family="'Bebas Neue', Impact, sans-serif" font-size="${n1(f.size)}" letter-spacing="2" ${lined(2.4)}${len(f)}>${esc(name.toUpperCase())}</text></g>`;
+  } else {
+    // A travel print: small spaced capitals, and the name in a large italic serif.
+    const f = sized(38, 0.56, 205);
+    words = `<g filter="url(#pc-sh)">${caps(34)}<text x="18" y="70" font-family="'Playfair Display', Georgia, serif" font-style="italic" font-weight="600" font-size="${n1(f.size)}" ${lined(2.6)}${len(f)}>${esc(name)}</text></g>`;
+  }
+  return `<svg viewBox="0 0 300 200" aria-hidden="true" data-lettering="${style}">
+    <defs><filter id="pc-sh" x="-10%" y="-20%" width="130%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1.4" flood-color="#000000" flood-opacity=".3"/></filter></defs>
+    ${draw(id, hex)}
+    ${words}
     <g transform="translate(256 10) rotate(6)"><rect width="34" height="40" fill="${hex}" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="3 2"/><rect width="34" height="40" fill="none" stroke="#23140f" stroke-width="1"/><path d="M17 27 c-9 -6 -10 -12 -6 -15 c3 -2 6 0 6 3 c0 -3 3 -5 6 -3 c4 3 3 9 -6 15z" fill="#FFFFFF"/></g>
     <g fill="none" stroke="#23140f" stroke-width="1" opacity=".35"><circle cx="246" cy="44" r="14"/><path d="M228 50 q8 -4 16 0 t16 0 t16 0 M228 56 q8 -4 16 0 t16 0 t16 0"/></g></svg>`;
 }

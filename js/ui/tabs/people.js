@@ -16,7 +16,7 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
-import { openWedding } from '../weddingPlanner.js';
+import { openWedding, planHoneymoon } from '../weddingPlanner.js';
 import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
@@ -167,8 +167,12 @@ async function planWedding(api, npc) {
   }
   // The wedding is planned with a wedding planner, piece by piece, and then it happens; or, with those scenes turned off
   // in Settings, on one page with a "Just married!" card (js/ui/weddingPlanner.js).
-  await openWedding(api, npc);
+  const r = await openWedding(api, npc);
   api.changed();
+  // Off on the honeymoon booked with the wedding: the journey, the trip, the postcard (js/ui/globalLife.js goOnTrip).
+  if (r?.honeymoonTrip) { const { goOnTrip } = await import('../globalLife.js'); await goOnTrip(api, r.honeymoonTrip); api.changed(); }
+  // With the scenes turned off, the honeymoon is planned after, in the trip planner.
+  else if (r?.married && r.honeymoon) await planHoneymoon(api, npc, { cruise: r.honeymoon === 'cruise' });
 }
 
 async function fileForDivorce(api, npc) {

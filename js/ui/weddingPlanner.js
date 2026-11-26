@@ -6,8 +6,11 @@
 import { avatarSvg, faceGenderOf } from '../avatar/render.js';
 import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
-import { venueScene, cakeArt, bandArt, postcardFront } from './weddingScenery.js';
-import { player, country } from '../state.js';
+import * as travel from '../engine/travel.js';
+import { COUNTRIES } from '../data/countries.js';
+import { MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
+import { venueScene, cakeArt, bandArt, postcardFront, postcardArt, POSTCARD_PHOTOS } from './weddingScenery.js';
+import { player, country, store } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
 
@@ -44,6 +47,10 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     const plan = Object.fromEntries(love.PLAN_STEPS.map((k) => [k, null]));
     let married = false;
+    // The honeymoon, planned here as a trip (js/engine/travel.js): its id while it is planned, booked with the wedding.
+    let hm = null;
+    const hmTrip = () => (hm ? travel.tripById(hm) : null);
+    const dropHoneymoon = () => { const t = hmTrip(); if (t?.status === 'draft') travel.discardPlan(t.id); hm = null; };
 
     const root = document.createElement('div');
     root.className = 'salon-screen wp-screen';
@@ -51,7 +58,11 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     root.setAttribute('aria-modal', 'true');
     root.setAttribute('aria-label', `Planning the wedding with ${planner}`);
     document.body.appendChild(root);
-    const close = () => { root.remove(); resolve(married ? { married: true } : {}); };
+    const close = () => {
+      root.remove();
+      if (!married) dropHoneymoon();
+      resolve(married ? { married: true, honeymoonTrip: hmTrip()?.status === 'confirmed' ? hm : null } : {});
+    };
 
     const youFace = (mood = 90, o = {}) => avatarSvg({ appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, mood, label: p.firstName, ...o });
     const themFace = (mood = 90, o = {}) => avatarSvg({ appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, mood, label: npc.firstName, ...o });
@@ -60,7 +71,20 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const filled = () => Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)]));
     /** "at the castle", "on the beach", "at city hall": where, for the banner. */
     const venueAt = () => { const v = love.WEDDING_PLAN.venue.find((o) => o.id === plan.venue); return /^On /.test(v.name) ? v.name.toLowerCase() : `at ${v.name.replace(/^A /, 'a ').replace(/^An /, 'an ').replace(/^City hall/, 'city hall')}`; };
-    const totals = () => love.planTotals(filled(), npc, c);
+    const totals = () => { const t = love.planTotals(filled(), npc, c); const h = hmQuote(); return { ...t, wedding: t.cost, honeymoon: h, cost: t.cost + (h?.cost ?? 0) }; };
+    /** What is wrong with the honeymoon as planned (nothing, when it can be booked with the wedding). */
+    const hmProblems = () => { const t = hmTrip(); return t ? travel.problems(t).filter((x) => !/Planned with your wedding/.test(x)) : []; };
+    /** The honeymoon's cost (local money) and what it is, once it can be booked; null for none. */
+    function hmQuote() {
+      const t = hmTrip();
+      if (!t || hmProblems().length) return null;
+      try {
+        const q = travel.quote(t);
+        const cs = t.type === 'cruise' ? travel.cruiseSummary(t) : null;
+        const where = cs ? `${cs.itinerary} with ${cs.line}` : `${t.destination.city}, ${COUNTRIES[t.destination.countryId].name}`;
+        return { cost: q.organizer, label: `Honeymoon: ${where}, ${q.nights} nights` };
+      } catch { return null; }
+    }
 
     /**
      * The stage: the venue behind, and in front the couple up close, in two round frames side by side (as close as
@@ -86,14 +110,14 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       // Who is talking: the planner, the partner, or no one (what happens, told).
       const speaker = who === 'partner' ? { face: themFace(95), name: npc.firstName } : who === 'narrator' ? null : { face: plannerFace, name: planner };
       root.innerHTML = `
-        <div class="sv-scene">${stage({ kiss })}
+        <div class="sv-scene${body ? '' : ' wp-short'}">${stage({ kiss })}
           <div class="sv-talk">
             ${speaker ? `<div class="sv-speaker"><div class="sv-stylist">${speaker.face}</div>
               <div class="sv-bubble" aria-live="polite"><strong>${esc(speaker.name)}</strong><p>${esc(line)}</p></div></div>`
               : `<p class="wp-narration" aria-live="polite">${esc(line)}</p>`}
             <div class="sv-body">${body}</div>
             <div class="sv-replies">${replies.map((r, i) => `<button type="button" class="btn ${r.primary ? 'primary' : ''} sv-reply" data-reply="${i}" ${r.disabled ? 'disabled' : ''}>${esc(r.label)}</button>`).join('')}</div>
-            ${bill ? `<p class="sv-bill muted" data-bill>${Object.values(plan).some(Boolean) ? `So far: ${esc(fmtMoney(t.cost, c))}` : ''}</p>` : ''}
+            ${bill ? `<p class="sv-bill muted" data-bill>${Object.values(plan).some(Boolean) ? `So far: ${esc(fmtMoney(t.cost, c))}${t.honeymoon ? ' with the honeymoon' : ''}` : ''}</p>` : ''}
           </div>${extra}
         </div>`;
       root.querySelector('[data-leave]').onclick = married ? close : leaveEarly;
@@ -114,7 +138,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       cake: 'My favorite part. The cake.',
       music: 'Music for the walk down the aisle, and for the dancing after.',
       food: 'And something to eat. This one is per guest, so mind the list.',
-      honeymoon: 'Last one, and the best one: the honeymoon.',
+      honeymoon: 'Last one, and the best one: the honeymoon. Where to? It goes on the same bill, and you leave straight from the party.',
     };
 
     /** One step of the plan: its options as tiles, the stage changing as each is tried. */
@@ -122,7 +146,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       const key = love.PLAN_STEPS[i];
       const opts = love.WEDDING_PLAN[key];
       const guests = love.WEDDING_PLAN.guests.find((g) => g.id === chosen('guests')).count;
-      const price = (o) => (key === 'guests' ? (o.count > 2 ? fmtMoney(love.guestCost(o.count, c), c) : 'Free') : key === 'food' ? fmtMoney(localMoney(o.perGuest, c) * guests, c) : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'Free');
+      const price = (o) => (key === 'honeymoon' ? (o.id === 'home' ? 'Free' : plan.honeymoon === o.id && hmQuote() ? fmtMoney(hmQuote().cost, c) : 'Plan it below') : key === 'guests' ? (o.count > 2 ? fmtMoney(love.guestCost(o.count, c), c) : 'Free') : key === 'food' ? fmtMoney(localMoney(o.perGuest, c) * guests, c) : o.cost ? fmtMoney(localMoney(o.cost, c), c) : 'Free');
       const dreamTag = (o) => (key === 'venue' && o.id === dream.venue) || (key === 'guests' && (dream.big ? o.count >= 100 : o.count <= 40)) ? '<em class="wp-dream">♥ dream</em>' : '';
       // In the game's own list style: a row each, its picture, what it is, and its price (or a check, once chosen).
       // The colors are the salon's round swatches, named underneath.
@@ -133,18 +157,29 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
             <span class="nr-icon emoji" aria-hidden="true">${o.icon}</span>
             <span class="nr-main"><span class="nr-label">${esc(o.name)}${dreamTag(o)}</span><small>${esc(o.sub ?? '')}</small></span>
             <span class="wp-price">${plan[key] === o.id ? '<span class="wp-check" aria-hidden="true">✓</span>' : ''}${esc(price(o))}</span></button>`).join('')}</div>`;
+      const form = key === 'honeymoon' && hmTrip() ? honeymoonForm() : '';
       const dots = `<div class="wp-steps" aria-label="Step ${i + 1} of ${love.PLAN_STEPS.length}">${love.PLAN_STEPS.map((k, j) => `<i class="${j < i ? 'done' : j === i ? 'now' : ''}"></i>`).join('')}</div>`;
       scene({
         line: LINES[key] + (key === 'food' && guests > 2 ? ` That's ${guests} plates.` : ''),
-        body: dots + tiles,
+        body: dots + tiles + form,
         replies: [
           ...(i > 0 ? [{ label: 'Back', go: () => step(i - 1) }] : []),
-          { label: i === love.PLAN_STEPS.length - 1 ? 'That\'s the plan' : 'Next', primary: true, disabled: !plan[key], go: () => (i === love.PLAN_STEPS.length - 1 ? prenupAsk() : step(i + 1)) },
+          { label: i === love.PLAN_STEPS.length - 1 ? 'That\'s the plan' : 'Next', primary: true, disabled: !plan[key] || (key === 'honeymoon' && !!hmTrip() && !hmQuote()), go: () => (i === love.PLAN_STEPS.length - 1 ? prenupAsk() : step(i + 1)) },
         ],
       });
+      if (form) bindHoneymoonForm(() => step(i));
       root.querySelectorAll('[data-pick]').forEach((b) => {
         b.onclick = () => {
           plan[key] = b.dataset.pick;
+          if (key === 'honeymoon') {
+            const cruise = plan.honeymoon === 'cruise';
+            if (plan.honeymoon === 'home') dropHoneymoon();
+            else if (!hmTrip() || (hmTrip().type === 'cruise') !== cruise) {
+              dropHoneymoon();
+              hm = travel.startHoneymoon(npc.id, { cruise, depart: travel.todayDate() }).id;
+              if (!cruise) pickPlace(p.countryId === 'fr' ? 'it' : 'fr'); // a start: somewhere lovely, changed below
+            }
+          }
           step(i);
           const o = opts.find((x) => x.id === plan[key]);
           // The planner reacts when a choice meets the dream.
@@ -153,6 +188,70 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
           }
         };
       });
+    }
+
+    /** Sets the honeymoon's destination, and picks a way there and somewhere to stay, which can then be changed. */
+    function pickPlace(countryId, city = null) {
+      const t = hmTrip(); if (!t) return;
+      travel.updatePlan(t.id, { destination: { countryId, city } });
+      const modes = travel.modesFor(t.origin, t.destination, store.state.year);
+      const m = modes.find((x) => x.id === 'jet') ?? modes[0];
+      travel.updatePlan(t.id, { mode: m?.id ?? null });
+      const stays = travel.stayOptions(t);
+      travel.updatePlan(t.id, { stay: (stays.find((x) => x.id === 'hotel') ?? stays[0])?.id ?? null });
+    }
+
+    /** The honeymoon, planned with the travel planner's own choices: where, how long, how, where to stay; or a cruise. */
+    function honeymoonForm() {
+      const t = hmTrip();
+      const sel = (attr, opts, cur, label) => `<label class="field wp-hm-field">${esc(label)}<select data-hm="${attr}">${opts.map(([v, n, off]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''} ${off ? 'disabled' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+      const probs = hmProblems();
+      const q = hmQuote();
+      const note = probs.length ? `<p class="wp-hm-note">${esc(probs[0])}</p>` : q ? `<p class="wp-hm-total"><span>${esc(q.label)}</span><strong>${esc(fmtMoney(q.cost, c))}</strong></p>` : '';
+      if (t.type === 'cruise') {
+        const cr = t.cruise ?? {};
+        const lines = travel.cruiseLines(t);
+        const sails = travel.sailings(t).filter((x) => !x.why);
+        const rooms = travel.staterooms(t);
+        return `<div class="card wp-hm">
+          ${sel('line', [['', 'Choose a cruise line…'], ...lines.map((l) => [l.id, `${l.name} · ${l.tier}`])], cr.line ?? '', 'Cruise line')}
+          ${cr.line ? sel('itin', [['', sails.length ? 'Choose a sailing…' : 'No sailings on these dates'], ...sails.map((x) => [x.id, `${x.name}, ${x.nights} nights from ${x.portName.replace(/, .*$/, '')}`])], cr.itin ?? '', 'Sailing') : ''}
+          ${cr.itin ? sel('room', [['', 'Choose a stateroom…'], ...rooms.map((r) => [r.id, r.name])], cr.room ?? '', 'Stateroom for two') : ''}
+          ${cr.itin && t.destination ? sel('mode', travel.modesFor(t.origin, t.destination, store.state.year).map((m) => [m.id, MODE_BY_ID[m.id]?.name ?? m.id]), t.mode ?? '', 'Getting to the port') : ''}
+          ${note}</div>`;
+      }
+      const dest = t.destination ?? { countryId: '', city: '' };
+      const countries = Object.entries(COUNTRIES).sort((a, b) => a[1].name.localeCompare(b[1].name));
+      const nights = Math.max(1, Math.round((Date.parse(t.ret) - Date.parse(t.depart)) / 864e5));
+      const modes = t.destination ? travel.modesFor(t.origin, t.destination, store.state.year) : [];
+      const stays = t.destination ? travel.stayOptions(t) : [];
+      return `<div class="card wp-hm">
+        <div class="wp-hm-pair">${sel('country', countries.map(([id, x]) => [id, x.name]), dest.countryId, 'Country')}
+        ${sel('city', (COUNTRIES[dest.countryId]?.cities ?? []).map((n) => [n, n]), dest.city, 'City')}</div>
+        <div class="wp-hm-label">How long</div>
+        <div class="wq-presets">${[5, 7, 10, 14].map((n) => `<button type="button" class="chip${n === nights ? ' on' : ''}" data-hm-nights="${n}" aria-pressed="${n === nights}">${n} nights</button>`).join('')}</div>
+        <div class="wp-hm-pair">${sel('mode', modes.map((m) => [m.id, MODE_BY_ID[m.id]?.name ?? m.id]), t.mode ?? '', 'Getting there')}
+        ${sel('stay', stays.map((x) => [x.id, STAY_BY_ID[x.id]?.name ?? x.name ?? x.id]), t.stay ?? '', 'Where you stay')}</div>
+        ${note}</div>`;
+    }
+    function bindHoneymoonForm(redraw) {
+      const t = hmTrip(); if (!t) return;
+      root.querySelectorAll('[data-hm]').forEach((el) => {
+        el.onchange = () => {
+          const v = el.value; const k = el.dataset.hm;
+          if (k === 'country') pickPlace(v);
+          else if (k === 'city') pickPlace(t.destination.countryId, v);
+          else if (k === 'mode') travel.updatePlan(t.id, { mode: v });
+          else if (k === 'stay') travel.updatePlan(t.id, { stay: v });
+          else if (['line', 'itin', 'room'].includes(k)) {
+            travel.updatePlan(t.id, { cruise: { [k]: v || null } });
+            // To the port: a plane if one flies there, else whatever goes.
+            if (t.destination && !t.mode) { const ms = travel.modesFor(t.origin, t.destination, store.state.year); travel.updatePlan(t.id, { mode: (ms.find((x) => x.id === 'jet') ?? ms[0])?.id ?? null }); }
+          }
+          redraw();
+        };
+      });
+      root.querySelectorAll('[data-hm-nights]').forEach((b) => { b.onclick = () => { travel.updatePlan(t.id, { nights: Number(b.dataset.hmNights) }); redraw(); }; });
     }
 
     /** The prenup: asked or not, and what they say. */
@@ -171,7 +270,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     function review(prenup, note = '') {
       const t = totals();
       const cash = player().finance.cash;
-      const lines = t.lines.map((l) => `<div class="sv-line"><span>${esc(l.label)}</span><span>${l.cost ? esc(fmtMoney(l.cost, c)) : 'Free'}</span></div>`).join('');
+      const lines = [...t.lines, ...(t.honeymoon ? [t.honeymoon] : [])].map((l) => `<div class="sv-line"><span>${esc(l.label)}</span><span>${l.cost ? esc(fmtMoney(l.cost, c)) : 'Free'}</span></div>`).join('');
       const dreamNote = t.dreamVenue && t.dreamSize ? `It's everything ${npc.firstName} dreamed of.` : t.dreamVenue ? `${npc.firstName} is going to love the venue.` : t.dreamSize ? `${npc.firstName} will love the guest list.` : '';
       scene({ line: `${note ? `${note} ` : ''}Here it is, all of it. ${dreamNote}`.trim(),
         body: `<div class="sv-receipt">${lines}${prenup ? '<div class="sv-line"><span>A prenup, signed</span><span></span></div>' : ''}<div class="sv-line sv-total"><span>Total</span><span>${esc(fmtMoney(t.cost, c))}</span></div></div>`,
@@ -184,14 +283,24 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       const res = love.marry(npc.id, filled(), prenup);
       if (!res.ok) { scene({ line: res.text, bill: false, replies: [{ label: 'Change something', primary: true, go: () => step(0) }, { label: 'Leave', go: close }] }); return; }
       married = true;
+      if (hmTrip()) {
+        const b = travel.confirm(hm);
+        if (!b.ok) { dropHoneymoon(); plan.honeymoon = 'home'; hmNote = `The honeymoon could not be booked: ${b.text} You will have the week at home instead.`; }
+      }
       api?.changed?.();
       aisle();
     }
+    let hmNote = '';
 
     /** The day: down the aisle, the vows, the kiss, confetti. */
     function aisle() {
       const music = { playlist: 'Your song', dj: 'The DJ fades the music down', band: 'The band', quartet: 'The string quartet' }[chosen('music')];
-      scene({ who: 'narrator', line: `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`, bill: false,
+      // The bride walks down the aisle; when both or neither are women, either of them might.
+      const women = [p.gender === 'female', npc.gender === 'female'];
+      const youWalk = women[0] !== women[1] ? women[0] : Math.random() < 0.5;
+      scene({ who: 'narrator', bill: false, line: youWalk
+        ? `${music} starts to play, and everyone stands. It's your turn: down the aisle, to ${npc.firstName}, waiting at the end of it.`
+        : `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`,
         replies: [{ label: 'Take their hand', primary: true, go: vows }] });
     }
     function vows() {
@@ -209,23 +318,13 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     }
     function finale() {
       const confetti = reduced ? '' : `<div class="wp-confetti" aria-hidden="true">${Array.from({ length: 28 }, (_, i) => `<i style="left:${(i * 37) % 100}%;animation-delay:${(i % 7) * 0.12}s;background:${[themeHex(), '#FFFFFF', '#FFD36E', '#F28CA8'][i % 4]}"></i>`).join('')}</div>`;
-      const honey = love.WEDDING_PLAN.honeymoon.find((h) => h.id === chosen('honeymoon'));
+      const ht = hmTrip(); const hmQuote0 = ht?.destination ? (ht.type === 'cruise' ? 'the cruise' : ht.destination.city) : null;
       root.innerHTML = `<div class="wp-finale${reduced ? ' sv-still' : ''}" style="--wp-theme:${themeHex()}">${confetti}
         <p class="wp-just">Just married!</p>
         <div class="wp-pair"><div class="wp-frame">${youFace(98)}</div><span class="wp-heart" aria-hidden="true">♥</span><div class="wp-frame">${themFace(98)}</div></div>
         <p class="wp-names">${esc(p.firstName)} &amp; ${esc(npc.firstName)}</p>
-        <p class="wp-after">${esc(honey.id === 'home' ? 'And then home, together.' : `Next stop: ${honey.name.toLowerCase()}.`)}</p>
-        <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
-      root.querySelector('[data-done]').onclick = () => postcard();
-      root.querySelector('[data-done]').focus?.();
-    }
-
-    /** After the honeymoon (if they went anywhere): the postcard home, then back to the game. */
-    function postcard() {
-      const card = love.sendPostcard(npc.id, chosen('honeymoon'));
-      if (!card) { close(); return; }
-      api?.changed?.();
-      root.innerHTML = postcardHtml(card, chosen('honeymoon'), themeHex(), reduced);
+        <p class="wp-after">${esc(hmNote || (hmTrip()?.status === 'confirmed' ? `Next stop: ${hmQuote0 ?? 'the honeymoon'}!` : 'And then home, together.'))}</p>
+        <button type="button" class="btn primary" data-done>${hmTrip()?.status === 'confirmed' ? 'Off on the honeymoon' : 'Back to your life'}</button></div>`;
       root.querySelector('[data-done]').onclick = close;
       root.querySelector('[data-done]').focus?.();
     }
@@ -260,7 +359,7 @@ export function setWeddingScenes(on) {
 /** Ready-made plans, for a quick choice: eloping, city hall, or the partner's dream. */
 const PRESETS = {
   elope: { venue: 'courthouse', guests: 'elope', theme: 'ivory', flowers: 'wild', attire: 'borrowed', cake: 'cupcakes', music: 'playlist', food: 'potluck', honeymoon: 'home' },
-  cityhall: { venue: 'courthouse', guests: 'intimate', theme: 'ivory', flowers: 'roses', attire: 'rack', cake: 'tiered', music: 'playlist', food: 'buffet', honeymoon: 'roadtrip' },
+  cityhall: { venue: 'courthouse', guests: 'intimate', theme: 'ivory', flowers: 'roses', attire: 'rack', cake: 'tiered', music: 'playlist', food: 'buffet', honeymoon: 'trip' },
 };
 const STEP_LABELS = { venue: 'Venue', guests: 'Guest list', theme: 'Colors', flowers: 'Flowers', attire: 'What you wear', cake: 'Cake', music: 'Music', food: 'Food', honeymoon: 'Honeymoon' };
 
@@ -314,7 +413,7 @@ export function openQuickWedding(api, npc) {
     el.querySelectorAll('[data-preset]').forEach((b) => {
       b.onclick = () => {
         const base = b.dataset.preset === 'dream'
-          ? { ...PRESETS.cityhall, venue: dream.venue, guests: dream.big ? 'big' : 'intimate', flowers: 'peonies', cake: 'tiered', music: 'band', honeymoon: 'resort' }
+          ? { ...PRESETS.cityhall, venue: dream.venue, guests: dream.big ? 'big' : 'intimate', flowers: 'peonies', cake: 'tiered', music: 'band', honeymoon: 'trip' }
           : PRESETS[b.dataset.preset];
         Object.assign(plan, base);
         el.querySelector('[data-fields]').innerHTML = fields();
@@ -335,13 +434,7 @@ export function openQuickWedding(api, npc) {
       api?.changed?.();
       if (!res.ok) { await messageModal({ body: res.text, tone: 'neutral' }); resolve({}); return; }
       await justMarried(p, npc, plan);
-      const card = love.sendPostcard(npc.id, plan.honeymoon);
-      if (card) {
-        api?.changed?.();
-        const hex = love.WEDDING_PLAN.theme.find((t) => t.id === plan.theme)?.hex ?? '#F6B8C8';
-        await new Promise((done) => { const pm = openModal(postcardHtml(card, plan.honeymoon, hex, true, 'wq-postcard'), { tone: 'good' }); pm.el.querySelector('[data-done]').onclick = () => { pm.close(); done(); }; });
-      }
-      resolve({ married: true });
+      resolve({ married: true, honeymoon: plan.honeymoon === 'home' ? null : plan.honeymoon });
     };
   });
 }
@@ -369,12 +462,39 @@ export function openWedding(api, npc) {
 }
 
 /**
- * The honeymoon postcard: a cartoon of where they went, "Greetings from…" across it, stamped. Shown after the wedding,
- * in the scene or (with the scenes off) as a card.
+ * After the wedding, if they chose a honeymoon: the trip planner (js/ui/globalLife.js), open on a honeymoon with the
+ * new spouse already coming, to choose where and how, like any trip.
  */
-function postcardHtml(card, honeymoon, hex, still = false, extra = '') {
-  return `<div class="wp-postcard-screen ${extra}${still ? ' sv-still' : ''}">
-    <p class="wp-pc-eyebrow">A postcard from the honeymoon</p>
-    <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(honeymoon, card.place, hex)}</div></div>
-    <button type="button" class="btn primary" data-done>Back to your life</button></div>`;
+export async function planHoneymoon(api, npc, { cruise = false } = {}) {
+  const { openExplore } = await import('./globalLife.js');
+  const trip = travel.startHoneymoon(npc.id, { cruise });
+  api?.changed?.();
+  openExplore(api, { view: 'plan', params: { id: trip.id } });
+}
+
+/**
+ * Home from the honeymoon: a postcard of where they went, "Greetings from…" across a cartoon of the place, stamped in
+ * the wedding's color. The player's parents keep it. Resolves when it is put down.
+ */
+export async function honeymoonPostcard(api, trip) {
+  const geo = await import('../engine/geo.js');
+  const spouse = (trip.travelers ?? []).map((x) => store.state.npcs[x.id]).find((n) => n?.role === 'spouse');
+  const dest = trip.destination ?? trip.origin;
+  // A painted card shows the country's best-known sight (a single place for the whole country), so it carries the
+  // country's name; a drawn one, the city's.
+  const cruise = trip.type === 'cruise' || trip.mode === 'cruise_ship';
+  const painted = !cruise && POSTCARD_PHOTOS.has(dest.countryId);
+  const where = cruise ? 'the Sea' : painted ? COUNTRIES[dest.countryId].name : dest.city ?? geo.placeName(dest.countryId, null, store.state.year);
+  const at = geo.coords(dest.countryId, dest.city);
+  const art = postcardArt({ countryId: dest.countryId, cruise: trip.mode === 'cruise_ship', lat: at?.lat ?? 40, coastal: geo.coastal(dest.countryId), alpine: ['ch', 'at', 'np', 'bt', 'li', 'ad'].includes(dest.countryId) });
+  const hex = love.WEDDING_PLAN.theme.find((t) => t.id === spouse?.flags?.wedding?.theme)?.hex ?? '#F6B8C8';
+  love.sendPostcard(spouse?.id, where);
+  api?.changed?.();
+  await new Promise((done) => {
+    const m = openModal(`<div class="wp-postcard-screen wq-postcard">
+      <p class="wp-pc-eyebrow">A postcard from the honeymoon</p>
+      <div class="wp-postcard"><div class="wp-pc-front">${postcardFront(art, where, hex, trip.mode === 'cruise_ship' ? null : dest.countryId)}</div></div>
+      <button type="button" class="btn primary" data-done>Keep it</button></div>`, { tone: 'good' });
+    m.el.querySelector('[data-done]').onclick = () => { m.close(); done(); };
+  });
 }

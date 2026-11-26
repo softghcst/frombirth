@@ -8,7 +8,7 @@ import { CAREERS } from '../js/data/careers.js';
 import { TAX_SHAPES, TAX_SHAPE_OF, HEALTH_MODELS, HEALTH_MODEL_OF } from '../js/data/systems.js';
 import * as sys from '../js/engine/systems.js';
 import { incomeTax } from '../js/engine/finance.js';
-import { careCost } from '../js/engine/medical.js';
+import { careCost } from '../js/engine/health/visits.js';
 import { hire, quitCareer } from '../js/engine/career.js';
 import { profile } from '../js/engine/world.js';
 

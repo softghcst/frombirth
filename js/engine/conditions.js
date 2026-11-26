@@ -11,6 +11,7 @@ import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
 import { HEALTH_PATHS } from './health/story.js';
 import { hasRecord } from './records.js';
+import { conditionIdsOf } from './health/ailments.js';
 
 /** A young child at home: what a scene costs comes from the parents, not the child's own pocket. */
 export const parentsPay = (p = player()) => p.age < 13 && !!p.flags.livesWithParents && parentsAtHome(p).length > 0;
@@ -68,7 +69,7 @@ const SPECIAL = {
   // The royal household: the posts the player has filled, and whether the family owns property of its own.
   staffPosts: (p) => p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'staff').map((n) => n.flags.staff),
   ownsEstate: (p) => (store.state.dynasties?.[p.royal?.countryId]?.residences ?? []).some((r) => r.owner === 'private' && !r.sold),
-  conditionIds: (p) => p.conditions.map((c) => c.id),
+  conditionIds: (p) => conditionIdsOf(p),
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),
   /** Cash expressed in base units so events can compare across currencies. */

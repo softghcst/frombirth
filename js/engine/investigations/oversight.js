@@ -7,6 +7,8 @@
 //   W().complaints[id] = { id, subjectId, kind, text, invId, opened, due, status: 'open'|'decided',
 //                          investigatorId, finding, action, true }
 //   `true` is whether the conduct happened (the world's fact). The finding is what the evidence showed.
+import { inForce } from './reform.js';
+import { represent, priorRecord } from './unions.js';
 import { store, player } from '../../state.js';
 import { W, I, rec, now, year, me, nextId, result, note, regard, grow, seeded, reputationOf } from './core.js';
 import { agency, staffer } from './agencies.js';
@@ -35,9 +37,10 @@ export function settleComplaints() {
       const a = agency(r?.job?.agencyId);
       // Where the city has a civilian oversight board, residents review it; otherwise the department's own unit (engine/investigations/policing.js).
       const board = a?.oversight?.board;
-      const ia = staffer(player().countryId, board ? 'staff' : 'officer', board ? 'Civilian oversight board member' : 'Professional standards investigator', { agencyId: a?.id, role: 'oversight' });
+      const independent = inForce(player().countryId, 'independent'); // national reform: an independent body decides (reform.js)
+      const ia = staffer(player().countryId, board || independent ? 'staff' : 'officer', independent ? 'Independent police complaints investigator' : board ? 'Civilian oversight board member' : 'Professional standards investigator', { agencyId: a?.id, role: 'oversight' });
       c.investigatorId = ia.id;
-      c.reviewer = board ? 'board' : 'department';
+      c.reviewer = independent ? 'independent' : board ? 'board' : 'department';
     }
     const roll = seeded(`${c.id}/finding`);
     c.finding = c.true ? (roll.chance(0.8) ? 'substantiated' : 'insufficient evidence') : (roll.chance(0.85) ? 'unsubstantiated' : 'insufficient evidence');
@@ -47,14 +50,19 @@ export function settleComplaints() {
       r.discipline.push({ year: year(), kind: c.kind, finding: c.finding, complaintId: c.id });
       if (c.finding === 'substantiated') {
         const serious = c.kind === 'disclosure' || c.kind === 'fabrication';
-        const repeat = r.discipline.filter((d) => d.finding === 'substantiated').length > 1;
+        const repeat = priorRecord(r).length > 1; // records a contract removed do not count (unions.js)
         c.action = serious && repeat ? 'dismissal' : serious ? 'suspension and a final warning' : 'a written reprimand and retraining';
+        // A union member is represented: the finding stands; a dismissal may be reduced at arbitration.
+        const rep = represent(c, r);
+        c.action = rep.action;
+        c.union = rep.note;
+        r.discipline.at(-1).dismissed = c.action === 'dismissal';
         regard('integrity', -8);
         regard('ethics', -6);
         if (c.action === 'dismissal' && r.job) { jobEnded(player(), r, 'dismissed'); quitCareer(); }
       } else c.action = 'none';
     }
-    out.push(`The complaint about you (${c.text.charAt(0).toLowerCase()}${c.text.slice(1)}) was decided by ${nm(c.investigatorId)}: ${c.finding}${c.action && c.action !== 'none' ? `. Action: ${c.action}.` : '.'}`);
+    out.push(`The complaint about you (${c.text.charAt(0).toLowerCase()}${c.text.slice(1)}) was decided by ${nm(c.investigatorId)}: ${c.finding}${c.action && c.action !== 'none' ? `. Action: ${c.action}.` : '.'}${c.union ? ` ${c.union}` : ''}`);
   }
   return out;
 }

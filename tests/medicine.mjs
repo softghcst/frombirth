@@ -637,6 +637,45 @@ section('another country: its own route, words and license, marked simplified');
 }
 section('the Story Director: one beat a year, each once, about the real life');
 
+// 8h. Before about 1940: an internship, then general practice.
+{
+  rng.seed(1925);
+  const q = life('us', 26);
+  const was = store.state.year;
+  store.state.year = 1925;
+  const gm = core.M(q);
+  strong(gm);
+  gm.route = 'md'; gm.stage = 'graduate'; gm.local = true;
+  gm.school = { name: 'medical school', year: 4, rotations: [], exams: { step1: { pass: true, score: 80 }, step2: { pass: true, score: 80 } }, interest: {}, apply: [], graduated: false, countryId: 'us' };
+  q.education.degrees.push({ type: 'medical', gpa: 3.5, age: 26 }); q.education.enrolled = false;
+  year();
+  check(gm.training?.kind === 'internship' && gm.afterInternship === 'gp', `in 1926, a new doctor begins with a hospital internship (${gm.training?.kind})`);
+  for (let i = 0; i < 2 && gm.training; i++) { strong(gm); year(); }
+  check(gm.completed.some((c) => c.specialtyId === 'general') && core.qualified(gm).includes('general'), 'and goes into general practice after a year');
+  check(practice.practiceOptions(gm, q).find((o) => o.id === 'family_clinic' && !o.block), 'a general practitioner can open a family practice');
+  store.state.year = was;
+}
+section('before 1940: an internship, then general practice');
+{
+  // Osteopathic graduates before full practice rights: fewer places, and in community or regional hospitals.
+  const q = life('us', 26);
+  const was = store.state.year;
+  store.state.year = 1965;
+  const dm = core.M(q);
+  strong(dm);
+  dm.route = 'do'; dm.school = { exams: { step1: { pass: true, score: 85 } }, rotations: [], interest: {} };
+  const before = train.placeChance('internal', dm);
+  dm.route = 'md';
+  const md = train.placeChance('internal', dm);
+  check(before < md, `before 1973 an osteopathic graduate has fewer places (${before.toFixed(2)} vs ${md.toFixed(2)})`);
+  store.state.year = was;
+  // Any qualified physician can found a specialty group practice.
+  dm.completed.push({ specialtyId: 'neurology', kind: 'residency', from: 2000, to: 2004 });
+  dm.license = { status: 'full', countryId: 'us' };
+  check(!practice.practiceOptions(dm, q).find((o) => o.id === 'specialty_group').block, 'a neurologist can found a specialty group practice');
+}
+section('osteopathic history; specialty group practices');
+
 // 9. Generations: the archive keeps the career, not the patients; the family is a pull, not a path.
 {
   rng.seed(31337);

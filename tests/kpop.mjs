@@ -390,10 +390,10 @@ section(`the vertical slice: ${g ? `${g.name}: debut, stages, an ending fairy, a
   check(!kp.answerRumor('deny').ok && kp.answerRumor('confirm').ok && kp.myGroup()?.id === grp.id, 'a true one is not denied; confirming it ends nothing');
   // Health: a break records and treats the condition, and coming back clears it.
   p.stats.health = 40;
-  check(kp.startHiatus('health').ok && p.conditions.some((c) => c.id === 'exhaustion' && c.treated) && kp.idolOf().hiatus.conditions.includes('exhaustion'), 'a health break: a real health record, under care');
+  check(kp.startHiatus('health').ok && p.health.ailments.some((c) => c.id === 'exhaustion' && c.treated) && kp.idolOf().hiatus.conditions.includes('exhaustion'), 'a health break: a real health record, under care');
   check(/health reasons/.test(kp.idolOf().hiatus.public) && !/exhaustion/.test(grp.history.at(-1).text), 'the public hears only "health reasons"');
   year();
-  check(kp.endHiatus().ok && !p.conditions.some((c) => c.id === 'exhaustion'), 'and returning clears it');
+  check(kp.endHiatus().ok && !p.health.ailments.some((c) => c.id === 'exhaustion'), 'and returning clears it');
   // A year: merchandise in the accounts, the hosting fee paid once.
   year();
   const lived = store.state.year - 1;

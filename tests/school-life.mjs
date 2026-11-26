@@ -89,10 +89,13 @@ check(['math_club', 'book_club', 'astronomy', 'animal_rights', 'gaming_club', 'd
 
 // A new school is announced; prom royalty in the last year; a house party in high school.
 {
-  let s; do { s = createLife({ countryId: 'us' }); } while (s.player.royal);
-  store.state = s;
-  let seen = null;
-  while (s.player.age < 12 && !seen) { advanceYear(); seen = s.pendingEvents.find((e) => e.id === 'school_start' && /Middle/i.test(e.cast.words.stage)); s.pendingEvents = []; }
+  // An American childhood: a family that emigrates (and has a "secondary school" instead) is lived again.
+  let s; let seen = null;
+  for (let tries = 0; tries < 6 && !seen; tries++) {
+    do { s = createLife({ countryId: 'us' }); } while (s.player.royal);
+    store.state = s;
+    while (s.player.age < 12 && !seen && s.player.countryId === 'us') { advanceYear(); seen = s.pendingEvents.find((e) => e.id === 'school_start' && /Middle/i.test(e.cast.words.stage)); s.pendingEvents = []; }
+  }
   check(seen && seen.cast.words.school && seen.cast.words.years === '3', `starting middle school is announced, with its name and years (${JSON.stringify(seen?.cast.words)})`);
   const p = teen(17);
   const { decide } = await import('../js/engine/schoollife.js');

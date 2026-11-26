@@ -1,0 +1,253 @@
+// The Health Engine's everyday visits: the doctor for an ailment, a yearly check-up, talking therapy, and cosmetic
+// surgery. Every one goes through the same places and people as the rest of the Health Engine: the family doctor at
+// the city's practice (engine/health/care.js), its assessments and therapy, and the plastic surgeons on its hospitals'
+// staff (engine/medicine/healthLink.js). Ailments are the health record's (engine/health/ailments.js).
+import { treatmentIn, procedureOpen } from '../history.js';
+import { cover } from '../systems.js';
+import { normalize, cleanTweaks } from '../../avatar/catalog.js';
+import { healthFactor } from '../policy.js';
+import { rng } from '../../rng.js';
+import { clamp, localMoney, fmtMoney, localCost } from '../../util.js';
+import { player, country, log, milestone, store } from '../../state.js';
+import { addCondition, cureCondition, ailmentsOf } from './ailments.js';
+import { careQuality } from '../living.js';
+import { screen, MENTAL_CARE_AGE, serviceOptions, seekAssessment, book, attendNow, clinicianName } from './care.js';
+import { professionExists } from './rules.js';
+import { priceOf } from './util.js';
+import { healthOf } from './record.js';
+import { parentsMoney, parentsSpend } from '../conditions.js';
+import { ILLNESS_BY_ID } from '../../data/health/ailments.js';
+import { TREATMENTS, CHECKUP_COST, SURGERIES, SURGEONS } from '../../data/activities.js';
+import { plasticSurgeon } from '../medicine/healthLink.js';
+import { facilitiesHere, clinicianAt } from './care.js';
+import { deptHead } from '../medicine/hospitals.js';
+
+const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
+
+function acts() {
+  const p = player();
+  if (p.flags.medActs?.age !== p.age) p.flags.medActs = { age: p.age, seen: {} };
+  return p.flags.medActs;
+}
+
+/** What the patient pays: almost nothing where care is public, or behind bars. */
+export function careCost(base) {
+  const c = country();
+  if (player().legal.incarceration) return 0;
+  return Math.round(localCost(base * cover().share, c) * healthFactor(c.id)); // what the patient pays depends on the system, and on whether they are covered
+}
+
+/** A child's care is paid for by the parents they live with (with what cover leaves to pay); an adult pays their own. */
+export const parentsPayCare = (p = player()) => p.age < 18 && !!p.flags.livesWithParents && parentsMoney(p) > 0;
+/** Whether this bill can be paid, by whoever pays it. */
+export const canPayCare = (cost, p = player()) => !cost || (parentsPayCare(p) ? parentsMoney(p) >= cost : p.finance.cash >= cost);
+/** Pays a bill. @returns {string} a sentence saying what it cost and who paid */
+function payCare(cost, p = player()) {
+  if (!cost) return '';
+  if (parentsPayCare(p)) { parentsSpend(cost, p); return ` Your parents paid ${fmtMoney(cost, country())}.`; }
+  p.finance.cash -= cost;
+  return ` It cost ${fmtMoney(cost, country())}.`;
+}
+/** Who pays a bill already charged, in words. */
+const paidWords = (amount, p) => (!amount ? '' : parentsPayCare(p) ? ` Your parents paid ${fmtMoney(amount, country())}.` : ` It cost ${fmtMoney(amount, country())}.`);
+
+/**
+ * Who sees the patient: the family doctor at the city's practice, a hospital doctor for broken bones and injuries,
+ * and for a small child a pediatrician if the practice has nobody. Real clinicians on the Health Engine's staff,
+ * so a visit is an appointment in the record, billed and claimed like any other. Null where there is nobody
+ * (the player is the only doctor in town, or the place has no such service yet).
+ */
+function seenBy(conditionId, p) {
+  const fs = facilitiesHere(p);
+  const bones = /^(broken_|sport_)/.test(conditionId ?? '');
+  const want = bones ? [['hospital', 'doctor'], ['primary', 'gp']] : p.age < 12 ? [['primary', 'gp'], ['hospital', 'pediatrician']] : [['primary', 'gp']];
+  for (const [defId, prof] of want) {
+    const f = fs.find((x) => x.defId === defId);
+    if (!f || !professionExists(prof)) continue;
+    const npc = clinicianAt(f, prof);
+    if (npc && npc.id !== p.id) return { f, npc };
+  }
+  return null;
+}
+
+/** Books a visit with them and attends it now (Pathways moves a year at a time). @returns {object} the appointment */
+function visit(where, kind, base, what, ref, p) {
+  const a = book(kind, { facilityId: where.f.id, providerId: where.npc.id, ref, concern: 'body', note: what }, p);
+  a.base = base;
+  a.what = `${what.charAt(0).toUpperCase()}${what.slice(1)} with ${clinicianName(where.npc)}`;
+  attendNow(a, p);
+  return a;
+}
+
+const cannotPay = (p, what) => (parentsPayCare(p) || p.age < 18 ? `Your parents cannot afford ${what} this year.` : `You cannot afford ${what}.`);
+
+/** Conditions a doctor could do something about, with what it would cost. */
+export function treatable() {
+  const p = player();
+  return ailmentsOf(p).filter((c) => TREATMENTS[c.id]).map((c) => {
+    const t = TREATMENTS[c.id];
+    const where = seenBy(c.id, p);
+    const cost = where ? priceOf(t.cost, where.f.fee) : careCost(t.cost);
+    const era = treatmentIn(c.id);
+    return { id: c.id, name: c.name, cost, manage: !!t.manage && era.manage, managed: !!c.treated, limited: era.limited,
+      seen: !!acts().seen[c.id], affordable: canPayCare(cost, p), who: where ? `${clinicianName(where.npc)}, ${where.f.name}` : null };
+  });
+}
+
+export function seeDoctor(conditionId) {
+  const p = player();
+  const c = country();
+  const cond = ailmentsOf(p).find((x) => x.id === conditionId);
+  const t = TREATMENTS[conditionId];
+  if (!cond || !t) return result(false, 'There is nothing to treat.', 'neutral');
+  if (acts().seen[conditionId]) return result(false, 'The doctor has done what can be done this year.', 'neutral');
+  const where = seenBy(conditionId, p);
+  const cost = where ? priceOf(t.cost, where.f.fee) : careCost(t.cost);
+  if (!canPayCare(cost, p)) return result(false, `Treatment costs ${fmtMoney(cost, c)}. ${cannotPay(p, 'it')}`, 'neutral');
+  acts().seen[conditionId] = true;
+  const plain = cond.name.replace(/^an? /, '');
+  // An appointment in the health record, billed and claimed like any other; with nobody to see, a doctor's fee.
+  const appt = where ? visit(where, 'visit', t.cost, `treatment for ${plain}`, `ail:${conditionId}:${store.state.year}`, p) : null;
+  const paid = appt ? paidWords(appt.paid, p) : payCare(cost, p);
+  const done = (text) => { if (appt) appt.outcome = text.replace(/ (It cost|Your parents paid) .*$/, ''); return text; };
+
+  // Historical Eras: what medicine could do then (insulin from 1922, antibiotics from the mid-1940s, and so on).
+  const era = treatmentIn(conditionId);
+  if (!rng.chance(t.chance * era.chance * (0.72 + careQuality() / 320))) {
+    const text = done(`The treatment for your ${plain} did not take. ${where ? clinicianName(where.npc) : 'The doctor'} wants to try again next year.${paid}`);
+    log(text, 'system', 'bad');
+    return result(false, text);
+  }
+  if (t.manage && !era.manage) {
+    p.stats.health = clamp(p.stats.health + 2);
+    const text = done(`${where ? clinicianName(where.npc) : 'The doctor'} did what could be done for your ${plain} in these years, which is not much. There is no lasting treatment yet.${paid}`);
+    log(text, 'system', 'neutral');
+    return result(false, text, 'neutral');
+  }
+  if (t.manage) {
+    cond.treated = true;
+    const text = done(`Your ${plain} cannot be cured, but it is under control now. Stay on the treatment and it will trouble you far less.${paid}`);
+    log(text, 'system', 'good');
+    return result(true, text);
+  }
+  cureCondition(conditionId);
+  p.stats.health = clamp(p.stats.health + Math.round(cond.severity / 6));
+  const text = done(`${where ? `${clinicianName(where.npc)} at ${where.f.name}` : 'The doctor'} treated your ${plain}, and it worked.${paid}`);
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** Who a check-up is with, in words ("Dr. Okafor, Leeds Family Practice"), or ''. */
+export const familyDoctorHere = (p = player()) => { const w = seenBy(null, p); return w ? `${clinicianName(w.npc)}, ${w.f.name}` : ''; };
+/** What a check-up would cost the patient. */
+export const checkUpPrice = (p = player()) => { const w = seenBy(null, p); return w ? priceOf(CHECKUP_COST, w.f.fee) : careCost(CHECKUP_COST); };
+
+/** A yearly check-up: a small boost, and early warning that makes illness less likely next year. */
+export function checkUp() {
+  const p = player();
+  const c = country();
+  const where = seenBy(null, p);
+  const cost = where ? priceOf(CHECKUP_COST, where.f.fee) : careCost(CHECKUP_COST);
+  if (acts().checkup) return result(false, 'You have had your check-up this year.', 'neutral');
+  if (!canPayCare(cost, p)) return result(false, cannotPay(p, 'the appointment'), 'neutral');
+  acts().checkup = true;
+  const appt = where ? visit(where, 'checkup', CHECKUP_COST, 'a check-up', `checkup:${store.state.year}`, p) : null;
+  const paid = appt ? paidWords(appt.paid, p) : payCare(cost, p);
+  p.flags.checkupAge = p.age;
+  p.stats.health = clamp(p.stats.health + 2);
+  // Routine tests: blood pressure, blood sugar, and from fifty, screening.
+  const screened = screen(p);
+  const found = ailmentsOf(p).filter((x) => TREATMENTS[x.id] && !x.treated);
+  const text = screened.length ? `The tests found ${screened.join(' and ')}. It is in My Health, with what can be done about it.`
+    : found.length
+    ? `The doctor ran the tests and wants to treat your ${found.map((x) => x.name.replace(/^an? /, '')).join(' and ')}.`
+    : 'The doctor ran the tests and found nothing to worry about. Catching things early keeps it that way.';
+  const said = `${p.age < 16 ? 'Your parents took you for a check-up. ' : ''}${where ? `${clinicianName(where.npc)} at ${where.f.name}. ` : ''}${text}${paid}`;
+  if (appt) appt.outcome = text;
+  const any = found.length || screened.length;
+  log(said, 'system', any ? 'neutral' : 'good');
+  return result(true, said, any ? 'neutral' : 'good');
+}
+
+/**
+ * Talking therapy is the Health Engine's: an assessment with a therapist or psychologist (the first service here that
+ * takes people without a referral), which leads to a plan and sessions in My Health. Never a second, simpler therapy.
+ */
+export function therapy() {
+  const p = player();
+  if (p.age < MENTAL_CARE_AGE) return result(false, `Therapy is from age ${MENTAL_CARE_AGE}.`, 'neutral');
+  if (!procedureOpen('therapy')) return result(false, 'There is no such thing as talking therapy here yet.', 'neutral');
+  const opts = serviceOptions('mental', p).filter((o) => !o.referral);
+  const pick = opts.find((o) => ['psychologist', 'therapist'].includes(o.profession)) ?? opts[0];
+  if (!pick) return result(false, 'Nobody here takes people for therapy without a referral. Your family doctor can refer you (My Health).', 'neutral');
+  const r = seekAssessment('mental', pick.facilityId, pick.profession, p);
+  if (!r.ok) return r;
+  const waiting = healthOf(p).appointments.some((x) => x.kind === 'assessment' && x.concern === 'mental' && x.status === 'booked');
+  return result(true, waiting ? `${r.text} If therapy is right for you, it is planned from there, in My Health.` : r.text, r.tone ?? 'good');
+}
+
+// ---------- Cosmetic surgery ----------
+
+/** Procedures open to the player, priced for each kind of surgeon. */
+export function surgeryOptions() {
+  const p = player();
+  return SURGERIES.filter((s) => p.age >= s.minAge && procedureOpen(s.id));
+}
+export function surgeonOptions(procedureId) {
+  const p = player();
+  const proc = SURGERIES.find((s) => s.id === procedureId);
+  return SURGEONS.map((s) => {
+    const cost = localMoney(proc.cost * s.cost, country());
+    const risk = Math.min(0.9, proc.risk * s.risk);
+    // A reputable or renowned surgeon is a real plastic surgeon on a city hospital's staff (engine/medicine/healthLink.js).
+    const who = plasticSurgeon(s.id, deptHead, p);
+    return { id: s.id, name: who ? `${s.name}: Dr. ${who.npc.lastName}, ${who.place}` : s.name, blurb: s.blurb, cost, affordable: p.finance.cash >= cost, surgeonNpcId: who?.npc.id ?? null,
+      risk: risk >= 0.2 ? 'high' : risk >= 0.07 ? 'moderate' : 'low' };
+  });
+}
+export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarceration;
+
+/**
+ * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
+ *   They become the patient's face, and children born afterward can take after it.
+ */
+export function haveSurgery(procedureId, surgeonId, tweaks) {
+  const p = player();
+  const c = country();
+  const proc = SURGERIES.find((s) => s.id === procedureId);
+  const surgeon = SURGEONS.find((s) => s.id === surgeonId);
+  const cost = localMoney(proc.cost * surgeon.cost, c);
+  if (!canHaveSurgery() || p.age < proc.minAge) return result(false, 'That is not available to you.', 'neutral');
+  if (acts().surgery) return result(false, 'You are still healing from the last one. Give it a year.', 'neutral');
+  if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
+  acts().surgery = true;
+  p.finance.cash -= cost;
+  p.counters.surgeries = (p.counters.surgeries ?? 0) + 1;
+  const name = proc.name.toLowerCase();
+
+  if (rng.chance(Math.min(0.9, proc.risk * surgeon.risk))) {
+    const loss = rng.int(8, 20);
+    p.stats.charm = clamp(p.stats.charm - loss);
+    p.stats.mood = clamp(p.stats.mood - 15);
+    p.stats.health = clamp(p.stats.health - rng.int(3, 10));
+    addCondition('botched_surgery');
+    const text = `Your ${name} went wrong. When the bandages come off, you do not recognize what is underneath. It cost ${fmtMoney(cost, c)}, and a doctor may be able to repair some of it.`;
+    log(text, 'system', 'bad');
+    milestone(`Had a ${name} that went badly wrong.`, 'life');
+    return result(false, text);
+  }
+  if (proc.reshape && tweaks) {
+    const a = normalize(p.appearance, p.id);
+    a.inherited.tweaks = cleanTweaks(tweaks);
+    p.appearance = a;
+  }
+  const gain = rng.int(proc.gain[0], proc.gain[1]);
+  p.stats.charm = clamp(p.stats.charm + gain);
+  p.stats.mood = clamp(p.stats.mood + 6);
+  const by = plasticSurgeon(surgeonId, deptHead, p);
+  const text = `Your ${name}${by ? `, by Dr. ${by.npc.lastName} at ${by.place},` : ''} went well. Once the swelling goes down, you like what you see. It cost ${fmtMoney(cost, c)}.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+export const conditionInfo = (id) => ILLNESS_BY_ID[id];

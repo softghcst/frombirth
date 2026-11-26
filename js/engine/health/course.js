@@ -261,7 +261,7 @@ export function weekWellbeing(p = player()) {
   w.stress = Math.round(w.stress + (stressTarget - w.stress) * 0.15);
   w.sleep = Math.round(w.sleep + (clamp(80 - (d.sleep ?? 0) * 0.6 - w.stress * 0.15) - w.sleep) * 0.2);
   w.energy = Math.round(w.energy + (clamp(80 - (d.energy ?? 0) * 0.6 - (100 - w.sleep) * 0.2) - w.energy) * 0.2);
-  w.pain = Math.round(w.pain + (clamp((d.pain ?? 0) * 0.7 + (p.conditions.some((c) => c.id === 'back_pain') ? 30 : 0)) - w.pain) * 0.2);
+  w.pain = Math.round(w.pain + (clamp((d.pain ?? 0) * 0.7 + (presentConditions(healthOf(p)).some((c) => c.conditionId === 'back_pain') ? 30 : 0)) - w.pain) * 0.2);
 }
 
 /**

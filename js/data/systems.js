@@ -25,7 +25,7 @@ export const TAX_SHAPE_OF = {
   // Steeply progressive
   uk: 'steep', ca: 'steep', fr: 'steep', de: 'steep', jp: 'steep', kr: 'steep', au: 'steep', se: 'steep', dk: 'steep', no: 'steep', fi: 'steep', be: 'steep', nl: 'steep', at: 'steep', ie: 'steep', it: 'steep', es: 'steep', pt: 'steep',
   // One rate for everyone
-  ua: 'flat', hu: 'flat', ro: 'flat', ee: 'flat', ge: 'flat', kz: 'flat', mn: 'flat', bo: 'flat', bz: 'flat',
+  ua: 'flat', hu: 'flat', ro: 'flat', ee: 'flat', ge: 'flat', kz: 'flat', mn: 'flat', bo: 'flat', bz: 'flat', sc: 'flat',
   // Russia replaced its flat 13% with bands up to 22% in 2025.
   ru: 'moderate',
 };
@@ -36,7 +36,7 @@ export const TAX_SHAPE_OF = {
  * game uses the federal 37%, since state income tax runs from none to about 13%). The top band of a country's
  * schedule is set to it; lower bands keep their shape but never exceed it. See scripts/verify-laws.py.
  */
-export const TAX_TOP = { ad: 0.1, ae: 0.0, af: 0.2, ao: 0.17, ar: 0.35, at: 0.55, au: 0.45, aw: 0.5895, bd: 0.25, be: 0.6045, bo: 0.25, br: 0.275, bs: 0.088, bz: 0.25, ca: 0.548, cd: 0.4, ch: 0.6285, cl: 0.4, cn: 0.45, co: 0.35, cr: 0.25, cu: 0.5, cz: 0.457, de: 0.45, dk: 0.5207, do: 0.25, dz: 0.35, ec: 0.35, ee: 0.236, eg: 0.275, es: 0.523, et: 0.35, fi: 0.5361, fr: 0.5534, ge: 0.2, gr: 0.44, gt: 0.07, gy: 0.35, hk: 0.15, hr: 0.4, ht: 0.3, hu: 0.15, id: 0.35, ie: 0.521, il: 0.5, in: 0.39, iq: 0.15, ir: 0.35, it: 0.43, jm: 0.3, jo: 0.25, jp: 0.505, ke: 0.35, kr: 0.534, kw: 0.0, kz: 0.1, lb: 0.25, ma: 0.38, mc: 0.0, mn: 0.1, mx: 0.35, my: 0.3, ng: 0.24, nl: 0.495, no: 0.474, np: 0.36, nz: 0.39, pa: 0.27, pe: 0.3, ph: 0.35, pk: 0.45, pl: 0.41, pr: 0.3334, pt: 0.5603, py: 0.1, qa: 0.0, ro: 0.45, rs: 0.25, ru: 0.22, sa: 0.0, se: 0.48, sg: 0.22, sk: 0.25, sv: 0.3, sy: 0.15, th: 0.35, tn: 0.35, tr: 0.4, tw: 0.4, ua: 0.18, uk: 0.47, us: 0.37, uy: 0.36, ve: 0.34, vn: 0.35, za: 0.45, zw: 0.45 };
+export const TAX_TOP = { ad: 0.1, ae: 0.0, af: 0.2, ao: 0.17, ar: 0.35, at: 0.55, au: 0.45, aw: 0.5895, bd: 0.25, be: 0.6045, bo: 0.25, br: 0.275, bs: 0.088, bz: 0.25, ca: 0.548, cd: 0.4, ch: 0.6285, cl: 0.4, cn: 0.45, co: 0.35, cr: 0.25, cu: 0.5, cz: 0.457, de: 0.45, dk: 0.5207, do: 0.25, dz: 0.35, ec: 0.35, ee: 0.236, eg: 0.275, es: 0.523, et: 0.35, fi: 0.5361, fr: 0.5534, ge: 0.2, gr: 0.44, gt: 0.07, gy: 0.35, hk: 0.15, hr: 0.4, ht: 0.3, hu: 0.15, id: 0.35, ie: 0.521, il: 0.5, in: 0.39, iq: 0.15, ir: 0.35, it: 0.43, jm: 0.3, jo: 0.25, jp: 0.505, ke: 0.35, kr: 0.534, kw: 0.0, kz: 0.1, lb: 0.25, ma: 0.38, mc: 0.0, mn: 0.1, mx: 0.35, my: 0.3, ng: 0.24, nl: 0.495, no: 0.474, np: 0.36, nz: 0.39, pa: 0.27, pe: 0.3, ph: 0.35, pk: 0.45, pl: 0.41, pr: 0.3334, pt: 0.5603, py: 0.1, qa: 0.0, ro: 0.45, rs: 0.25, ru: 0.22, sa: 0.0, se: 0.48, sg: 0.22, sk: 0.25, sv: 0.3, sy: 0.15, th: 0.35, tn: 0.35, tr: 0.4, tw: 0.4, ua: 0.18, uk: 0.47, us: 0.37, uy: 0.36, ve: 0.34, vn: 0.35, za: 0.45, zw: 0.45, fj: 0.2, mu: 0.15, sc: 0.15, mv: 0.15 };
 
 /**
  * How care is paid for.

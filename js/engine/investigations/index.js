@@ -28,10 +28,14 @@ import { benchYear, pressYear } from './crossover.js';
 import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
 import { settleWorkplace, workplaceYear } from './workplace.js';
+import { labYear, careerYear as labCareerYear } from './forensicLab.js';
+import { unionYear } from './unions.js';
+import { reformYear } from './reform.js';
+import { psychYear, psychCareerYear } from './forensicPsych.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
-export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent'];
+export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent', 'usms_deputy', 'usss_agent', 'hsi_agent', 'irs_agent'];
 
 /** Whether this engine reviews the player's job this year. */
 export function investigationRuns(careerId, p = player()) {
@@ -66,9 +70,11 @@ export function tickInvestigations() {
   const p = player();
   if (!p.alive) return;
   if (!rec(p) && INVESTIGATIVE.includes(p.career.careerId)) migrateInvestigations(store.state);
-  benchYear(p); // a forensic scientist or a journalist sees cases from their side (crossover.js)
+  // A forensic scientist's laboratory year: requests from real cases, the backlog, promotion (forensicLab.js).
+  if (p.career?.careerId === 'forensics') { for (const line of [...labYear(p), ...labCareerYear(p)]) log(line, 'system', 'neutral'); } else benchYear(p);
   forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
+  for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
@@ -100,6 +106,8 @@ export function tickInvestigations() {
   // A licensed assistant investigator takes the full title (the 'pi' track's second rung).
   if (p.career.careerId === 'pi' && p.career.level === 0 && licensed(p)) { promote(); p.career.title = 'Private investigator'; }
   for (const line of workplaceYear(p)) log(line, 'system', 'good');
+  for (const line of unionYear(p)) log(line, 'system', 'neutral');
+  for (const line of reformYear(p)) log(line, 'system', 'neutral');
   peopleYear(p);
   dramaYear(p);
 }

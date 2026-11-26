@@ -11,7 +11,7 @@ import { MED_BY_ID } from '../../data/health/medications.js';
 import { THERAPY_BY_ID } from '../../data/health/therapies.js';
 import { PROFESSIONS } from '../../data/health/providers.js';
 import { CONDITION_BY_ID, nameIn } from '../../data/health/conditions.js';
-import { healthOf, isDiagnosed, activeDiagnoses } from './record.js';
+import { healthOf, isDiagnosed, activeDiagnoses, presentConditions } from './record.js';
 
 const no = (why) => ({ ok: false, why });
 const yes = { ok: true, why: '' };
@@ -75,7 +75,7 @@ export function canPrescribe({ medId, conditionId, prescriber, replacing }, p = 
   if (med.maxAge && p.age > med.maxAge) return no(`${med.name} is used for children and young people here.`);
   for (const c of med.avoidWith ?? []) if (isDiagnosed(c, h)) return no(`${med.name} is avoided alongside ${CONDITION_BY_ID[c].short}.`);
   // Stimulants and heart problems: a specialist cardiology opinion first (not modeled), so not here.
-  if (med.tags.includes('cardio') && p.conditions?.some((c) => c.id === 'heart_disease')) return no('With a heart condition this needs a cardiology opinion first.');
+  if (med.tags.includes('cardio') && presentConditions(healthOf(p)).some((c) => c.conditionId === 'heart_disease')) return no('With a heart condition this needs a cardiology opinion first.');
 
   const active = h.trials.filter((t) => ['active', 'starting', 'adjusted', 'under_review'].includes(t.status) && t.id !== replacing);
   // One medicine of a kind at a time for the same condition; switching overlaps only in a supervised change.

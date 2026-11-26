@@ -20,7 +20,7 @@ import { KINDS, SEVERITY, CITY_HAZARDS, countryHazards, STORM_NAMES, STRIKE, NEW
 import { climateOf } from './calendar.js';
 import { seeded } from './sportsPlay.js';
 import { damageProperty, properties } from './realEstate.js';
-import { addCondition } from './health.js';
+import { addCondition } from './health/ailments.js';
 import { post as postNews, ties } from './economy.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
