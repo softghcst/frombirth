@@ -4,6 +4,7 @@
 // outcome, or ''. Also queues the scenes that come from the state of things
 // rather than from chance (a relationship at work being noticed; a child
 // asking about the player's job).
+import { childMoneyChoice } from './childEarnings.js';
 import { rng } from '../rng.js';
 import { coupleChoice } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
@@ -38,6 +39,7 @@ export function workChoice(value, cast = {}) {
   const [key, a, b] = String(value).split(':');
   const npc = (k) => store.state.npcs[cast[k]];
   switch (key) {
+    case 'childMoney': return childMoneyChoice(a);
     case 'bonus': {
       if (!c.careerId) return '';
       const amount = Math.round(c.salary * Number(a ?? 0.06));

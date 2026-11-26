@@ -21,6 +21,7 @@ import { mark, goodYear } from './credit.js';
 import { tickCards } from './cards.js';
 import { billShare } from './family.js';
 import { contribute } from './retirement.js';
+import { holdChildPay, releaseChildPay } from './childEarnings.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
@@ -90,12 +91,16 @@ export function tickFinance() {
   const f = p.finance;
   let everyday = 0; // what the year's ordinary spending came to, for the card statement
 
+  // Money earned as a child is handed over at 18.
+  releaseChildPay(p);
   // Every source of income for the year just lived, each paid once (engine/worklife.js).
   const pay = runPayroll(p);
   const gross = pay.gross;
   if (gross > 0) {
     const tax = incomeTax(gross, c);
-    f.cash += gross - tax;
+    // A working child does not hold their own pay: a parent manages it, and the law may set a share aside (engine/childEarnings.js).
+    const held = holdChildPay(gross - tax, pay.lines, p);
+    f.cash += gross - tax - held;
     f.lifetimeEarned += gross;
     f.lifetimeTaxPaid += tax;
     p.career.lastPay.tax = tax;

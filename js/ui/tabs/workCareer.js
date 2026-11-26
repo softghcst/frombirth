@@ -1,5 +1,6 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
+import { childPayRows } from '../../engine/childEarnings.js';
 import { openPolitics } from '../politics.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -52,7 +53,8 @@ export function careerCard() {
       ...(k.military ? [['Deployments', String(k.military.deployments)]] : []),
       ...(step ? [['Next step', `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${step.yearsLeft} ${step.yearsLeft === 1 ? 'year' : 'years'} with good reviews` : ', when a good review lands'}`]]
         : [['Next step', 'You are at the top.']]),
-      ['Hours a week', String(weeklyLoad().total)],
+      ...childPayRows(cur),
+      (() => { const w = weeklyLoad(); const job = w.rows.find((r) => r.kind === 'job')?.hours ?? 0; return ['Hours a week', w.total > job ? `${job} at work · ${w.total} in all, with ${player().age < 18 ? 'school' : 'everything else'}` : String(w.total)]; })(),
     ]) + `<div style="margin-top:10px">${meterHtml('Performance', k.performance, true)}${meterHtml('Satisfaction', careerState().satisfaction, true)}${meterHtml('Stress', careerState().stress, true)}</div>`;
   } else if (k.partTime) {
     body = kv([['Part-time', k.partTime.title], ['Pay', `${fmtMoney(k.partTime.salary, c)} / year`], ['Since', `Age ${k.partTime.since}`]]);
