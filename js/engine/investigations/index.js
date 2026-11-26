@@ -188,7 +188,9 @@ export function legacySummary(p) {
   return {
     name: `${p.firstName} ${p.lastName}`,
     family: r.family,
-    history: r.history.filter((h) => h.kind === 'career').map((h) => ({ year: h.year, text: h.text })),
+    // The milestones of a career, not its paperwork: each referral is in the court-case list already; repeats are kept once.
+    history: r.history.filter((h) => h.kind === 'career' && !/^Referred a case to the prosecutor/.test(h.text))
+      .filter((h, i, all) => all.findIndex((x) => x.text === h.text) === i).map((h) => ({ year: h.year, text: h.text })),
     years: r.stats.years, units: r.stats.units, license: r.license ? r.license.name : null,
     retired: r.retired?.year ?? null,
     stats: r.stats.unknownBefore ? { note: 'Casework from before records were kept is not known.' } : { assigned: r.stats.assigned, completed: r.stats.completed, court: r.stats.court, reopened: r.stats.reopened },

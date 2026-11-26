@@ -1662,7 +1662,16 @@ section('the academy ends on its own date: graduation and field training the sam
   for (let y = 0; y < 8; y++) { WPm.mentor(); store.state.year += 1; r.job.rankSince -= 0; }
   check(!/leadership/i.test(C.promotionOptions()[0]?.block ?? '') && r.skills.leadership >= 35, `mentoring builds it, so the way to sergeant is open (${r.skills.leadership})`);
 }
-section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank');
+{
+  const p = life('us', 45);
+  makeOfficer();
+  const r = core.I();
+  for (let i = 0; i < 5; i++) r.history.push({ year: store.state.year, text: 'Referred a case to the prosecutor: someone filed charges.', kind: 'career' });
+  r.history.push({ year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' }, { year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' });
+  const mine = IX.familyInvestigativeLegacy(p).find((x) => x.you);
+  check(!mine.history.some((h) => /Referred a case/.test(h.text)) && mine.history.filter((h) => /senior detective/.test(h.text)).length === 1, 'the Family Archive keeps a career\'s milestones, not every referral, and nothing twice');
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank; the archive keeps milestones');
 
 for (const line of ok) console.log(`ok   ${line}`);
 
