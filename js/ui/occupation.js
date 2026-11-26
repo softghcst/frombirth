@@ -2,6 +2,7 @@
 // at work, the job market, offers and recruiters, part-time work, freelancing,
 // special careers, the military, qualifications, history and retirement.
 // Every section reads the engine; every button does something.
+import { keeperWord } from '../engine/childEarnings.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -133,9 +134,9 @@ function jobCard(p) {
 function childPayRows(p, car) {
   const cp = p.childPay;
   if (!car.agesOut || p.age >= 18) return [];
-  if (!cp) return [['Your pay', 'A parent signs for you and manages what you earn until you are 18.']];
+  if (!cp) return [['Your pay', 'A parent or guardian signs for you and manages what you earn until you are 18.']];
   const m = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.id === cp.managerId);
-  const who = m ? `${m.firstName} (your ${m.gender === 'female' ? 'mother' : m.gender === 'male' ? 'father' : 'parent'})` : 'A guardian';
+  const who = m ? `${m.firstName} (${keeperWord(m)})` : 'The court, in trust';
   return [['Earned so far', money(cp.total)], ...(cp.trust ? [['In trust until 18', money(cp.trust)]] : []), ['Managed by', `${who}, until you are 18`]];
 }
 

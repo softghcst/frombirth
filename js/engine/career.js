@@ -113,7 +113,7 @@ export function unmet(career, o = {}) {
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);
   // A child cannot sign a contract: a parent signs, takes them to auditions and manages the pay (engine/childEarnings.js).
-  if (career.needsParent && p.age < 18 && !managerOf(p)) out.push('A child needs a parent at home to sign for them and take them to auditions.');
+  if (career.needsParent && p.age < 18 && !managerOf(p)) out.push('A child needs a parent or guardian to sign for them and take them to auditions.');
   // Some work is reached from inside another career, or after years of it.
   if (r.experience) {
     const have = Object.entries(r.experience).some(([id, yrs]) => (ensureCareer(p.career).experience[id] ?? 0) >= yrs);

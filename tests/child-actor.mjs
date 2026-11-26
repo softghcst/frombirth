@@ -49,7 +49,13 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
 {
   const p = kid();
   for (const id of p.npcIds) { const n = store.state.npcs[id]; if (n?.role === 'parent') n.alive = false; }
-  check(career.unmet(CA).some((x) => /parent/.test(x)), 'a child with no parent at home cannot sign up: a parent signs for them');
+  const gp = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'grandparent' && n.alive);
+  if (gp.length) {
+    check(!career.unmet(CA).some((x) => /guardian/.test(x)) && CE.managerOf(p)?.role === 'grandparent', 'with no parent, a grandparent can sign for a child');
+    check(/^your grand/.test(CE.keeperWord(CE.managerOf(p))), 'and is called a grandparent');
+  }
+  for (const n of gp) n.alive = false;
+  check(career.unmet(CA).some((x) => /guardian/.test(x)), 'a child with nobody to look after them cannot sign up');
 }
 
 // ---- A gift comes on faster ----
@@ -98,7 +104,7 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
   p.finance.cash = 0;
   const handed = CE.releaseChildPay(p);
   check(handed === cp.trust + 1000 && p.finance.cash >= handed, 'at 18 the trust and what the parent kept are handed over');
-  check(!!p.flags.childMoneyGone && EVENT_BY_ID[`child_money_${p.flags.childMoneyGone}`], 'money a parent spent leaves a conversation to be had');
+  check(p.flags.childMoneyGone === 'parent' && EVENT_BY_ID.child_money_parent && store.state.npcs[cp.managerId].flags.managesChildPay, 'money a parent spent leaves a conversation to be had, with the one who spent it');
   const parent = store.state.npcs[cp.managerId];
   if (parent.life) parent.life.savings = 50000; else parent.savings = 50000;
   const before = p.finance.cash;

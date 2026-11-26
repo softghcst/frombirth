@@ -1,12 +1,12 @@
 // A child performer's pay. A child cannot sign a contract or hold their own earnings: a parent signs for them and
-// manages the money until they are 18. What happens to it depends on the parent.
+// manages the money until they are 18; with no parent at home, a grandparent or legal guardian does. What happens to it depends on the parent.
 //
 // In the United States the states where most child actors work (California, New York and a few others) require a
 // share of a minor's pay, 15%, to be paid into a blocked trust account in the child's name (a "Coogan account", after
 // Jackie Coogan, whose parents spent his earnings). Nobody can draw on it until the child is 18. Elsewhere there is no
 // such rule here, and what is kept is up to the parent.
 //
-// The parent who manages the money has a way with it, fixed when the first pay comes in:
+// The parent (or, with none at home, the grandparent or guardian) who manages the money has a way with it, fixed when the first pay comes in:
 //   saver      keeps nearly all of it for you
 //   coach      keeps most of it and spends some on coaching and classes: your acting comes on faster
 //   household  spends a good part on the family's own costs
@@ -30,10 +30,23 @@ export const STYLES = {
   spender: { keep: 0.12, label: 'spends most of it' },
 };
 
-/** The parent who signs for a working child and manages the pay: the one at home, the closer one first. */
+/** Who looks after a child, in the order they would sign for one: a parent, else a grandparent, else a legal guardian. */
+const KEEPERS = ['parent', 'grandparent', 'guardian'];
+/** The adult who signs for a working child and manages the pay: a parent at home, else a grandparent or guardian; the closer one first. */
 export function managerOf(p = player()) {
-  const ps = livingNpcs().filter((n) => n.role === 'parent' && !n.flags.abroad);
-  return ps.sort((a, b) => (b.meters?.relationship ?? 50) - (a.meters?.relationship ?? 50))[0] ?? null;
+  for (const role of KEEPERS) {
+    const ps = livingNpcs().filter((n) => n.role === role && !n.flags.abroad && (n.age ?? 40) >= 18);
+    if (ps.length) return ps.sort((a, b) => (b.meters?.relationship ?? 50) - (a.meters?.relationship ?? 50))[0];
+  }
+  return null;
+}
+/** How the player calls the person who manages their pay. */
+export function keeperWord(n) {
+  if (!n) return 'the court';
+  const f = n.gender === 'female';
+  const m = n.gender === 'male';
+  return n.role === 'parent' ? (f ? 'your mother' : m ? 'your father' : 'your parent')
+    : n.role === 'grandparent' ? (f ? 'your grandmother' : m ? 'your grandfather' : 'your grandparent') : 'your guardian';
 }
 
 /** How a parent goes about a child's money: their nature leans it one way or another, without deciding it. */
@@ -77,7 +90,8 @@ export function holdChildPay(net, lines, p = player()) {
   if (cp.managerId !== parent.id) {
     cp.managerId = parent.id;
     cp.style = styleOf(parent);
-    const who = parent.gender === 'female' ? 'Your mother' : parent.gender === 'male' ? 'Your father' : 'Your parent';
+    const who = keeperWord(parent).replace(/^your/, 'Your');
+    parent.flags.managesChildPay = true;
     log(`${who} signs your contracts and manages what you earn until you are 18.${trust ? ' By law, 15% goes into a trust account in your name that nobody can touch until then.' : ''} You get a little pocket money from it.`, 'system', 'neutral');
   }
   const rest = earned - trust - pocket;
@@ -109,13 +123,13 @@ export function releaseChildPay(p = player()) {
   p.finance.cash += handed;
   if (handed) book({ cat: 'giftIn', src: 'childPay', desc: 'Money earned as a child, handed over at 18' });
   const parent = store.state.npcs[cp.managerId];
-  const who = parent ? (parent.gender === 'female' ? 'your mother' : parent.gender === 'male' ? 'your father' : 'your parent') : 'the court';
+  const who = keeperWord(parent);
   const parts = [cp.trust ? `${fmtMoney(cp.trust, cty)} from the trust account nobody could touch` : '', cp.kept ? `${fmtMoney(cp.kept, cty)} that ${who} kept for you` : ''].filter(Boolean);
   log(`You are 18, and the money you earned as a child is yours: ${parts.join(' and ') || 'nothing at all'}.${cp.spent ? ` Of the ${fmtMoney(cp.total, cty)} you earned, ${fmtMoney(cp.spent, cty)} was spent while ${who} managed it.` : ''}`,
     'system', cp.spent > cp.total * 0.5 ? 'bad' : 'good');
   milestone(`Was handed ${fmtMoney(handed, cty)} earned as a child performer.`, 'money');
   // Most of it gone: there is a conversation to be had (data/events/early.js).
-  if (parent?.alive && cp.spent > cp.total * 0.5) p.flags.childMoneyGone = parent.gender === 'male' ? 'father' : 'mother';
+  if (parent?.alive && cp.spent > cp.total * 0.5) p.flags.childMoneyGone = parent.role;
   return handed;
 }
 
