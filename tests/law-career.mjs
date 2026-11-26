@@ -226,7 +226,8 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   const i2 = L().rep.integrity; lp.doDuty('opinion', 'politics');
   check(L().rep.integrity < i2, 'an opinion bent to politics costs integrity');
   lawyer('judiciary');
-  const m = lp.benchMatter();
+  let m = lp.benchMatter();
+  for (let i = 0; i < 20 && m?.benchCriminal; i++) { L().benchWindow = -1; L().bench = []; m = lp.benchMatter(); } // a civil matter, for this check
   check(m && m.bench && m.judgeId === p().id && !L().caseIds.includes(m.id) && lp.rulingOptions(m).length >= 3, `a judge hears a civil or family matter: ${m?.title}`);
   const r = lp.rule(m.id, m.templateId === 'custody' ? 'improper' : 'for');
   check(m.done && L().benchRecord.length === 1 && (m.templateId !== 'custody' || /Wealth is not the test/.test(r.text)), 'the ruling is recorded; custody never goes to the wealthier parent as such');
@@ -322,6 +323,36 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   L().rep.clients = 80; L().rep.reliability = 40;
   const rep = lp.overview().rep;
   check(rep.length === 4 && rep.find((r) => r.id === 'trust').v === 60, `reputation is shown as four bars (${rep.map((r) => r.name).join(', ')})`);
+}
+
+// A judge presides over criminal trials: the rulings, the instruction on reasonable doubt, the verdict and sentence.
+{
+  const play = (answersFor) => {
+    lawyer('judiciary');
+    store.state.year = 2020;
+    let c = null;
+    for (let i = 0; i < 40 && !c; i++) { L().benchWindow = -1; L().bench = []; const x = lp.benchMatter(); if (x?.benchCriminal) c = x; else if (x) x.done = true; }
+    const steps = lp.trialSteps(c);
+    return { c, steps, r: lp.presideTrial(c.id, answersFor(steps)) };
+  };
+  const good = play((steps) => ({ ...Object.fromEntries(steps.map((s) => [s.id, s.right])), sentence: 'within' }));
+  check(good.c && good.steps.some((s) => s.id === 'instruct'), `a criminal trial comes before the judge (${good.c?.title})`);
+  check(good.c.done && good.r.ok && L().benchRecord.at(-1).criminal && L().benchRecord.at(-1).right, `rulings that follow the law are upheld (${good.r.text})`);
+  const jc = k.J().cases[good.c.justiceCaseId];
+  check(!jc || jc.verdict, 'the verdict is on the justice record');
+  // A wrong instruction on reasonable doubt: a conviction never survives it.
+  let bad = null;
+  for (let i = 0; i < 12 && !bad; i++) { const x = play((steps) => ({ ...Object.fromEntries(steps.map((s) => [s.id, s.right])), instruct: 'wrong', sentence: 'within' })); if (x.r.guilty) bad = x; }
+  check(bad && bad.r.reversed && /reversed/.test(bad.r.text), 'a jury told the wrong standard of proof: the conviction is reversed');
+  // A search without a warrant: the ruling depends on the law of the time (Mapp v. Ohio, 1961).
+  lawyer('judiciary');
+  let ds = null;
+  for (let i = 0; i < 80 && !ds; i++) { L().benchWindow = -1; L().bench = []; const x = lp.benchMatter(); if (x?.templateId === 'drug_supply') ds = x; else if (x) x.done = true; }
+  store.state.year = 2020;
+  check(ds && lp.trialSteps(ds).find((s) => s.id === 'motion').right === 'grant', 'in 2020, evidence from an unlawful search is excluded');
+  store.state.year = 1955;
+  check(lp.trialSteps(ds).find((s) => s.id === 'motion').right === 'deny', 'in a 1955 state court, it is not');
+  store.state.year = 2026;
 }
 
 finish('A legal career holds together.');

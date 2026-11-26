@@ -956,6 +956,80 @@ export function doDuty(id, choice, p = player()) {
 // ---------- The bench: civil and family matters ----------
 
 const BENCH_MATTERS = ['contract_dispute', 'injury', 'boundary', 'custody', 'divorce', 'dismissal'];
+const BENCH_CRIMINAL = ['theft', 'assault', 'burglary', 'fraud', 'drug_supply'];
+
+/**
+ * A criminal trial, from the bench: the rulings the judge must make, in order. A motion to suppress (where the
+ * defense has one), an objection in the middle of the trial, the instruction on reasonable doubt, and (after a guilty
+ * verdict) the sentence. Each has a right answer under the law of the time and place.
+ */
+export function trialSteps(c) {
+  if (!c?.benchCriminal) return [];
+  const T = cases.template(c);
+  const steps = [];
+  const sup = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced');
+  if (sup) {
+    const rule = realLawMod.exclusion(sup.basis, c.countryId);
+    steps.push({ id: 'motion', title: 'A motion to suppress', text: `The defense asks you to exclude ${sup.label.replace(/^(A|An|The) /, (m) => m.toLowerCase())}, saying it was ${sup.basis === 'unlawful_search' ? 'found in a search without a warrant or consent' : 'taken by pressure'}.`,
+      options: [['Grant it: exclude the evidence', 'grant'], ['Deny it: the jury may hear it', 'deny']], right: (rule?.allowed ?? true) ? 'grant' : 'deny', law: rule?.law?.name ?? null });
+  }
+  if (T.objection) steps.push({ id: 'objection', title: 'An objection', text: `${T.objection.text.replace(/\{(\w+)\}/g, (m, k) => c.vars[k] ?? m)} Defense counsel is on their feet: "Objection!"`,
+    options: [['Sustained', 'sustain'], ['Overruled', 'overrule']], right: T.objection.valid === 'none' ? 'overrule' : 'sustain' });
+  steps.push({ id: 'instruct', title: 'Instructing the jury', text: 'Before the jury goes out, you explain what they must decide.',
+    options: [['Guilt must be proved beyond a reasonable doubt; the defendant need prove nothing', 'correct'], ['If it is more likely than not, they may convict', 'wrong'], ['Tell them to go with their gut', 'vague']], right: 'correct' });
+  return steps;
+}
+/** The sentence after a guilty verdict: inside the range the law sets, weighed on the facts. */
+export function sentenceOptions(c) {
+  return [['A sentence in the range, weighing the facts and the defendant\'s record', 'within'], ['The maximum, to send a message', 'harsh'], ['Far below the range, out of sympathy', 'lenient']];
+}
+/**
+ * Presides over the trial: the judge's rulings, then the jury's verdict on the evidence left, then the sentence.
+ * @param {{motion?:string, objection?:string, instruct:string, sentence?:string}} answers
+ */
+export function presideTrial(caseId, answers, p = player()) {
+  const c = cases.caseById(caseId);
+  if (!c?.benchCriminal || c.done) return result(false, 'There is no trial before you.', 'neutral');
+  const L = lawOf(p);
+  const steps = trialSteps(c);
+  const lines = [];
+  let wrong = 0;
+  for (const st of steps) {
+    const a = answers[st.id];
+    const ok = a === st.right;
+    if (!ok) wrong++;
+    if (st.id === 'motion') {
+      const ev = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced');
+      if (a === 'grant') ev.status = 'excluded';
+      lines.push(ok ? `Your ruling on the motion follows the law${st.law ? ` (${st.law})` : ''}.` : `Your ruling on the motion is open to challenge${st.law ? ` under ${st.law}` : ''}.`);
+    }
+    if (st.id === 'objection') lines.push(ok ? 'Your ruling on the objection was right.' : 'You got the objection wrong; it is in the record.');
+    if (st.id === 'instruct') lines.push(ok ? 'Your instruction on reasonable doubt was correct.' : 'Your instruction misstated the standard of proof. An appeal court will not let that stand.');
+  }
+  // The jury decides on what is left of the evidence.
+  const share = cases.strength({ ...c, role: 'prosecution' }).share;
+  const guilty = share + (rng.next() - 0.5) * 0.2 + (answers.instruct === 'wrong' ? 0.12 : 0) > 0.55;
+  const name = `${store.state.npcs[c.parties.defendantId]?.firstName ?? 'The defendant'}`;
+  let reversed = answers.instruct === 'wrong' && guilty; // a wrong standard of proof undoes a conviction (Sullivan v. Louisiana)
+  if (guilty) {
+    const s = answers.sentence ?? 'within';
+    if (s !== 'within') wrong++;
+    if (s === 'harsh') { L.rep.integrity = clamp(L.rep.integrity - 3); if (rng.chance(0.5)) reversed = true; }
+    lines.push(`The jury found ${name} guilty. ${{ within: 'You sentenced within the range, on the facts.', harsh: 'You gave the maximum. The defense will appeal the sentence.', lenient: 'You went far below the range. The prosecution and the papers noticed.' }[s]}`);
+  } else lines.push(`The jury found ${name} not guilty.`);
+  if (!reversed && wrong && rng.chance(0.25 * wrong)) reversed = true;
+  if (reversed) lines.push('On appeal, the higher court reversed: a new trial, before another judge.');
+  const jc = k.J().cases[c.justiceCaseId];
+  if (jc) k.verdictFrom(jc, guilty && !reversed, 'jury verdict'); // a reversed conviction goes back for a new trial, elsewhere
+  const right = wrong === 0;
+  c.done = true;
+  c.outcome = { kind: guilty ? 'convicted' : 'acquitted', text: lines.at(-1), m: nowM(), year: store.state.year, right, reversed };
+  (L.benchRecord ??= []).push({ caseId: c.id, title: c.title, ruling: guilty ? 'guilty' : 'not guilty', right, reversed, year: store.state.year, criminal: true });
+  if (right) { adjustPerformance(3); L.rep.integrity = clamp(L.rep.integrity + 1); }
+  if (reversed) adjustPerformance(-4);
+  gain(p, { procedure: right ? 2 : 1, ethics: 1 });
+  return result(right && !reversed, lines.join(' '), right && !reversed ? 'good' : reversed ? 'bad' : 'neutral', { guilty, reversed });
+}
 /** A civil or family matter for a judge to decide: once a half-year. Real parties; the evidence decides. */
 export function benchMatter(p = player()) {
   if (trackOf(p) !== 'judiciary') return null;
@@ -965,7 +1039,16 @@ export function benchMatter(p = player()) {
   if (open) return open;
   if ((L.benchWindow ?? -1) === w) return null;
   L.benchWindow = w;
-  const c = cases.createCase(rng.pick(BENCH_MATTERS), { track: 'judiciary' });
+  // Criminal trials come before the judge too: a jury decides guilt; the judge rules, instructs and sentences.
+  const criminal = rng.chance(0.4);
+  const c = cases.createCase(rng.pick(criminal ? BENCH_CRIMINAL : BENCH_MATTERS), { track: 'judiciary', ...(criminal ? { role: 'prosecution' } : {}) });
+  if (criminal) {
+    c.benchCriminal = true;
+    // The prosecution is an office's, not the judge's; the judge on the justice record is the player.
+    const jc = k.J().cases[c.justiceCaseId];
+    if (jc) { jc.prosecutorId = k.pick(k.bench(c.countryId).prosecutors).id; jc.judgeId = p.id; }
+    c.otherCounselId = k.pick(k.bench(c.countryId).defense.good).id;
+  }
   L.caseIds = L.caseIds.filter((x) => x !== c.id); // a judge's matter is not a client's case
   c.lawyerId = null; c.judgeId = p.id; c.bench = true; c.role = 'judge';
   for (const e of c.evidence) e.reviewed = true;

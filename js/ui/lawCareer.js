@@ -180,7 +180,7 @@ function office() {
   }
   const duties = lp.leaderDuties(p);
   const lead = duties.length ? card('Your duties this half-year', duties.map((d) => row(`data-duty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')) : '';
-  const bench = t === 'judiciary' ? card('The bench', `<p class="muted">Civil and family matters come before you as well as criminal trials. Rule on the evidence; know when to step aside.</p>${btn('Hear a Civil or Family Matter', 'data-bench', 'primary')}${(p.law?.benchRecord ?? []).slice(-5).reverse().map((r) => kv(String(r.year), `${r.title}: ${r.reversed ? 'reversed on appeal' : r.right ? 'upheld' : 'stood'}`)).join('')}`) : '';
+  const bench = t === 'judiciary' ? card('The bench', `<p class="muted">Criminal trials, civil disputes and family matters all come before you. Rule on the evidence; know when to step aside.</p>${btn('Hear the Next Matter', 'data-bench', 'primary')}${(p.law?.benchRecord ?? []).slice(-5).reverse().map((r) => kv(String(r.year), `${r.title}: ${r.reversed ? 'reversed on appeal' : r.right ? 'upheld' : 'stood'}`)).join('')}`) : '';
   const sup = lp.supervisor(p);
   const v = lp.officeView(p);
   return lead + bench + card(p.career.title, `${kv('Employer', v.employer?.name ?? employer(p.career.employerId)?.name ?? 'Your office')}${v.employer?.founded ? kv('Founded', String(v.employer.founded)) : ''}${kv('Reports to', `${sup.firstName} ${sup.lastName}, ${sup.flags.title.toLowerCase()}`)}
@@ -421,6 +421,20 @@ export function openLawCareer(api, start = {}) {
     if (t.hasAttribute('data-bench')) {
       const c = lp.benchMatter();
       if (!c) { await messageModal({ body: 'Your civil list is done for this half-year.' }); return changed(); }
+      if (c.benchCriminal) {
+        // A criminal trial: the judge's rulings in order, then the verdict, then (if guilty) the sentence.
+        const answers = {};
+        for (const st of lp.trialSteps(c)) {
+          const a = await pickModal({ title: st.title, body: st.text, options: st.options.map(([l, v]) => ({ value: v, label: l })) });
+          if (a == null) return changed();
+          answers[st.id] = a;
+        }
+        const s = await pickModal({ title: 'If the jury convicts: the sentence', body: `The law sets a range for ${(lc.template(c).offense ?? 'this offense').replace(/_/g, ' ')}. What will you impose if the verdict is guilty?`, options: lp.sentenceOptions(c).map(([l, v]) => ({ value: v, label: l })) });
+        if (s == null) return changed();
+        answers.sentence = s;
+        await say(lp.presideTrial(c.id, answers));
+        return changed();
+      }
       const known = [c.clientId, c.parties.otherId].map((id) => store.state.npcs[id]).find((n) => n && (player().npcIds.includes(n.id) || n.flags.formerClientOf === player().id));
       const donor = c.donorConflict ? store.state.npcs[c.donorConflict.id] : null;
       const tie = donor ? `\n\n${donor.firstName} ${donor.lastName}'s firm gave ${fmtMoney(c.donorConflict.amount, country())} to your election campaign.` : known ? `\n\nYou know ${known.firstName} ${known.lastName}.` : '';
