@@ -81,7 +81,8 @@ export function charge(ref, base, opts = {}) {
   const p = player();
   const h = p.health;
   if (h.ledger.some((x) => x.ref === ref)) return 0;
-  const share = base <= 0 ? 0 : Math.round(careCost(base) * (opts.fee ?? 1));
+  // `covered`: a service the cover pays for in full (contraception without cost sharing, engine/health/contraception.js).
+  const share = base <= 0 || opts.covered ? 0 : Math.round(careCost(base) * (opts.fee ?? 1));
   // Every bill is a claim: what was billed, what the insurer paid, what the patient paid.
   const amount = base <= 0 ? 0 : claim(ref, base, share, opts);
   h.ledger.push({ ref, wk: now(), amount, what: opts.what ?? ref });

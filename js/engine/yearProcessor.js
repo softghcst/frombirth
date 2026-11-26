@@ -61,6 +61,7 @@ import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health/ailments.js';
 import { finishCareYear, healthYear } from './health/index.js';
+import { closeYear as closeContraceptionYear } from './health/contraception.js';
 import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';
 import { snapshot } from './yearSummary.js';
@@ -212,6 +213,8 @@ export function advanceYear() {
   const planLines = booked('auto', 'Your plans for the year', () => livePlans(p));
   // The care calendar runs out the weeks left in this year before it turns.
   booked('health', 'Health care through the year', () => finishCareYear(p));
+  // Contraception: the months left in the year, then the year's pregnancy risk from what was in place each month.
+  booked('health', 'Birth control', () => closeContraceptionYear(p));
   // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
   if (p.travel) closeYear();
   finishYear(); // the year just lived: traditions nobody organized, invitations nobody answered (engine/moments.js)
