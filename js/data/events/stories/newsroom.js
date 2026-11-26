@@ -53,6 +53,30 @@ export default [
     ['Ask {first} out', 'You ask. It is up to them.', 'spark:ask'],
     ['Keep it a friendship', 'Some colleagues are friends for life. That is plenty.', 'spark:friends', 'good'],
   ]),
+  scene('jn_first_assignment', '{editor} drops a folder on your desk. "Your first one. Ring people, read things, write it straight. Ask if you get stuck."', [
+    ['Ask how they would start', '{editor} talks you through it for ten minutes, which is ten more than they had.', 'first:ask', 'good'],
+    ['Work it out yourself', 'You make mistakes, and learn from every one.', 'first:alone'],
+  ]),
+  scene('jn_interview_wrong', 'Someone you asked for an interview has turned you down, sharply. A colleague suggests turning up at their door anyway.', [
+    ['Respect the no', 'There are other ways to report a story.', 'refused:respect', 'good'],
+    ['Turn up at their door', 'It does not go well, and people hear about it.', 'refused:press', 'bad'],
+  ]),
+  scene('jn_tip_arrives', 'An envelope with no name on it arrives at the newsroom, addressed to you. Inside, a few pages and a phone number.', [
+    ['Look into it', 'You start making calls. It may be nothing.', 'tip:take'],
+    ['Leave it', 'You have enough on.', 'tip:pass'],
+  ]),
+  scene('jn_award_night', 'Black tie, a long dinner, and your name read out: the {prize}.', [
+    ['Thank your editor and your sources', 'The newsroom table cheers loudest.', 'award:thank', 'good'],
+    ['Keep it short and go back to work', 'The trophy goes on the shelf above your desk.', 'award:quiet', 'good'],
+  ]),
+  scene('jn_deadline', '"{title}" is due, and it is not ready.', [
+    ['Work through the night', 'It gets done. You are wrecked.', 'deadline:push'],
+    ['Ask your editor for more time', 'Better late than wrong.', 'deadline:ask', 'good'],
+  ]),
+  scene('jn_viral', 'A clip from {show} is everywhere online: the guest\'s answer to one plain question.', [
+    ['Enjoy it', 'Your phone does not stop for a week.', 'viral:enjoy', 'good'],
+    ['Remind people of the full interview', 'The whole thing says more than the clip.', 'viral:back', 'good'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],

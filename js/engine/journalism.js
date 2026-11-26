@@ -408,6 +408,7 @@ export function assignYear(p = player()) {
   const j = J(p);
   if (!working(p) || j.assigned === year()) return [];
   j.assigned = year();
+  if (j.leave === year() && isReporter(p)) { p.stats.mood = clamp(p.stats.mood + 10); return []; }
   // On staff, stories come from the newsroom; a freelancer finds their own and sells them; an owner reports for their own.
   const o = isReporter(p) ? outlet(j.outletId) : ownedOutlet(p);
   const made = [];
@@ -961,6 +962,12 @@ function sceneOptions(p) {
   // A colleague and the reporter: both adults, peers (never the editor, who supervises them), free to say no.
   const single = !p.npcIds.some((id) => ['spouse', 'partner'].includes(npc(id)?.role));
   add('jn_colleague_spark', { words: { first: senior?.firstName ?? '' }, npcId: senior?.id }, single && !!senior?.alive && p.age >= 18 && senior.age >= 18 && Math.abs(senior.age - p.age) <= 12 && senior.meters.relationship >= 60);
+  add('jn_first_assignment', { words: { editor: ed?.firstName ?? 'Your editor' } }, year() - (j.since ?? year()) <= 1 && pubs.length === 0);
+  add('jn_interview_wrong', { words: {} }, myStories(p).some((s) => s.interviews.some((i) => !i.accepted)));
+  add('jn_tip_arrives', { words: {} }, (p.career.level ?? 0) >= 1 && pubs.length >= 2);
+  add('jn_award_night', { words: { prize: j.awards.at(-1)?.name ?? '' } }, j.awards.some((a) => year() - a.year <= 1));
+  add('jn_deadline', { words: { title: myStories(p).find((s) => open(s, p) && s.deadline && s.deadline - now() <= 3)?.title ?? '' } }, myStories(p).some((s) => open(s, p) && s.deadline && s.deadline - now() <= 3));
+  add('jn_viral', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && (j.guests ?? []).some((g) => !g.declined && g.approach === 'fair' && g.delivery >= 60));
   add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
   return out;
 }
@@ -1010,6 +1017,18 @@ export function journalismChoice(value) {
     case 'retire:yes': return leaveSpecial().text;
     case 'spark:ask': { const n = npc(j.sceneCast?.npcId); return n ? askOut(n.id).text : ''; }
     case 'spark:friends': rel(senior, 6); return '';
+    case 'first:ask': rel(ed, 5); grow('reporting', 2); return '';
+    case 'first:alone': grow('reporting', 1); return '';
+    case 'refused:respect': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'refused:press': j.rep.trust = clamp(j.rep.trust - 4); return '';
+    case 'tip:take': { const r = seeded(`${p.id}/tip/${year()}`); const s = investigativeStory(p, o, r, { countryId: p.countryId, city: p.city }); return s ? `"${s.title}" is in your assignments. It may not stand up; most tips do not.` : ''; }
+    case 'tip:pass': return '';
+    case 'award:thank': rel(ed, 6); p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'award:quiet': p.stats.mood = clamp(p.stats.mood + 4); return '';
+    case 'deadline:push': grow('writing', 1); p.stats.mood = clamp(p.stats.mood - 3); return '';
+    case 'deadline:ask': rel(ed, 2); { const s = myStories(p).find((x) => open(x, p) && x.deadline && x.deadline - now() <= 3); if (s) s.deadline += 3; } return 'Your editor gives you three more months.';
+    case 'viral:enjoy': j.rep.recognition = clamp(j.rep.recognition + 4); return '';
+    case 'viral:back': j.rep.trust = clamp(j.rep.trust + 2); return '';
     case 'retire:no': return '';
     default: return '';
   }
@@ -1348,11 +1367,159 @@ export function familyJournalism() {
   const p = player();
   const me = by.get(p.id);
   if (me && p.journalism) { me.history = p.journalism.history; me.awards = p.journalism.awards; }
-  for (const [id, x] of by) if (S().legacy?.[id]) Object.assign(x, S().legacy[id]);
+  for (const [id, x] of Object.entries(S().legacy ?? {})) by.has(id) ? Object.assign(by.get(id), x) : x.history.length && by.set(id, { id, pubs: [], ...x });
   return [...by.values()].map((x) => ({ ...x, pubs: x.pubs.sort((a, b) => a.year - b.year) }));
 }
 /** Keeps a journalist's public record with the world, so it outlives them (run when they die or the life passes on). */
 export function keepLegacy(p = player()) {
   if (!p.journalism) return;
   (S().legacy ??= {})[p.id] = { name: `${p.firstName} ${p.lastName}`, history: [...p.journalism.history], awards: [...p.journalism.awards] };
+}
+
+// ---------- When the life passes on ----------
+
+/**
+ * Carries the world's newsrooms into the heir's life: the outlets and their people, every publication and the family's
+ * record of its journalists. The reporter's unfinished stories end with them. A publication they owned passes to the
+ * heir (a family newspaper stays in the family); the heir owns it without having to run it themselves.
+ */
+export function handOverNewsroom(old, next, heir) {
+  const N = old.newsroom;
+  if (!N) return;
+  const op = old.player;
+  if (op.journalism) (N.legacy ??= {})[op.id] = { name: `${op.firstName} ${op.lastName}`, history: [...op.journalism.history], awards: [...op.journalism.awards] };
+  for (const s of Object.values(N.stories)) if (s.reporterId === op.id && !['published', 'spiked', 'expired'].includes(s.status)) s.status = 'spiked';
+  // The newsrooms' people are the same people.
+  for (const o of Object.values(N.outlets)) for (const id of [o.editorId, o.seniorId, ...(o.staff ?? []).map((x) => x.npcId)]) if (id && old.npcs[id] && !next.npcs[id]) next.npcs[id] = old.npcs[id];
+  next.newsroom = N;
+  const owned = op.journalism?.owned && N.outlets[op.journalism.owned];
+  if (owned && !owned.closed) {
+    owned.ownerId = heir.id;
+    owned.history.push({ year: old.year, text: `Passed from ${op.firstName} ${op.lastName} to ${heir.firstName} ${heir.lastName}.` });
+    J(heir).owned = owned.id;
+    J(heir).history.push({ year: old.year, text: `Inherited ${owned.name}.` });
+  }
+}
+
+// ---------- The editor's desk ----------
+//
+// An editor (the career's fourth step and above) reads their reporters' work. Each year a few drafts by the
+// newsroom's real reporters land on the desk, each with what its notes support. The editor approves, sends back or
+// spikes; what they let through that was wrong comes back on the newsroom, and on them.
+
+export const isEditor = (p = player()) => isReporter(p) && (p.career.level ?? 0) >= 3;
+const DESK_CLAIMS = [['A council vote is due next month', 'verified'], ['The plan will cost twice what was promised', 'single'], ['Residents are split on it', 'supported'],
+  ['The contractor has a record of delays', 'disputed'], ['Two councillors have ties to the developer', 'single'], ['Work starts in the spring', 'verified']];
+/** This year's drafts on the editor's desk, made once a year from the newsroom's reporters. */
+export function desk(p = player()) {
+  const j = J(p);
+  if (!isEditor(p)) return [];
+  j.desk ??= {};
+  if (!j.desk[year()]) {
+    const o = outlet(j.outletId);
+    const reporters = [o.seniorId, ...(o.staff ?? []).map((x) => x.npcId)].filter((id) => npc(id)?.alive);
+    if (!reporters.length) { const n = makeNpc({ role: 'colleague', countryId: o.countryId, age: 29 }); n.occupation = 'Reporter'; n.flags.title = `A reporter at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Reporter' }; store.state.npcs[n.id] = n; (o.staff ??= []).push({ npcId: n.id, role: 'reporter', since: year() }); reporters.push(n.id); }
+    const r = seeded(`${p.id}/desk/${year()}`);
+    j.desk[year()] = Array.from({ length: 3 }, (_, i) => {
+      const who = reporters[i % reporters.length];
+      const picks = [...DESK_CLAIMS].sort(() => r.next() - 0.5).slice(0, 3).map(([text, status]) => ({ text, status, truth: status === 'verified' || status === 'supported' ? true : r.chance(0.45) }));
+      return { id: `desk_${year()}_${i}`, reporterId: who, title: `${r.pick(['Questions over', 'The cost of', 'Inside'])} ${r.pick(['the bypass plan', 'the new library', 'the harbor deal', 'the school merger'])}`, claims: picks, decision: null };
+    });
+  }
+  return j.desk[year()];
+}
+/** The editor's call on a draft: approve, send back, or spike. */
+export function deskDecide(id, decision) {
+  const p = player();
+  const d = desk(p).find((x) => x.id === id);
+  if (!d || d.decision) return result(false, 'That draft is not waiting.', 'neutral');
+  if (!['approve', 'back', 'spike'].includes(decision)) return result(false, 'Approve, send back, or spike.', 'neutral');
+  const j = J(p);
+  j.rep.leadership ??= 50;
+  d.decision = decision;
+  const n = npc(d.reporterId);
+  const weak = d.claims.filter((c) => ['single', 'disputed'].includes(c.status));
+  const wrong = weak.filter((c) => !c.truth);
+  if (decision === 'approve') {
+    if (wrong.length) { d.flaw = true; j.rep.leadership = clamp(j.rep.leadership - 6); j.rep.trust = clamp(j.rep.trust - 3); if (n) n.meters.relationship = clamp(n.meters.relationship + 4); return result(false, `It runs. Later, "${wrong[0].text}" turns out not to be so: it rested on ${wrong[0].status === 'single' ? 'one source' : 'a disputed account'}, and it was your call.`, 'bad'); }
+    j.rep.leadership = clamp(j.rep.leadership + (weak.length ? 1 : 3));
+    if (n) n.meters.relationship = clamp(n.meters.relationship + 5);
+    return result(true, `It runs, and it holds up.${weak.length ? ' You were lucky with the thin parts.' : ''}`);
+  }
+  if (decision === 'back') {
+    if (n) n.meters.relationship = clamp(n.meters.relationship - (weak.length ? 1 : 5));
+    j.rep.leadership = clamp(j.rep.leadership + (weak.length ? 4 : -2));
+    return result(true, weak.length ? `${n?.firstName ?? 'The reporter'} goes back to firm up the thin parts. The story is better for it.` : `${n?.firstName ?? 'The reporter'} cannot see what is wrong with it, and neither, on reflection, can you.`, weak.length ? 'good' : 'neutral');
+  }
+  if (n) n.meters.relationship = clamp(n.meters.relationship - 8);
+  j.rep.leadership = clamp(j.rep.leadership + (wrong.length >= 2 ? 3 : -3));
+  return result(true, wrong.length >= 2 ? 'You spike it. It would not have stood up.' : `You spike it. ${n?.firstName ?? 'The reporter'} is not happy: most of it was sound.`, 'neutral');
+}
+
+// ---------- A documentary ----------
+//
+// A published investigation that stood up can become a documentary: months of further reporting, the people who
+// would go on camera, production, and a legal read before release. Released once.
+
+export function documentaryWhy(pubId, p = player()) {
+  const x = S().pubs[pubId];
+  if (!x || x.reporterId !== p.id) return 'Not your story.';
+  if (x.beat !== 'investigative') return 'Documentaries grow from investigations.';
+  if (x.errors.length) return 'Not from a story that got something wrong.';
+  if (!x.claims.some((c) => c.asFact)) return 'The investigation has to have stood up on the record.';
+  if (!isReporter(p) && !ownedOutlet(p)) return 'You need a newsroom or a publication of your own to make it.';
+  if (Object.values(S().docs ?? {}).some((d) => d.pubId === pubId)) return 'There is a documentary of it already.';
+  return '';
+}
+export function startDocumentary(pubId) {
+  const p = player();
+  const why = documentaryWhy(pubId, p);
+  if (why) return result(false, why, 'neutral');
+  const x = S().pubs[pubId];
+  S().docs ??= {};
+  const id = nextId('doc');
+  S().docs[id] = { id, pubId, reporterId: p.id, title: `${x.headline}: the documentary`, stage: 'research', progress: 0, legal: false, started: now(), released: null };
+  return result(true, 'You start on the documentary. Months of work: more reporting, the people who will go on camera, the edit, the lawyers.', 'neutral');
+}
+export const myDocumentaries = (p = player()) => Object.values(S().docs ?? {}).filter((d) => d.reporterId === p.id);
+const DOC_STAGES = [['research', 3], ['interviews', 2], ['production', 3]];
+/** A season of work on it (2 actions): research, interviews, the edit. */
+export function workDocumentary(id) {
+  const p = player();
+  const d = S().docs?.[id];
+  if (!d || d.reporterId !== p.id || d.released) return result(false, 'That is not in progress.', 'neutral');
+  const i = DOC_STAGES.findIndex(([k]) => k === d.stage);
+  if (i < 0) return result(false, 'It is ready for the lawyers.', 'neutral');
+  if (!spend(2, p)) return result(false, 'You are out of time this year.', 'neutral');
+  d.progress += 1;
+  grow('reporting', 2); grow('interviewing', 1);
+  if (d.progress >= DOC_STAGES[i][1]) { d.stage = DOC_STAGES[i + 1]?.[0] ?? 'legal'; d.progress = 0; }
+  return result(true, { research: 'More records, more context.', interviews: 'People agree to go on camera; one changes their mind.', production: 'The edit: three hours of footage becomes fifty minutes.' }[DOC_STAGES[i][0]] + (d.stage === 'legal' ? ' It is ready for the lawyers.' : ''), 'neutral');
+}
+export function releaseDocumentary(id) {
+  const p = player();
+  const d = S().docs?.[id];
+  if (!d || d.reporterId !== p.id || d.released) return result(false, 'That is not in progress.', 'neutral');
+  if (d.stage !== 'legal') return result(false, 'It is not finished.', 'neutral');
+  if (!d.legal) { if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral'); d.legal = true; return result(true, 'The lawyers watch it twice, and ask for two lines to be attributed. Done. It can be released.', 'neutral'); }
+  d.released = year();
+  const j = J(p);
+  j.rep.recognition = clamp(j.rep.recognition + 8);
+  j.history.push({ year: year(), text: `Released the documentary "${d.title}".` });
+  milestone(`Released a documentary: "${d.title}".`, 'career');
+  return result(true, `"${d.title}" is released. People who never read the story watch it.`);
+}
+
+// ---------- Leave ----------
+
+/** A year away from the newsroom: no assignments, rest, and the job kept. Not every great reporter burns out. */
+export function takeLeave() {
+  const p = player();
+  const j = J(p);
+  if (!isReporter(p)) return result(false, 'Leave is for staff reporters.', 'neutral');
+  if (j.leave === year() + 1) return result(false, 'Your leave is booked for next year.', 'neutral');
+  if ((j.lastLeave ?? -99) > year() - 5) return result(false, 'You had leave recently.', 'neutral');
+  j.leave = year() + 1;
+  j.lastLeave = year() + 1;
+  return result(true, 'Your editor signs off a year\'s leave from next year. The desk will be there when you get back.', 'neutral');
 }
