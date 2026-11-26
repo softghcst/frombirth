@@ -9,7 +9,7 @@ import * as love from '../engine/romance.js';
 import * as travel from '../engine/travel.js';
 import { COUNTRIES } from '../data/countries.js';
 import { MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
-import { venueScene, cakeArt, bandArt, postcardFront, postcardArt } from './weddingScenery.js';
+import { venueScene, cakeArt, bandArt, postcardFront, postcardArt, POSTCARD_PHOTOS } from './weddingScenery.js';
 import { player, country, store } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
@@ -110,7 +110,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
       // Who is talking: the planner, the partner, or no one (what happens, told).
       const speaker = who === 'partner' ? { face: themFace(95), name: npc.firstName } : who === 'narrator' ? null : { face: plannerFace, name: planner };
       root.innerHTML = `
-        <div class="sv-scene">${stage({ kiss })}
+        <div class="sv-scene${body ? '' : ' wp-short'}">${stage({ kiss })}
           <div class="sv-talk">
             ${speaker ? `<div class="sv-speaker"><div class="sv-stylist">${speaker.face}</div>
               <div class="sv-bubble" aria-live="polite"><strong>${esc(speaker.name)}</strong><p>${esc(line)}</p></div></div>`
@@ -295,7 +295,12 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     /** The day: down the aisle, the vows, the kiss, confetti. */
     function aisle() {
       const music = { playlist: 'Your song', dj: 'The DJ fades the music down', band: 'The band', quartet: 'The string quartet' }[chosen('music')];
-      scene({ who: 'narrator', line: `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`, bill: false,
+      // The bride walks down the aisle; when both or neither are women, either of them might.
+      const women = [p.gender === 'female', npc.gender === 'female'];
+      const youWalk = women[0] !== women[1] ? women[0] : Math.random() < 0.5;
+      scene({ who: 'narrator', bill: false, line: youWalk
+        ? `${music} starts to play, and everyone stands. It's your turn: down the aisle, to ${npc.firstName}, waiting at the end of it.`
+        : `${music} starts to play, and there's ${npc.firstName}, coming down the aisle. Everyone stands.`,
         replies: [{ label: 'Take their hand', primary: true, go: vows }] });
     }
     function vows() {
@@ -475,7 +480,11 @@ export async function honeymoonPostcard(api, trip) {
   const geo = await import('../engine/geo.js');
   const spouse = (trip.travelers ?? []).map((x) => store.state.npcs[x.id]).find((n) => n?.role === 'spouse');
   const dest = trip.destination ?? trip.origin;
-  const where = trip.type === 'cruise' || trip.mode === 'cruise_ship' ? 'the Sea' : dest.city ?? geo.placeName(dest.countryId, null, store.state.year);
+  // A painted card shows the country's best-known sight (a single place for the whole country), so it carries the
+  // country's name; a drawn one, the city's.
+  const cruise = trip.type === 'cruise' || trip.mode === 'cruise_ship';
+  const painted = !cruise && POSTCARD_PHOTOS.has(dest.countryId);
+  const where = cruise ? 'the Sea' : painted ? COUNTRIES[dest.countryId].name : dest.city ?? geo.placeName(dest.countryId, null, store.state.year);
   const at = geo.coords(dest.countryId, dest.city);
   const art = postcardArt({ countryId: dest.countryId, cruise: trip.mode === 'cruise_ship', lat: at?.lat ?? 40, coastal: geo.coastal(dest.countryId), alpine: ['ch', 'at', 'np', 'bt', 'li', 'ad'].includes(dest.countryId) });
   const hex = love.WEDDING_PLAN.theme.find((t) => t.id === spouse?.flags?.wedding?.theme)?.hex ?? '#F6B8C8';

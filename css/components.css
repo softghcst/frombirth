@@ -1395,6 +1395,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-kiss .wp-person:last-child { transform: translateX(-7%) rotate(-5deg); }
 .wp-kiss-heart { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); font-size: 2.4rem; color: #E2557A;
   text-shadow: 0 2px 0 #23140f; animation: sv-pop .5s var(--ease) both, wp-beat 1s ease-in-out .5s infinite; }
+/* A moment with only a line and a reply or two (the aisle, the vows, the kiss): the scene grows to fill the screen, and the words sit under it. */
+.wp-short .sv-stage { flex: 1 1 auto; height: auto; min-height: min(42vh, 330px); }
+.wp-short .sv-talk { flex: 0 0 auto; }
 .wp-steps { display: flex; gap: 6px; justify-content: center; margin: 0 0 8px; }
 .wp-steps i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .wp-steps i.done { background: var(--accent); }
