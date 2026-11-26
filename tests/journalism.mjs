@@ -165,10 +165,10 @@ function report(s) {
     hireMe(p);
     const y0 = store.state.year;
     for (let i = 0; i < 24 && store.state.year < y0 + 2; i++) { advanceTurn(); store.state.pendingEvents = []; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; }
-    return { year: store.state.year, stories: jn.myStories(p).length, assigned: jn.J().assigned, left: jn.actionsLeft() };
+    return { years: store.state.year - y0, current: jn.J().assigned === store.state.year, stories: jn.myStories(p).length, left: jn.actionsLeft() };
   };
   const a = run(3); const b = run(6); const c = run(12);
-  check(a.year === b.year && b.year === c.year && a.assigned === c.assigned, `the same year and assignments with 3-, 6- and 12-month turns (${JSON.stringify([a, b, c])})`);
+  check(a.years === 2 && b.years === 2 && c.years === 2 && a.current && b.current && c.current, `two years go by the same way with 3-, 6- and 12-month turns (${JSON.stringify([a, b, c])})`);
   check(a.stories === b.stories && b.stories === c.stories, `the same number of assignments (${a.stories}, ${b.stories}, ${c.stories})`);
   const p = life(); hireMe(p);
   const s = jn.myStories(p)[0];
