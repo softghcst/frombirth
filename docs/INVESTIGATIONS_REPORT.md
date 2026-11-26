@@ -24,7 +24,7 @@ says what was built, in which commit, how it was tested, and what is still missi
 | Forensic psychology | Done | `forensicPsych.js` | Consultations, parole risk assessments, care for officers | `8e21811c` |
 | Police outside the US | Done | `js/data/investigations.js`, `agencies.js`, `careers.js` | The UK, Canada, Australia, France and Japan | `8ae36128` |
 | Careers around the cases | Done | `allied.js`, `js/data/occupations.js` | Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators; digital forensic examiners | `a061a070` |
-| Family, series, informants and undercover, wellbeing, true-crime media, more countries, tips | Done | `family.js`, `serial.js`, `undercover.js`, `wellbeing.js`, `truecrime.js`, `js/data/investigations.js`, `js/ui/investigations.js` | The additions after the prompt; a walkthrough at phone width fixed homicide victims being treated as hospital patients | COMMIT_LAST |
+| Family, series, informants and undercover, wellbeing, true-crime media, more countries, tips | Done | `family.js`, `serial.js`, `undercover.js`, `wellbeing.js`, `truecrime.js`, `js/data/investigations.js`, `js/ui/investigations.js` | The additions after the prompt; a walkthrough at phone width fixed homicide victims being treated as hospital patients | `a0d8dbb5` |
 | Conviction review careers, accountants, hospitals, pay, the editor's desk | Done | `integrity.js`, `books.js`, `medical.js`, `pay.js`, `crossover.js` | The last items of the 3.0 addendum | `b42a2a35` |
 
 ## Tests
