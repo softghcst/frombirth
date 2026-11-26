@@ -11,13 +11,15 @@ import { investigation, incidentOf } from './casework.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
-const INJURY = ['robbery', 'family', 'homicide', 'collision'];
+// Cases where someone was hurt and lived (a death is the medical examiner's, not a hospital patient's: forensicMed.js).
+const INJURY = ['robbery', 'family'];
 const med = (p) => p.medicine ?? null;
 /** The person hurt in a case who is alive to be treated, if any. */
 export function patientOf(inv) {
   const f = inv?.file;
   if (!f || !INJURY.includes(f.template)) return null;
   const id = f.template === 'robbery' ? f.reportingId : f.victimId;
+  if (id && id === f.victimId && npc(id)?.flags?.diedYear) return null;
   return npc(id)?.alive ? id : null;
 }
 /** The hospital a case's injured person was taken to: the player's own, when they work at one in the city. */

@@ -49,6 +49,10 @@ export default [
     ['Audition', 'Lights, a script, and a camera that does not blink.', 'anchor:try'],
     ['Stay a reporter', 'You like being out on the story.', 'anchor:no'],
   ]),
+  scene('jn_colleague_spark', 'Late in the newsroom again, {first} brings you a coffee and stays to talk. It is not the first time, and it is not about work.', [
+    ['Ask {first} out', 'You ask. It is up to them.', 'spark:ask'],
+    ['Keep it a friendship', 'Some colleagues are friends for life. That is plenty.', 'spark:friends', 'good'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],

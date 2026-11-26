@@ -64,7 +64,7 @@ const rows = await page.locator('.sport-modal .sd-lrow').count();
 check(rows >= 4 && await page.locator('.sport-modal .sd-lrow.mine').count() === 1, `the league lists every team, yours marked (${rows})`);
 check(/Champions/.test(await page.locator('.sport-modal').innerText()), 'with the champions');
 await shot('sport-league');
-await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+await page.locator('.sport-modal .modal-back').click(); await page.waitForTimeout(150);
 await page.locator('.sport-modal [data-practice]').click(); await page.waitForTimeout(200);
 check(await page.locator('.sport-modal .sd-skill').count() >= 4 && await page.locator('.sport-modal select[data-focus]').count() === 1, 'practice shows every skill and a focus to pick');
 const skill = await page.locator('.sport-modal select[data-focus] option').nth(1).getAttribute('value');
@@ -77,7 +77,7 @@ check(after >= before && /extra session/i.test(await page.locator('#modal-root .
 await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(200);
 check(await page.locator('.sport-modal select[data-focus]').count() === 1 && await page.locator('.sport-modal select[data-focus]').inputValue() === skill, 'and comes back to practice, the same skill chosen');
 // Train: fitness for every sport.
-await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+await page.locator('.sport-modal .modal-back').click(); await page.waitForTimeout(150);
 await page.locator('.sport-modal [data-train]').click(); await page.waitForTimeout(200);
 const tr = await page.locator('.sport-modal').innerText();
 check(/Strength/.test(tr) && /Cardio/.test(tr) && /Flexibility/.test(tr) && /Balance/.test(tr) && /Position/.test(tr), 'Train shows the four parts of fitness, and your position');
@@ -88,9 +88,9 @@ await page.locator('.sport-modal [data-dotrain]').click(); await page.waitForTim
 const fAfter = await page.evaluate(async () => (await import('/js/engine/sports.js')).fitnessOf().cardio);
 check(fAfter > fBefore, `training cardio raises it (${fBefore} → ${fAfter}: ${(await page.locator('#modal-root .modal').last().innerText()).slice(0, 120).replace(/\n/g, ' ')})`);
 await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(200);
-await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+await page.locator('.sport-modal .modal-back').click(); await page.waitForTimeout(150);
 // An individual sport: a rating instead of a league.
-await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+await page.locator('.sport-modal .modal-back').click(); await page.waitForTimeout(150);
 await page.locator('.sport-modal [data-sport="tennis"]').first().click(); await page.waitForTimeout(200);
 const tennis = await page.locator('.sport-modal').innerText();
 check(/Rankings/.test(tennis) && /Practice/.test(tennis) && !/Team strength/.test(tennis), 'an individual sport has rankings and practice, and no team');

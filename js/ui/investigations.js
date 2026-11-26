@@ -48,6 +48,11 @@ import * as IG from '../engine/investigations/integrity.js';
 import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
 import * as AL from '../engine/investigations/allied.js';
+import * as FA from '../engine/investigations/family.js';
+import * as SE from '../engine/investigations/serial.js';
+import * as UC from '../engine/investigations/undercover.js';
+import * as WB from '../engine/investigations/wellbeing.js';
+import * as TC from '../engine/investigations/truecrime.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -107,6 +112,24 @@ function waysIn(p) {
   return card('Ways in', kv(rows) + muted('In the game, as in many places, police work is open without a degree; leadership and federal work favor those who studied. University planning is under School.'));
 }
 
+// First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
+const HINTS = {
+  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
+  federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
+  cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
+  cold: 'Cold cases stay open, inactive. One can be reopened when a laboratory method it never had becomes available.',
+  career: 'Your record: reputation is how the work is done, never how many arrests. Promotions need years, standing and a vacancy.',
+  private: 'A license comes first; then you can open an agency. Private investigators have no police powers: lawful steps only.',
+  policy: 'Budgets, oversight and reform are decided by mayors, councils and legislatures. A chief runs the department, not the courts.',
+  allied: 'Careers that meet the same cases. Each has one piece of work a year, from real cases, people and courts.',
+  integrity: 'Reviews of real convictions. A review is not a retrial: only a court can set a conviction aside.',
+  bench: 'Requests from real cases. Do the quality steps, report what the result shows, and nothing more.',
+};
+const hintSeen = (id) => !!player().flags?.invHints?.[id];
+const hint = (id) => (HINTS[id] && !hintSeen(id) ? `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(HINTS[id])}</p>${stack(btn('hintOk', 'Got it', { arg: id }))}</div>` : '');
+const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses apart. Investigative Actions are where the work is done; each step reveals what it can, once.';
+
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
@@ -132,6 +155,11 @@ const VIEWS = {
         + stack(Object.entries(C.ACADEMY).map(([id, d]) => btn('academy', d.label, { arg: id })).join('')));
     }
     if (r?.pendingMove) out += card('Your assignment', muted(`You are posted to ${r.pendingMove}.`) + stack(btn('report', `Move to ${r.pendingMove} and report for duty`)));
+    for (const { inv, fam } of FA.relativeCases(p).slice(0, 2)) out += card(`${nm(fam[0].id)} is in a police case`, kv([['Case', inv.file.title], ['Their part', fam[0].role], ['Detective', nm(inv.file.leadId)]]) + muted('It is someone else\'s case. Family is family; the case is theirs.')
+      + stack(btn('relative', 'Stay out of the case, and stand by them', { arg: `${inv.id}|support` }) + btn('relative', 'Stay out of it entirely', { arg: `${inv.id}|apart` }) + btn('relative', 'Call the detective and ask how it looks', { arg: `${inv.id}|favor`, cls: 'danger' })));
+    for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
+      + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
+    if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
     return out;
   },
   agency(p, r) {
@@ -166,7 +194,7 @@ const VIEWS = {
       const t = UN.talks(p);
       out += card('The union', kv([['Union', un.name], ['Representative', un.repId === p.id ? 'You' : nm(un.repId)], ['Contract', `to ${un.contract.until}: ${un.contract.raise}% raise; disciplinary records ${un.contract.records}${un.contract.bodycams ? '; body cameras' : ''}`],
         ['You', mem?.member ? `A member since ${mem.since}` : 'Not a member'], ...(un.stalled ? [['Talks', 'Stalled']] : []), ...(un.action === store.state.year ? [['This year', 'Working to rule']] : [])])
-        + muted(UN.NO_STRIKE)
+        + muted(UN.strikeNote(p.countryId))
         + stack((mem?.member ? btn('unionLeave', 'Leave the union') + (mem.rep ? '' : btn('unionRep', 'Stand for representative')) + (un.stalled && mem.voted !== store.state.year ? btn('unionVote', 'Vote on working to rule') : '') : btn('unionJoin', 'Join the union'))
           + (t ? btn('bargain', t.side === 'union' ? 'Bargain for your colleagues' : 'Bargain for the department') : '')));
     }
@@ -239,6 +267,10 @@ const VIEWS = {
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
+        + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
+      + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
+        + stack(btn('ucRound', 'Stay in the role, within the rules', { arg: 'role' }) + btn('ucRound', 'Push them toward the deal', { arg: 'push', cls: 'danger' }))) : '')
       + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
       + (r.family === 'federal' && r.job?.officeId && !r.retired ? card('Moves within the agency', kv([['Field office', A.office(r.job.officeId)?.name ?? '—'], ['Squad', WP.SQUADS[r.job.agencyKind]?.find(([id]) => id === r.job.squad)?.[1] ?? 'General'],
@@ -398,7 +430,19 @@ function caseTabs(v) {
   return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
 }
 const CASE_VIEWS = {
-  overview: (v) => card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]])),
+  overview: (v, inv) => {
+    const f = inv?.file;
+    let out = card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]]));
+    if (f?.conflict?.status === 'open') out += card('Your family is in this case', kv(f.conflict.relatives.map((x) => [nm(x.id), x.role])) + muted('The rule is to step aside when a relative is involved. It protects the case as much as you.')
+      + stack(btn('recuse', 'Tell your sergeant, and step aside', { arg: inv.id }) + btn('keepCase', 'Keep the case, and say nothing', { arg: inv.id, cls: 'danger' })));
+    if (f?.handoff?.length) out += card('Who has had this case', f.handoff.map((h) => kv([[dateWords(h.at), `${nm(h.from) === '—' ? 'You' : nm(h.from)} to ${nm(h.to) === '—' ? 'you' : nm(h.to)} (${h.why})`]])).join('') + muted('Everything done before is in the file.'));
+    if (SE.seriesOf(inv)?.linked) out += card('Linked cases', SE.seriesOf(inv).caseIds.filter((x) => x !== inv.id).map((x) => { const o = W.investigation(x); return kv([[o.file.title, nm(o.file.leadId)]]); }).join('') + muted('The same method in other cities. Each is its own case; the evidence is shared.'));
+    const notes = FA.ancestorNotes(inv);
+    if (notes) out += card(`${notes.name}'s notes`, muted(`${notes.name} led this case first. Their notes are in the file, in their hand.`) + notes.done.map((t) => `<p>• ${esc(t)}</p>`).join('')
+      + (notes.open.length ? `<div class="eyebrow">Leads they left open</div>${notes.open.map((t) => `<p>• ${esc(t)}</p>`).join('')}` : '')
+      + (f.oldPartnerAsked ? '' : stack(btn('oldPartner', `Find ${notes.name}'s old partner`, { arg: inv.id }))));
+    return out;
+  },
   notebook: (v) => card('Known facts', v.facts.map((f) => `<p>• ${esc(f.text)}</p>`).join('') || muted('Only the report so far.'))
     + card('Reported claims', v.claims.map((c) => `<p>• ${esc(c.text)} <span class="muted">(${esc(c.by)}${c.confidence != null ? `, says they are ${c.confidence >= 0.8 ? 'sure' : c.confidence >= 0.5 ? 'fairly sure' : 'unsure'}` : ''})</span></p>`).join('') || muted('No statements yet.'))
     + card('Hypotheses', v.hypotheses.map((h) => kv([[h.text, h.status]])).join('') + muted('These follow what has been found. A strong claim is not a fact.'))
@@ -423,6 +467,13 @@ const CASE_VIEWS = {
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
     if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    if (['drugs', 'firearms', 'robbery', 'counterfeit'].includes(inv.file.template) && !inv.file.outcome && inv.file.leadId === player().id) {
+      const ci = inv.file.informantId;
+      if (!ci) b += btn('recruit', 'Recruit an informant, registered with your supervisor', { arg: `${inv.id}|register` }) + btn('recruit', 'Recruit an informant off the books', { arg: `${inv.id}|off`, cls: 'danger' });
+      else { b += btn('meetCI', 'Meet the informant', { arg: inv.id }); if (inv.file.tip && !inv.file.tip.corroborated) b += btn('corroborate', 'Check the tip against independent evidence', { arg: inv.id }); }
+      if (rec()?.undercover?.status !== 'active') b += btn('undercover', 'Volunteer to go undercover on this case', { arg: inv.id });
+    }
+    if (['homicide', 'robbery'].includes(inv.file.template) && !inv.file.compared && !inv.file.outcome && inv.file.leadId === player().id) b += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
     if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
     if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
@@ -431,7 +482,7 @@ const CASE_VIEWS = {
 };
 function openCaseFile(api, invId, refreshHub) {
   const st = { tab: 'overview' };
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: W.investigation(invId)?.file?.title ?? 'Case file' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-case]');
   const render = () => {
@@ -439,9 +490,9 @@ function openCaseFile(api, invId, refreshHub) {
     const v = V.view(inv, 'investigator');
     if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
     const tabs = caseTabs(v);
-    root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
+    root.innerHTML = `
       <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+      <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
   const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
   root.addEventListener('click', async (e) => {
@@ -466,7 +517,16 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'hintCase') { const p0 = player(); p0.flags.invHints = { ...(p0.flags.invHints ?? {}), case: true }; render(); }
     else if (act === 'medical') await say(MD.requestMedical(id, x));
+    else if (act === 'compare') await say(SE.compareCases(id));
+    else if (act === 'recruit') await say(UC.recruit(id, x));
+    else if (act === 'meetCI') await say(UC.meetInformant(id));
+    else if (act === 'corroborate') await say(UC.corroborate(id));
+    else if (act === 'undercover') await say(UC.goUndercover(id));
+    else if (act === 'recuse') await say(FA.recuse(id));
+    else if (act === 'keepCase') await say(FA.keepCase(id));
+    else if (act === 'oldPartner') await say(FA.askOldPartner(id));
     else if (act === 'crossExam') {
       const inv = W.investigation(id);
       const answers = {};
@@ -490,6 +550,13 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
+  hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
+  media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
+  support2: (a, x) => x.say(WB.seekSupport(a)),
+  medRetire: (a, x) => x.say(WB.medicalRetirement()),
+  ucRound: (a, x) => x.say(UC.undercoverRound(a)),
+  relative: (a, x) => { const [id, how] = a.split('|'); return x.say(FA.relativeChoice(id, how)); },
   alliedTake: (a, x) => x.say(AL.takeUp(a)),
   alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },
   integrityJoin: (a, x) => x.say(IG.takePost(a)),
@@ -619,7 +686,7 @@ const ACTIONS = {
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const lines = settle(player()); // anything whose date has come, made known before the page is drawn
-  const modal = openModal('<div data-inv></div>', { dismissable: true });
+  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');
   const render = () => {
@@ -627,9 +694,9 @@ export function openInvestigations(api, start = 'overview') {
     const r = rec(p);
     const list = sectionsFor(p, r);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
+    root.innerHTML = `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${hint(st.section)}${VIEWS[st.section](p, r)}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };

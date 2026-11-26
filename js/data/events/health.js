@@ -58,7 +58,7 @@ export default [
     choices: [
       { label: 'See a doctor', outcomes: [any('You make an appointment.', 'neutral', { type: 'ailment', value: 'doctor' })] },
       { label: 'Rest it off', outcomes: [any('You go to bed early.', 'neutral', { type: 'ailment', value: 'rest' })] },
-      { label: 'Ignore it', outcomes: [any('You carry on.', 'neutral', { type: 'ailment', value: 'ignore' })] },
+      { label: 'Ignore it', outcomes: [any('You decide it will pass.', 'neutral', { type: 'ailment', value: 'ignore' })] },
     ],
   },
 

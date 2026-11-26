@@ -506,6 +506,8 @@ button.dyn-event { cursor: pointer; }
 
 /* My Health */
 .hl-modal { max-width: 600px; }
+/* As a full screen, every section of My Health stays in view: the tabs wrap instead of running off the edge. */
+.modal-full .hl-tabs { flex-wrap: wrap; overflow: visible; }
 .hl-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; margin-bottom: 10px; background: var(--line); border-radius: 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex: none; }
 .hl-tabs::-webkit-scrollbar { display: none; }
 .hl-tabs button { flex: none; border: 0; background: transparent; border-radius: 9px; padding: 9px 12px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--muted); cursor: pointer; min-height: 40px; white-space: nowrap; }
@@ -1449,6 +1451,11 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .modal-full .fame-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 6px; }
 .modal-full .fame-tabs .world-group { min-height: 44px; justify-content: center; text-align: center; white-space: normal; border-radius: 14px; padding: 6px 8px; }
 @media (min-width: 640px) { .modal-full .fame-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* A full-screen career page's sections (My Medical Career, My Legal Career, My Investigations and the rest): a grid of
+   buttons that all stay in view. */
+.modal-full .page-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 6px; }
+.modal-full .page-tabs > button { min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; border-radius: 14px; padding: 6px 8px; line-height: 1.2; }
+@media (min-width: 640px) { .modal-full .page-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* The wedding on one page, with the scenes turned off in Settings (openQuickWedding in js/ui/weddingPlanner.js). */
 .wq-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
