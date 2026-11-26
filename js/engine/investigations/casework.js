@@ -95,6 +95,8 @@ export function openCase(tid, o = {}) {
   let perp = null;
   if (t.pack) perp = t.perp[truth] === 'insider' ? insider : t.perp[truth] === 'stranger' ? civ({ age: r.int(18, 55) }) : null;
   else if (!NO_CRIME.includes(truth)) perp = ['insider', 'known'].includes(truth) ? insider : truth === 'harm' ? civ({ age: r.int(20, 55) }) : civ({ age: r.int(18, 50) });
+  // One person behind several cases (a series: serial.js) is the same person in each.
+  if (o.perpId && perp && store.state.npcs[o.perpId]?.alive) perp = store.state.npcs[o.perpId];
   const offenseId = t.offenseId ?? (truth === 'harm' ? 'assault' : 'theft');
   const inc = k.createIncident({ offenseId, perpetratorId: perp?.id ?? null, victimId: victim?.id, countryId, city, witnessIds: witnesses.map((w) => w.id) });
   inc.participants = inc.participants.filter((x) => x.id);

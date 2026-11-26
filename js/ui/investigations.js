@@ -49,6 +49,7 @@ import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
 import * as AL from '../engine/investigations/allied.js';
 import * as FA from '../engine/investigations/family.js';
+import * as SE from '../engine/investigations/serial.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -406,6 +407,8 @@ const CASE_VIEWS = {
     let out = card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]]));
     if (f?.conflict?.status === 'open') out += card('Your family is in this case', kv(f.conflict.relatives.map((x) => [nm(x.id), x.role])) + muted('The rule is to step aside when a relative is involved. It protects the case as much as you.')
       + stack(btn('recuse', 'Tell your sergeant, and step aside', { arg: inv.id }) + btn('keepCase', 'Keep the case, and say nothing', { arg: inv.id, cls: 'danger' })));
+    if (f?.handoff?.length) out += card('Who has had this case', f.handoff.map((h) => kv([[dateWords(h.at), `${nm(h.from) === '—' ? 'You' : nm(h.from)} to ${nm(h.to) === '—' ? 'you' : nm(h.to)} (${h.why})`]])).join('') + muted('Everything done before is in the file.'));
+    if (SE.seriesOf(inv)?.linked) out += card('Linked cases', SE.seriesOf(inv).caseIds.filter((x) => x !== inv.id).map((x) => { const o = W.investigation(x); return kv([[o.file.title, nm(o.file.leadId)]]); }).join('') + muted('The same method in other cities. Each is its own case; the evidence is shared.'));
     const notes = FA.ancestorNotes(inv);
     if (notes) out += card(`${notes.name}'s notes`, muted(`${notes.name} led this case first. Their notes are in the file, in their hand.`) + notes.done.map((t) => `<p>• ${esc(t)}</p>`).join('')
       + (notes.open.length ? `<div class="eyebrow">Leads they left open</div>${notes.open.map((t) => `<p>• ${esc(t)}</p>`).join('')}` : '')
@@ -436,6 +439,7 @@ const CASE_VIEWS = {
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
     if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    if (['homicide', 'robbery'].includes(inv.file.template) && !inv.file.compared && !inv.file.outcome && inv.file.leadId === player().id) b += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
     if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
     if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
@@ -480,6 +484,7 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
     else if (act === 'medical') await say(MD.requestMedical(id, x));
+    else if (act === 'compare') await say(SE.compareCases(id));
     else if (act === 'recuse') await say(FA.recuse(id));
     else if (act === 'keepCase') await say(FA.keepCase(id));
     else if (act === 'oldPartner') await say(FA.askOldPartner(id));

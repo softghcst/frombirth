@@ -39,6 +39,7 @@ import { payYear } from './pay.js';
 import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
 import { settleAncestor } from './family.js';
+import { seriesYear, inheritYear } from './serial.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -109,6 +110,7 @@ export function tickInvestigations() {
     if (r.job.detective || (r.family === 'federal' && r.job.rank !== 'trainee')) {
       const n = r.stats.years >= 5 ? 2 : 1;
       for (let i = 0; i < n; i++) assignCase(p);
+      for (const line of [...inheritYear(p), ...seriesYear(p)]) log(line, 'system', 'neutral'); // serial.js
     }
     taskForces(p, r);
     intake(p);

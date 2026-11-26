@@ -1409,6 +1409,48 @@ section('careers around the cases: analysts, probation, victim advocates, court 
 }
 section('family: a relative in the player\'s case means stepping aside; a relative in another\'s case is theirs; an ancestor\'s case, their notes and their old partner');
 
+// ---------- 32. Bigger homicide cases: a series across cities, and handoffs ----------
+{
+  const SE = await import('../js/engine/investigations/serial.js');
+  const p = life('us', 40);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  let inv = null;
+  for (let i = 0; i < 12 && !inv; i++) {
+    const c = W.openCase('homicide', { ownerId: a.id, truth: 'stranger' });
+    r.caseIds = [c.id];
+    SE.seriesYear(p);
+    if (c.file.seriesId) inv = c;
+  }
+  const s = inv && SE.seriesOf(inv);
+  check(s && s.caseIds.length >= 2, 'a homicide can be one of a series');
+  if (s) {
+    const others = s.caseIds.filter((x) => x !== inv.id).map(W.investigation);
+    const perp = k.J().incidents[inv.incidentId].truth.perpetratorId;
+    check(others.every((o) => k.J().incidents[o.incidentId].truth.perpetratorId === perp && k.J().incidents[o.incidentId].city !== k.J().incidents[inv.incidentId].city && o.file.leadId !== p.id), 'the same person, other cities, other detectives: each its own case');
+    const n0 = inv.evidenceIds.length;
+    const res = SE.compareCases(inv.id);
+    check(res.ok && s.linked && inv.evidenceIds.length > n0 && inv.file.leads.some((l) => /same method/.test(l.text)), 'comparing cases links them, and the other agencies\' evidence is shared');
+    check(!SE.compareCases(inv.id).ok, 'compared once');
+  }
+  // A case with no series: comparing finds nothing.
+  const lone = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(lone.id);
+  check(/Nothing else/.test(SE.compareCases(lone.id).text), 'nothing is linked that is not really linked');
+  // Handoffs: a case passes on when its detective is gone; the player's pass on when they leave.
+  r.caseIds = [];
+  const det = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive);
+  const theirs = W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
+  store.state.npcs[det].alive = false;
+  const lines = SE.inheritYear(p);
+  check(lines.length && theirs.file.leadId === p.id && theirs.file.handoff.at(-1).from === det && r.caseIds.includes(theirs.id), 'a detective\'s open homicide passes to the player when they die, with the file');
+  r.people.partnerId = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive) ?? r.people.partnerId;
+  C.jobEnded(p, r, 'retired');
+  check(theirs.file.leadId !== p.id && theirs.file.handoff.at(-1).from === p.id, 'the player\'s open cases pass on when they retire');
+}
+section('bigger homicide cases: a series across cities linked only by what is real, evidence shared between agencies; cases handed on');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
