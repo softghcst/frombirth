@@ -61,6 +61,8 @@ import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+/** The parts of the police assessment, as the player reads them. */
+const WHYNAME = { written: 'the written test', fitness: 'the fitness test', interview: 'the interview', background: 'the background check', medical: 'the medical' };
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}</button>`;
 const card = (title, body) => `<div class="card"><h3>${esc(title)}</h3>${body}</div>`;
 const muted = (t) => `<p class="muted">${esc(t)}</p>`;
@@ -179,7 +181,7 @@ const VIEWS = {
         out += card(a.name, kv([['Kind', d.name], ['Academy', `${d.academyMonths} months`], ['Field training', `${d.fieldMonths} months`], ['Minimum age', String(d.minAge)], ...(d.maxAge ? [['Maximum age', String(d.maxAge)]] : [])])
           + (d.entry ? muted(d.entry) : '') + (d.prosecutor ? muted(`Charging decisions are made by ${d.prosecutor}.`) : '')
           + (a.simplified ? muted('Simplified: this country\'s police recruitment is not modeled in detail.') : '')
-          + (no.length ? muted(no[0]) : stack(btn('applyPolice', 'Submit an application', { arg: a.id }))));
+          + (no.length ? muted(no[0]) : `${(() => { const o = C.policeOdds(); return muted(`Your chances: ${o.words}.${o.weakest ? ` Your weakest part: ${WHYNAME[o.weakest]}.` : ''}`); })()}${stack(btn('applyPolice', 'Submit an application', { arg: a.id }))}`));
       }
       return out || muted('There is no police agency recruiting here.');
     }
