@@ -77,8 +77,8 @@ const CAP = `<svg class="grad-cap" viewBox="0 0 120 70" aria-hidden="true">
 </svg>`;
 
 /** Confetti pieces scattered over the card. Fixed spots, so the card looks the same every time it is opened. */
-const CONFETTI = [[6, 8, -20, 'a'], [18, 22, 30, 'b'], [86, 6, 15, 'c'], [93, 26, -35, 'a'], [10, 46, 50, 'c'], [90, 52, -10, 'b'],
-  [4, 72, 25, 'b'], [95, 78, 40, 'a'], [30, 4, 60, 'c'], [70, 12, -45, 'b'], [50, 2, 10, 'a'], [78, 92, 20, 'c'], [16, 92, -30, 'a']];
+const CONFETTI = [[5, 6, -20, 'a'], [10, 24, 30, 'b'], [90, 5, 15, 'c'], [93, 24, -35, 'a'], [8, 42, 50, 'c'], [91, 40, -10, 'b'],
+  [4, 60, 25, 'b'], [95, 58, 40, 'a'], [20, 34, 60, 'c'], [80, 32, -45, 'b'], [26, 26, 10, 'a'], [72, 24, 20, 'c'], [3, 80, -30, 'a']];
 const confettiHtml = () => `<div class="grad-confetti" aria-hidden="true">${CONFETTI.map(([x, y, r, k], i) =>
   `<i class="c${k}" style="left:${x}%;top:${y}%;--r:${r}deg;--d:${(i % 5) * 0.12}s"></i>`).join('')}</div>`;
 
@@ -125,7 +125,7 @@ export function nextSteps(card) {
   }
   if (anyStudy.length) {
     steps.push({ id: 'study', emoji: '📚', label: card.stage === 'university' && open('graduate') ? 'Go to Grad School' : schoolLeaver ? 'Other Schooling' : 'Keep Studying',
-      sub: schoolLeaver ? 'Trade School & More' : "Master's, Law, Med & More" });
+      sub: schoolLeaver ? 'Trade School & More' : `${anyStudy.slice(0, 2).map((o) => titleCase(o.label.replace(/ school$/i, ''))).join(', ')}${anyStudy.length > 2 ? ' & More' : ''}` });
   }
   if (!p.legal.incarceration) {
     steps.push({ id: 'work', emoji: '💼', label: p.career.careerId ? 'Back to Work' : 'Get a Job', sub: p.career.careerId ? 'Your Career' : 'Find Work Now' });
