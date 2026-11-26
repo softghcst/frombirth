@@ -120,17 +120,17 @@ export function nextSteps(card) {
   const answered = plan?.sent && plan.list?.some((a) => a.outcome === 'accepted');
   const schoolLeaver = ['high', 'equivalency', 'community'].includes(card.stage);
   if (schoolLeaver && (answered || plan || open('university'))) {
-    steps.push({ id: 'uni', emoji: '🏛️', label: card.stage === 'community' ? 'Transfer to university' : usStyle() ? 'Go to college' : 'Go to university',
-      sub: answered ? 'Your answers are in. Choose where you will go.' : plan?.sent ? 'See what the universities said.' : 'Choose where to apply, and see who says yes.' });
+    steps.push({ id: 'uni', emoji: '🏛️', label: card.stage === 'community' ? 'Transfer to University' : usStyle() ? 'Go to College' : 'Go to University',
+      sub: answered ? 'Pick Your School' : plan?.sent ? 'See Your Answers' : 'Apply to Schools' });
   }
   if (anyStudy.length) {
-    steps.push({ id: 'study', emoji: '📚', label: card.stage === 'university' && open('graduate') ? 'Go to grad school' : schoolLeaver ? 'Other school or training' : 'Keep studying',
-      sub: !schoolLeaver ? anyStudy.slice(0, 4).map((o) => o.label).join(', ') + '.' : 'Community college, trade school, apprenticeships and more.' });
+    steps.push({ id: 'study', emoji: '📚', label: card.stage === 'university' && open('graduate') ? 'Go to Grad School' : schoolLeaver ? 'Other Schooling' : 'Keep Studying',
+      sub: schoolLeaver ? 'Trade School & More' : "Master's, Law, Med & More" });
   }
   if (!p.legal.incarceration) {
-    steps.push({ id: 'work', emoji: '💼', label: p.career.careerId ? 'Back to work' : 'Start working', sub: p.career.careerId ? 'See where your career goes from here.' : 'Look for a job now.' });
+    steps.push({ id: 'work', emoji: '💼', label: p.career.careerId ? 'Back to Work' : 'Get a Job', sub: p.career.careerId ? 'Your Career' : 'Find Work Now' });
   }
-  steps.push({ id: 'rest', emoji: '🌴', label: 'Take some time off', sub: 'Relax for now. Everything is still in the Work tab when you are ready.' });
+  steps.push({ id: 'rest', emoji: '🌴', label: 'Take Time Off', sub: 'Decide Later' });
   return steps;
 }
 
