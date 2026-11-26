@@ -65,16 +65,26 @@ export function tickTalents(p = player()) {
     if (now < natural) p.talents[k] = Math.round(clamp(now + Math.max(1, (natural - now) * 0.4)));
   }
   if (p.age < 3 || p.age > 40) return;
-  const candidates = TALENTS.filter((t) => !t.hidden && (pot[t.id] ?? 0) >= 65 && found[t.id] !== 'known');
-  for (const t of candidates.map((x) => [rng.next(), x]).sort((a, b) => a[0] - b[0]).map(([, x]) => x)) {
+  const open = (t) => !t.hidden && (pot[t.id] ?? 0) >= 65 && found[t.id] !== 'known';
+  const notice = (t) => {
     const stage = found[t.id];
-    const chance = (stage ? 0.3 : 0.12) + (practiced[t.id] ? 0.3 : 0) + (p.age >= 18 ? 0.1 : 0);
-    if (!rng.chance(chance)) continue;
     if (!stage) { found[t.id] = 'hint'; log(`You feel slightly more ${HINT[t.id] ?? `inclined toward ${t.name.toLowerCase()}`}.`, 'system', 'good'); }
     else { found[t.id] = 'known'; log(`It is clear now: you have a natural gift for ${t.name.toLowerCase()}.`, 'system', 'good'); milestone(`Found a natural gift for ${t.name.toLowerCase()}.`, 'life'); }
+  };
+  const chanceOf = (t) => (found[t.id] ? 0.3 : 0.12) + (practiced[t.id] ? 0.3 : 0) + (p.age >= 18 ? 0.1 : 0);
+  const candidates = TALENTS.filter((t) => open(t) && !LATER.has(t.id));
+  for (const t of candidates.map((x) => [rng.next(), x]).sort((a, b) => a[0] - b[0]).map(([, x]) => x)) {
+    if (!rng.chance(chanceOf(t))) continue;
+    notice(t);
     return;
   }
+  // The newest talents are noticed on dice of their own, so that adding them changes no other roll in a life.
+  for (const t of TALENTS.filter((x) => open(x) && LATER.has(x.id))) {
+    const roll = ((Math.imul(rng.state() ^ hashId(`${p.id}/${t.id}/${p.age}`), 0x85ebca6b) >>> 0) % 1000) / 1000;
+    if (roll < chanceOf(t)) { notice(t); return; }
+  }
 }
+const hashId = (s) => [...s].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0, 0x811c9dc5);
 
 /** For the Talents screen: what the player has noticed about themselves. */
 export function noticed(p = player()) {
