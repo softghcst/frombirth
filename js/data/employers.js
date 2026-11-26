@@ -9,7 +9,7 @@ export const NAME_PATTERNS = {
   corporate: ['{S} & {S2}', '{C} Holdings', '{W} Group', '{S} Partners', '{W} Capital', '{C} Mutual'],
   tech: ['{W} Technologies', '{W} Systems', '{W}soft', '{W} Labs', '{S} Engineering', '{W} Digital'],
   health: ['{C} General Hospital', '{S} Medical Center', '{C} Community Clinic', 'St {S2}\'s Hospital', '{W} Health'],
-  law: ['{S}, {S2} & Co.', '{S} Legal', '{C} Courts Service', '{C} Public Defender\'s Office', '{S} Law Chambers'],
+  law: ['{S}, {S2} & Co.', '{S} Legal', '{S} & {S2} LLP', '{S} Law Chambers', '{S2} Law Group'], // private practices; public offices are named below
   education: ['{C} Academy', '{S} School', '{C} College', '{W} Learning', 'University of {C}'],
   hospitality: ['The {W} Kitchen', '{S}\'s', 'Hotel {C}', 'The {W} Room', '{W} Café', '{C} Grand Hotel'],
   retail: ['{W} Market', '{S} Stores', '{C} Supermarkets', '{W} & Co.', 'The {W} Shop'],
@@ -96,3 +96,21 @@ export const FAMILY_BASE = {
 
 /** Tracks that most large organizations of any kind employ. */
 export const EVERYWHERE = ['admin_support', 'office', 'hr', 'it', 'accountant', 'marketing', 'corporate', 'maintenance', 'security', 'contact_center'];
+
+/**
+ * Public legal offices are not firms: a prosecutor works for the prosecutor's office, a public defender for the public
+ * defender's, a judge for the court. One office per city, named for where it is. Null for any other job.
+ */
+export function publicOfficeName(careerId, countryId, city) {
+  const us = countryId === 'us';
+  const uk = countryId === 'uk';
+  return {
+    prosecutor: us ? `${city} District Attorney's Office` : uk ? `Crown Prosecution Service, ${city}` : `${city} Public Prosecutor's Office`,
+    defender: us ? `${city} Public Defender's Office` : uk ? `Public Defender Service, ${city}` : `${city} Public Legal Aid Office`,
+    judiciary: us ? `${city} Superior Court` : uk ? `${city} Crown Court` : `${city} District Court`,
+    gov_counsel: us ? `${city} City Law Department` : `${city} Government Legal Office`,
+    attorney_general: us ? 'Office of the State Attorney General' : 'Attorney General\'s Office',
+    us_attorney: 'United States Attorney\'s Office', solicitor_general: 'Office of the Solicitor General',
+    court_clerk: us ? `${city} Superior Court` : uk ? `${city} Crown Court` : `${city} District Court`,
+  }[careerId] ?? null;
+}

@@ -10,10 +10,28 @@ import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, STUDY, coverageOf, SOURCES } from '../data/investigations.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
+// Five skills to follow on screen, not sixteen: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Detective Work', ['observation', 'reasoning', 'evidence', 'timeline', 'planning']],
+  ['Interviews & Reports', ['interviewing', 'writing']],
+  ['Law & Ethics', ['law', 'ethics']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership', 'interagency']],
+  ['Specialist Skills', ['financial', 'digital', 'forensic']],
+];
+/** The same five, named for the unit: a fraud detective follows money; a cold case detective reads old files. */
+function skillNames(unit) {
+  const n = SKILL_GROUPS.map(([name]) => name);
+  const first = { homicide: 'Homicide Work', fraud: 'Following the Money', cyber: 'Digital Trails', cold: 'Reading Old Files', missing: 'Search & Urgency', special_victims: 'Trauma-Informed Work', organized: 'Building Networks', corruption: 'Following the Money', arson: 'Fire Scenes', professional_standards: 'Internal Inquiry' }[unit];
+  if (first) n[0] = first;
+  if (['special_victims', 'family', 'juvenile'].includes(unit)) n[1] = 'Careful Interviews & Reports';
+  if (['fraud', 'cyber', 'corruption'].includes(unit)) n[4] = unit === 'cyber' ? 'Digital Evidence' : 'Financial Analysis';
+  return n;
+}
 import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
 import * as W from '../engine/investigations/casework.js';
+import * as RT from '../engine/investigations/routine.js';
 import * as V from '../engine/investigations/views.js';
 import * as PI from '../engine/investigations/private.js';
 import * as O from '../engine/investigations/oversight.js';
@@ -29,6 +47,7 @@ import * as FP from '../engine/investigations/forensicPsych.js';
 import * as IG from '../engine/investigations/integrity.js';
 import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
+import * as AL from '../engine/investigations/allied.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -58,8 +77,9 @@ function sectionsFor(p, r) {
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
-  if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Conviction Review']);
+  if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Innocence & Integrity Work']);
   if (BK.bookRole(p)) out.push(['books', 'Financial Review']);
+  if (p.age >= 21) out.push(['allied', 'Related Careers']);
   if (p.medicine?.job?.hospitalId || MD.myRequests(p).length) out.push(['hospital', 'Hospital & Police']);
   if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
@@ -217,7 +237,7 @@ const VIEWS = {
       ['Cases completed', String(st.completed)], ['Referred to a prosecutor', String(st.referred)], ['Charged', String(st.charged)], ['Charges declined', String(st.declined)], ['Convictions', String(st.convicted)],
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
-      + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
+      + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
       + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
@@ -344,6 +364,16 @@ const VIEWS = {
         return card(`${nm(c.defendantId)}: ${inv.file.title}`, kv([['Done', m.steps.join(', ') || 'nothing yet'], ...(m.lab ? [['Laboratory result due', dateWords(m.lab.due)]] : [])])
           + stack(Object.entries(IG.STEPS).filter(([id]) => !m.steps.includes(id) || id === 'refer').map(([id, label]) => btn('integrityStep', label, { arg: `${m.id}|${id}` })).join(''))); }).join('') : muted('No matter open. Requests for review come as the year turns.'));
   },
+  allied(p) {
+    const A = AL.alliedOf(p);
+    const mine = A && p.career?.careerId === `ally_${A.id}`;
+    let out = mine ? card(AL.ALLIED[A.id].name, kv([['Position', p.career.title], ['Careful work', String(A.careful)], ['Misconduct', String(A.misconduct)]])) : '';
+    for (const w of mine ? AL.openAllied(p) : []) out += card(w.words.charAt(0).toUpperCase() + w.words.slice(1), stack(AL.ALLIED[A.id].options.map((o) => btn('alliedDo', o.label, { arg: `${w.id}|${o.id}`, cls: o.good ? '' : 'danger' })).join('')));
+    if (mine && !AL.openAllied(p).length) out += muted('No work waiting. It comes as the year turns.');
+    out += card('Careers around the cases', muted('Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators: their work meets the same cases, people and courts.')
+      + Object.entries(AL.ALLIED).filter(([id]) => !(mine && A.id === id)).map(([id, d]) => { const why = AL.alliedBlock(id, p); return kv([[d.name, why || 'Open to you']]) + (why ? '' : stack(btn('alliedTake', `Become a ${d.ranks[0].toLowerCase()}`, { arg: id }))); }).join(''));
+    return out;
+  },
   books(p) {
     const list = BK.engagements(p);
     const b = p.books;
@@ -384,7 +414,9 @@ const CASE_VIEWS = {
   actions: (v, inv) => {
     const st = W.steps(inv);
     const left = W.workLeft(inv);
-    let b = st.map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
+    const ground = RT.groundworkSteps(inv.id);
+    let b = (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the Groundwork', { arg: inv.id, cls: 'primary' }) : '')
+      + st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id)).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
     if (!inv.file.outcome && !inv.file.courtCaseId) {
       b += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
       for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
@@ -429,6 +461,7 @@ function openCaseFile(api, invId, refreshHub) {
       const pick = await pickModal({ title: `Interview ${nm(wid)}`, body: 'One question at a time. People remember more when they are not rushed.', options: opts.map(([q, d]) => ({ value: q, label: d.label, sub: d.sub })) });
       if (pick) await say(W.act(id, x, { question: pick }));
     } else if (act === 'step') await say(W.act(id, x));
+    else if (act === 'groundwork') await say(RT.groundwork(id));
     else if (act === 'writeReport') await say(W.writeReport(id, x));
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
@@ -457,6 +490,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  alliedTake: (a, x) => x.say(AL.takeUp(a)),
+  alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },
   integrityJoin: (a, x) => x.say(IG.takePost(a)),
   integrityStep: (a, x) => { const [id, s] = a.split('|'); return x.say(IG.step(id, s)); },
   forensicAcct: (a, x) => x.say(BK.qualifyForensic()),

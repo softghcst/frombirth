@@ -25,6 +25,7 @@ import { kinCareYear, kinAdmitted } from './kincare.js';
 import { admit } from './hospital.js';
 import { maybeFamilyPatient } from '../medicine/healthLink.js';
 import { storyBeat } from '../storyDirector.js';
+import { kinAilmentYear, kinAilmentChoice } from './kinAilments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -128,6 +129,7 @@ export function tickPeopleHealth(p = player()) {
     h.last = n.age;
     const g = genomeOf(n);
     kinCareYear(n);
+    kinAilmentYear(n, storyBeat); // the flu, a broken arm, a broken hip: the same ailments as the player's (engine/health/kinAilments.js)
     const queue = (id, cast) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast }); };
     // A child of the player's begins to show a difference present from birth: their parent notices first.
     if (n.role === 'child' && n.age < 18) {
@@ -324,6 +326,7 @@ export function healthEffect(v, ctx = {}) {
       return '';
     }
     case 'admit': admit(v.reason, {}, p); return '';
+    case 'kinAilment': return kinAilmentChoice(v.how, store.state.npcs[ctx.cast?.[v.with]], ctx.cast?.words?.ailmentId);
     case 'accommodate': {
       const r = requestAccommodation(v.setting, v.type, v.need, p);
       return r.ok ? '' : r.text;

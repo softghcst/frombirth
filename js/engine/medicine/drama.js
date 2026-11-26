@@ -34,6 +34,7 @@ import { citiesOf, relocate, moveCost } from '../cities.js';
 import { changeHours, takeLeave } from '../worklife.js';
 import { storyBeat, dramaSetting } from '../storyDirector.js';
 import { familyPatientChoice } from './healthLink.js';
+import { kinAilmentChoice } from '../health/kinAilments.js';
 import { startCare } from '../health/kincare.js';
 
 export const DRAMA = { low: 0.25, balanced: 0.6, high: 1 };
@@ -453,6 +454,11 @@ export function medicineChoice(value, cast = {}) {
       if (who) { who.flags.medReconciled = true; if (how === 'yes') { who.meters.relationship = clamp(who.meters.relationship + 15); remember(who, 'medReconciled', `Made peace with you, years after a disagreement (${year()}).`); } }
       return '';
     case 'familyPatient': return familyPatientChoice(how, npc(cast.who), startCare, cast.words?.condId);
+    case 'familyAilment':
+      // A relative's broken bone or bad flu: seen properly, a look and some advice, or treating family yourself (a boundary).
+      if (how === 'seen') grow('professionalism', 1, m);
+      if (how === 'self') grow('integrity', -1, m);
+      return kinAilmentChoice(how, npc(cast.who), cast.words?.ailmentId);
     case 'calling':
       if (how === 'drawn') p.flags.medCalling = true;
       return '';

@@ -142,6 +142,11 @@ export default [
     ['Ask for another judge', 'classmate:recuse', 'You ask, politely, for the case to go elsewhere.'],
     ['Say nothing', 'classmate:silent', 'It was a long time ago.', 'bad'],
   ]),
+  scene('law_child_reads', [35, 110], 'In the Old Papers. {kid} found an old news story about you: "{headline}" They want to know what really happened.', [
+    ['Tell them the whole story, the hard parts too', 'childReads:tell', 'You sit down with them and tell it from the beginning.', 'good'],
+    ['Say it was just your job', 'childReads:modest', 'You shrug. It was a long time ago.'],
+    ['Tell them what it taught you about being fair', 'childReads:lesson', 'You tell them what you learned, more than what you won.', 'good'],
+  ]),
   scene('law_old_rival', [28, 90], 'An Old Rival. Across the aisle in {title} is {rival}, whom you have faced before.', [
     ['Shake hands and get to work', 'rival:respect', 'Rivals, not enemies.'],
     ['Make it personal', 'rival:personal', 'You have not forgotten last time.', 'bad'],

@@ -37,6 +37,7 @@ import { booksYear } from './books.js';
 import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
 import { editorYear } from './crossover.js';
+import { alliedYear, alliedCareerYear } from './allied.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -81,7 +82,7 @@ export function tickInvestigations() {
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
-  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p)]) log(line, 'system', 'neutral');
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p), ...alliedYear(p), ...alliedCareerYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.

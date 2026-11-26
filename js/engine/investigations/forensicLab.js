@@ -35,6 +35,7 @@ export function specialize(id, p = player()) {
   if (L.discipline) return result(false, `You specialize in ${LAB[L.discipline].name.toLowerCase()}.`, 'neutral');
   if (!LAB[id] || year() < LAB[id].from) return result(false, 'That discipline is not practiced yet.', 'neutral');
   L.discipline = id;
+  if (id === 'digital') p.career.title = (p.career.level ?? 0) >= 2 ? 'Senior digital forensic examiner' : 'Digital forensic examiner';
   return result(true, `You train in ${LAB[id].name.toLowerCase()}. Most of your requests will be in it now.`);
 }
 
@@ -123,7 +124,7 @@ export function careerYear(p = player()) {
   const years = year() - (L.since ?? year());
   const need = [2, 5, 10][lvl];
   if (need != null && years >= need && passes >= Math.min(2, lvl + 1) && L.careful >= (lvl + 1) * 2 && L.overstated === 0 && L.accredited) {
-    if (promote()) { p.career.title = RANKS[p.career.level] ?? p.career.title; out.push(`Promoted: ${p.career.title.toLowerCase()}.`); }
+    if (promote()) { p.career.title = L.discipline === 'digital' && p.career.level < 3 ? (p.career.level >= 2 ? 'Senior digital forensic examiner' : 'Digital forensic examiner') : RANKS[p.career.level] ?? p.career.title; out.push(`Promoted: ${p.career.title.toLowerCase()}.`); }
   }
   return out;
 }
