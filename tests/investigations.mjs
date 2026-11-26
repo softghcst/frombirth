@@ -1512,6 +1512,30 @@ section('informants and undercover work: real people, registered and protected; 
 }
 section('officer wellbeing: strain from the work, confidential support, health costs, a medical retirement');
 
+// ---------- 35. True-crime media ----------
+{
+  const TC = await import('../js/engine/investigations/truecrime.js');
+  const p = life('us', 55);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const old = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(old.id);
+  old.file.opened = core.now() - 12 * 20; old.file.coldSince = core.now() - 12 * 15;
+  let shown = null;
+  for (let i = 0; i < 20 && !shown; i++) { TC.mediaYear(p); shown = old.file.mediaId; if (!shown) store.state.year += 1; }
+  check(shown && old.file.publicAttention, 'a podcast or documentary takes up an old cold case, and public attention follows');
+  const inv = TC.invitations(p)[0];
+  check(inv && inv.as === 'investigator', 'the investigator who worked it is asked to take part');
+  if (inv) {
+    const n0 = Object.keys(core.W().complaints).length;
+    TC.takePart(inv.id, 'file');
+    check(Object.keys(core.W().complaints).length === n0 + 1 && !TC.takePart(inv.id, 'public').ok, 'telling a podcast what was in the case file is a breach; one answer');
+  }
+  check(!old.file.outcome, 'a show decides nothing about the case');
+}
+section('true-crime media: old cases taken up years later, public attention, people coming forward, and the investigator asked to take part');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

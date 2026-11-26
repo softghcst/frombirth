@@ -52,6 +52,7 @@ import * as FA from '../engine/investigations/family.js';
 import * as SE from '../engine/investigations/serial.js';
 import * as UC from '../engine/investigations/undercover.js';
 import * as WB from '../engine/investigations/wellbeing.js';
+import * as TC from '../engine/investigations/truecrime.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -138,6 +139,8 @@ const VIEWS = {
     if (r?.pendingMove) out += card('Your assignment', muted(`You are posted to ${r.pendingMove}.`) + stack(btn('report', `Move to ${r.pendingMove} and report for duty`)));
     for (const { inv, fam } of FA.relativeCases(p).slice(0, 2)) out += card(`${nm(fam[0].id)} is in a police case`, kv([['Case', inv.file.title], ['Their part', fam[0].role], ['Detective', nm(inv.file.leadId)]]) + muted('It is someone else\'s case. Family is family; the case is theirs.')
       + stack(btn('relative', 'Stay out of the case, and stand by them', { arg: `${inv.id}|support` }) + btn('relative', 'Stay out of it entirely', { arg: `${inv.id}|apart` }) + btn('relative', 'Call the detective and ask how it looks', { arg: `${inv.id}|favor`, cls: 'danger' })));
+    for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
+      + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
     return out;
   },
   agency(p, r) {
@@ -527,6 +530,7 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
   support2: (a, x) => x.say(WB.seekSupport(a)),
   medRetire: (a, x) => x.say(WB.medicalRetirement()),
   ucRound: (a, x) => x.say(UC.undercoverRound(a)),
