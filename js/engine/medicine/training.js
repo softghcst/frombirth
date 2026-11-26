@@ -14,7 +14,7 @@ import { rng } from '../../rng.js';
 import { MAJOR_BY_ID } from '../../data/majors.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
-import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, ROTATION_BEFORE, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
+import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, ROTATION_BEFORE, RESIDENT_TITLES, ERA, jurisdiction, jurisdictionIn, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
@@ -104,7 +104,7 @@ function sitSchoolExam(p, m, exam) {
   const score = clamp(Math.round(EXAM_POINTS(p, m) + prep + rng.int(-12, 12)));
   const pass = score >= 60;
   const tries = (m.school.exams[exam.id]?.tries ?? 0) + 1;
-  m.school.exams[exam.id] = { score, pass, tries, year: year() };
+  m.school.exams[exam.id] = { score, pass, tries, year: year(), name: exam.name };
   // USMLE Step 1 has been reported pass or fail since 2022.
   const shown = exam.id === 'step1' && year() >= 2022 ? (pass ? 'passed' : 'did not pass') : pass ? `passed, scoring in the ${score >= 85 ? 'top tenth' : score >= 72 ? 'upper half' : 'lower half'}` : 'did not pass';
   log(`You sat ${exam.name} and ${shown}.${pass ? '' : ' You will sit it again next year.'}`, 'system', pass ? 'good' : 'bad');
@@ -129,7 +129,7 @@ function rotate(p, m, rot) {
 
 /** The year's work at medical school, after education.js has counted the year. */
 function schoolYear(p, m, y) {
-  const j = jurisdiction(m.school.countryId);
+  const j = jurisdictionIn(m.school.countryId, year());
   const dpm = m.route === 'dpm';
   if (y === 1) storyOnce('med_anatomy_exam', { words: { school: m.school.name } }, m);
   if (y === 3) storyOnce('med_patient_remember', {}, m);
@@ -459,13 +459,13 @@ export function trainingYear() {
 /** The license to practice independently: in the US after the first year of residency (Step 3 and a state license). */
 function licenseCheck(p, m, t) {
   if (m.license.status === 'full') return;
-  const j = jurisdiction(p.countryId);
+  const j = jurisdictionIn(p.countryId, year());
   const yearsIn = m.experience.years;
   if (yearsIn < j.license.afterTraining) return;
   const dpm = m.route === 'dpm';
   const pass = roll(clamp(0.82 + (m.skills.reasoning - 50) / 200, 0.5, 0.97));
   const name = dpm ? 'the podiatric board exams and a state license' : j.license.name;
-  if (!pass) { log(`You did not pass ${dpm ? 'the final podiatric board exam' : p.countryId === 'us' ? 'USMLE Step 3' : 'the registration assessment'} this year. You will sit it again; training goes on under supervision.`, 'system', 'bad'); return; }
+  if (!pass) { log(`You did not pass ${dpm ? 'the final podiatric board exam' : p.countryId === 'us' ? (year() >= 1992 ? 'USMLE Step 3' : year() >= 1916 ? 'National Board Part III' : 'the state board examination') : 'the registration assessment'} this year. You will sit it again; training goes on under supervision.`, 'system', 'bad'); return; }
   m.license = { status: 'full', name, since: year(), countryId: p.countryId };
   const id = dpm ? 'podiatric' : 'medical';
   if (!(p.flags.licenses ??= []).includes(id)) p.flags.licenses.push(id);
