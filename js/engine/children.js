@@ -64,6 +64,9 @@ export const canTryForBaby = (npc) =>
   (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy
   && !player().legal.incarceration;
 
+/** Why trying for a baby is not open now because of contraception in place (a reason to show), or null. */
+export const tryBlockedBy = (o = {}) => contra.blocksTrying(player(), o);
+
 /** The chance a try works, by the mother's age and fertility: good when young, falling after 35, low past 42. */
 function conceiveChance(motherAge, fertility) {
   const byAge = motherAge <= 34 ? 0.55 : motherAge <= 38 ? 0.4 : motherAge <= 42 ? 0.2 : 0.08;
@@ -96,6 +99,8 @@ export function tryIvf(npcId) {
   const p = player();
   const npc = store.state.npcs[npcId];
   if (!ivfOpen(npc)) return result(false, store.state.year < 1978 ? 'IVF does not exist yet.' : 'That is not possible right now.', 'neutral');
+  const blocked = tryBlockedBy({ ivf: true });
+  if (blocked) return result(false, blocked, 'neutral');
   const cost = ivfPrice();
   if (p.finance.cash < cost) return result(false, `A round of IVF costs ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;

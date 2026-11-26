@@ -244,6 +244,7 @@ section('emergency contraception: after a real exposure, asked at once, gone whe
   const rec = C.active().find((r) => r.methodId === 'tubal');
   check(rec && rec.permanent && !C.stopMethod(rec.id).ok, 'done, and there is no "stop" button for it');
   check(C.blocksTrying() && /permanent/.test(C.blocksTrying()), 'trying for a baby is not offered as if it were reversible');
+  check(!C.blocksTrying(p, { ivf: true }), 'IVF stays possible after a tubal sterilization');
   life({ bornAs: 'male', age: 40 });
   C.giveConsent('vasectomy', { understood: true }, store.state.player);
   C.scheduleProcedure('vasectomy');
@@ -507,6 +508,8 @@ section('Story Director: scenes only from saved facts, paced with cooldowns');
   check(yc > 0 && yc < 0.001, `a whole year on an implant: a tiny chance, never zero (${yc.toExponential(2)})`);
   bonds.setBirthControl(false);
   check(C.blocksTrying() && /removed first/.test(C.blocksTrying()), 'with an implant in place, trying for a baby means having it removed first');
+  check(/removed first/.test(C.blocksTrying(p, { ivf: true }) ?? '') && !kids.tryIvf(n.id).ok, 'and IVF too: a reversible method comes out first');
+  check(/removed first/.test(kids.tryBlockedBy() ?? ''), 'the People tab gets the same reason to show under the greyed-out button');
 }
 section('pregnancy: the existing resolvers decide, never from time or choice alone; 3/6/12-month turns agree');
 

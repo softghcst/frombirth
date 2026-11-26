@@ -91,6 +91,22 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     return back.player.health.contraception.methods.map((r) => `${r.methodId}:${r.status}:${r.deviceId ? 1 : 0}`);
   });
   check(saved.length === 1 && saved[0] === 'implant:active:1', `${label}: saved and reloaded: one implant (${saved.join(', ')})`);
+  // The partner's profile: "Try for a baby" is there, greyed out, with the reason (the implant) underneath.
+  const baby = await page.evaluate(async () => {
+    document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
+    const { store } = await import('/js/state.js');
+    const p = store.state.player;
+    const n = p.npcIds.map((id) => store.state.npcs[id]).find((x) => x?.role === 'partner');
+    const { openNpc } = await import('/js/ui/tabs/people.js');
+    openNpc(n, window.__api);
+    await new Promise((r) => setTimeout(r, 150));
+    const b = document.querySelector('#modal-root [data-act="baby"]');
+    const ivf = document.querySelector('#modal-root [data-act="ivf"]');
+    return b ? { disabled: b.disabled, text: b.innerText, why: b.querySelector('small')?.innerText ?? '', ivf: ivf ? ivf.disabled : null } : null;
+  });
+  check(baby && baby.disabled && /implant/i.test(baby.why) && /removed first/i.test(baby.why) && baby.ivf !== false, `${label}: "Try for a baby" is greyed out with the reason underneath (${JSON.stringify(baby)})`);
+  if (process.env.SHOT) { await page.evaluate(() => document.querySelector('#modal-root [data-act="baby"]')?.scrollIntoView({ block: 'center' })); await page.screenshot({ path: `${process.env.SHOT}/bc-${label}-baby.png` }); }
+  check(!(await overflow()), `${label}: the profile does not scroll sideways`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }

@@ -285,6 +285,7 @@ button.row:active { transform: scale(0.99); background: var(--accent-soft); }
 .epitaph-row.locked strong { color: var(--muted); font-weight: 500; font-style: italic; }
 .epitaph-list { max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .btn small { display: block; font-weight: 400; opacity: 0.75; font-size: 0.8rem; }
+.btn.has-why { flex-direction: column; gap: 2px; } /* a greyed action with the reason underneath */
 
 .contact { padding: 8px 0; }
 .contact + .contact { border-top: 1px dashed var(--line); }

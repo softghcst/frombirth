@@ -1219,9 +1219,10 @@ export function legacySwitch(on, p = player()) {
   return result(true, left.length ? `You stop the methods you control yourself. Your ${left.map((r) => def(r).name.toLowerCase()).join(' and ')} stays until it is removed by a clinician.` : 'You have stopped using birth control.', 'neutral');
 }
 /** Whether a method in place means a couple cannot simply "try for a baby" (it has to be stopped or removed first). */
-export function blocksTrying(p = player()) {
-  const c = cx(p);
-  const rec = active(p).find((r) => !def(r)?.barrier && recordRiskAt(r, absNow(), p) < 0.5);
+export function blocksTrying(p = player(), o = {}) {
+  cx(p);
+  // IVF goes around the tubes (and, after a vasectomy, sperm can be retrieved): only a reversible method stands in its way.
+  const rec = active(p).find((r) => !def(r)?.barrier && recordRiskAt(r, absNow(), p) < 0.5 && !(o.ivf && def(r)?.permanent));
   if (!rec) return null;
   const m = def(rec);
   return m.permanent ? `${m.name} is meant to be permanent.` : m.procedure ? `Your ${m.name.toLowerCase()} would need to be removed first (My Health → Reproductive health).`
