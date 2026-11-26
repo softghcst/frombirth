@@ -1640,7 +1640,18 @@ section('the academy ends on its own date: graduation and field training the sam
   for (let i = 0; i < 4; i++) { const f = W.openCase('fraud', { ownerId: a.id, truth: 'insider' }); if (f.file.employerId) used.add(f.file.employerId); }
   check(used.size >= 3, `fraud cases spread across the city's companies (${used.size} of 4)`);
 }
-section('playtest fixes: interviews end with the proper questions; cases spread across the city');
+{
+  life('us', 35);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.caseIds = [];
+  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('burglary', { ownerId: a.id, truth: 'insider' }).id);
+  months(48);
+  const idle = r.caseIds.map(W.investigation).filter((inv) => inv.stage === 'suspended').length;
+  check(idle >= 2 && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && inv.stage === 'active'), `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${r.caseIds.length} in all)`);
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come');
 
 for (const line of ok) console.log(`ok   ${line}`);
 

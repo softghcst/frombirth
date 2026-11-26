@@ -144,6 +144,15 @@ function autoProgress(p, r) {
     const f = inv?.file;
     if (!f || f.outcome || !['active', 'suspect'].includes(inv.stage)) continue;
     if ((f.work[year() - 1] ?? 0) > 0) continue;
+    // Three years with nobody working it: the sergeant sets it aside (inactive, still open), and the caseload has room again.
+    const idle = [1, 2, 3].every((n) => !(f.work[year() - n] > 0)) && now() - f.opened >= 36 && !f.courtCaseId && !f.review;
+    if (idle) {
+      inv.stage = 'suspended';
+      f.inactive = now();
+      f.log.push({ at: now(), text: 'Three years without work on it: the sergeant set it aside. It stays open, and can be taken up again.' });
+      log(`${f.title} has had no work for three years; your sergeant set it aside, and you will get new cases.`, 'system', 'neutral');
+      continue;
+    }
     const step = ['scene', 'specialist', 'examiner', 'urgency', 'search'].find((s) => !f.done[s] && f.clues.some((c) => c.via === s));
     if (!step) continue;
     f.done[step] = now();
