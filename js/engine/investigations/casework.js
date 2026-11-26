@@ -32,6 +32,7 @@ import { lawyerOnIt, lawCaseFor } from './legal.js';
 import { realBusiness, neighborWitness, placeCase } from './local.js';
 import { workingToRule } from './unions.js';
 import { inForce } from './reform.js';
+import { relatives, checkConflict, markAncestor } from './family.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -94,6 +95,8 @@ export function openCase(tid, o = {}) {
   let perp = null;
   if (t.pack) perp = t.perp[truth] === 'insider' ? insider : t.perp[truth] === 'stranger' ? civ({ age: r.int(18, 55) }) : null;
   else if (!NO_CRIME.includes(truth)) perp = ['insider', 'known'].includes(truth) ? insider : truth === 'harm' ? civ({ age: r.int(20, 55) }) : civ({ age: r.int(18, 50) });
+  // One person behind several cases (a series: serial.js) is the same person in each.
+  if (o.perpId && perp && store.state.npcs[o.perpId]?.alive) perp = store.state.npcs[o.perpId];
   const offenseId = t.offenseId ?? (truth === 'harm' ? 'assault' : 'theft');
   const inc = k.createIncident({ offenseId, perpetratorId: perp?.id ?? null, victimId: victim?.id, countryId, city, witnessIds: witnesses.map((w) => w.id) });
   inc.participants = inc.participants.filter((x) => x.id);
@@ -331,7 +334,7 @@ export function steps(inv) {
     open('records', needs ? 'Request the protected records (needs a court order)' : 'Request the relevant records', needs ? 'Phone, bank or access records need a judge\'s authorization first.' : 'Records that need no special authority.', { needsAuth: needs });
   }
   if (rc?.needsAuth && !f.auths.some((a) => a.kind === 'records')) out.push({ id: 'auth:records', label: 'Ask a judge for a records order', sub: 'The judge needs a lawful basis from what the file already shows.' });
-  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
+  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
   return out;
 }
 const found = (f) => f.clues.filter((c) => c.found);
@@ -901,7 +904,10 @@ export function reopen(invId) {
   f.reopened.push({ at: now(), by: me(), why: fresh.length ? `${LAB[fresh[0].discipline].name} is available now.` : 'Reviewed.' });
   inv.stage = 'active';
   if (!inv.investigatorIds.includes(me())) inv.investigatorIds.push(me());
+  f.formerLeadId ??= f.leadId;
   f.leadId = me();
+  markAncestor(inv); // a case an ancestor led (family.js)
+  checkConflict(inv);
   r.stats.reopened += 1;
   if (!r.caseIds.includes(inv.id)) r.caseIds.push(inv.id);
   f.log.push({ at: now(), text: `Reopened by ${nm(me())}. The original file, from ${dateWords(f.opened)}, is kept as it was.` });
@@ -927,7 +933,11 @@ export function assignCase(p = player()) {
   const tid = roll.pick(pool);
   const inv = openCase(tid, { ownerId: r.job.agencyId ?? r.job.officeId });
   if (fed) inv.file.federal = r.job.agencyKind;
+  // A relative of the player's, living in the city, may be among the people a case touches (family.js decides what follows).
+  const fam = [...relatives(p)].map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age >= 16);
+  if (fam.length && seeded(`${inv.id}/family`).chance(0.08)) { const n = seeded(`${inv.id}/family/who`).pick(fam); inv.file.people.push({ id: n.id, role: 'witness' }); }
   r.caseIds.push(inv.id);
+  checkConflict(inv, p);
   r.stats.assigned += 1;
   inv.file.log.push({ at: now(), text: `Assigned to ${nm(me(p))}${r.people.partnerId ? ` with ${nm(r.people.partnerId)}` : ''}.` });
   if (r.people.partnerId) meet(r.people.partnerId, npc(r.people.partnerId)?.flags.title ?? 'Detective partner');
@@ -980,6 +990,8 @@ export function openReview(invId) {
   const tests = newerTests(inv);
   for (const t of tests) { const it = f.items.find((x) => x.id === t.item); if (!it.disciplines.includes(t.discipline)) it.disciplines.push(t.discipline); it.examined = false; }
   f.review = { at: now(), by: me(), status: 'open', outcome: null };
+  f.formerLeadId ??= f.leadId;
+  markAncestor(inv);
   if (!inv.investigatorIds.includes(me())) inv.investigatorIds.push(me());
   if (!r.caseIds.includes(inv.id)) r.caseIds.push(inv.id);
   f.log.push({ at: now(), text: `Review opened by ${nm(me())}. The conviction stands while it is reviewed; the original file is kept as it was.` });
@@ -990,7 +1002,7 @@ export function reviewSteps(inv) {
   const f = inv.file;
   if (f?.review?.status !== 'open') return [];
   const out = [];
-  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months.`, lab: true });
+  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months.`, lab: true });
   return out;
 }
 /**

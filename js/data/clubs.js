@@ -29,7 +29,7 @@ export const CLUBS = [
   // Minds and games
   C('book', 'mind', 'A book club', 14, 40, { grows: { 'stats.intellect': 1, 'stats.mood': 1 }, friend: 0.35, blurb: 'A book a month and an evening arguing about it.', year: 'Twelve books, twelve evenings, and one that everyone hated.' }),
   C('chess', 'mind', 'A chess club', 7, 60, { skill: 'chess', grows: { 'stats.intellect': 1 }, top: 'Club captain', blurb: 'Tuesday nights, a league, and clocks that tick too loudly.', year: 'You played the league season and learned more from losing than from winning.' }),
-  C('debate', 'mind', 'A debating society', 13, 50, { grows: { 'stats.charm': 2, 'stats.intellect': 1 }, top: 'President', blurb: 'Motions, rebuttals, and learning to argue the side you disagree with.', year: 'You argued for things you did not believe, and won some of them.' }),
+  C('debate', 'mind', 'A debating society', 13, 50, { grows: { 'stats.charm': 2, 'stats.intellect': 1, 'talents.persuasion': 2 }, top: 'President', blurb: 'Motions, rebuttals, and learning to argue the side you disagree with.', year: 'You argued for things you did not believe, and won some of them.' }),
   // For children and teenagers, outside school (and for those not at one): the teams the summer competitions are entered
   // from (engine/summer.js).
   C('math_circle', 'mind', 'A math circle', 8, 60, { maxAge: 18, skill: 'math', grows: { 'stats.intellect': 2 }, top: 'Team captain', blurb: 'Puzzles that take all evening, a retired professor, and a team for the olympiad.', year: 'A year of problems nobody at school would set you, and some you solved.' }),

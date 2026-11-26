@@ -60,12 +60,14 @@ async function run(viewport) {
     Object.assign(core.I(p).skills, { interviewing: 60, ethics: 60, reasoning: 60, writing: 60, law: 50 });
   });
   await openHub(page);
+  check(await page.locator('[data-inv] [data-act="hintOk"]').count() === 1, `${w}px: the first visit shows a short tip`);
+  await page.locator('[data-inv] [data-act="hintOk"]').first().click();
+  await page.waitForTimeout(80);
+  check(await page.locator('[data-inv] [data-act="hintOk"]').count() === 0, `${w}px: the tip is gone once read`);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
-  check(sections.some((s) => /Agencies|Departments/i.test(s)) && /Federal/i.test(await (async () => { await page.locator('[data-inv] [data-sec]', { hasText: /Agencies|Departments/ }).first().click(); return page.locator('[data-inv]').innerText(); })()) && !sections.some((s) => /^Cases$|Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
-  check(sections.length <= 7, `${w}px: a handful of tabs, not a dozen (${sections.join(', ')})`);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Overview' }).first().click();
+  check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
   check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
-  await page.locator('[data-inv] [data-sec]', { hasText: /Agencies|Departments/ }).first().click();
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Departments' }).first().click();
   await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
   await dismissMessages(page);
   const app = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.investigator.apps[0]; });
@@ -75,7 +77,7 @@ async function run(viewport) {
   await closeHub(page);
   await openHub(page);
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Overview' }).first().click();
+  // The hub opens on its home screen: where you stand, and every section as a row.
   await page.locator('[data-inv] [data-act="acceptAcademy"]').first().click();
   await dismissMessages(page);
   const ac = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const r = store.state.player.investigator; return { status: r.academy?.status, career: store.state.player.career.careerId }; });
@@ -101,7 +103,7 @@ async function run(viewport) {
   });
   await openHub(page);
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: /^Cases$|Active Cases/ }).first().click();
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Active Cases' }).first().click();
   check((await page.locator('[data-inv]').innerText()).includes('The Ashford Street Burglary'), `${w}px: the case is in Active Cases`);
   check(await page.locator('[data-inv] [data-act="support"]').count() >= 1, `${w}px: a case can ask for support from the caseload page`);
   await page.locator('[data-inv] [data-act="support"]').first().click();
@@ -150,7 +152,10 @@ async function run(viewport) {
   check(/Cause of death and manner of death are different findings/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a forensic pathologist sees their referrals, cause and manner kept apart`);
   await page.locator('[data-inv] [data-act="death"]').first().click();
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: /Other Work|Public Safety/ }).first().click();
+  // Back, in the bar, returns to the home screen with its rows.
+  await page.locator('#modal-root .modal:has([data-inv]) .modal-back').click(); await page.waitForTimeout(100);
+  check(await page.locator('[data-inv] .section-label').count() >= 2 && await page.locator('[data-inv] [data-sec]').count() >= 4, `${w}px: Back returns to the home screen, its sections grouped as rows`);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
   check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
   check(await fits(page), `${w}px: the new pages fit the screen`);
   await closeHub(page);

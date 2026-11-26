@@ -1,5 +1,6 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
+import { openPolitics } from '../politics.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
@@ -220,7 +221,7 @@ export const careerHandlers = (api) => ({
   'sc:sports': () => openAthletics(api),
   'sc:kpop': () => openIdol(api),
   'sc:journalism': () => openJournalism(api),
-  'sc:politics': () => document.getElementById('politics-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+  'sc:politics': () => openPolitics(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),
