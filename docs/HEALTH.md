@@ -79,6 +79,7 @@ chance of having a condition.
 | `js/ui/health/hub.js` | My Health, the Treatment Journey and the DBT Journey |
 | `js/data/events/health.js` | scenes driven by the health record |
 | `tests/health.mjs` | the checks, including both required vertical slices |
+| `js/engine/health/contraception.js` | contraception and family planning: see docs/CONTRACEPTION.md |
 
 ### The care calendar
 

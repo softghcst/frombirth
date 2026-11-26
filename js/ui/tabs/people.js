@@ -295,7 +295,7 @@ function grouped(actions) {
     if (!here.length) return '';
     shown++;
     // Each group is a plain heading with its buttons under it: nothing to unfold on a page of its own.
-    return `<section class="action-group"><div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></section>`;
+    return `<section class="action-group"><div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}${a.why ? ' has-why' : ''}" data-act="${a.id}" ${a.done || a.why ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}${a.why ? `<small>${esc(a.why)}</small>` : ''}</button>`).join('')}</div></section>`;
   }).join('');
 }
 
@@ -375,8 +375,9 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
-    ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
-    ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love' }] : []),
+    // A method in place (an implant, an IUD, a pill, a permanent method) greys it out, with why underneath.
+    ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby', why: kids.tryBlockedBy() }] : []),
+    ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love', why: kids.tryBlockedBy({ ivf: true }) }] : []),
     ...(npc.birthInfo || canTagOlder(npc) ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
     ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
@@ -426,13 +427,14 @@ export function openNpc(npc, api, back, o = {}) {
       adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
-      hookUp: () => report(api, love.hookUp(npc.id)),
+      hookUp: async () => { await report(api, love.hookUp(npc.id)); if (store.state.pendingEvents.length) await api.pending?.(); },
       askCasual: () => report(api, bonds.propose(npc.id, 'casual')),
       askFwb: () => report(api, bonds.propose(npc.id, 'fwb')),
       askSecret: () => report(api, bonds.propose(npc.id, 'secret')),
       askOneNight: () => report(api, bonds.propose(npc.id, 'onenight')),
       bondTime: () => report(api, bonds.spendTime(npc.id)),
-      bondIntimate: () => report(api, bonds.intimate(npc.id)),
+      // A decision the night brought (emergency contraception after a broken condom) is asked now, while it can help.
+      bondIntimate: async () => { await report(api, bonds.intimate(npc.id)); if (store.state.pendingEvents.length) await api.pending?.(); },
       bondGift: () => romanticGift(api, npc),
       bondTrip: () => tripWith(api, npc),
       bondTransfer: () => makeOver(api, npc),
@@ -443,7 +445,7 @@ export function openNpc(npc, api, back, o = {}) {
       bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),
       bondEnd: () => report(api, bonds.end(npc.id)),
       bondConfess: () => report(api, bonds.confess(npc.id)),
-      bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
+      bondControl: async () => { const { openHealth } = await import('../health/hub.js'); openHealth(api, { section: 'repro', page: 'bc' }); },
       baby: () => report(api, kids.tryForBaby(npc.id)),
       ivf: () => report(api, kids.tryIvf(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
