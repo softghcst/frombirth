@@ -33,6 +33,18 @@ import { ailmentsOf } from '../../engine/health/ailments.js';
 import { reproSection, bcPage, bcFlows } from './contraception.js';
 
 const SKILLS_NAMES = new Set(Object.values(SKILLS));
+/**
+ * Five pages, each with its sections under their own headings: fewer tabs to hunt through, and every section still
+ * reached by its id (openHealth({ section: 'appointments' }) opens Care at Appointments).
+ */
+const PAGES = [
+  ['overview', 'Overview', ['overview', 'goals']],
+  ['body', 'Body & Mind', ['physical', 'mental', 'conditions', 'repro']],
+  ['care', 'Care', ['appointments', 'therapy', 'medications', 'supports']],
+  ['cover', 'Cover & Bills', ['cover']],
+  ['history', 'History', ['history']],
+];
+const pageOf = (sec) => PAGES.find(([id, , members]) => id === sec || members.includes(sec)) ?? PAGES[0];
 const SECTIONS = [
   ['overview', 'Overview'], ['physical', 'Physical'], ['mental', 'Mental health'], ['conditions', 'My conditions'], ['appointments', 'Appointments'],
   ['therapy', 'Therapy'], ['medications', 'Medications'], ['repro', 'Reproductive health'], ['supports', 'Accessibility'], ['cover', 'Cover & hospital'], ['history', 'History'], ['goals', 'Goals'],
@@ -458,7 +470,7 @@ export function openHealth(api, to = {}) {
   // A screen of its own, like the careers: the whole screen on a phone, Back and its name in the bar along the top.
   const m = openModal(`
     <div class="dyn-head" style="flex:none"><div class="eyebrow">${esc(p.firstName)}</div></div>
-    ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${SECTIONS.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
+    ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${PAGES.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
     <div class="dyn-body hl-body" data-body></div>`, { dismissable: true, full: true, title: 'My Health' });
   m.el.classList.add('dyn-modal', 'hl-modal');
   const body = m.el.querySelector('[data-body]');
@@ -466,9 +478,17 @@ export function openHealth(api, to = {}) {
   function draw(keepScroll = false) {
     const h = healthOf(p);
     const top = keepScroll ? body.scrollTop : 0;
+    // A section asked for by its own id opens its page, at its heading.
+    const page = pageOf(nav.section);
+    const at = page[2].includes(nav.section) && page[2][0] !== nav.section ? nav.section : null;
+    nav.section = page[0];
     m.el.querySelectorAll('[data-tab]').forEach((b) => { const on = !nav.page && b.dataset.tab === nav.section; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
     const pages = { overview, physical, mental, conditions, appointments, therapy, medications, repro: reproSection, supports, cover, history, goals };
-    body.innerHTML = young ? youngView(p, h) : nav.page === 'bc' ? bcPage(p, nav) : nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : pages[nav.section](p, h);
+    const label = (id) => SECTIONS.find(([x]) => x === id)?.[1] ?? id;
+    const whole = page[2].length === 1 ? pages[page[2][0]](p, h)
+      : page[2].map((id) => `<h3 class="hl-group" id="hl-sec-${id}">${esc(label(id))}</h3>${pages[id](p, h)}`).join('');
+    body.innerHTML = young ? youngView(p, h) : nav.page === 'bc' ? bcPage(p, nav) : nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : whole;
+    if (at && !nav.page && !keepScroll) requestAnimationFrame(() => body.querySelector(`#hl-sec-${at}`)?.scrollIntoView({ block: 'start' }));
     body.scrollTop = keepScroll ? top : nav.scroll && nav.restore ? nav.scroll : 0;
     nav.restore = false;
     m.el.querySelector(`[data-tab="${nav.section}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
