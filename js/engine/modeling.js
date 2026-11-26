@@ -69,7 +69,7 @@ export const booker = (o) => (o?.bookerId ? store.state.npcs[o.bookerId] : null)
 export const agencyTerms = (p = player()) => { const m = p.fame?.model; return m?.agencyId ? m.terms ?? null : null; };
 
 /** How a model reads in a casting: presence, and how they carry themselves. */
-export const look = (p = player()) => Math.round(clamp(p.stats.charm * 0.6 + p.stats.health * 0.2 + (p.talents.dance ?? 50) * 0.2 - Math.max(0, p.age - 28) * 1.2));
+export const look = (p = player()) => Math.round(clamp(p.stats.charm * 0.6 + p.stats.health * 0.2 + Math.max(p.talents.dance ?? 50, p.talents.acting ?? 50) * 0.2 - Math.max(0, p.age - 28) * 1.2));
 const book = (m) => m.portfolio.reduce((s, x) => s + x.prestige, 0);
 
 /** Agencies that would take the player on, best first. */

@@ -14,6 +14,10 @@ const { M } = await import('../js/engine/medicine/core.js');
 const { I } = await import('../js/engine/investigations/core.js');
 const { lawOf } = await import('../js/engine/lawSchool.js');
 const { J } = await import('../js/engine/journalism.js');
+const { tripleThreat } = await import('../js/engine/conditions.js');
+const { skillsOf } = await import('../js/engine/kpop.js');
+const { look } = await import('../js/engine/modeling.js');
+const { CLUBS: SCHOOL_CLUBS } = await import('../js/data/schools.js');
 
 rng.seed(20261126);
 const problems = [];
@@ -34,6 +38,7 @@ for (const t of TALENTS) check(typeof t.leadsTo === 'string' && t.leadsTo.length
 // Where each gift counts in getting the job.
 const plain = life();
 const pairs = [['science', 'doctor'], ['science', 'nurse'], ['writing', 'journalist'], ['writing', 'lawyer'], ['acting', 'lawyer'],
+  ['persuasion', 'lawyer'], ['persuasion', 'political_staff'],
   ['sports', 'police'], ['sports', 'firefighter'], ['art', 'dentist'], ['writing', 'author']];
 for (const [gift, careerId] of pairs) {
   const c = job(careerId);
@@ -58,6 +63,22 @@ check(I(gifted).skills.digital >= i0 + 10, 'a gift for technology: digital evide
 const avg = life({ science: 50 });
 check(M(avg).skills.reasoning === m0, 'an ordinary talent gives no head start');
 check(Object.values(M(gifted).skills).every((v) => v <= 100), 'skills stay within 100');
+
+// Persuasion: debate and student council train it, and a courtroom rewards it.
+check(lawOf(life({ persuasion: 100 })).skills.negotiation >= lawOf(base).skills.negotiation + 10, 'a gift for persuasion: negotiation');
+for (const id of ['debate', 'council', 'mock_trial', 'model_un']) {
+  const c = SCHOOL_CLUBS.find((x) => x.id === id);
+  check(c?.yearly?.talents?.persuasion > 0, `${id} trains persuasion`);
+}
+// Musical theater needs all three: two great talents and a weak one lose to three good ones.
+check(tripleThreat(life({ singing: 95, dance: 95, acting: 30 })) < tripleThreat(life({ singing: 70, dance: 70, acting: 70 })), 'a triple threat needs all three');
+// K-pop and modeling: an actor's presence counts, and never against anyone.
+check(skillsOf().stage >= 0, 'idol skills read');
+const idolPlain = (() => { const p = life(); return skillsOf().camera; })();
+const idolActor = (() => { const p = life({ acting: 100 }); return skillsOf().camera; })();
+check(idolActor > idolPlain, `an actor is at ease on camera (${idolPlain} -> ${idolActor})`);
+const lookPlain = look(life()), lookActor = look(life({ acting: 100 }));
+check(lookActor > lookPlain, 'an actor knows how to pose');
 
 if (problems.length) { console.log(problems.map((x) => `FAIL ${x}`).join('\n')); process.exit(1); }
 console.log('A gift leads somewhere: medicine, law, the newsroom, the police.');

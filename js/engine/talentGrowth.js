@@ -7,7 +7,7 @@
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
-import { TALENTS, TALENT_BY_ID } from '../data/talents.js';
+import { TALENTS, TALENT_BY_ID, LATER_TALENTS } from '../data/talents.js';
 
 /** How much of a gift shows by this age with no particular effort. */
 export function maturity(age) {
@@ -17,10 +17,17 @@ export function maturity(age) {
   return 0.56;
 }
 
+const LATER = new Set(LATER_TALENTS);
+
 /** Where someone of this age with these gifts would be, with no practice to speak of. */
 export function startTalents(potential, age) {
   const out = {};
-  for (const [k, v] of Object.entries(potential)) out[k] = Math.round(clamp(v * maturity(age) + rng.int(0, 3)));
+  const seed = rng.state();
+  for (const [k, v] of Object.entries(potential)) {
+    // Talents added later (persuasion) roll dice of their own, so that adding one changes no other roll in a life.
+    const jitter = LATER.has(k) ? (Math.imul(seed ^ k.length * 0x9e3779b1, 0x85ebca6b) >>> 0) % 4 : rng.int(0, 3);
+    out[k] = Math.round(clamp(v * maturity(age) + jitter));
+  }
   return out;
 }
 
@@ -40,7 +47,8 @@ export function ensurePotential(p = player()) {
 /** How a gift feels before it is known. */
 const HINT = { music: 'musically inclined', sports: 'athletically inclined', acting: 'drawn to performing', singing: 'that singing comes easily to you',
   dance: 'a feel for rhythm in you', art: 'artistically inclined', writing: 'that you have a way with words', tech: 'good with machines and gadgets',
-  science: 'that numbers and how things work make sense to you' };
+  science: 'that numbers and how things work make sense to you',
+  persuasion: 'that you can talk people round' };
 
 /**
  * Once a year: each talent comes on toward where the years alone would bring it (never down), and a gift not yet known
