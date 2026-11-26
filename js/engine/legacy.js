@@ -42,6 +42,7 @@ import { legacySummary as investigatorLegacy } from './investigations/index.js';
 import { physicianSummary } from './medicine/core.js';
 import { handOver as handOverSports } from './sportsLife.js';
 import { rate as fxRate } from './currency.js';
+import { handOverNewsroom } from './journalism.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -290,6 +291,8 @@ export function continueAs(npcId) {
   // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
+  // The newsrooms, what was published, and a family publication carry on (engine/journalism.js).
+  handOverNewsroom(old, next, player);
   // The city's hospitals keep what they are; a physician's patient files are confidential and are not inherited.
   // The agencies, offices, laboratories and the cases they keep go on; an investigator's public career joins the family's legacy.
   // A descendant inherits no powers and no access to case files: only what was public (engine/investigations/index.js legacySummary).

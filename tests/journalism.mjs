@@ -12,7 +12,8 @@ const { saveGame, loadGame } = await import('../js/save.js');
 const jn = await import('../js/engine/journalism.js');
 const sc = await import('../js/engine/specialCareer.js');
 const career = await import('../js/engine/career.js');
-const { OUTLET_KINDS } = await import('../js/data/journalism.js');
+const { OUTLET_KINDS, OWN_KINDS } = await import('../js/data/journalism.js');
+const OWN_KINDS_ANY = () => OWN_KINDS;
 
 const problems = [];
 const ok = [];
@@ -358,6 +359,73 @@ function report(s) {
   const mine = fam.find((x) => x.id === p.id);
   check(mine && mine.pubs.length && !JSON.stringify(fam).includes('"evidence"') && !JSON.stringify(fam).includes('"truth"'), `the family sees published work, never notebooks (${mine?.pubs.length}, ${jn.myStories(p).map((x) => x.status)})`);
   section('K-pop, business and science beats, foreign postings, and the family record');
+}
+
+// 11. An editor's desk, a documentary, leave, and a publication handed to an heir.
+{
+  const p = life(40);
+  hireMe(p);
+  check(!jn.isEditor(p) && !jn.desk(p).length, 'no desk for a junior reporter');
+  p.career.level = 3;
+  const d = jn.desk(p);
+  check(d.length === 3 && d.every((x) => store.state.npcs[x.reporterId]) && jn.desk(p) === d, `an editor gets the year's drafts from real reporters (${d.length})`);
+  check(!JSON.stringify(d.map((x) => x.claims.map((c) => c.status))).includes('truth'), 'the desk shows what the notes support');
+  const thin = d.find((x) => x.claims.some((c) => ['single', 'disputed'].includes(c.status) && !c.truth));
+  const solid = d.find((x) => x.claims.every((c) => ['verified', 'supported'].includes(c.status)));
+  const before = jn.J().rep.leadership ?? 50;
+  if (thin) check(!jn.deskDecide(thin.id, 'approve').ok && (jn.J().rep.leadership < before), 'approving a draft that rested on one source comes back on the editor');
+  const other = d.find((x) => !x.decision);
+  check(jn.deskDecide(other.id, 'back').ok && !jn.deskDecide(other.id, 'approve').ok, 'each draft is decided once');
+  void solid;
+  // A documentary: only from an investigation that stood up; stages; lawyers before release.
+  const fake = { id: 'pub_test', reporterId: p.id, beat: 'investigative', headline: 'The harbor deal', errors: [], claims: [{ id: 'c', text: 'x', asFact: true }], outletId: jn.J().outletId, corrections: [], sources: [], readers: 1, at: 0, year: store.state.year };
+  jn.S().pubs[fake.id] = fake;
+  check(!jn.documentaryWhy(fake.id, p) && jn.startDocumentary(fake.id).ok && !jn.startDocumentary(fake.id).ok, 'one documentary from an investigation that held up');
+  jn.S().pubs.pub_wrong = { ...fake, id: 'pub_wrong', errors: ['c'] };
+  check(/got something wrong/.test(jn.documentaryWhy('pub_wrong', p)), 'not from a story that got something wrong');
+  const doc = jn.myDocumentaries(p)[0];
+  check(!jn.releaseDocumentary(doc.id).ok, 'not released before it is finished');
+  for (let y = 0; y < 6 && doc.stage !== 'legal'; y++) { while (doc.stage !== 'legal' && jn.workDocumentary(doc.id).ok); if (doc.stage !== 'legal') store.state.year += 1; }
+  check(doc.stage === 'legal', `the work gets it to the lawyers (${doc.stage})`);
+  check(jn.releaseDocumentary(doc.id).ok && doc.legal && !doc.released && jn.releaseDocumentary(doc.id).ok && doc.released, 'a legal read, then release');
+  // Leave: a year with no assignments, then back to work.
+  check(jn.takeLeave().ok && !jn.takeLeave().ok, 'leave booked once');
+  store.state.year += 1;
+  jn.J().assigned = null;
+  check(jn.assignYear(p).length === 0, 'no assignments on leave');
+  store.state.year += 1;
+  check(jn.assignYear(p).length > 0 && jn.isReporter(p), 'back at the desk after the leave');
+  // A newsroom scene that was shown once is not shown again.
+  const seenAll = new Set();
+  for (let y = 0; y < 15; y++) { store.state.year += 1; store.state.pendingEvents = []; jn.tickJournalism?.(p); for (const e of store.state.pendingEvents) { check(!seenAll.has(e.id), `scene ${e.id} not repeated`); seenAll.add(e.id); } }
+  section('the editor\'s desk, a documentary, leave, and scenes that are not repeated');
+}
+
+// 12. The heir: published work, the family record, and an owned publication carry on.
+{
+  const { continueAs, heirs } = await import('../js/engine/legacy.js');
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  const p = life(50);
+  p.finance.cash = 10_000_000;
+  hireMe(p);
+  const s1 = jn.myStories(p)[0];
+  report(s1);
+  const pubsBefore = Object.keys(jn.S().pubs).length;
+  career.endJob?.('quit');
+  const started = jn.startPublication(Object.keys(OWN_KINDS_ANY()).find((k) => !jn.startWhy(k, p)), 'The Family Paper', 'careful');
+  check(started.ok, `a publication of their own (${started.text})`);
+  const own = jn.ownedOutlet(p);
+  const kid = makeNpc({ role: 'child', countryId: p.countryId, age: 24, lastName: p.lastName });
+  store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id); kid.parentIds = [p.id];
+  p.alive = false;
+  check(heirs().some((n) => n.id === kid.id), 'setup: the child can carry on');
+  store.state = continueAs(kid.id);
+  const h = store.state.player;
+  check(Object.keys(jn.S().pubs).length === pubsBefore, 'what was published is still in the world');
+  check(own && jn.S().outlets[own.id].ownerId === h.id && jn.ownedOutlet(h)?.id === own.id, 'the family publication passes to the heir');
+  check(jn.familyJournalism().some((x) => x.id === p.id), 'the ancestor is in the family\'s journalism record');
+  check(Object.values(jn.S().outlets).every((o) => !o.editorId || store.state.npcs[o.editorId]), 'every newsroom still has its editor');
+  section('published work, the family record and an owned publication carry on to the heir');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

@@ -72,6 +72,17 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .btn.primary').last().click().catch(() => {}); await page.waitForTimeout(150);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: nothing scrolls sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-${label}.png` });
+  // An editor's desk: reporters' drafts to approve, send back or spike.
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); store.state.player.career.level = 3; });
+  await page.evaluate(() => document.querySelector("#modal-root [data-back]").click()); await page.waitForTimeout(200);
+  await page.locator('#modal-root [data-tab="overview"]').click(); await page.waitForTimeout(200);
+  check(/Your desk/i.test(await page.locator('#modal-root .modal').last().innerText()) && await page.locator('#modal-root [data-act="desk"]').count() === 9, `${label}: an editor sees three drafts, each to decide`);
+  await page.locator('#modal-root [data-act="desk"]').nth(1).click(); await page.waitForTimeout(200);
+  await page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .btn.primary').last().click().catch(() => {}); await page.waitForTimeout(150);
+  check(/Sent back/i.test(await page.locator('#modal-root .modal').last().innerText()), `${label}: the decision is recorded`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-desk-${label}.png`, fullPage: true });
+  await page.locator('#modal-root [data-tab="career"]').click(); await page.waitForTimeout(200);
+  check(await page.locator('#modal-root [data-act="takeleave"]').count() === 1, `${label}: leave can be taken from the Career tab`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }

@@ -65,7 +65,10 @@ export function skillsOf(who = 'player') {
   const i = idolOf(p);
   const korean = p.birthCountryId === 'kr' ? 100 : Math.round(p.skills?.korean ?? 0);
   return { vocal: Math.round(p.talents.singing ?? 0), dance: Math.round(p.talents.dance ?? 0), rap: Math.round(Math.max(levelOf('rap'), (p.talents.music ?? 0) * 0.3)),
-    stage: Math.round(i.stage), camera: Math.round(i.camera * 0.7 + (p.stats.charm ?? 50) * 0.3), media: Math.round(levelOf('public_speaking') * 0.7 + (p.stats.charm ?? 50) * 0.3), korean };
+    // An actor's presence carries onto the stage and in front of a camera; a gift for persuasion, into an interview.
+    stage: Math.round(Math.max(i.stage, i.stage * 0.7 + (p.talents.acting ?? 0) * 0.3)),
+    camera: Math.round(i.camera * 0.7 + Math.max(p.stats.charm ?? 50, p.talents.acting ?? 0) * 0.3),
+    media: Math.round(levelOf('public_speaking') * 0.7 + Math.max(p.stats.charm ?? 50, p.talents.persuasion ?? 0) * 0.3), korean };
 }
 function raise(who, area, by) {
   if (by <= 0) return;

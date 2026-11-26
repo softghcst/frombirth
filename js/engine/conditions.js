@@ -32,6 +32,18 @@ export function parentsSpend(amount, p = player()) {
   return Math.round(amount) - left;
 }
 
+/**
+ * How a model reads to a client: the gift for it (posing, the camera, the walk) above all, with charm, health, and the
+ * movement of a dancer or the presence of an actor. Never below what charm and health alone would give.
+ */
+export function modelLook(p = player()) {
+  const t = p.talents ?? {};
+  const moves = Math.max(t.dance ?? 50, t.acting ?? 50);
+  const plain = p.stats.charm * 0.6 + p.stats.health * 0.2 + moves * 0.2;
+  const gifted = p.stats.charm * 0.35 + p.stats.health * 0.15 + (t.modeling ?? 0) * 0.4 + moves * 0.1;
+  return Math.round(Math.max(0, Math.min(100, Math.max(plain, gifted) - Math.max(0, p.age - 28) * 1.2)));
+}
+
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
   const t = [p.talents.singing ?? 0, p.talents.dance ?? 0, p.talents.acting ?? 0];
@@ -97,6 +109,7 @@ const SPECIAL = {
   workStress: (p) => p.career.stress ?? 0,
   hasYoungChild: (p) => p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && n.role === 'child' && n.age < 12; }),
   tripleThreat: (p) => tripleThreat(p),
+  modelLook: (p) => modelLook(p),
   ownsProperty: (p) => p.assets.some((a) => a.kind === 'property'),
   ownsHome: (p) => !!p.homeId && p.assets.some((a) => a.id === p.homeId),
   hasTenant: (p) => p.assets.some((a) => a.tenant),
