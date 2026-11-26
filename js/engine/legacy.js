@@ -3,6 +3,7 @@
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
 import { giveBirthday, yearSpan } from './birthday.js';
+import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
@@ -41,6 +42,7 @@ import { legacySummary as investigatorLegacy } from './investigations/index.js';
 import { physicianSummary } from './medicine/core.js';
 import { handOver as handOverSports } from './sportsLife.js';
 import { rate as fxRate } from './currency.js';
+import { handOverNewsroom } from './journalism.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -289,6 +291,8 @@ export function continueAs(npcId) {
   // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
+  // The newsrooms, what was published, and a family publication carry on (engine/journalism.js).
+  handOverNewsroom(old, next, player);
   // The city's hospitals keep what they are; a physician's patient files are confidential and are not inherited.
   // The agencies, offices, laboratories and the cases they keep go on; an investigator's public career joins the family's legacy.
   // A descendant inherits no powers and no access to case files: only what was public (engine/investigations/index.js legacySummary).
@@ -298,6 +302,8 @@ export function continueAs(npcId) {
   }
   if (old.medicine) next.medicine = { v: old.medicine.v, seq: old.medicine.seq ?? 0, hospitals: old.medicine.hospitals ?? {}, programs: old.medicine.programs ?? {}, schools: old.medicine.schools ?? {}, patients: {}, cases: {}, episodes: {} };
   giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
+  // The heir grew up speaking their birth country's language.
+  giveNativeLanguages(player);
   next.today = yearSpan(next).start;
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),

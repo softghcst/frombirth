@@ -151,7 +151,7 @@ export default [
     ['Pick a side and argue for it', 'Your side wins, narrowly. Some colleagues are cooler toward you.', 'talk:side'],
   ]),
   scene('med_industry_gift', 'A company whose products you prescribe invites you to speak at a conference in a beautiful city: flights, a hotel, and a generous fee for a short talk.', [
-    ['Decline: it is a conflict of interest', 'You decline politely.', 'gift:decline', 'good'],
+    ['Decline: it is a conflict of interest', 'You write back to say no, politely.', 'gift:decline', 'good'],
     ['Accept: everyone goes', 'You accept.', 'gift:accept', 'bad'],
   ]),
   scene('med_alter_record', 'After a case went badly, a senior colleague asks you to "tidy up" a note you wrote that night: change a time, leave out a line.', [
@@ -303,9 +303,14 @@ export default [
     ['Keep it professional and no more', 'You work together, correctly and coolly.', 'reconcile:no'],
   ]),
   scene('med_family_patient', '{who} has been diagnosed with {condition}, and turns to the doctor in the family: you. "What should I do? Will you look after me?"', [
-    ['Find them the right colleague, and stay family', 'You make the calls. You stay at their side, not at the end of the bed.', 'familyPatient:colleague', 'good'],
+    ['Find them the right colleague, and stay family', 'You know exactly who they should see.', 'familyPatient:colleague', 'good'],
     ['Be there with them, and let their doctors be the doctors', 'You go to the appointments and ask the questions they forget.', 'familyPatient:family', 'good'],
     ['Take on their care yourself', 'You say yes before you have thought it through.', 'familyPatient:self', 'bad'],
+  ]),
+  scene('med_family_ailment', '{who} has {ailment}, and calls the doctor in the family before anyone else: you.', [
+    ['Get them seen properly, today', 'You drive them in yourself, and wait in the waiting room like everyone else.', 'familyAilment:seen', 'good'],
+    ['Have a look, and tell them what to watch for', 'You look, ask the questions you would ask anyone, and tell them when to go in if it gets worse.', 'familyAilment:look'],
+    ['Sort it out yourself, to save them the trip', 'It is quicker. It is also not how it should be done, and you both know it.', 'familyAilment:self', 'bad'],
   ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],

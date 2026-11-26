@@ -57,6 +57,7 @@ import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
 import { recordOdds, bestCompetitiveYears } from './sports.js';
+import { leaveNewsroom } from './journalism.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -64,7 +65,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 const K = 1000;
 export const STAT_NAMES = { 'stats.health': 'Health', 'stats.intellect': 'Intellect', 'stats.charm': 'Charm',
   'talents.acting': 'Acting', 'talents.singing': 'Singing', 'talents.dance': 'Dance', 'talents.sports': 'Sports',
-  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline', 'flags.riderAdvanced': 'Riding at an advanced level' };
+  'talents.music': 'Music', tripleThreat: 'Triple-threat score', modelLook: 'Your look', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline', 'flags.riderAdvanced': 'Riding at an advanced level' };
 
 /** Per-year action counters; reset when the age changes. */
 function acts() {
@@ -185,7 +186,9 @@ export function doorBonus(career) {
 
 export const payBand = (level) => level.pay.map((k) => Math.round(localWage(k * K, country()) * payK())); // what the work pays in this city
 /** The most a level will ever pay at this employer, however many raises you collect: a little over the top of its band. */
-const payCeiling = (level) => Math.round((currentLevel() === level && player().career.bandHi ? player().career.bandHi : payBand(level)[1]) * 1.1);
+const atTop = (level) => { const car = currentCareer(); return !!car && car.levels[car.levels.length - 1] === level; };
+// At the top rank there is nowhere to be promoted to: raises for good work carry on, well past the band (seniority).
+const payCeiling = (level) => Math.round((currentLevel() === level && player().career.bandHi ? player().career.bandHi : payBand(level)[1]) * (atTop(level) ? 1.6 : 1.1));
 const capSalary = () => {
   const c = player().career;
   const level = currentLevel();
@@ -217,6 +220,8 @@ export function startApplication(id) {
   if (royalNo) return { kind: 'blocked', text: royalNo };
   if (player().politics && player().politics.tier >= 2) return { kind: 'blocked', text: `Being ${player().politics.title} is a full-time job. You would have to resign first.` };
   { const sc = jobBlockSpecial(career.id); if (sc) return { kind: 'blocked', text: sc }; }
+  // Reporters are hired by a newsroom, as a special career: Work > Special careers > Journalism (engine/journalism.js).
+  if (career.id === 'journalist') return { kind: 'blocked', text: 'Newsrooms hire their own reporters: apply from Special careers, Journalism.' };
   if (unmet(career).length) return { kind: 'blocked', text: unmet(career)[0] };
   const offer = standingOffer(career);
   if (offer) return { kind: 'offer', text: offer.text };
@@ -474,6 +479,7 @@ export function askForRaise() {
 export function endJob(exit) {
   const c = player().career;
   if (c.careerId === 'modeling') releaseSpecial('modeling');
+  if (c.careerId === 'journalist') { releaseSpecial('journalism'); leaveNewsroom(); }
   c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);
@@ -757,13 +763,15 @@ export function tickCareer() {
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
+  const gift = career.skill ? 0 : workEdge(career, p) * 4; // a gift for the work: science for a doctor, acting for a lawyer (engine/aptitudes.js)
   const mentor = livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 55) ? 2 : 0;
   const strain = c.stress > 75 ? -(c.stress - 75) / 4 : c.stress < 15 ? -1 : 0; // some pressure helps; too much does not
   const heart = (c.satisfaction - 55) / 20;
   const away = c.leave && c.leave.age === p.age - 1 ? -3 : 0;
   c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
-    + (p.hidden.discipline - 50) / 12 + craft + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
+    + (p.hidden.discipline - 50) / 12 + craft + gift + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
+  else if (career.skill === 'modelLook') p.talents.modeling = clamp((p.talents.modeling ?? 0) + 1);
   else if (career.skill?.startsWith('talents.')) { const k = career.skill.slice(8); p.talents[k] = clamp(p.talents[k] + 1); }
   // How the work wears on mood and health is worked out in worklife.js (stress, satisfaction, burnout).
 
@@ -803,9 +811,16 @@ export function tickCareer() {
   if (career.type !== 'freelance') log(`Your annual review as ${an(c.title.toLowerCase())}: ${rating}.`, 'system', rating === 'poor' ? 'bad' : 'neutral');
 
   if (career.type !== 'freelance' && c.performance < 25 && rng.chance(0.5)) { fire(c.military ? 'discharged' : 'fired'); return null; }
-  // Layoffs follow the economy and how the employer is doing; good performers are kept longer.
+  // A poor year is a formal warning; a second poor year in a row can cost the job. A good year clears the warning.
+  if (career.type !== 'freelance') {
+    if (c.performance < 40) {
+      if (c.warned) { if (rng.chance(0.6)) { fire(c.military ? 'discharged' : 'fired'); return null; } }
+      else { c.warned = store.state.year; log('Your manager gave you a formal warning: another year like this one, and you may be let go.', 'system', 'bad'); }
+    } else if (c.performance >= 50) c.warned = null;
+  }
+  // Layoffs follow the economy and how the employer is doing; good performers are kept longer. Judges hold office.
   const cutting = e && e.health < 30 ? 2.5 : 1;
-  if (career.type === 'fulltime' && rng.chance(layoffChance() * cutting * (c.performance >= 75 ? 0.5 : 1))) { fire('laid off'); return null; }
+  if (career.type === 'fulltime' && !['judiciary'].includes(career.id) && !e?.public && rng.chance(layoffChance() * cutting * (c.performance >= 75 ? 0.5 : 1))) { fire('laid off'); return null; }
 
   // Moving up
   const next = career.levels[c.level + 1];
@@ -813,9 +828,12 @@ export function tickCareer() {
   const missing = missingFor(next);
   // There are few seats at the very top: it takes an outstanding record, and luck.
   const toTop = next && c.level + 1 === career.levels.length - 1;
-  const bar = toTop ? 80 : 62;
+  // Solid work is enough to move up in time; strong work does it sooner. The top takes more.
+  const bar = toTop ? 72 : 50;
+  // Each year past the usual time in the role, with a good record, makes the next step likelier: seniority counts.
+  const seniority = Math.min(0.3, Math.max(0, c.yearsInRole - level.years) * 0.05);
   // A promotion needs a seat to be free: big, healthy employers have more of them.
-  const odds = clamp((0.2 + (c.performance - bar) / 110 + mentor * 0.03) * leadFactor(), 0, 0.9) * (toTop ? 0.22 : 1) * vacancyOdds(c);
+  const odds = clamp((0.25 + (c.performance - bar) / 100 + mentor * 0.03 + seniority) * leadFactor(), 0, 0.9) * (toTop ? 0.35 : 1) * vacancyOdds(c);
   if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {
@@ -831,8 +849,10 @@ export function tickCareer() {
         log(`The ${next.title.toLowerCase()} post went to ${rival.firstName} ${rival.lastName}. Your turn may come.`, 'system', 'neutral');
       }
     }
-    const pct = { excellent: 6, good: 3, adequate: 1, poor: 0 }[rating];
-    if (pct && career.type !== 'freelance' && c.salary < payCeiling(level)) {
+    // Raises are not every year: good work makes one likelier and bigger; at the top, a raise is the reward.
+    const pct = { excellent: 6, good: 4, adequate: 2, poor: 0 }[rating] + (!next && rating !== 'poor' ? 1 : 0);
+    const raiseChance = { excellent: 0.6, good: 0.4, adequate: 0.15, poor: 0 }[rating];
+    if (pct && career.type !== 'freelance' && c.salary < payCeiling(level) && rng.chance(raiseChance)) {
       c.salary = Math.min(payCeiling(level), Math.round(c.salary * (1 + pct / 100)));
       log(`You were given a ${pct}% raise, to ${fmtMoney(c.salary, cty)}.`);
     }

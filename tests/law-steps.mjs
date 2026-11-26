@@ -22,7 +22,8 @@ function year(base, step) {
   return { year: store.state.year, month: store.state.month ?? 0, age: p.age, terms: L.school?.terms.filter((t) => t.gpa != null).length ?? 0,
     window: L.window, cases: cs.length, offers: (L.offers ?? []).length, mainFilings: cs.map((c) => c.filings.filter((f) => f.main).length),
     verdicts: L.history.map((h) => h.caseId), fees: cs.filter((c) => c.fee.paid).length, salary: p.career?.salary ?? 0,
-    earned: p.finance.lifetimeEarned, toll: L.tollHalf, honors: (L.honors ?? []).length, clients: cs.filter((c) => c.clientId).map((c) => c.clientId) };
+    earned: p.finance.lifetimeEarned, toll: L.tollHalf, honors: (L.honors ?? []).length, clients: cs.filter((c) => c.clientId).map((c) => c.clientId),
+    opened: [...new Set(cs.filter((c) => c.assigned).map((c) => c.opened))].sort((x, y) => x - y) };
 }
 const all = (base) => [3, 6, 12].map((s) => ({ step: s, ...year(base, s) }));
 
@@ -59,6 +60,7 @@ const all = (base) => [3, 6, 12].map((s) => ({ step: s, ...year(base, s) }));
   check(Math.abs(a.salary - c.salary) <= c.salary * 0.15, `pay is not multiplied by shorter turns (${a.salary}, ${b.salary}, ${c.salary})`);
   check(a.earned - base.player.finance.lifetimeEarned <= (c.earned - base.player.finance.lifetimeEarned) * 1.2 + 1, `a year's earnings are not multiplied by pressing the button four times (${a.earned - base.player.finance.lifetimeEarned} vs ${c.earned - base.player.finance.lifetimeEarned})`);
   check(a.toll === c.toll, 'the workload toll is counted once per half-year');
+  check(a.opened.join() === c.opened.join() && b.opened.join() === c.opened.join(), `cases the office assigns in the middle of the year open then, on a yearly turn too (${a.opened.join('/')} vs ${c.opened.join('/')})`);
   check(r.every((x) => x.clients.every((id) => store.state.npcs[id] || true)), 'clients stay the same people');
 }
 

@@ -31,7 +31,7 @@ export const dramaSetting = (state = store.state) => (BUDGET[state.settings?.dra
 /** The storylines and their names (for the history and the tests). */
 export const SOURCES = {
   love: 'Love and relationships', family: 'Family', medicine: 'Medicine and hospital life', sport: 'Sport', abroad: 'Life abroad',
-  animals: 'Animals', digital: 'Digital life', friends: 'Friends', investigations: 'Investigations', school: 'School and campus', work: 'Work',
+  animals: 'Animals', digital: 'Digital life', friends: 'Friends', investigations: 'Investigations', school: 'School and campus', work: 'Work', health: 'Health and reproductive care',
 };
 
 const dir = (state = store.state) => {

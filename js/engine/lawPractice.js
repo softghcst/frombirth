@@ -11,20 +11,22 @@ import { rng } from '../rng.js';
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION } from '../data/law.js';
+import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL_SKILLS, REPUTATION, REPUTATION_SHOWN, skillsFor } from '../data/law.js';
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
-import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } from './career.js';
+import { currentCareer, hire, promote, adjustPerformance, addPromotionGate, nextStep as nextStepOf } from './career.js';
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
-import { employer as employerOf } from './employers.js';
+import { employer as employerOf, placeAt } from './employers.js';
 import { duel } from './elections.js';
 import * as world from './polity.js';
 import { VOTERS } from '../data/parties.js';
 import * as realLawMod from './realLaw.js';
 import { discipline } from './lawCases.js';
+import { tickAcademy, clerking } from './lawAcademy.js';
+import { tickLawLife, strainChoice, retirementChoice } from './lawLife.js';
 import { pendingBriefs, takeBrief, templateFor, takeClaim } from './investigations/legal.js';
 import { openClaims, settleClaims } from './investigations/local.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
@@ -32,9 +34,9 @@ import { OFFENSE_BY_ID } from '../data/justice.js';
 /**
  * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
  * real politician of the world (engine/polity.js), and kept with the player's other races (p.flags.races).
- * Simplified: one count, not the full campaign trail of engine/campaign.js.
+ * The campaign itself (engine/lawCampaign.js) comes in as `boost`; a race nobody campaigned for is the count alone.
  */
-function legalElection(p, title, level, s, boost = 0) {
+export function legalElection(p, title, level, s, boost = 0, officeId = null, rivalName = null) {
   const w = world.polity(p.countryId);
   const mine = world.membership(p.countryId);
   const fig = w.kind === 'party' || w.kind === 'none' ? null : world.opponentFor(level === 'local' ? 'mayor' : 'region', p.countryId);
@@ -47,8 +49,8 @@ function legalElection(p, title, level, s, boost = 0) {
   const them = { id: 'rival', positions: theirs?.positions ?? NEUTRAL, appeal: fig ? ((fig.t?.charisma ?? 55) - 55) / 8 : 0 };
   const res = duel(me, them, VOTERS, (n) => (rng.next() * 2 - 1) * n, level === 'local' ? 400000 : 3000000);
   const share = res.shares.me;
-  const rival = level === 'local' && legalRival ? `${legalRival.firstName} ${legalRival.lastName}` : fig?.name ?? 'your opponent';
-  const rec = { year: store.state.year, countryId: p.countryId, officeId: level === 'local' ? 'district_attorney' : 'attorney_general', title, rival, rivalParty: theirs?.name ?? null, rivalColor: theirs?.color ?? '#777',
+  const rival = rivalName ?? (level === 'local' && legalRival ? `${legalRival.firstName} ${legalRival.lastName}` : fig?.name ?? 'your opponent');
+  const rec = { year: store.state.year, countryId: p.countryId, officeId: officeId ?? (level === 'local' ? 'district_attorney' : 'attorney_general'), title, rival, rivalParty: theirs?.name ?? null, rivalColor: theirs?.color ?? '#777',
     party: mine?.name ?? null, color: mine?.color ?? '#444', share, won: share > 50, votes: { ...res.votes }, total: res.total, turnout: res.turnout, legal: true };
   const races = (p.flags.races ??= []);
   races.push(rec);
@@ -91,6 +93,7 @@ export function mayPractice(p = player()) {
   if (L.bar.disbarred) return 'You were disbarred.';
   if ((L.suspendedUntil ?? 0) > nowM()) return 'You are suspended from practice.';
   if (trackOf(p) === 'judiciary') return 'A judge does not represent clients.';
+  if (L.retired && !LEGAL.has(p.career?.careerId)) return 'You have retired from practice.';
   return '';
 }
 /** The specialties open on the current track. Only playable ones can be chosen as the main practice. */
@@ -112,6 +115,17 @@ export function chooseSpecialty(id, p = player()) {
   return result(true, `Your practice: ${s.name}.`, 'good');
 }
 const defaultSpecialty = (t) => ({ prosecutor: 'prosecution', defender: 'public_defense', gov_counsel: 'government' }[t] ?? 'civil_litigation');
+/**
+ * Keeps the practice area in step with the job: a defense lawyer who joins the prosecutor's office practices
+ * prosecution there. Offices whose work no specialty lists (the bench, the Attorney General) keep what they had.
+ */
+export function fitSpecialty(p = player()) {
+  const t = trackOf(p);
+  const L = lawOf(p);
+  if (!t || !SPECIALTIES.some((s) => s.tracks.includes(t))) return L.specialty ?? null;
+  if (!L.specialty || !SPECIALTY_BY_ID[L.specialty]?.tracks.includes(t)) L.specialty = defaultSpecialty(t);
+  return L.specialty;
+}
 
 /** The hardest case the player leads on their own: by job and level, or for a practice of their own, by its standing. */
 export function leadCap(p = player()) {
@@ -124,9 +138,10 @@ export function leadCap(p = player()) {
 
 /** What a case would pay a private practice, before it is taken. */
 const feeFor = (level) => localCost([0, 1500, 4000, 9000, 22000, 60000][level], country());
-const pickTemplate = (specialtyId, maxLevel) => {
+const pickTemplate = (specialtyId, maxLevel, track = trackOf()) => {
   const s = SPECIALTY_BY_ID[specialtyId];
-  const pool = (s?.cases ?? []).filter((id) => CASE_TEMPLATES[id] && CASE_TEMPLATES[id].level <= maxLevel);
+  // A prosecutor or government lawyer argues for the State: never a convicted person's appeal against it.
+  const pool = (s?.cases ?? []).filter((id) => CASE_TEMPLATES[id] && CASE_TEMPLATES[id].level <= maxLevel && !(CASE_TEMPLATES[id].criminal && ['prosecutor', 'gov_counsel'].includes(track)));
   return pool.length ? rng.pick(pool) : null;
 };
 
@@ -148,8 +163,8 @@ export function refreshOpportunities(p = player()) {
 function openWindow(p, w) {
   const L = lawOf(p);
   const t = trackOf(p);
-  if (!t || mayPractice(p) || t === 'attorney_general') return;
-  L.specialty ??= defaultSpecialty(t);
+  if (!t || mayPractice(p) || t === 'attorney_general' || clerking(p)) return; // a law clerk works for the judge, not on cases
+  fitSpecialty(p);
   const cap = leadCap(p);
   if (['prosecutor', 'defender', 'gov_counsel'].includes(t)) {
     // Assigned by the office: a public defender's caseload is heavy; nobody chooses their clients.
@@ -162,16 +177,22 @@ function openWindow(p, w) {
       const role = t === 'prosecutor' ? 'prosecution' : 'defense';
       for (const inv of pendingBriefs(role, p.countryId).slice(0, n)) {
         if (cases.workload(p).open >= 14) break;
-        if (openCase(p, null, { invId: inv.id, role, assigned: true })) i++;
+        if (openCase(p, null, { invId: inv.id, role, assigned: true, at: w * WINDOW })) i++;
       }
     }
     for (; i < n && cases.workload(p).open < 14; i++) {
       const second = rng.chance(0.25) && cap < 5;
       const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
       if (!tid) break;
-      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, second: CASE_TEMPLATES[tid].level > cap });
+      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, at: w * WINDOW, second: CASE_TEMPLATES[tid].level > cap });
     }
     return;
+  }
+  // A junior lawyer at a firm is handed work by the partners as well as offered it: one matter each half-year.
+  if (t === 'lawyer' && (p.career?.level ?? 0) <= 1 && cases.workload(p).open < 8 && L.assignedWindow !== w) {
+    L.assignedWindow = w;
+    const tid = pickTemplate(L.specialty, cap);
+    if (tid) openCase(p, tid, { assigned: true, second: inTraining(p) || CASE_TEMPLATES[tid].level > cap, role: CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined });
   }
   const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) + (L.adBoost === w ? 1 : 0) : 2);
   const taken = new Set((L.offers ?? []).map((o) => o.templateId));
@@ -184,6 +205,18 @@ function openWindow(p, w) {
     const T = CASE_TEMPLATES[tid];
     L.offers.push({ id: `of${w}_${i}`, window: w, templateId: tid, level: T.level, second: inTraining(p) || T.level > cap, fee: feeFor(T.level), kind: T.kind, specialty: L.specialty,
       summary: T.summary.replace(/\{\w+\}/g, (m) => ({ '{client}': 'the client', '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'the client company' }[m] ?? 'some')).replace(/(^|[.!?]\s+)([a-z])/g, (x, a, b) => a + b.toUpperCase()) });
+  }
+  // Now and then someone the player knows asks for help: a relative or a friend, with the kind of case the practice takes.
+  const KNOWN = ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandparent', 'relative', 'inlaw', 'friend', 'bestFriend'];
+  const known = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age >= 18 && KNOWN.includes(n.role) && (n.flags.askedForLegalHelp ?? -99) < store.state.year - 4);
+  const ownCases = [...new Set(SPECIALTY_BY_ID[L.specialty]?.cases ?? [])].filter((id) => { const T = CASE_TEMPLATES[id]; return T && T.level <= Math.max(cap, 2) && !['criminal', 'child'].includes(T.kind) && !T.gov && !T.appeal && !T.criminal && !/\{(?!client\}|other\}|otherOrg\}|child\})\w+\}/.test(T.summary); });
+  if (known.length && ownCases.length && rng.chance(0.15)) {
+    const who = rng.pick(known);
+    const tid = rng.pick(ownCases);
+    who.flags.askedForLegalHelp = store.state.year;
+    const rel = { bestFriend: 'best friend', inlaw: 'in-law' }[who.role] ?? who.role;
+    L.offers.push({ id: `of${w}_personal`, window: w, second: inTraining(p), templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
+      summary: `Your ${rel} ${who.firstName} asks for your help. ${CASE_TEMPLATES[tid].summary.replace(/\{client\}/g, who.firstName).replace(/\{\w+\}/g, (m) => ({ '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'their company' }[m] ?? 'some'))} You would not charge them.` });
   }
   // A person charged in a case from a police investigation may want a defense lawyer who practises criminal law.
   if (SPECIALTY_BY_ID[L.specialty]?.cases?.some((id) => CASE_TEMPLATES[id]?.kind === 'criminal') && rng.chance(0.5)) {
@@ -233,7 +266,7 @@ function openCase(p, templateId, o = {}) {
   const sup = o.second ? supervisor(p) : null;
   // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
   if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
-  const opts = { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
+  const opts = { role: o.role, assigned: o.assigned, at: o.at, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
   const c = o.invId ? takeBrief(o.invId, o.role ?? 'defense', opts) : o.claimId ? takeClaim(o.claimId, opts) : cases.createCase(templateId, opts);
   if (!c) return null;
   c.second = !!o.second;
@@ -251,6 +284,9 @@ export function supervisor(p = player()) {
 /** Who a case would pit the player against: former clients on the other side, or family. */
 function conflictIn(o, p) {
   if (!o.clientId) return '';
+  // Acting for a relative who asks is allowed (no rule forbids it), though often unwise; a stranger's matter that
+  // turns out to be a relative's is not taken on as an ordinary file.
+  if (o.personal) return '';
   const n = store.state.npcs[o.clientId];
   if (n && p.npcIds.includes(n.id) && ['spouse', 'parent', 'child', 'sibling'].includes(n.role)) return 'You cannot act for your own family in a matter like this.';
   return '';
@@ -269,6 +305,7 @@ export function accept(offerId, p = player()) {
   L.offers = L.offers.filter((x) => x !== o);
   const c = openCase(p, o.templateId, { fee: SPECIALTY_BY_ID[o.specialty]?.fees?.[0], clientId: o.clientId, second: o.second, prominent: o.prominent, level: o.level, invId: o.invId, claimId: o.claimId, role: o.invId ? 'defense' : undefined });
   if (!c) return result(false, 'That case has already been decided, or has a lawyer.', 'neutral');
+  if (o.personal) { c.personal = o.personal; c.fee.model = 'pro_bono'; cases.note(c, `Your ${o.personal} asked you to take this, and you said yes.`); }
   if (o.prominent) canon(`law:prominent:${c.id}`, 'A prominent client', `Took on ${o.prominent} as a client.`, { privacy: 'public', sig: 2, milestone: false });
   return result(true, `You took the case: ${c.title}.${c.supervisorId ? ` ${store.state.npcs[c.supervisorId].firstName} ${store.state.npcs[c.supervisorId].lastName} leads; you are second chair.` : ''}`, 'good', { caseId: c.id });
 }
@@ -277,6 +314,12 @@ export function decline(offerId, refer = false, p = player()) {
   const o = (L.offers ?? []).find((x) => x.id === offerId);
   if (!o) return result(false, 'That offer has gone.', 'neutral');
   L.offers = L.offers.filter((x) => x !== o);
+  const known = o.personal ? store.state.npcs[o.clientId] : null;
+  if (known) {
+    // Saying no to family is harder: finding them someone good is kind; just saying no is not.
+    known.meters.relationship = clamp(known.meters.relationship + (refer ? 3 : -5));
+    return result(true, refer ? `You found ${known.firstName} a colleague you trust. It is often wiser not to act for your own ${o.personal}.` : `You told ${known.firstName} you could not take it. They took it quietly.`, refer ? 'good' : 'bad');
+  }
   if (refer) { L.rep.clients = clamp(L.rep.clients + 0.5); return result(true, 'You referred the client to a colleague who handles this well.', 'neutral'); }
   return result(true, 'You declined.', 'neutral');
 }
@@ -370,22 +413,24 @@ export function opportunities(p = player()) {
     const served = c.yearsInRole >= (career.levels[c.level]?.years ?? 99);
     out.push({ id: 'elevation', name: `Seek appointment as ${career.levels[c.level + 1].title.toLowerCase()}`, why: !served ? `After ${career.levels[c.level].years} years as ${c.title.toLowerCase()}` : L.rep.integrity < 60 ? 'A better name for integrity first' : (L.misconduct ?? 0) > 0 ? 'Not with misconduct on your record' : cool('elevation', 36), how: prof.judges });
   }
-  if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da });
+  if (t === 'prosecutor' && c.level >= 2) out.push({ id: 'da', name: `Seek the office of ${prof.titles.prosecutorChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('da', 48), how: prof.da, campaign: prof.da === 'elected' });
   if (t === 'defender' && c.level >= 1) out.push({ id: 'chief_defender', name: `Seek appointment as ${prof.titles.defenderChief}`, why: yrs < 8 ? 'After eight years of legal work' : cool('chief_defender', 24) });
   if (t === 'gov_counsel' && c.level >= 2) out.push({ id: 'general_counsel', name: 'Seek appointment as agency general counsel', why: yrs < 8 ? 'After eight years of legal work' : cool('general_counsel', 24) });
   if (admitted(p) && t && t !== 'judiciary') {
     const clean = !convictionsOf(p).length;
     out.push({ id: 'judge', name: 'Apply for a judicial vacancy', why: p.age < 35 ? 'From age 35' : yrs < 8 ? 'After eight years of legal work' : !clean ? 'A judge needs a clean record' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('judge', 24), how: prof.judges });
+    // Many American states elect their trial judges: a campaign, with rules of its own (engine/lawCampaign.js).
+    if (prof.depth === 'full') out.push({ id: 'judge_election', name: 'Run for an elected judgeship', why: p.age < 35 ? 'From age 35' : yrs < 8 ? 'After eight years of legal work' : !clean ? 'A judge needs a clean record' : cool('judge_election', 24), how: 'the voters, in a state that elects its judges', campaign: true });
   }
   if (admitted(p) && t && t !== 'attorney_general') {
     const senior = (t === 'lawyer' && c.level >= 2) || (['prosecutor', 'gov_counsel'].includes(t) && c.level >= 2) || (t === 'defender' && c.level >= 2) || t === 'judiciary' || !!p.politics;
-    out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal });
+    out.push({ id: 'ag', name: prof.depth === 'full' ? 'Run for state Attorney General' : 'Seek appointment as Attorney General', why: yrs < 10 ? 'After ten years of legal work' : !senior ? 'A senior legal or public role first' : L.rep.integrity < 55 ? 'A better name for integrity first' : cool('ag', 48), how: prof.depth === 'full' ? prof.ag.state : prof.ag.federal, campaign: prof.depth === 'full' });
     // The federal offices exist only in the United States, and each is a nomination and then a Senate vote.
     if (prof.depth === 'full') {
       const fed = ['prosecutor', 'gov_counsel', 'attorney_general', 'us_attorney'].includes(t) && c.level >= (t === 'prosecutor' || t === 'gov_counsel' ? 2 : 0);
       const blocked = L.rep.integrity < 60 ? 'A better name for integrity first' : '';
       if (t !== 'us_attorney') out.push({ id: 'us_attorney', name: 'Seek nomination as United States Attorney', why: yrs < 10 ? 'After ten years of legal work' : !fed ? 'Senior prosecution or government legal work first' : blocked || cool('us_attorney', 48), how: 'nominated by the President, confirmed by the Senate' });
-      if (t !== 'solicitor_general') out.push({ id: 'solicitor_general', name: 'Seek nomination as Solicitor General', why: yrs < 15 ? 'After fifteen years of legal work' : (L.skills.appellate ?? 0) < 45 ? 'A name as an appellate advocate first' : blocked || cool('solicitor_general', 48), how: 'nominated by the President, confirmed by the Senate' });
+      if (t !== 'solicitor_general') out.push({ id: 'solicitor_general', name: 'Seek nomination as Solicitor General', why: yrs < 15 ? 'After fifteen years of legal work' : (L.skills.research ?? 0) < 45 ? 'A name as an appellate advocate first' : blocked || cool('solicitor_general', 48), how: 'nominated by the President, confirmed by the Senate' });
       if (!(t === 'attorney_general' && L.agKind === 'federal')) out.push({ id: 'ag_federal', name: 'Seek nomination as United States Attorney General', why: yrs < 15 ? 'After fifteen years of legal work' : !(senior || t === 'us_attorney' || t === 'solicitor_general' || t === 'attorney_general') ? 'A senior legal or public role first' : L.rep.recognition < 45 ? 'A national name first' : blocked || cool('ag_federal', 48), how: prof.ag.federal });
     }
   }
@@ -393,19 +438,19 @@ export function opportunities(p = player()) {
 }
 
 /** The chance a selection goes the player's way: their standing, never their win count alone, and luck. */
-function standing(p) {
+export function standing(p) {
   const L = lawOf(p);
   const s = stats(p);
-  return (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
+  return (L.formerClerk ? 0.05 : 0) + (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
 }
 /**
  * Seeks a post by its own process: a partnership vote, an election or an appointment. It may fail; trying again waits.
  * Elections here are simplified (a campaign and a result), not the full politics simulation.
  */
-export function seek(id, p = player()) {
+export function seek(id, p = player(), o2 = {}) {
   const o = opportunities(p).find((x) => x.id === id);
   if (!o) return result(false, 'That is not open to you.', 'neutral');
-  if (o.why) return result(false, o.why, 'neutral');
+  if (o.why && !o2.vote) return result(false, o.why, 'neutral'); // a campaign checked it when it was declared
   { const sc = jobBlockSpecial('lawyer', p); if (sc) return result(false, sc, 'neutral'); }
   const L = lawOf(p);
   (L.tried ??= {})[id] = nowM();
@@ -422,12 +467,12 @@ export function seek(id, p = player()) {
   }
   if (id === 'da' || id === 'chief_defender' || id === 'general_counsel') {
     const elected = id === 'da' && prof.da === 'elected';
-    const cost = elected ? localCost(30000, country()) : 0;
+    const cost = elected && !o2.vote ? localCost(30000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
     const chance = clamp(0.25 + s + 0.05, 0.05, 0.8);
     const name = id === 'da' ? prof.titles.prosecutorChief : id === 'chief_defender' ? prof.titles.defenderChief : 'General Counsel';
-    const vote = elected ? legalElection(p, name, 'local', s) : null;
+    const vote = elected ? o2.vote ?? legalElection(p, name, 'local', s) : null;
     const against = vote ? ` against ${vote.rival}, with ${vote.share}% of the vote` : '';
     if (elected ? !vote.won : luck >= chance) {
       log(elected ? `You ran for ${name}${against} and lost.` : `The post of ${name} went to another candidate.`, 'system', 'bad');
@@ -444,6 +489,12 @@ export function seek(id, p = player()) {
     select(p, 'elevation'); promote();
     canon(`law:elevation:${p.id}:${p.career.level}`, `Appointed ${p.career.title.toLowerCase()}`, `Elevated to ${p.career.title.toLowerCase()}.`, { privacy: 'public', sig: 3 });
     return result(true, `You were appointed ${p.career.title.toLowerCase()}.`, 'good');
+  }
+  if (id === 'judge_election') {
+    const vote = o2.vote ?? legalElection(p, 'Judge', 'local', s + (lawOf(p).rep.integrity - 55) / 150, 0, 'judge');
+    if (!vote.won) return result(false, `You ran for the bench against ${vote.rival} and lost, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%.`, 'bad');
+    becomeJudge(p, true);
+    return result(true, `You won the election, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%. From now on you rule on cases; you do not argue them.`, 'good');
   }
   if (id === 'judge') {
     const chance = clamp(0.2 + s + (lawOf(p).rep.integrity - 55) / 150, 0.05, 0.7);
@@ -470,11 +521,11 @@ export function seek(id, p = player()) {
   }
   if (id === 'ag') {
     const elected = prof.depth === 'full';
-    const cost = elected ? localCost(250000, country()) : 0;
+    const cost = elected && !o2.vote ? localCost(250000, country()) : 0;
     if (cost && p.finance.cash < cost) return result(false, `A statewide campaign costs about ${fmtMoney(cost, country())}.`, 'neutral');
     p.finance.cash -= cost;
     const chance = clamp(0.12 + s + 0.03, 0.03, 0.6);
-    const vote = elected ? legalElection(p, 'Attorney General', 'state', s - 0.1) : null;
+    const vote = elected ? o2.vote ?? legalElection(p, 'Attorney General', 'state', s - 0.1) : null;
     if (elected ? !vote.won : luck >= chance) return result(false, elected ? `You ran for Attorney General against ${vote.rival} and lost the statewide vote, ${vote.share}% to ${Math.round((100 - vote.share) * 10) / 10}%.` : 'The government appointed someone else.', 'bad');
     withdrawAll(p, 'You left private practice for public office.');
     hire(CAREER_BY_ID.attorney_general, 1, 65, elected ? 'elected' : 'appointed');
@@ -485,11 +536,26 @@ export function seek(id, p = player()) {
   }
   return result(false, 'Nothing happened.', 'neutral');
 }
+/** Once a year: if the only thing between the player and the next rank is a selection that is not an election, it is held. */
+function autoConsider(p) {
+  const L = lawOf(p);
+  if (!p.career?.careerId || L.consideredYear === store.state.year) return;
+  L.consideredYear = store.state.year;
+  const next = nextStepOf();
+  if (!next || next.yearsLeft || next.missing.length !== 1) return;
+  const id = Object.entries(GATE_TEXT).find(([, text]) => text === next.missing[0])?.[0];
+  if (!['partnership', 'managing', 'chief_defender', 'general_counsel', 'elevation'].includes(id)) return;
+  if ((p.career.performance ?? 0) < 60) return;
+  const o = opportunities(p).find((x) => x.id === id);
+  if (!o || o.why) return;
+  const r = seek(id, p);
+  log(r.ok ? r.text : `You were considered for ${GATE_TEXT[id]}. Not this year.`, 'system', r.ok ? 'good' : 'neutral');
+}
 /** Becomes a judge: the old cases go to colleagues, because a judge cannot be counsel in any of them. */
-function becomeJudge(p) {
+function becomeJudge(p, elected = false) {
   withdrawAll(p, 'You left practice for the bench.');
-  hire(CAREER_BY_ID.judiciary, 0, 65, 'appointed');
-  canon(`law:judge:${p.id}`, 'Appointed a judge', `Selected for the ${profileFor(p.countryId).name === 'United States' ? 'trial court' : 'bench'}.`, { privacy: 'public', sig: 3 });
+  hire(CAREER_BY_ID.judiciary, 0, 65, elected ? 'elected' : 'appointed');
+  canon(`law:judge:${p.id}`, elected ? 'Elected a judge' : 'Appointed a judge', `${elected ? 'Won an election for' : 'Selected for'} the ${profileFor(p.countryId).name === 'United States' ? 'trial court' : 'bench'}.`, { privacy: 'public', sig: 3 });
 }
 function withdrawAll(p, why) {
   for (const c of lawOf(p).caseIds.map(cases.caseById).filter((x) => x && !x.done)) referOut(c.id, p);
@@ -508,7 +574,60 @@ export function mustRecuse(judgeId, p = player()) {
 export function firmView(p = player()) {
   const b = ownFirm(p);
   if (!b) return null;
-  return { id: b.id, name: b.name, founded: b.founded, reputation: b.reputation, staff: b.staff?.length ?? 0, cash: b.cash };
+  const L = lawOf(p);
+  return { id: b.id, name: b.name, founded: b.founded, reputation: b.reputation, staff: b.staff?.length ?? 0, cash: b.cash,
+    associates: (L.associates ?? []).filter((a) => store.state.npcs[a.id]?.alive).map((a) => ({ ...a, name: `${store.state.npcs[a.id].firstName} ${store.state.npcs[a.id].lastName}`, canPartner: !a.partner && store.state.year - a.since >= 5 })) };
+}
+
+// ---------- Growing your own firm: associates and partners ----------
+
+export const MAX_ASSOCIATES = 6;
+const associateSalary = () => localCost(70000, country());
+/** Hires an associate: a lawyer who carries cases for the firm and brings in fees, for a salary. */
+export function hireAssociate(p = player()) {
+  const b = ownFirm(p);
+  if (!b) return result(false, 'You need a practice of your own.', 'neutral');
+  const L = lawOf(p);
+  const team = (L.associates ??= []).filter((a) => store.state.npcs[a.id]?.alive);
+  if (team.length >= MAX_ASSOCIATES) return result(false, 'The firm has as many associates as it can manage.', 'neutral');
+  if (b.cash < associateSalary()) return result(false, `The firm needs ${fmtMoney(associateSalary(), country())} in hand for a first year's salary.`, 'neutral');
+  const n = keepPerson(p, `associate${L.associates.length}`, 'colleague', 'Associate at your firm', rng.int(26, 34));
+  n.flags.firmOf = p.id;
+  L.associates.push({ id: n.id, since: store.state.year, skill: rng.int(40, 70), partner: false });
+  return result(true, `${n.firstName} ${n.lastName} joins the firm as an associate.`, 'good');
+}
+/** Makes an associate of five years or more a partner: they share in the profits, and stay. */
+export function makePartner(id, p = player()) {
+  const L = lawOf(p);
+  const a = (L.associates ?? []).find((x) => x.id === id);
+  const n = store.state.npcs[id];
+  if (!a || !n?.alive) return result(false, 'They are not with the firm.', 'neutral');
+  if (a.partner) return result(false, 'Already a partner.', 'neutral');
+  if (store.state.year - a.since < 5) return result(false, 'Partnership usually comes after five years or more.', 'neutral');
+  a.partner = true; a.partnerSince = store.state.year;
+  n.flags.title = 'Partner at your firm';
+  n.meters.relationship = clamp(n.meters.relationship + 15);
+  canon(`law:partnerMade:${id}`, `Made ${n.firstName} ${n.lastName} a partner`, `Brought ${n.firstName} ${n.lastName} into the partnership of the firm.`, { privacy: 'public', sig: 2, milestone: false });
+  return result(true, `${n.firstName} ${n.lastName} is a partner now. They will share in the profits, and the firm is theirs too.`, 'good');
+}
+/** A year of the firm's people: fees and salaries, growing skill, and an associate passed over too long who leaves. */
+function associatesYear(p, b) {
+  const L = lawOf(p);
+  const lines = [];
+  for (const a of (L.associates ?? []).filter((x) => store.state.npcs[x.id]?.alive)) {
+    const n = store.state.npcs[a.id];
+    const fees = Math.round(localCost(110000, country()) * (0.6 + a.skill / 150) * (a.partner ? 1.3 : 1));
+    b.cash += fees - (a.partner ? Math.round(fees * 0.35) : associateSalary());
+    a.skill = Math.min(95, a.skill + 3);
+    if (!a.partner && store.state.year - a.since >= 7 && rng.chance(0.3)) {
+      // Passed over: they leave to open a practice of their own, and may be on the other side one day.
+      L.associates = L.associates.filter((x) => x !== a);
+      n.flags.title = 'Lawyer, own practice'; n.flags.rivalOf = p.id; n.flags.justice ??= { kind: 'lawyer', caseIds: [] };
+      n.meters.relationship = clamp(n.meters.relationship - 15);
+      lines.push(`${n.firstName} ${n.lastName} left the firm after ${store.state.year - a.since} years without being made partner, to start a practice of their own.`);
+    }
+  }
+  for (const t of lines) log(t, 'system', 'bad');
 }
 
 // ---------- Time ----------
@@ -524,14 +643,26 @@ export function tickLaw(o = {}) {
   const admittedNow = progressBar(p); // practical training ends, and admission follows (engine/lawSchool.js)
   if (admittedNow) log(admittedNow.text, 'system', 'good');
   cases.progressCases(p);
+  // Selections that are not elections come to someone who has earned them, without asking: once a year the partners,
+  // the office or the court consider them (a partnership vote, heading the office, the higher court).
+  autoConsider(p);
+  // A public lawyer works for the public office (older saves had some at private firms).
+  if (['prosecutor', 'defender', 'gov_counsel', 'judiciary'].includes(p.career?.careerId) && !employerOf(p.career.employerId)?.public) {
+    const office = placeAt(p.career.careerId, p.countryId, p.city);
+    if (office?.public) p.career.employerId = office.id;
+  }
   if (trackOf(p)) refreshOpportunities(p);
+  // Cases a long turn assigned in its earlier half-year move on to the present too, as they would have turn by turn.
+  cases.progressCases(p);
   storyBeats(p);
   firmYear(p);
+  tickAcademy(p);
+  tickLawLife(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
     if (h.clinic || h.referred) continue;
-    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.favorable < -0.4 ? -1 : 1);
+    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.track === 'defender' ? 1 : h.favorable < -0.4 ? -1 : 1) /* a public defender is judged on the defense, not on winning cases the evidence decides */;
     const c = cases.caseById(h.caseId);
     const firm = ownFirm(p);
     if (c && firm && h.track === 'own' && c.fee.amount && !c.fee.toFirm) { c.fee.toFirm = true; firm.cash += c.fee.amount; firm.reputation = clamp((firm.reputation ?? 30) + (h.favorable > 0 ? 2 : 0)); }
@@ -599,6 +730,12 @@ export function storyBeats(p = player()) {
   const prof = store.state.npcs[L.people?.lawProfessor];
   if (S && !S.done && prof?.alive && prof.meters.relationship >= 62) lifeScene('law_professor', { name: prof.lastName });
   if (S?.done && S.endM != null && nowM() - S.endM <= 6) lifeScene('law_graduation');
+  // A child of the player's, old enough to read the papers, finds a story about them (engine/news.js).
+  if (L.seen.law_child_reads == null) {
+    const kid = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'child' && n.age >= 12);
+    const story = (world.polity(p.countryId).news ?? []).filter((x) => x.you && x.year <= store.state.year - 3).at(-1);
+    if (kid && story) { L.seen.law_child_reads = nowM(); L.childReads = kid.id; queue('law_child_reads', { kid: kid.firstName, headline: story.text }); }
+  }
   const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done);
   for (const c of open) {
     const st = cases.stageOf(c);
@@ -670,6 +807,15 @@ export function lawChoice(value) {
     case 'vacancy': {
       if (choice === 'apply') { const r = seek('judge', p); return r.text; }
       return 'You let the vacancy pass. There will be others.';
+    }
+    case 'strain': return strainChoice(choice, p);
+    case 'retire': return retirementChoice(choice, p);
+    case 'childReads': {
+      const kid = store.state.npcs[L.childReads];
+      if (!kid) return '';
+      if (choice === 'tell') { kid.meters.relationship = clamp(kid.meters.relationship + 8); kid.flags.inspiredByLaw = true; if (!kid.flags.ownPath) { kid.flags.inspiredBy = 'law'; kid.flags.inspiredTrack = 'lawyer'; } return `${kid.firstName} listens to all of it. Later you find them reading about law schools.`; }
+      if (choice === 'lesson') { kid.meters.relationship = clamp(kid.meters.relationship + 6); kid.flags.inspiredByLaw = true; if (!kid.flags.ownPath) { kid.flags.inspiredBy = 'law'; kid.flags.inspiredTrack = 'lawyer'; } return `${kid.firstName} is quiet for a while, then asks a question you did not expect: a good one.`; }
+      return `${kid.firstName} looks a little disappointed, and puts the paper away.`;
     }
     case 'burnout': {
       const open = L.caseIds.map(cases.caseById).filter((c) => c && !c.done && !c.awaiting).sort((a, b) => b.level - a.level);
@@ -921,7 +1067,7 @@ export function doDuty(id, choice, p = player()) {
   if (id === 'supervise') { if (choice === 'mentor') { gain(p, { leadership: 2 }); adjustPerformance(2); text = 'Your attorneys get better, and they know who helped.'; } else { adjustPerformance(1); text = 'The numbers improve. The trials do not.'; } }
   if (id === 'opinion') { if (choice === 'law') { L.rep.integrity = clamp(L.rep.integrity + 4); text = 'You advise that the policy is unlawful as written. The government is not pleased.'; } else { L.rep.integrity = clamp(L.rep.integrity - 6); text = 'Your opinion finds a way. The courts may not.'; if (rng.chance(0.5)) L.controversy = { text: 'A court has struck down the policy your opinion called lawful.', m: nowM() }; } }
   if (id === 'argue') {
-    const won = rng.chance(clamp(0.35 + (L.skills.appellate ?? 20) / 150 + (choice === 'strong' ? 0.12 : 0), 0.1, 0.85));
+    const won = rng.chance(clamp(0.35 + (L.skills.research ?? 20) / 150 + (choice === 'strong' ? 0.12 : 0), 0.1, 0.85));
     canon(`law:sg:${p.id}:${nowM()}`, won ? 'Won a Supreme Court argument' : 'Lost a Supreme Court argument', won ? 'The Court ruled for the government.' : 'The Court ruled against the government.', { privacy: 'public', sig: 2, milestone: false });
     L.rep.advocacy = clamp(L.rep.advocacy + (won ? 3 : 1)); text = won ? 'The Court rules for the government.' : 'The Court rules against you, five to four.';
   }
@@ -937,6 +1083,80 @@ export function doDuty(id, choice, p = player()) {
 // ---------- The bench: civil and family matters ----------
 
 const BENCH_MATTERS = ['contract_dispute', 'injury', 'boundary', 'custody', 'divorce', 'dismissal'];
+const BENCH_CRIMINAL = ['theft', 'assault', 'burglary', 'fraud', 'drug_supply'];
+
+/**
+ * A criminal trial, from the bench: the rulings the judge must make, in order. A motion to suppress (where the
+ * defense has one), an objection in the middle of the trial, the instruction on reasonable doubt, and (after a guilty
+ * verdict) the sentence. Each has a right answer under the law of the time and place.
+ */
+export function trialSteps(c) {
+  if (!c?.benchCriminal) return [];
+  const T = cases.template(c);
+  const steps = [];
+  const sup = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced');
+  if (sup) {
+    const rule = realLawMod.exclusion(sup.basis, c.countryId);
+    steps.push({ id: 'motion', title: 'A motion to suppress', text: `The defense asks you to exclude ${sup.label.replace(/^(A|An|The) /, (m) => m.toLowerCase())}, saying it was ${sup.basis === 'unlawful_search' ? 'found in a search without a warrant or consent' : 'taken by pressure'}.`,
+      options: [['Grant it: exclude the evidence', 'grant'], ['Deny it: the jury may hear it', 'deny']], right: (rule?.allowed ?? true) ? 'grant' : 'deny', law: rule?.law?.name ?? null });
+  }
+  if (T.objection) steps.push({ id: 'objection', title: 'An objection', text: `${T.objection.text.replace(/\{(\w+)\}/g, (m, k) => c.vars[k] ?? m)} Defense counsel is on their feet: "Objection!"`,
+    options: [['Sustained', 'sustain'], ['Overruled', 'overrule']], right: T.objection.valid === 'none' ? 'overrule' : 'sustain' });
+  steps.push({ id: 'instruct', title: 'Instructing the jury', text: 'Before the jury goes out, you explain what they must decide.',
+    options: [['Guilt must be proved beyond a reasonable doubt; the defendant need prove nothing', 'correct'], ['If it is more likely than not, they may convict', 'wrong'], ['Tell them to go with their gut', 'vague']], right: 'correct' });
+  return steps;
+}
+/** The sentence after a guilty verdict: inside the range the law sets, weighed on the facts. */
+export function sentenceOptions(c) {
+  return [['A sentence in the range, weighing the facts and the defendant\'s record', 'within'], ['The maximum, to send a message', 'harsh'], ['Far below the range, out of sympathy', 'lenient']];
+}
+/**
+ * Presides over the trial: the judge's rulings, then the jury's verdict on the evidence left, then the sentence.
+ * @param {{motion?:string, objection?:string, instruct:string, sentence?:string}} answers
+ */
+export function presideTrial(caseId, answers, p = player()) {
+  const c = cases.caseById(caseId);
+  if (!c?.benchCriminal || c.done) return result(false, 'There is no trial before you.', 'neutral');
+  const L = lawOf(p);
+  const steps = trialSteps(c);
+  const lines = [];
+  let wrong = 0;
+  for (const st of steps) {
+    const a = answers[st.id];
+    const ok = a === st.right;
+    if (!ok) wrong++;
+    if (st.id === 'motion') {
+      const ev = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced');
+      if (a === 'grant') ev.status = 'excluded';
+      lines.push(ok ? `Your ruling on the motion follows the law${st.law ? ` (${st.law})` : ''}.` : `Your ruling on the motion is open to challenge${st.law ? ` under ${st.law}` : ''}.`);
+    }
+    if (st.id === 'objection') lines.push(ok ? 'Your ruling on the objection was right.' : 'You got the objection wrong; it is in the record.');
+    if (st.id === 'instruct') lines.push(ok ? 'Your instruction on reasonable doubt was correct.' : 'Your instruction misstated the standard of proof. An appeal court will not let that stand.');
+  }
+  // The jury decides on what is left of the evidence.
+  const share = cases.strength({ ...c, role: 'prosecution' }).share;
+  const guilty = share + (rng.next() - 0.5) * 0.2 + (answers.instruct === 'wrong' ? 0.12 : 0) > 0.55;
+  const name = `${store.state.npcs[c.parties.defendantId]?.firstName ?? 'The defendant'}`;
+  let reversed = answers.instruct === 'wrong' && guilty; // a wrong standard of proof undoes a conviction (Sullivan v. Louisiana)
+  if (guilty) {
+    const s = answers.sentence ?? 'within';
+    if (s !== 'within') wrong++;
+    if (s === 'harsh') { L.rep.integrity = clamp(L.rep.integrity - 3); if (rng.chance(0.5)) reversed = true; }
+    lines.push(`The jury found ${name} guilty. ${{ within: 'You sentenced within the range, on the facts.', harsh: 'You gave the maximum. The defense will appeal the sentence.', lenient: 'You went far below the range. The prosecution and the papers noticed.' }[s]}`);
+  } else lines.push(`The jury found ${name} not guilty.`);
+  if (!reversed && wrong && rng.chance(0.25 * wrong)) reversed = true;
+  if (reversed) lines.push('On appeal, the higher court reversed: a new trial, before another judge.');
+  const jc = k.J().cases[c.justiceCaseId];
+  if (jc) k.verdictFrom(jc, guilty && !reversed, 'jury verdict'); // a reversed conviction goes back for a new trial, elsewhere
+  const right = wrong === 0;
+  c.done = true;
+  c.outcome = { kind: guilty ? 'convicted' : 'acquitted', text: lines.at(-1), m: nowM(), year: store.state.year, right, reversed };
+  (L.benchRecord ??= []).push({ caseId: c.id, title: c.title, ruling: guilty ? 'guilty' : 'not guilty', right, reversed, year: store.state.year, criminal: true });
+  if (right) { adjustPerformance(3); L.rep.integrity = clamp(L.rep.integrity + 1); }
+  if (reversed) adjustPerformance(-4);
+  gain(p, { procedure: right ? 2 : 1, ethics: 1 });
+  return result(right && !reversed, lines.join(' '), right && !reversed ? 'good' : reversed ? 'bad' : 'neutral', { guilty, reversed });
+}
 /** A civil or family matter for a judge to decide: once a half-year. Real parties; the evidence decides. */
 export function benchMatter(p = player()) {
   if (trackOf(p) !== 'judiciary') return null;
@@ -946,10 +1166,22 @@ export function benchMatter(p = player()) {
   if (open) return open;
   if ((L.benchWindow ?? -1) === w) return null;
   L.benchWindow = w;
-  const c = cases.createCase(rng.pick(BENCH_MATTERS), { track: 'judiciary' });
+  // Criminal trials come before the judge too: a jury decides guilt; the judge rules, instructs and sentences.
+  const criminal = rng.chance(0.4);
+  const c = cases.createCase(rng.pick(criminal ? BENCH_CRIMINAL : BENCH_MATTERS), { track: 'judiciary', ...(criminal ? { role: 'prosecution' } : {}) });
+  if (criminal) {
+    c.benchCriminal = true;
+    // The prosecution is an office's, not the judge's; the judge on the justice record is the player.
+    const jc = k.J().cases[c.justiceCaseId];
+    if (jc) { jc.prosecutorId = k.pick(k.bench(c.countryId).prosecutors).id; jc.judgeId = p.id; }
+    c.otherCounselId = k.pick(k.bench(c.countryId).defense.good).id;
+  }
   L.caseIds = L.caseIds.filter((x) => x !== c.id); // a judge's matter is not a client's case
   c.lawyerId = null; c.judgeId = p.id; c.bench = true; c.role = 'judge';
   for (const e of c.evidence) e.reviewed = true;
+  // A firm that paid for the judge's election campaign comes before the judge (engine/lawCampaign.js).
+  const donor = (L.donors ?? []).find((d) => store.state.npcs[d.id]?.alive);
+  if (donor && c.parties?.otherId && rng.chance(0.35)) { c.parties.otherId = donor.id; c.donorConflict = { id: donor.id, amount: donor.amount }; }
   (L.bench ??= []).push(c.id);
   return c;
 }
@@ -967,15 +1199,19 @@ export function rule(caseId, ruling, p = player()) {
   const L = lawOf(p);
   const known = [c.clientId, c.parties.otherId].map((id) => store.state.npcs[id]).find((n) => n && (p.npcIds.includes(n.id) || n.flags.formerClientOf === p.id));
   if (ruling === 'recuse') { c.done = true; c.outcome = { kind: 'recused', text: 'The judge stepped aside.', m: nowM(), year: store.state.year }; return result(true, 'You step aside, and the matter goes to another judge.', 'good'); }
-  if (known) { L.rep.integrity = clamp(L.rep.integrity - 8); L.misconduct = (L.misconduct ?? 0) + 1; }
+  if (known && !c.donorConflict) { L.rep.integrity = clamp(L.rep.integrity - 8); L.misconduct = (L.misconduct ?? 0) + 1; }
+  // Hearing a big campaign donor's case: the loser may appeal on that alone, and since Caperton (2009) win.
+  const caperton = c.donorConflict ? realLawMod.governing('recusal', p.countryId) : null;
+  if (c.donorConflict) { L.rep.integrity = clamp(L.rep.integrity - 6); L.misconduct = (L.misconduct ?? 0) + 1; }
   const right = ruling === 'improper' ? false : c.templateId === 'custody' ? ruling === 'for' : ruling === supported(c);
-  const reversed = !right && rng.chance(0.5);
+  const reversed = (!right && rng.chance(0.5)) || (!!caperton && ruling === 'against' && rng.chance(0.6));
   c.done = true;
   c.outcome = { kind: `ruled_${ruling}`, text: `${{ for: 'For the claimant', against: 'For the respondent', part: 'In part', improper: 'Custody to the wealthier parent' }[ruling]}.${reversed ? ' Reversed on appeal.' : ''}`, m: nowM(), year: store.state.year, right, reversed };
   (L.benchRecord ??= []).push({ caseId: c.id, title: c.title, ruling, right, reversed, year: store.state.year });
   if (right) { adjustPerformance(2); L.rep.integrity = clamp(L.rep.integrity + 1); }
   if (reversed) adjustPerformance(-3);
   if (ruling === 'improper') { L.rep.integrity = clamp(L.rep.integrity - 6); return result(false, 'Wealth is not the test: the child\'s interests are. The appeal court will say so.', 'bad'); }
+  if (c.donorConflict) return result(false, `${caperton ? `Under ${caperton.name}, a` : 'A'} judge whose campaign a party paid for that heavily should have stepped aside.${reversed ? ' The appeal court sent the case back to another judge.' : ' People noticed.'}`, 'bad');
   return result(right, right ? 'Your ruling follows the evidence and the law.' : reversed ? 'The appeal court reverses you: the evidence did not support the ruling.' : 'Your ruling stands, though it was a close thing.', right ? 'good' : 'neutral');
 }
 
@@ -1006,6 +1242,7 @@ function firmYear(p) {
   if (!b || L.firmYear === store.state.year) return;
   L.firmYear = store.state.year;
   if (L.malpractice) b.cash -= localCost(3000, country());
+  associatesYear(p, b);
   for (const c of L.caseIds.map(cases.caseById).filter((x) => x?.done && x.track === 'own' && !x.claimChecked)) {
     c.claimChecked = true;
     if (!(c.outcome?.favorable < 0 && c.deadlines.some((d) => d.met === false))) continue;
@@ -1076,6 +1313,10 @@ export function legalLegacy(subjectId, viewerId = archiveIdOf(player())) {
  * Every legal career in the family, as the Family Archive keeps it: one entry per person, with the milestones the
  * viewer may see. A client's confidential matter never appears (engine/chronicle.js visible).
  */
+export const LEGAL_NEWS = ['courtWin', 'courtLoss', 'conviction_overturned', 'supreme_win', 'supreme_loss', 'legal_won', 'legal_lost', 'disbarred'];
+/** What the papers said about the player's legal career, newest first (engine/news.js). */
+export const legalHeadlines = (p = player()) => (world.polity(p.countryId).news ?? []).filter((x) => x.you && LEGAL_NEWS.includes(x.kind)).slice().reverse();
+
 export function familyLegalLegacy(viewerId = archiveIdOf(player())) {
   const p = player();
   const by = new Map();
@@ -1084,7 +1325,7 @@ export function familyLegalLegacy(viewerId = archiveIdOf(player())) {
     by.get(e.subject).push(e);
   }
   return [...by.entries()].map(([id, list]) => {
-    const a = archived(id);
+    const a = archived(id) ?? (() => { const n = store.state.npcs[id]; return n ? { firstName: n.firstName, lastName: n.lastName, born: { year: n.birthYear ?? store.state.year - n.age } } : null; })();
     const me = id === archiveIdOf(p);
     return { id, name: me ? `${p.firstName} ${p.lastName}` : a ? `${a.firstName} ${a.lastName}` : 'A relative', born: me ? p.birthYear : a?.born?.year ?? null, died: me ? null : a?.died?.year ?? a?.died ?? null,
       you: me, milestones: list.sort((x, y) => x.year - y.year).map((e) => ({ year: e.year, title: e.title, text: e.text, public: e.privacy === 'public' })) };
@@ -1098,7 +1339,7 @@ export function overview(p = player()) {
   const L = lawOf(p);
   const t = trackOf(p);
   return { track: t, trackName: t === 'own' ? 'Your own practice' : TRACKS[t]?.name ?? null, title: p.career?.careerId && LEGAL.has(p.career.careerId) ? p.career.title : t === 'own' ? 'Principal' : null,
-    specialty: SPECIALTY_BY_ID[L.specialty] ?? null, years: legalYears(p), stats: stats(p), skills: LEGAL_SKILLS.map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
-    rep: REPUTATION.map((r) => ({ ...r, v: Math.round(L.rep[r.id] ?? 0) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
+    specialty: SPECIALTY_BY_ID[fitSpecialty(p)] ?? null, years: legalYears(p), stats: stats(p), skills: skillsFor(L.specialty, trackOf(p) ?? (p.education.enrolled && p.education.stage === 'law' ? 'student' : null)).map((s) => ({ ...s, v: Math.round(L.skills[s.id] ?? 0) })),
+    rep: REPUTATION_SHOWN.map((r) => ({ id: r.id, name: r.name, v: Math.round(r.parts.reduce((t, k) => t + (L.rep[k] ?? 0), 0) / r.parts.length) })), workload: cases.workload(p), cap: leadCap(p), capName: COMPLEXITY[leadCap(p)],
     admitted: admitted(p), legacy: L.legacy ?? null, discipline: L.discipline ?? [], why: mayPractice(p) };
 }

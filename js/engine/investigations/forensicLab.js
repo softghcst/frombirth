@@ -32,10 +32,11 @@ export const disciplinesNow = () => Object.entries(LAB).filter(([, d]) => year()
 export function specialize(id, p = player()) {
   const L = labRecord(p);
   if (!L) return result(false, 'This is for forensic scientists.', 'neutral');
-  if (L.discipline) return result(false, `You specialize in ${LAB[L.discipline].name.toLowerCase()}.`, 'neutral');
+  if (L.discipline) return result(false, `You specialize in ${LAB[L.discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")}.`, 'neutral');
   if (!LAB[id] || year() < LAB[id].from) return result(false, 'That discipline is not practiced yet.', 'neutral');
   L.discipline = id;
-  return result(true, `You train in ${LAB[id].name.toLowerCase()}. Most of your requests will be in it now.`);
+  if (id === 'digital') p.career.title = (p.career.level ?? 0) >= 2 ? 'Senior digital forensic examiner' : 'Digital forensic examiner';
+  return result(true, `You train in ${LAB[id].name.toLowerCase().replace(/\bdna\b/g, "DNA")}. Most of your requests will be in it now.`);
 }
 
 // ---------- The backlog ----------
@@ -66,7 +67,7 @@ export function labYear(p = player()) {
     const id = nextId('bench');
     W().bench[id] = { id, invId: inv.id, itemId: it.id, discipline, analystId: me(p), status: 'open', steps: [], received: now(), due: now() + LAB[discipline].months + 1, detectiveId: det, serious: ['homicide', 'collision', 'robbery'].includes(tid) };
     it.custody.push({ at: now(), by: det, act: 'collected and logged' }, { at: now(), by: me(p), act: 'received at the laboratory' });
-    out.push(`A request from ${inv.file.title}: ${LAB[discipline].name.toLowerCase()}.`);
+    out.push(`A request from ${inv.file.title}: ${LAB[discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")}.`);
   }
   return out;
 }
@@ -123,7 +124,7 @@ export function careerYear(p = player()) {
   const years = year() - (L.since ?? year());
   const need = [2, 5, 10][lvl];
   if (need != null && years >= need && passes >= Math.min(2, lvl + 1) && L.careful >= (lvl + 1) * 2 && L.overstated === 0 && L.accredited) {
-    if (promote()) { p.career.title = RANKS[p.career.level] ?? p.career.title; out.push(`Promoted: ${p.career.title.toLowerCase()}.`); }
+    if (promote()) { p.career.title = L.discipline === 'digital' && p.career.level < 3 ? (p.career.level >= 2 ? 'Senior digital forensic examiner' : 'Digital forensic examiner') : RANKS[p.career.level] ?? p.career.title; out.push(`Promoted: ${p.career.title.toLowerCase()}.`); }
   }
   return out;
 }

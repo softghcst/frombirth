@@ -32,6 +32,7 @@ import { lawyerOnIt, lawCaseFor } from './legal.js';
 import { realBusiness, neighborWitness, placeCase } from './local.js';
 import { workingToRule } from './unions.js';
 import { inForce } from './reform.js';
+import { relatives, checkConflict, markAncestor } from './family.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -94,6 +95,8 @@ export function openCase(tid, o = {}) {
   let perp = null;
   if (t.pack) perp = t.perp[truth] === 'insider' ? insider : t.perp[truth] === 'stranger' ? civ({ age: r.int(18, 55) }) : null;
   else if (!NO_CRIME.includes(truth)) perp = ['insider', 'known'].includes(truth) ? insider : truth === 'harm' ? civ({ age: r.int(20, 55) }) : civ({ age: r.int(18, 50) });
+  // One person behind several cases (a series: serial.js) is the same person in each.
+  if (o.perpId && perp && store.state.npcs[o.perpId]?.alive) perp = store.state.npcs[o.perpId];
   const offenseId = t.offenseId ?? (truth === 'harm' ? 'assault' : 'theft');
   const inc = k.createIncident({ offenseId, perpetratorId: perp?.id ?? null, victimId: victim?.id, countryId, city, witnessIds: witnesses.map((w) => w.id) });
   inc.participants = inc.participants.filter((x) => x.id);
@@ -320,7 +323,8 @@ export function steps(inv) {
   else open('specialist', f.template === 'fraud' || f.template === 'cyber' ? 'Ask a specialist to review the records' : 'Consult the crime scene specialist', 'Another pair of trained eyes.');
   for (const [wid, w] of Object.entries(f.witnesses)) {
     if (!npc(wid)?.alive) continue;
-    const left = Object.keys(WITNESS_QUESTIONS).filter((q) => !w.asked.includes(q) && (q !== 'inconsistency' || contradictions(inv).length));
+    // Only proper questions keep an interview open: once they are asked, pressing is not "what is left to do".
+    const left = Object.keys(WITNESS_QUESTIONS).filter((q) => !WITNESS_QUESTIONS[q].improper && !w.asked.includes(q) && (q !== 'inconsistency' || contradictions(inv).length));
     if (left.length) out.push({ id: `interview:${wid}`, label: `Interview ${nm(wid)}`, sub: `A witness. ${w.asked.length ? `Asked ${w.asked.length} question${w.asked.length === 1 ? '' : 's'} so far.` : 'Not yet interviewed.'}`, interview: true });
   }
   for (const id of f.poi) if (!f.done[`poi:${id}`] && !f.cleared.includes(id) && npc(id)?.alive) out.push({ id: `poi:${id}`, label: `Ask ${nm(id)} for a voluntary interview`, sub: 'They may decline, and may have a lawyer present. Declining proves nothing.' });
@@ -331,7 +335,7 @@ export function steps(inv) {
     open('records', needs ? 'Request the protected records (needs a court order)' : 'Request the relevant records', needs ? 'Phone, bank or access records need a judge\'s authorization first.' : 'Records that need no special authority.', { needsAuth: needs });
   }
   if (rc?.needsAuth && !f.auths.some((a) => a.kind === 'records')) out.push({ id: 'auth:records', label: 'Ask a judge for a records order', sub: 'The judge needs a lawful basis from what the file already shows.' });
-  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
+  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
   return out;
 }
 const found = (f) => f.clues.filter((c) => c.found);
@@ -497,7 +501,7 @@ export function interview(inv, wid, q) {
   if (q === 'inconsistency') {
     const cx = contradictions(inv).find(([a, b]) => a.sourceId === wid || b.sourceId === wid) ?? contradictions(inv)[0];
     const self = f.clues.find((x) => x.via === `q:${wid}:observed`);
-    const t = self && !self.accurate ? `${nm(wid)} thinks again. "I was sure. But it was ${self.limitation ?? 'quick'}... I could be wrong about who it was."` : `${nm(wid)} holds to their account, calmly, and explains what they saw.`;
+    const t = self && !self.accurate ? `${nm(wid)} thinks again. "I was sure. But ${self.limitation ?? 'it was quick'}... I could be wrong about who it was."` : `${nm(wid)} holds to their account, calmly, and explains what they saw.`;
     if (self && !self.accurate) { self.confidence = Math.min(self.confidence ?? 0.5, 0.3); const ev = k.J().evidence[self.evidenceId]; if (ev) ev.reliability = Math.min(ev.reliability, 0.2); }
     w.statements.push({ at: now(), q, text: t });
     f.log.push({ at: now(), text: `Asked ${nm(wid)} about ${cx ? 'an inconsistency' : 'their account'}. ${t}` });
@@ -592,7 +596,7 @@ export function settleLabs(inv) {
   const out = [];
   for (const req of f.labs.filter((x) => x.status === 'pending' && x.due <= now())) {
     req.status = 'reported';
-    req.reported = now();
+    req.reported = req.due;
     const it = f.items.find((x) => x.id === req.itemId);
     const ev = k.J().evidence[it.evidenceId];
     const d = LAB[req.discipline];
@@ -778,38 +782,39 @@ export function settleCourt(inv) {
   if (TERMINAL.includes(c.stage)) return f.outcome || !lawCaseFor(c.id) ? null : courtOutcome(inv, c);
   if ((c.trialDue ?? 0) > now()) return null;
   const r = rec();
+  const at = c.trialDue ?? now(); // the court sat on its date, however long the turn that reached it
   // Disclosure: what the report left out reaches the defense one way or another; when it does, the case cannot go on.
   if (f.report?.omitted.length && seeded(`${inv.id}/disclosure`).chance(0.65)) {
     k.move(c, 'dismissed', 'Dismissed: evidence favorable to the defense was not disclosed.');
     c.verdict = { outcome: 'dismissed', year: year() };
-    f.outcome = { kind: 'dismissed', at: now(), why: 'disclosure' };
-    if (f.leadId === me() && r) { r.stats.dismissed += 1; complain(inv, 'disclosure', 'Evidence favorable to the defense was left out of the case report.'); }
-    f.log.push({ at: now(), text: 'The court dismissed the case: the defense was not told of statements in the investigation that did not fit.' });
+    f.outcome = { kind: 'dismissed', at, why: 'disclosure' };
+    if (f.leadId === me() && r) { r.stats.dismissed += 1; complain(inv, 'disclosure', 'Evidence favorable to the defense was left out of the case report.', at); }
+    f.log.push({ at, text: 'The court dismissed the case: the defense was not told of statements in the investigation that did not fit.' });
     return 'dismissed';
   }
   if (f.cross?.caught || f.testimony?.how === 'overstate' && !f.cross && seeded(`${inv.id}/cross`).chance(0.6)) {
     for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e && e.pointsTo === c.defendantId) e.reliability = Math.round(e.reliability * 0.7 * 100) / 100; }
     if (r) regard('reliability', -6);
-    f.log.push({ at: now(), text: 'Under cross-examination, the investigator\'s account went beyond the file. The court weighed the evidence with that in mind.' });
+    f.log.push({ at, text: 'Under cross-examination, the investigator\'s account went beyond the file. The court weighed the evidence with that in mind.' });
   }
   // Statements taken by pressure are challenged, and the court decides whether to hear them.
   for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e?.tainted) { e.admissible = false; c.rulings.push({ evidenceId: id, challenged: true, admitted: false, year: year() }); } }
   for (let i = 0; i < 8 && !TERMINAL.includes(c.stage); i++) k.runToEnd(c);
-  return courtOutcome(inv, c);
+  return courtOutcome(inv, c, at);
 }
 /** Records the court's decision in the case file, and in the lead investigator's record. */
-function courtOutcome(inv, c) {
+function courtOutcome(inv, c, at = now()) {
   const f = inv.file;
   const r = rec();
   const convicted = c.stage === 'sentenced';
-  f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at: now() };
+  f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at };
   const inc = incidentOf(inv);
   if (convicted && inc.truth.perpetratorId !== c.defendantId) inc.wrongful = true;
   if (f.leadId === me() && r) {
     if (convicted) r.stats.convicted += 1; else if (c.stage === 'acquitted') r.stats.acquitted += 1; else r.stats.dismissed += 1;
     r.stats.completed += 1;
   }
-  f.log.push({ at: now(), text: `The court's decision: ${convicted ? `${nm(c.defendantId)} was convicted.` : c.stage === 'acquitted' ? `${nm(c.defendantId)} was acquitted.` : 'the case ended without a conviction.'}` });
+  f.log.push({ at, text: `The court's decision: ${convicted ? `${nm(c.defendantId)} was convicted.` : c.stage === 'acquitted' ? `${nm(c.defendantId)} was acquitted.` : 'the case ended without a conviction.'}` });
   return f.outcome.kind;
 }
 
@@ -871,11 +876,16 @@ export function caseStatus(inv) {
 export function settleCase(inv) {
   const out = settleLabs(inv);
   const court = settleCourt(inv);
-  if (court) out.push(`Court: ${court}.`);
+  if (court) {
+    // The court's decision, in words: which case, and who.
+    const c = inv.file?.courtCaseId && k.J().cases[inv.file.courtCaseId];
+    const who = c ? nm(c.defendantId) : 'The defendant';
+    out.push(`${inv.file?.title ?? 'A case'}: ${court === 'convicted' ? `the court convicted ${who}.` : court === 'acquitted' ? `the court acquitted ${who}.` : court === 'dismissed' ? `the case against ${who} was dismissed.` : `the court's decision: ${court}.`}`);
+  }
   const f = inv.file;
   if (f && inv.stage === 'suspended' && !f.coldSince && f.inactive != null && now() - f.inactive >= 36) {
-    f.coldSince = now();
-    f.log.push({ at: now(), text: 'Classified as a cold case. All records, evidence and statements are preserved.' });
+    f.coldSince = f.inactive + 36; // the day it became cold, however long the turn
+    f.log.push({ at: f.coldSince, text: 'Classified as a cold case. All records, evidence and statements are preserved.' });
     if (f.leadId === me() && rec()) rec().stats.cold += 1;
   }
   return out;
@@ -901,7 +911,10 @@ export function reopen(invId) {
   f.reopened.push({ at: now(), by: me(), why: fresh.length ? `${LAB[fresh[0].discipline].name} is available now.` : 'Reviewed.' });
   inv.stage = 'active';
   if (!inv.investigatorIds.includes(me())) inv.investigatorIds.push(me());
+  f.formerLeadId ??= f.leadId;
   f.leadId = me();
+  markAncestor(inv); // a case an ancestor led (family.js)
+  checkConflict(inv);
   r.stats.reopened += 1;
   if (!r.caseIds.includes(inv.id)) r.caseIds.push(inv.id);
   f.log.push({ at: now(), text: `Reopened by ${nm(me())}. The original file, from ${dateWords(f.opened)}, is kept as it was.` });
@@ -927,7 +940,11 @@ export function assignCase(p = player()) {
   const tid = roll.pick(pool);
   const inv = openCase(tid, { ownerId: r.job.agencyId ?? r.job.officeId });
   if (fed) inv.file.federal = r.job.agencyKind;
+  // A relative of the player's, living in the city, may be among the people a case touches (family.js decides what follows).
+  const fam = [...relatives(p)].map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age >= 16);
+  if (fam.length && seeded(`${inv.id}/family`).chance(0.08)) { const n = seeded(`${inv.id}/family/who`).pick(fam); inv.file.people.push({ id: n.id, role: 'witness' }); }
   r.caseIds.push(inv.id);
+  checkConflict(inv, p);
   r.stats.assigned += 1;
   inv.file.log.push({ at: now(), text: `Assigned to ${nm(me(p))}${r.people.partnerId ? ` with ${nm(r.people.partnerId)}` : ''}.` });
   if (r.people.partnerId) meet(r.people.partnerId, npc(r.people.partnerId)?.flags.title ?? 'Detective partner');
@@ -935,10 +952,10 @@ export function assignCase(p = player()) {
 }
 
 /** A complaint against the investigator, opened by the agency (engine/investigations/oversight.js decides it). */
-function complain(inv, kind, text) {
+function complain(inv, kind, text, at = now()) {
   const w = W();
   const id = nextId('complaint');
-  w.complaints[id] = { id, subjectId: me(), kind, text, invId: inv.id, opened: now(), status: 'open', finding: null, investigatorId: null, due: now() + 4, true: true };
+  w.complaints[id] = { id, subjectId: me(), kind, text, invId: inv.id, opened: at, status: 'open', finding: null, investigatorId: null, due: at + 4, true: true };
 }
 
 /** Everything the player's cases need from the calendar. Called from the year and whenever the hub opens. */
@@ -980,6 +997,8 @@ export function openReview(invId) {
   const tests = newerTests(inv);
   for (const t of tests) { const it = f.items.find((x) => x.id === t.item); if (!it.disciplines.includes(t.discipline)) it.disciplines.push(t.discipline); it.examined = false; }
   f.review = { at: now(), by: me(), status: 'open', outcome: null };
+  f.formerLeadId ??= f.leadId;
+  markAncestor(inv);
   if (!inv.investigatorIds.includes(me())) inv.investigatorIds.push(me());
   if (!r.caseIds.includes(inv.id)) r.caseIds.push(inv.id);
   f.log.push({ at: now(), text: `Review opened by ${nm(me())}. The conviction stands while it is reviewed; the original file is kept as it was.` });
@@ -990,7 +1009,7 @@ export function reviewSteps(inv) {
   const f = inv.file;
   if (f?.review?.status !== 'open') return [];
   const out = [];
-  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months.`, lab: true });
+  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months.`, lab: true });
   return out;
 }
 /**

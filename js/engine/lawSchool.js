@@ -15,7 +15,8 @@ import { systemFor, OFFENSE_BY_ID } from '../data/justice.js';
 import { convictionsOf } from './records.js';
 import { rule } from './rules.js';
 import { COUNTRIES } from '../data/countries.js';
-import { COUNTRY_LAW, LAW_PROFILES, LEGAL_SKILLS, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
+import { COUNTRY_LAW, LAW_PROFILES, LEGAL_SKILLS, SKILL_GROUP, skillId, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
+import { addGifts } from './aptitudes.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -32,8 +33,24 @@ export function lawOf(p = player()) {
       rep: { integrity: 55, clients: 50, advocacy: 35, preparation: 45, reliability: 50, recognition: 5 },
       entrance: null, school: null, bar: { attempts: [], prep: null, fitness: null, admitted: null }, internships: [], acts: {},
       caseIds: [], history: [], seen: {}, specialty: null };
+    addGifts(p.law.skills, 'law', p); // a gift for writing or acting (engine/aptitudes.js)
+  }
+  if (!('courtroom' in p.law.skills)) groupSkills(p.law);
+  // Years on the police force come with a lawyer into court: testifying, reports, and how cases are built.
+  if (p.law.policeYears == null && p.investigator) {
+    const yrs = p.investigator.stats?.years ?? 0;
+    p.law.policeYears = yrs;
+    if (yrs > 0) { p.law.skills.courtroom = clamp(p.law.skills.courtroom + Math.min(10, yrs * 1.5)); p.law.skills.research = clamp(p.law.skills.research + Math.min(6, yrs)); }
   }
   return p.law;
+}
+/** Older saves kept twenty skills: each group starts at the average of what it gathers. */
+function groupSkills(L) {
+  const old = L.skills;
+  L.skills = Object.fromEntries(LEGAL_SKILLS.map((s) => {
+    const parts = Object.keys(old).filter((id) => skillId(id) === s.id);
+    return [s.id, parts.length ? Math.round(parts.reduce((t, id) => t + old[id], 0) / parts.length * 10) / 10 : 10];
+  }));
 }
 /**
  * How lawyers are trained and admitted where someone lives: the justice family's profile, with the country's own
@@ -50,12 +67,19 @@ export function profileFor(countryId = player().countryId) {
 /** Raises legal skills, softly: each point is harder to gain the higher it is. */
 export function gain(p, gains, k = 1) {
   const L = lawOf(p);
-  for (const [id, n] of Object.entries(gains ?? {})) {
+  // Finer skills count toward their group: the biggest in full, the rest by half.
+  const by = {};
+  for (const [id, n] of Object.entries(gains ?? {})) (by[skillId(id)] ??= []).push(n);
+  for (const [id, ns] of Object.entries(by)) {
+    ns.sort((a, b) => b - a);
+    const n = ns[0] + ns.slice(1).reduce((t, x) => t + x / 2, 0);
     const cur = L.skills[id] ?? 10;
     L.skills[id] = Math.round(clamp(cur + n * k * (1.15 - cur / 110)) * 10) / 10;
   }
 }
-const avg = (L, ids) => ids.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / ids.length;
+const avg = (L, ids) => { const g = [...new Set(ids.map(skillId))]; return g.reduce((s, id) => s + (L.skills[id] ?? 10), 0) / g.length; };
+/** One skill's level, by its own name or a finer one. */
+export const skillOf = (id, p = player()) => lawOf(p).skills[skillId(id)] ?? 10;
 const aid = () => archiveIdOf(player());
 
 /** Records a milestone of a legal life once, ever, under a key (engine/chronicle.js); restricted details stay private. */
@@ -384,7 +408,7 @@ export function startReadingLaw(p = player()) {
 function progressReading(p) {
   const R = p.law?.readLaw;
   if (!R || R.done || nowM() < R.until) return;
-  R.done = nowM();
+  R.done = R.until;
   gain(p, { research: 8, writing: 6, procedure: 6, drafting: 5, counseling: 4 });
   log(`You have read the law for two years. ${store.state.npcs[R.mentorId]?.firstName ?? 'Your mentor'} says you are ready to be examined for the bar.`, 'system', 'good');
 }
@@ -482,11 +506,11 @@ function fitness(p, examName) {
   return admit(p, examName);
 }
 /** Admission to practice, at the end of the route. */
-function admit(p, examName) {
+function admit(p, examName, at = nowM()) {
   const L = lawOf(p);
   const prof = profileFor(p.countryId);
-  L.bar.training = L.bar.training ? { ...L.bar.training, done: nowM() } : null;
-  L.bar.admitted = { year: store.state.year, m: nowM(), where: COUNTRY_NAME(p.countryId), body: prof.admission };
+  L.bar.training = L.bar.training ? { ...L.bar.training, done: at } : null;
+  L.bar.admitted = { year: Math.floor(at / 12), m: at, where: COUNTRY_NAME(p.countryId), body: prof.admission };
   (p.flags.licenses ??= []).includes('law') || p.flags.licenses.push('law');
   p.stats.mood = clamp(p.stats.mood + 12);
   canon(`law:admitted:${aid()}`, 'Admitted to practice law', `Passed the ${examName}${L.bar.attempts.length > 1 ? ` at the ${['', 'first', 'second', 'third', 'fourth'][L.bar.attempts.length] ?? 'latest'} attempt` : ''} and was granted ${prof.admission}.`, { sig: 3, privacy: 'public' });
@@ -518,7 +542,7 @@ export function progressBar(p = player()) {
   const B = p.law?.bar;
   // When the law changes, a woman who passed the exam and was barred is admitted.
   if (B?.fitness === 'barred' && !B.admitted && rule('womenInLaw', p.countryId)) { B.fitness = 'cleared'; return admit(p, barExamName(p)); }
-  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam);
+  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam, B.training.until); // admitted when the training ended
   return null;
 }
 

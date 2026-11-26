@@ -13,13 +13,35 @@
 // cases are confidential: they are shown here only, to the physician.
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, PROCEDURE_BY_ID, PRACTICE_TYPES, jurisdiction } from '../data/medicine.js';
+import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, PROCEDURE_BY_ID, PRACTICE_TYPES, ERA, jurisdiction, jurisdictionIn } from '../data/medicine.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
+// Five skills to follow on screen, not nine: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Clinical Judgment', ['reasoning', 'research']],
+  ['Hands-On Skill', ['technical']],
+  ['Bedside Manner', ['communication']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership']],
+  ['Professionalism', ['professionalism', 'integrity']],
+];
+/** The same five, named for the specialty: a surgeon's hands-on skill is surgery; a psychiatrist's bedside manner is the therapeutic relationship. */
+const SURGICAL = /surg|ortho|neurosurg|ctsurg|vascular|transplant|colorectal|plastic|hand|spine|foot_ankle|urology|ent|ophthalmology|obgyn|trauma|podiatry/;
+function skillNames(spec) {
+  const n = SKILL_GROUPS.map(([name]) => name);
+  if (!spec) return n;
+  if (SURGICAL.test(spec)) n[1] = 'Surgical Skill';
+  if (spec === 'emergency' || spec === 'critical_care' || spec === 'pulm_cc' || spec === 'anesthesiology') n[1] = 'Resuscitation & Procedures';
+  if (spec === 'radiology' || spec === 'pathology' || spec === 'forensic_path') { n[1] = 'Reading the Images & Slides'; n[2] = 'Explaining Findings'; }
+  if (spec === 'psychiatry' || spec === 'forensic_psych') { n[1] = 'Assessment'; n[2] = 'Therapeutic Relationship'; }
+  if (/peds|pediatrics|neonatology/.test(spec)) n[2] = 'With Children & Parents';
+  if (spec === 'family' || spec === 'internal' || spec === 'general') n[2] = 'Knowing Your Patients';
+  return n;
+}
 import { openModal, messageModal, pickModal, inputModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import { med, M, W, currentSpecialty, specialtyName, qualified, reputationOf } from '../engine/medicine/core.js';
 import * as train from '../engine/medicine/training.js';
+import * as routine from '../engine/medicine/routine.js';
 import * as cases from '../engine/medicine/cases.js';
 import * as ladder from '../engine/medicine/ladder.js';
 import * as jobs from '../engine/medicine/jobs.js';
@@ -76,6 +98,26 @@ function tabsFor(p, m) {
   });
 }
 
+/** Fewer tabs: related sections on one page, each under its own heading. A page with one section keeps its own name. */
+const MED_GROUPS = [
+  ['training', 'Training', ['education', 'training', 'specialization']],
+  ['active', 'Patients', ['patients', 'active', 'decisions', 'procedures']],
+  ['hospital', 'Hospital & Clinic', ['hospital', 'clinic']],
+  ['history', 'Career', ['development', 'history']],
+];
+function pagesFor(sections) {
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of sections) {
+    if (used.has(id)) continue;
+    const g = MED_GROUPS.find(([, , ids]) => ids.includes(id));
+    const members = g ? sections.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  return out;
+}
+
 const HUB = [['department', 'My Department'], ['colleagues', 'My Colleagues'], ['residents', 'Residents & Fellows'], ['patients', 'Active Patients'], ['or', 'Operating Room'],
   ['training', 'Training'], ['stories', 'Hospital Stories'], ['relationships', 'Professional Relationships'], ['leadership', 'Leadership'], ['history', 'Career History'], ['jobs', 'Find a Post']];
 
@@ -112,8 +154,9 @@ const caseButton = (c) => {
 
 const VIEWS = {
   overview(p, m) {
-    const j = jurisdiction(p.countryId);
-    if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, a residency place applied for, and years of supervised training.</p>
+    const j = jurisdictionIn(p.countryId, store.state.year);
+    const gpYears = store.state.year < ERA.gpEra;
+    if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, ${gpYears ? 'a year as a hospital intern, and for most doctors of these years, general practice; a few train on for years as residents to specialize.' : 'a residency place applied for, and years of supervised training.'}</p>
       ${kv([['Route here', `${j.entry === 'graduate' ? 'After a university degree' : 'Direct entry in reality; in the game, after a university degree'} · ${j.detail === 'detailed' ? 'modeled in detail' : 'simplified profile'}`], ['Training places', j.selection]])}`);
     const spec = currentSpecialty(m);
     const at = m.training?.hospitalId ?? m.job?.hospitalId;
@@ -123,7 +166,7 @@ const VIEWS = {
       ...(m.offer && m.offer.year === year() ? [`an offer to become ${RANKS[m.offer.rank].title.toLowerCase()}`] : []),
       ...(train.fellowshipOptions(m).some((f) => !f.block) ? ['fellowships open to you'] : [])];
     const glance = at ? card('Hospital life', kv([
-      ['Hospital', hospitalName(at)], ['Department', DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
+      ['Hospital', hospitalName(at)], ['Department', spec === 'general' ? 'General Practice' : DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
       ...(sup && m.training ? [['Supervising physician', `${sup.firstName} ${sup.lastName}`]] : []),
       ['Colleagues you know', String([...m.people.colleagueIds, ...m.people.friendIds, ...(m.people.traineeIds ?? [])].filter((id) => npc(id)?.alive).length)],
       ['Patients open this year', String(open)],
@@ -136,7 +179,7 @@ const VIEWS = {
       ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Training license: practices under supervision' : 'None yet'],
       ['Reputation', `${reputationOf(m)} (from how you practice, never from survival counts)`],
       ['Jurisdiction', `${p.countryId === 'us' ? 'United States, modeled in detail' : 'Simplified profile: the broad shape, not the rules'}`],
-    ])) + card('Skills', Object.entries(SKILLS).map(([k, label]) => meterHtml(label, m.skills[k], true)).join(''));
+    ])) + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(currentSpecialty(m))[i], Math.round(ids.reduce((t, k) => t + (m.skills[k] ?? 0), 0) / ids.length), true)).join(''));
   },
   education(p, m) {
     let out = '';
@@ -149,7 +192,7 @@ const VIEWS = {
     if (s) {
       out += card(`${s.name}${s.graduated ? ' (graduated)' : `, year ${s.year}`}`, kv([
         ['Degree', m.route === 'dpm' ? 'DPM' : m.route === 'do' ? 'DO' : jurisdiction(s.countryId ?? p.countryId).degrees[0]],
-        ['Exams', Object.entries(s.exams).map(([id, x]) => `${id.toUpperCase()}: ${x.pass ? 'passed' : 'not passed'}`).join(', ') || 'None sat yet'],
+        ['Exams', Object.entries(s.exams).map(([id, x]) => `${x.name ?? id.toUpperCase()}: ${x.pass ? 'passed' : 'not passed'}`).join(', ') || 'None sat yet'],
       ]) + (s.rotations.length ? `<div class="section-label">${year() < 1950 ? 'Clerkships' : 'Rotations'}</div>${kv(s.rotations.slice(-12).map((r) => [`${r.name} (${r.year})`, r.grade]))}` : muted('Clinical years begin in year three.'))
         + (!s.graduated && (s.year >= 3 || p.education.yearInStage >= 3) ? applyBlock(m) : ''));
     }
@@ -243,11 +286,24 @@ const VIEWS = {
 function hubView(p, m, st) {
   const tabs = hubFor(p, m);
   if (!tabs.length) return card('My hospital', muted('No hospital yet.'));
-  if (!tabs.some(([id]) => id === st.hub)) st.hub = tabs[0][0];
+  // Fewer tabs here too: the department with its leadership, the people together, the stories with the history.
+  const pages = [];
+  const used = new Set();
+  const HG = [['department', 'Your Department', ['department', 'leadership']], ['colleagues', 'People', ['colleagues', 'residents', 'relationships']], ['stories', 'Stories & History', ['stories', 'history']]];
+  for (const [id, label] of tabs) {
+    if (used.has(id)) continue;
+    const g = HG.find(([, , ids]) => ids.includes(id));
+    const members = g ? tabs.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    pages.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  const pg = pages.find((x) => x.id === st.hub) ?? pages.find((x) => x.members.some(([y]) => y === st.hub)) ?? pages[0];
+  st.hub = pg.id;
   const at = m.training?.hospitalId ?? m.job?.hospitalId;
   const head = at ? `<p class="muted">${esc(hospitalName(at))} · ${esc(DEPARTMENTS[deptOf(currentSpecialty(m))] ?? 'Medicine')} · ${esc(p.career.title ?? '')}</p>` : '';
-  return `${head}<div class="world-groups" role="tablist" aria-label="Hospital life">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.hub ? 'on' : ''}" aria-selected="${id === st.hub}" data-hub="${id}">${esc(label)}</button>`).join('')}</div>
-    <div style="margin-top:10px">${HUB_VIEWS[st.hub](p, m, st, at)}</div>`;
+  const body = pg.members.length === 1 ? HUB_VIEWS[pg.members[0][0]](p, m, st, at) : pg.members.map(([y, label]) => `<div class="section-label">${esc(label)}</div>${HUB_VIEWS[y](p, m, st, at)}`).join('');
+  return `${head}<div class="world-groups" role="tablist" aria-label="Hospital life">${pages.map((x) => `<button type="button" role="tab" class="world-group av-chip ${x.id === st.hub ? 'on' : ''}" aria-selected="${x.id === st.hub}" data-hub="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+    <div style="margin-top:10px">${body}</div>`;
 }
 
 const roleOf = (m, n) => [n.id === m.people.mentorId && 'mentor', m.people.supervisorIds.includes(n.id) && 'supervisor', m.people.rivalIds.includes(n.id) && 'rival',
@@ -368,7 +424,8 @@ function applyBlock(m) {
 
 /** A case, worked step by step: review, evaluate, assess, decide, operate, follow up. */
 async function openCase(id, api) {
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  // A case is a page of its own, like the career it belongs to: the whole screen, Back in the bar along the top.
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: 'Patient case' });
   const root = modal.el.querySelector('[data-case]');
   let last = '';
   const render = () => {
@@ -386,7 +443,7 @@ async function openCase(id, api) {
       <div class="section-label">Review the history</div><p>${esc(v.history)}</p>
       <div class="section-label">Review the examination</div><p>${esc(v.exam)}</p>
       ${v.triage ? `<div class="section-label">Who first?</div><p>${esc(v.triage.text)}</p>${v.triage.options.map((o) => btn('triage', o.label, { arg: o.id })).join('')}` : ''}
-      <div class="section-label">Tests and imaging</div>${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
+      <div class="section-label">Tests and imaging</div>${open && routine.workupTests(id).length ? btn('workup', 'Order the Standard Workup', { cls: 'primary', sub: 'The tests this presentation calls for, in one go' }) : ''}${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
       <div class="section-label">Discuss the assessment</div>${v.differential.map((d) => btn('dx', d.label, { arg: d.id, disabled: !open, cls: v.dx === d.id ? 'primary' : '' })).join('')}
       ${open ? `<div class="section-label">Consider the treatment options</div>${v.plans.map((x) => btn('plan', x.label, { arg: x.id, disabled: !!x.block || !v.dx || !!v.triage, sub: x.block || (x.refer ? `Refers to ${x.refer}` : x.procedure ? `${x.procedure}: the operating room` : '') })).join('')}` : ''}
       ${v.or ? `<div class="card"><h3>Operating room: ${esc(v.or.procedure)}</h3>${kv([['Team', v.or.team], ['Setting', v.or.resources], ['Risk for this patient', v.or.risk]])}
@@ -397,7 +454,7 @@ async function openCase(id, api) {
       ${last && !v.outcome ? `<p class="muted">${esc(last)}</p>` : ''}
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
-  const acts = { or: cases.orStep, test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage, follow: (cid) => cases.arrangeFollowUp(cid) };
+  const acts = { or: cases.orStep, test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage, follow: (cid) => cases.arrangeFollowUp(cid), workup: (cid) => routine.standardWorkup(cid) };
   root.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return; }
     const b = e.target.closest('[data-act]');
@@ -526,18 +583,21 @@ const ACTIONS = {
 /** Opens My Medical Career, at a tab (and, coming back from a profile, at the same place it was left). */
 export function openMedicine(api, start = 'overview') {
   const st = typeof start === 'string' ? { section: start } : { section: 'overview', ...start };
-  const modal = openModal('<div data-med></div>', { dismissable: true });
+  // A screen of its own: the whole screen on a phone, a readable column on a desktop, Back and the name in the bar.
+  const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: 'My Medical Career' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-med]');
   const render = () => {
     const p = player();
     const m = med(p);
-    const list = tabsFor(p, m);
-    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0">My Medical Career</h2><p class="muted" style="margin-top:-6px">Every patient has a story.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>
-      <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
+    const pages = pagesFor(tabsFor(p, m));
+    // A section asked for by name opens the page it is on.
+    const pg = pages.find((x) => x.id === st.section) ?? pages.find((x) => x.members.some(([y]) => y === st.section)) ?? pages[0];
+    st.section = pg.id;
+    const body = pg.members.length === 1 ? VIEWS[pg.members[0][0]](p, m, st) : pg.members.map(([y, label]) => `<div class="section-label">${esc(label)}</div>${VIEWS[y](p, m, st)}`).join('');
+    root.innerHTML = `<p class="muted" style="margin:0 0 4px">Every patient has a story.</p>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${pages.map((x) => `<button type="button" role="tab" class="world-group av-chip ${x.id === st.section ? 'on' : ''}" aria-selected="${x.id === st.section}" data-sec="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${body}</div>`;
   };
   const refresh = () => { api.changed(); render(); };
   const say = async (r) => { refresh(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };

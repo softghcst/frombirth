@@ -45,7 +45,7 @@ export function settleComplaints() {
     const roll = seeded(`${c.id}/finding`);
     c.finding = c.true ? (roll.chance(0.8) ? 'substantiated' : 'insufficient evidence') : (roll.chance(0.85) ? 'unsubstantiated' : 'insufficient evidence');
     c.status = 'decided';
-    c.decided = now();
+    c.decided = c.due ?? now(); // decided on its date, however long the turn
     if (r) {
       r.discipline.push({ year: year(), kind: c.kind, finding: c.finding, complaintId: c.id });
       if (c.finding === 'substantiated') {

@@ -8,7 +8,7 @@ import { store, player, log } from '../../state.js';
 import { SPECIALTIES, FEDERAL, LAB_RESULTS } from '../../data/investigations.js';
 import { W, I, rec, now, year, me, nextId, result, note, grow, regard, seeded, reputationOf, legacies } from './core.js';
 import { agency, office, officeOf, staffer, federalCities } from './agencies.js';
-import { acceptAcademy, declineOffer, meet } from './careers.js';
+import { acceptAcademy, declineOffer, meet, ftoLastChance } from './careers.js';
 import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings, reviewCandidates, openReview } from './casework.js';
 import * as k from '../cases.js';
 import { storyBeat } from '../storyDirector.js';
@@ -59,7 +59,9 @@ export function dramaYear(p = player()) {
     const changed = Object.values(f.witnesses).find((x) => x.statements.some((s) => s.q === 'inconsistency') && f.clues.some((c) => c.sourceId === x.id && !c.accurate));
     if (changed && queue(r, 'inv_witness_changes', { ...w, witness: nm(changed.id) }, `changes:${inv.id}`)) continue;
     if (!f.outcome && !f.report && now() > f.due && queue(r, 'inv_report_due', w, `due:${inv.id}`)) continue;
-    if (f.outcome && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
+    // A closed case is a moment for the first few, and for the serious ones; after that it is routine.
+    const closedBefore = Object.keys(r.scenes).filter((x) => x.startsWith('closed:')).length;
+    if (f.outcome && (closedBefore < 3 || ['homicide', 'missing', 'collision'].includes(f.template)) && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
     if (caseStatus(inv) === 'cold' && queue(r, 'inv_cold', w, `cold:${inv.id}`)) continue;
     if (f.courtCaseId && !f.outcome && queue(r, 'inv_reporter', { ...w, reporter: nm(reporterFor(inv)) }, `press:${inv.id}`)) continue;
     if (['homicide', 'missing'].includes(f.template) && !f.outcome && year() > Math.floor(f.opened / 12) && queue(r, 'inv_family_answers', w, `family:${inv.id}`)) continue;
@@ -235,6 +237,7 @@ export function invChoice(value, cast = {}) {
     case 'offer': { const app = r.apps.find((x) => x.id === w.app); if (!app) return null; return (how === 'accept' ? acceptAcademy(app.id) : declineOffer(app.id)).text; }
     case 'firstday': { const c = npc(r.academy?.classmateIds?.[0]); if (how === 'friend' && c) { c.meters.relationship = clamp(c.meters.relationship + 15); grow('teamwork', 3); } else grow('law', 3); return null; }
     case 'mentor': { const m = npc(r.people.ftoId); if (m) m.meters.relationship = clamp(m.meters.relationship + (how === 'listen' ? 10 : -6)); if (how === 'listen') { grow('writing', 3); r.people.mentorId = r.people.ftoId; } return null; }
+    case 'ftolast': return ftoLastChance(how === 'ask');
     case 'eval': if (how === 'learn') { grow('writing', 4); grow('timeline', 3); } else regard('teamwork', -3); return null;
     case 'report': if (how === 'clean') { grow('writing', 3); regard('reports', 3); } else { regard('reports', -3); grow('writing', 1); } return null;
     case 'talk': grow('interviewing', how === 'calm' ? 4 : 2); if (how === 'calm') regard('skill', 1); return null;

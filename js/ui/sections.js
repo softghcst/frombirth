@@ -61,11 +61,20 @@ function build(container, prefix) {
       continue;
     }
     const key = prefix ? `${prefix}${SEP}${title}` : title;
+    // A card that stands for a career with a screen of its own (a special career) opens that screen straight away;
+    // the card itself stays one row further, for the job's details.
+    if (card.dataset.direct) {
+      const go = document.createElement('button');
+      go.className = 'nav-row sec-row';
+      go.dataset.act = card.dataset.direct;
+      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', card.dataset.directDot === '1');
+      card.before(go);
+    }
     const row = document.createElement('button');
     row.className = 'nav-row sec-row';
     row.dataset.sec = key;
     // A section with something waiting for the player (its main action is highlighted) gets a dot.
-    row.innerHTML = rowInner(title, '', !!card.querySelector('.btn.primary:not([disabled]), .btn.peach:not([disabled])'));
+    row.innerHTML = rowInner(card.dataset.direct ? 'Job Details' : title, card.dataset.direct ? 'Pay, history and the people you work with' : '', !!card.querySelector('.btn.primary:not([disabled]), .btn.peach:not([disabled])'));
     card.before(row);
     card.classList.add('sec-body');
     card.dataset.secBody = key;

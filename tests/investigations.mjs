@@ -32,6 +32,7 @@ const DR = await import('../js/engine/investigations/drama.js');
 const IX = await import('../js/engine/investigations/index.js');
 const WP = await import('../js/engine/investigations/workplace.js');
 const biz = await import('../js/engine/business.js');
+const E2 = (await import('../js/engine/employers.js')).jobs;
 
 rng.seed(20261125);
 const problems = [];
@@ -84,11 +85,11 @@ function makeOfficer(agencyKind = 'municipal') {
   const a2 = A.agencyOf('municipal', 'us', p.city);
   check(a1.id === a2.id && a1.employerId === a2.employerId, 'a department is made once and keeps its id');
   check(A.kindsIn('us').includes('state') && A.kindsIn('us').includes('county') && !A.kindsIn('us').includes('national'), 'the US has municipal, county and state agencies');
-  check(A.kindsIn('br').join() === 'national' && A.agencyOf('national', 'br', 'São Paulo').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
+  check(A.kindsIn('ng').join() === 'national' && A.agencyOf('national', 'ng', 'Lagos').simplified, 'elsewhere (unless modeled): one national police service, marked simplified');
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
-  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && s.verified === false), 'every rule names its source, and none claims to be verified');
+  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && typeof s.verified === 'boolean') && Object.entries(D.SOURCES).filter(([, s]) => s.verified).map(([id]) => id).join() === 'usss', 'every rule names its source; only one read on its official page (the Secret Service) is marked verified');
   const o1 = A.officeOf('fbi', 'Chicago'); const o2 = A.officeOf('fbi', 'Chicago'); const o3 = A.officeOf('dea', 'Chicago');
   check(o1.id === o2.id && o1.id !== o3.id && o1.prosecutorIds.length && o1.name.includes('FBI'), 'federal field offices are made once each, per agency, with their own prosecutors');
 }
@@ -133,6 +134,53 @@ section('agencies: stable departments, units with supervisors, separate federal 
   check(dept.ftoIds.includes(r.people.ftoId), 'the training officer works for the department');
 }
 section('recruitment: eligibility per agency, dated decisions, the academy over time, a persistent training officer, probation before anything else');
+
+// ---------- 2b. Field training that is not going well: reviews by date, a cap, the same at any turn length ----------
+{
+  const dice = rng.state(); // this check's own lives leave the game's dice as they found them, for the checks after it
+  const p = life('us', 25);
+  const ag = A.agencyOf('municipal', 'us', p.city);
+  core.I().apps.push({ id: 'app_f', kind: 'police', ownerId: ag.id, status: 'offer', due: core.now(), outcome: 'offer' });
+  C.acceptAcademy('app_f');
+  const setNow = (t) => { store.state.year = Math.floor(t / 12); store.state.month = t % 12; };
+  setNow(core.now() + 12); C.settleAcademy();
+  const r0 = core.I();
+  Object.assign(r0.skills, { writing: 2, observation: 2, interviewing: 2, ethics: 2 }); r0.acted.field = 0; // a recruit who is struggling
+  const start = r0.job.fieldEnd;
+  const snapshot = JSON.stringify(store.state);
+  const run = (times) => {
+    store.state = JSON.parse(snapshot); store.state.pendingEvents = [];
+    const logs0 = store.state.journal.length;
+    for (const t of times) { setNow(t); C.settleProbation(); }
+    const r = core.I(); const j = r.job;
+    const sc = store.state.pendingEvents.find((e) => e.id === 'inv_fto_last_chance');
+    return { stage: r.stage, ext: j?.ftoExtensions ?? null, last: j?.ftoLastChance ?? null, job: !!j, scene: !!sc, months: sc?.cast?.words?.months,
+      lines: store.state.journal.slice(logs0).map((x) => x.text).filter((t) => /field training/.test(t)) };
+  };
+  // Quarterly turns check at every quarter; a yearly turn checks once, a year on.
+  const quarterly = run([start, start + 3, start + 6, start + 9, start + 12]);
+  const yearly = run([start + 12]);
+  check(quarterly.ext === C.FTO_EXTENSIONS && yearly.ext === C.FTO_EXTENSIONS, `four extensions at most (${quarterly.ext}, ${yearly.ext})`);
+  check(quarterly.stage === yearly.stage && quarterly.last === yearly.last && quarterly.job === yearly.job && quarterly.scene === yearly.scene,
+    `the same outcome on quarterly and yearly turns (${JSON.stringify([quarterly.stage, quarterly.last, quarterly.scene])} vs ${JSON.stringify([yearly.stage, yearly.last, yearly.scene])})`);
+  check(yearly.months === '12' && quarterly.months === '12' && quarterly.lines.some((t) => /three more months/.test(t)), `the player hears how long it really was: three months at a time on quarterly turns, the whole year in the scene on a yearly one (${yearly.months})`);
+  check(yearly.lines.every((t) => !/three more months/.test(t)), 'a yearly turn does not say three months when it was twelve');
+  check(quarterly.lines.some((t) => /My Investigations/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
+  check(yearly.scene && yearly.stage === 'field', 'after the last extension, a last chance to ask for');
+  // Asking, or accepting: one final three months, or the job ends.
+  store.state = JSON.parse(snapshot); setNow(start + 12); C.settleProbation();
+  const said = DR.invChoice('ftolast:accept', {});
+  check(!core.I().job && store.state.player.career.careerId !== 'police' && /badge/.test(said ?? ''), 'accepting it: the department lets the recruit go');
+  // A recruit who does the work passes, and probation runs on after a late sign-off.
+  store.state = JSON.parse(snapshot);
+  setNow(start); C.settleProbation();
+  Object.assign(core.I().skills, { writing: 60, observation: 60, interviewing: 60, ethics: 60 });
+  setNow(start + 3); C.settleProbation();
+  const rj = core.I();
+  check(rj.stage === 'probation' && rj.job.ftoExtensions === 1 && rj.job.probationEnd >= start + 3 + 6, `doing the work gets the sign-off, with probation still ahead (${rj.stage}, ${rj.job.ftoExtensions})`);
+  rng.seed(dice);
+}
+section('field training: reviews held by date at any turn length, four extensions at most, what to work on, a last chance, then the department decides');
 
 // ---------- 3. Detective selection and promotion ----------
 {
@@ -280,6 +328,7 @@ section('cases: one identity, real witnesses, facts apart from claims, steps fou
     check(c.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => e?.tainted).every((e) => e.admissible === false), 'a statement got by pressure is ruled out at trial');
     const outcome = inv2.file.outcome?.kind;
     check(['convicted', 'acquitted', 'dismissed'].includes(outcome) && ['sentenced', 'acquitted', 'dismissed'].includes(c.stage), `the court decides (${outcome})`);
+    check(inv2.file.outcome.at === c.trialDue && c.trialDue < core.now(), `the decision is dated from the court date, not from when the game next looked (${inv2.file.outcome.at} vs ${c.trialDue})`);
     W.settleCourt(inv2);
     check(inv2.file.outcome.kind === outcome, 'a verdict is not decided twice');
   }
@@ -966,7 +1015,7 @@ section('corporate investigators: a real company, internal matters, no police po
 }
 {
   // Four more federal agencies, each with its own rules and its own work.
-  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.verified === false, `${key}: an agency with its own career track, its source named and unverified`);
+  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.url, `${key}: an agency with its own career track, its source named`);
   let p = life('us', 27, { degree: 'criminology' });
   check(C.federalUnmet('irs').some((x) => /accounting/.test(x)) && !C.federalUnmet('usms').some((x) => /accounting/.test(x)), 'IRS Criminal Investigation asks for accounting; the Marshals do not');
   p = life('us', 27, { degree: 'accounting' });
@@ -1135,7 +1184,7 @@ section('national police reform: passed by the legislature, body cameras that re
   const det = Object.values(a.units)[0].memberIds[0];
   W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
   // A real prisoner serving a custodial sentence, from a real court case (most cases end otherwise: tried until one does).
-  for (let i = 0; i < 40 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
+  for (let i = 0; i < 120 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
   const lines = FP.psychYear(p);
   const work = FP.openWork(p);
   check(work.some((w) => w.kind === 'consult') && work.some((w) => w.kind === 'risk') && lines.length >= 2, `work from real records (${work.map((w) => w.kind)})`);
@@ -1165,9 +1214,9 @@ section('forensic psychology: a doctorate and license, consultations that never 
 
 // ---------- 24. Police outside the US ----------
 {
-  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('br').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
+  check(A.kindsIn('uk').join() === 'territorial' && A.kindsIn('fr').join() === 'police_nationale,gendarmerie' && A.kindsIn('ca').includes('rcmp') && A.kindsIn('ng').join() === 'national', 'each modeled country has its own forces; the rest one simplified national service');
   check(A.agencyOf('territorial', 'uk', 'London').name === 'Metropolitan Police Service' && A.agencyOf('prefectural', 'jp', 'Tokyo').name === 'Tokyo Metropolitan Police Department', 'forces have their real-world names');
-  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'br', 'São Paulo').simplified, 'modeled forces are not marked simplified; the rest are');
+  check(!A.agencyOf('territorial', 'uk', 'London').simplified && A.agencyOf('national', 'ng', 'Lagos').simplified, 'modeled forces are not marked simplified; the rest are');
   const p = life('uk', 24);
   p.city = 'London';
   const a = makeOfficer('territorial');
@@ -1188,6 +1237,458 @@ section('forensic psychology: a doctorate and license, consultations that never 
 }
 section('police outside the US: the UK, Canada, Australia, France and Japan with their own forces, names, ranks and entry routes');
 
+// ---------- 25. Conviction review careers ----------
+{
+  const IG = await import('../js/engine/investigations/integrity.js');
+  const ls = await import('../js/engine/lawSchool.js');
+  const p = life('us', 34);
+  check(/admission|investigative/.test(IG.postBlock('innocence', p)) && /prosecutor/.test(IG.postBlock('ciu', p)), 'review work needs the post: a lawyer or seasoned investigator; a prosecutor for a unit');
+  ls.lawOf(p).bar.admitted = { year: store.state.year };
+  check(IG.takePost('innocence').ok, 'an admitted lawyer joins an innocence organization');
+  // A real conviction with kept evidence that can be tested anew (made by the courts' own work if needed).
+  const lines = IG.integrityYear(p);
+  const m = IG.openMatters(p)[0];
+  check(m && k.J().cases[m.caseId]?.stage === 'sentenced', `a matter is a real conviction (${lines[0]})`);
+  if (m) {
+    check(!IG.step(m.id, 'timeline').ok && IG.step(m.id, 'record').ok && IG.step(m.id, 'timeline').ok, 'the trial record comes first, then the timeline');
+    check(!IG.step(m.id, 'reanalysis').ok, 'no testing before experts say what could be tested');
+    IG.step(m.id, 'experts');
+    const rq = IG.step(m.id, 'reanalysis');
+    if (m.lab) {
+      check(!IG.step(m.id, 'refer').ok, 'the result comes on its date, not before');
+      store.state.year += 1;
+    }
+    const before = k.J().cases[m.caseId].stage;
+    const res = IG.step(m.id, 'refer');
+    const after = k.J().cases[m.caseId].stage;
+    check(res.ok && m.status === 'closed' && (m.outcome === 'exonerated' ? after === 'quashed' : after === before), `the court decides; nothing changes without it (${m.outcome}, ${rq.text.slice(0, 40)})`);
+    check(ls.lawOf(p).history.some((h) => h.kind === 'post-conviction'), 'the matter is in the lawyer\'s own case history');
+  }
+}
+section('conviction review: a post, not a promotion; real convictions; the record, the timeline, experts, testing on its date; the appeal court decides; the lawyer\'s record');
+
+// ---------- 26. Accountants and auditors ----------
+{
+  const BK = await import('../js/engine/investigations/books.js');
+  const p = life('us', 31, { degree: 'accounting' });
+  hire(CAREER_BY_ID.audit, 0, 60, 'test');
+  check(BK.bookRole(p) === 'audit', 'an auditor reviews books');
+  BK.booksYear(p);
+  const g = BK.engagements(p)[0];
+  check(g && E2().employers[g.employerId], 'an engagement at a real company');
+  BK.bookStep(g.id, 'discrepancy');
+  const perf = p.career.performance;
+  // Concluding fraud from a discrepancy alone is not a finding.
+  g.truth = 'error';
+  const res = BK.concludeBooks(g.id, 'fraud');
+  check(res.tone === 'bad' && p.books.unfounded === 1 && p.career.performance < perf, 'calling a discrepancy fraud without verifying it is an unfounded referral');
+  // A verified fraud, referred, opens a real police investigation of the same company.
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g2 = BK.engagements(p)[0];
+  g2.truth = 'fraud';
+  for (const s2 of Object.keys(BK.BOOK_STEPS)) BK.bookStep(g2.id, s2);
+  BK.concludeBooks(g2.id, 'fraud');
+  const inv = g2.referredInvId && k.J().investigations[g2.referredInvId];
+  check(inv && inv.file.template === 'fraud' && inv.file.employerId === g2.employerId && inv.file.leadId !== p.id, 'a verified fraud referral opens a police investigation of that company, worked by a detective');
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g3 = BK.engagements(p)[0];
+  g3.truth = 'loss';
+  BK.bookStep(g3.id, 'verify');
+  check(BK.concludeBooks(g3.id, 'loss').tone === 'good', 'a failed investment found and reported as a loss, not a crime');
+}
+section('accountants and auditors: real companies, discrepancies that are not proof, verified findings, referrals that open real investigations');
+
+// ---------- 27. Hospitals and patient privacy ----------
+{
+  const MD = await import('../js/engine/investigations/medical.js');
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(inv.id);
+  check(MD.patientOf(inv) === inv.file.reportingId, 'the person robbed is the patient');
+  const killed = W.openCase('homicide', { ownerId: a.id, truth: 'known' });
+  check(!MD.patientOf(killed) && !store.state.npcs[killed.file.victimId].alive, 'a homicide victim is dead on the record, and nobody asks them for consent');
+  const eth = r.rep.ethics;
+  MD.requestMedical(inv.id, 'informal');
+  check(!inv.file.medical && r.rep.ethics < eth, 'asking hospital staff informally gets nothing, and costs ethics');
+  let got = false;
+  for (const how of ['consent', 'order']) { MD.requestMedical(inv.id, how); if (inv.file.medical) { got = true; break; } }
+  check(!got || (inv.file.medical.how && inv.file.log.some((x) => /documented injuries/.test(x.text))), 'with consent or an order, only the documented findings are shared');
+  // A physician at the hospital: the patient, and the police's request.
+  const doc = life('us', 40);
+  doc.medicine = { job: { hospitalId: null } };
+  const inv2 = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  doc.medicine.job.hospitalId = MD.hospitalFor(inv2, doc);
+  const lines = MD.hospitalYear(doc);
+  const q = MD.myRequests(doc)[0];
+  check(q && lines.length, 'a patient from a real case arrives at the physician\'s hospital');
+  if (q) { const perf = doc.career.performance ?? 50; MD.answerRequest(q.id, 'chart'); check(doc.flags.privacyBreach === 1 && (doc.career.performance ?? 50) < perf, 'handing the police the whole chart is a privacy breach'); }
+}
+section('hospitals: the patient is treated by the medical side; police get findings only with consent or an order; a physician who hands over the chart breaches privacy');
+
+// ---------- 28. Overtime and availability pay ----------
+{
+  const PY = await import('../js/engine/investigations/pay.js');
+  const p = life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  p.career.salary = 60000;
+  store.state.year += 1; // a year that has not been paid yet
+  const cash = p.finance.cash;
+  const l1 = PY.payYear(p);
+  check(l1.some((x) => /Overtime/.test(x)) && p.finance.cash > cash && !PY.payYear(p).length, 'an officer is paid overtime once for each year');
+  const fed = life('us', 30, { degree: 'accounting' });
+  hire(CAREER_BY_ID.fbi_agent, 0, 60, 'test');
+  const rf = core.I();
+  rf.family = 'federal'; rf.stage = 'agent';
+  rf.job = { agencyKind: 'fbi', officeId: A.officeOf('fbi', A.federalCities()[0]).id, rank: 'agent', since: store.state.year - 2 };
+  fed.career.salary = 80000;
+  const c2 = fed.finance.cash;
+  PY.payYear(fed);
+  check(fed.finance.cash - c2 === 20000, 'a federal criminal investigator is paid availability pay (25%), not overtime');
+  check(CAREER_BY_ID.police.pensionAfter === 25 && CAREER_BY_ID.fbi_agent.pensionAfter === 20, 'police and federal pensions have their own service years');
+}
+section('pay: overtime from the work done, once a year; federal availability pay; pension service years');
+
+// ---------- 29. The editor's desk, standards, and a story that brings a lead ----------
+{
+  const p = life('us', 38, { degree: 'journalism' });
+  hire(CAREER_BY_ID.journalist, 3, 60, 'test');
+  X.npcCourtCase(p);
+  const lines = X.editorYear(p);
+  const d = X.myDrafts(p)[0];
+  check(d && lines.length, 'an editor has reporters\' drafts to read');
+  if (d) { d.unverified = true; d.wrong = true; check(X.editDraft(d.id, 'run').tone === 'bad' && d.correction, 'running an unverified account as fact brings a correction under the editor\'s name'); }
+  check(X.STORY_STEPS.standards, 'editorial standards are a step of every story');
+}
+section('journalism: an editor\'s desk, editorial standards, corrections');
+
+// ---------- 30. Careers around the cases ----------
+{
+  const AL = await import('../js/engine/investigations/allied.js');
+  const DEG = { crime_analyst: 'criminology', probation: 'criminal_justice', victim_advocate: 'psychology', court_reporter: 'english', inspector_general: 'accounting', compliance: 'law', insurance: 'business' };
+  for (const id of Object.keys(AL.ALLIED)) {
+    const p = life('us', 30, { degree: DEG[id] });
+    if (id === 'inspector_general') p.career.experience = { audit: 4 };
+    const t = AL.takeUp(id);
+    check(t.ok && p.career.careerId === `ally_${id}` && p.career.title === AL.ALLIED[id].ranks[0], `${id}: taken up through its own door (${t.text})`);
+    AL.alliedYear(p);
+    const w = AL.openAllied(p)[0];
+    check(w, `${id}: the year brings work from real records`);
+    if (!w) continue;
+    const good = AL.ALLIED[id].options.find((o) => o.good);
+    const res = AL.doAllied(w.id, good.id);
+    check(res.tone === 'good' && AL.alliedOf(p).careful === 1 && !AL.doAllied(w.id, good.id).ok, `${id}: done soundly, once`);
+    // The specific consequence, in the records it touches.
+    if (id === 'crime_analyst') check(w.subject.every((x) => k.J().investigations[x].file.leads.some((l) => /names nobody/.test(l.text))), 'the analyst\'s pattern is a lead on each linked case, naming nobody');
+    if (id === 'probation') check(['completed', 'active'].includes(k.J().sentences[w.subject].status) && k.J().sentences[w.subject].supervisedBy === p.id, 'a real sentence, supervised');
+    if (id === 'victim_advocate') check(k.J().investigations[w.subject].file.done.support, 'the person harmed is supported, and chooses for themselves');
+    if (id === 'court_reporter') check(k.J().cases[w.subject].transcript?.certified, 'a certified transcript on the real case');
+    if (id === 'insurance') check(k.J().investigations[w.subject].file.template === 'arson', 'the claim is for a real fire');
+    store.state.year += 1;
+    AL.alliedYear(p);
+    const w2 = AL.openAllied(p)[0];
+    if (w2) {
+      const bad = AL.ALLIED[id].options.find((o) => !o.good);
+      check(AL.doAllied(w2.id, bad.id).tone === 'bad' && AL.alliedOf(p).misconduct === 1, `${id}: the wrong way is costly`);
+      const A = AL.alliedOf(p); A.since = store.state.year - 5; A.careful = 6;
+      check(!AL.alliedCareerYear(p).length, `${id}: no promotion with misconduct on the record`);
+    }
+  }
+  const young = life('us', 19);
+  check(Object.keys(AL.ALLIED).every((id) => AL.alliedBlock(id, young)), 'none of this work before 21');
+  // A forensic scientist who specializes in digital work is a digital forensic examiner.
+  const FL = await import('../js/engine/investigations/forensicLab.js');
+  const sci = life('us', 28, { degree: 'computer_science' });
+  hire(CAREER_BY_ID.forensics, 0, 60, 'test');
+  FL.labRecord(sci);
+  if (store.state.year >= 1995) { FL.specialize('digital'); check(sci.career.title === 'Digital forensic examiner', 'a digital specialist is a digital forensic examiner'); }
+}
+section('careers around the cases: analysts, probation, victim advocates, court reporters, inspectors general, compliance and insurance investigators, digital forensic examiners');
+
+// ---------- 31. Family: conflicts of interest, and an ancestor's case ----------
+{
+  const FA = await import('../js/engine/investigations/family.js');
+  const p = life('us', 38);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.people.partnerId ??= Object.values(a.units)[0].memberIds.find((x) => store.state.npcs[x]?.alive);
+  const rel = [...FA.relatives(p)].map((id) => store.state.npcs[id]).find((n) => n?.alive);
+  check(rel, 'the player has relatives the game keeps');
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  inv.file.people.push({ id: rel.id, role: 'witness' });
+  FA.checkConflict(inv, p);
+  check(inv.file.conflict?.status === 'open' && inv.file.conflict.relatives[0].id === rel.id, 'a relative in the player\'s own case is a conflict of interest');
+  check(FA.recuse(inv.id).ok && inv.file.leadId !== p.id && !r.caseIds.includes(inv.id), 'stepping aside hands the case to a colleague');
+  const inv2 = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv2.id);
+  inv2.file.people.push({ id: rel.id, role: 'witness' });
+  FA.checkConflict(inv2, p);
+  const integ = r.rep.integrity;
+  FA.keepCase(inv2.id);
+  check(inv2.file.conflict.status === 'kept' && r.rep.integrity < integ, 'keeping the case is a mark against the investigator');
+  // A relative in someone else's case: stay out of it.
+  const det = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive);
+  const other = W.openCase('robbery', { ownerId: a.id, lead: det, truth: 'known' });
+  other.file.people.push({ id: rel.id, role: 'witness' });
+  check(FA.relativeCases(p).some((x) => x.inv.id === other.id), 'a relative in another detective\'s case is seen');
+  const n0 = Object.keys(core.W().complaints).length;
+  FA.relativeChoice(other.id, 'favor');
+  check(Object.keys(core.W().complaints).length === n0 + 1 && !FA.relativeCases(p).some((x) => x.inv.id === other.id), 'asking the detective for a favor is misconduct, written down');
+  // An ancestor's cold case, reopened by a descendant.
+  const anc = 'npc_ancestor_test';
+  store.state.investigations.legacies = [...(store.state.investigations.legacies ?? []), { id: anc, name: 'Ada Whitlock', died: store.state.year - 6, years: 30, units: [], history: [] }];
+  const old = W.openCase('burglary', { ownerId: a.id, lead: anc, truth: 'insider' });
+  old.file.opened = core.now() - 12 * 25; old.file.log.forEach((x) => { x.at = old.file.opened; });
+  old.file.leads.push({ id: 'l_old', text: 'A van seen twice on the street that week.', why: 'A neighbor', status: 'open', at: old.file.opened });
+  old.file.coldSince = core.now() - 12 * 20; old.stage = 'cold';
+  old.file.partnerId = Object.values(store.state.npcs).find((x) => x.alive && x.id !== p.id && x.age > 50)?.id;
+  W.reopen(old.id);
+  const notes = FA.ancestorNotes(old);
+  check(old.file.ancestorId === anc && notes?.name === 'Ada Whitlock' && notes.open.some((t) => /van/.test(t)), 'reopening an ancestor\'s case brings their notes and the leads they left open');
+  if (old.file.partnerId) check(FA.askOldPartner(old.id).ok && old.file.leads.some((l) => /never made it into the file/.test(l.text)) && !FA.askOldPartner(old.id).ok, 'their old partner remembers, once');
+  old.file.outcome = { kind: 'resolved', at: core.now() };
+  const line = FA.settleAncestor(old, p);
+  check(line && r.history.some((h) => /Ada Whitlock began/.test(h.text)) && !FA.settleAncestor(old, p), 'closing it goes into the family\'s history, once');
+}
+section('family: a relative in the player\'s case means stepping aside; a relative in another\'s case is theirs; an ancestor\'s case, their notes and their old partner');
+
+// ---------- 32. Bigger homicide cases: a series across cities, and handoffs ----------
+{
+  const SE = await import('../js/engine/investigations/serial.js');
+  const p = life('us', 40);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  let inv = null;
+  for (let i = 0; i < 12 && !inv; i++) {
+    const c = W.openCase('homicide', { ownerId: a.id, truth: 'stranger' });
+    r.caseIds = [c.id];
+    SE.seriesYear(p);
+    if (c.file.seriesId) inv = c;
+  }
+  const s = inv && SE.seriesOf(inv);
+  check(s && s.caseIds.length >= 2, 'a homicide can be one of a series');
+  if (s) {
+    const others = s.caseIds.filter((x) => x !== inv.id).map(W.investigation);
+    const perp = k.J().incidents[inv.incidentId].truth.perpetratorId;
+    check(others.every((o) => k.J().incidents[o.incidentId].truth.perpetratorId === perp && k.J().incidents[o.incidentId].city !== k.J().incidents[inv.incidentId].city && o.file.leadId !== p.id), 'the same person, other cities, other detectives: each its own case');
+    const n0 = inv.evidenceIds.length;
+    const res = SE.compareCases(inv.id);
+    check(res.ok && s.linked && inv.evidenceIds.length > n0 && inv.file.leads.some((l) => /same method/.test(l.text)), 'comparing cases links them, and the other agencies\' evidence is shared');
+    check(!SE.compareCases(inv.id).ok, 'compared once');
+  }
+  // A case with no series: comparing finds nothing.
+  const lone = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(lone.id);
+  check(/Nothing else/.test(SE.compareCases(lone.id).text), 'nothing is linked that is not really linked');
+  // Handoffs: a case passes on when its detective is gone; the player's pass on when they leave.
+  r.caseIds = [];
+  const det = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive);
+  const theirs = W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
+  store.state.npcs[det].alive = false;
+  const lines = SE.inheritYear(p);
+  check(lines.length && theirs.file.leadId === p.id && theirs.file.handoff.at(-1).from === det && r.caseIds.includes(theirs.id), 'a detective\'s open homicide passes to the player when they die, with the file');
+  r.people.partnerId = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive) ?? r.people.partnerId;
+  C.jobEnded(p, r, 'retired');
+  check(theirs.file.leadId !== p.id && theirs.file.handoff.at(-1).from === p.id, 'the player\'s open cases pass on when they retire');
+}
+section('bigger homicide cases: a series across cities linked only by what is real, evidence shared between agencies; cases handed on');
+
+// ---------- 33. Informants and undercover work ----------
+{
+  const UC = await import('../js/engine/investigations/undercover.js');
+  const p = life('us', 36);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective'; r.rep.integrity = 70;
+  const inv = W.openCase('drugs', { ownerId: a.id, truth: 'supplier' });
+  r.caseIds.push(inv.id);
+  check(!UC.recruit(W.openCase('burglary', { ownerId: a.id }).id).ok, 'informants are for drug, firearms and organized-crime cases');
+  check(UC.recruit(inv.id, 'register').ok && store.state.npcs[inv.file.informantId].flags.informant.registered, 'an informant is a real person, registered with a supervisor');
+  const ev0 = inv.evidenceIds.length;
+  UC.meetInformant(inv.id);
+  check(inv.file.tip && inv.evidenceIds.length === ev0 && /not evidence/.test(inv.file.leads.at(-1).text), 'a tip is a lead, never evidence by itself');
+  check(/not a lawful basis/.test(UC.tipAsBasis(inv.id).text), 'an uncorroborated tip is not a basis for an order');
+  UC.corroborate(inv.id);
+  check(inv.file.tip.accurate ? inv.evidenceIds.length === ev0 + 1 : inv.evidenceIds.length === ev0, 'checked against independent evidence, a true tip yields evidence; a false one goes no further');
+  const inv2 = W.openCase('firearms', { ownerId: a.id, truth: 'straw' });
+  r.caseIds.push(inv2.id);
+  const n0 = Object.keys(core.W().complaints).length;
+  UC.recruit(inv2.id, 'off');
+  check(Object.keys(core.W().complaints).length === n0 + 1, 'an informant off the books is misconduct');
+  // Undercover: a year in a role; what is pushed for is entrapment, and does not stand.
+  check(UC.goUndercover(inv.id).ok && !UC.goUndercover(inv.id).ok, 'one undercover assignment at a time');
+  const s0 = r.wellbeing?.strain ?? 0;
+  UC.undercoverRound('push');
+  check((r.wellbeing?.strain ?? 0) > s0, 'undercover work weighs on the officer');
+  // A blown cover ends the operation early (a real risk); try again until an assignment runs its course.
+  for (let i = 0; i < 10 && r.undercover.status !== 'active'; i++) { r.undercover = null; store.state.year += 1; UC.goUndercover(inv.id); UC.undercoverRound('push'); }
+  check(r.undercover.status === 'active', 'an undercover assignment can run its course');
+  if (r.undercover.status === 'active') {
+    r.undercover.recordings = Math.max(1, r.undercover.recordings);
+    r.undercover.end = core.now();
+    UC.endUndercover();
+    const ev = inv.evidenceIds.map((x) => k.J().evidence[x]).find((e) => /undercover/i.test(e.summary));
+    check(ev && ev.tainted === 'entrapment', 'recordings made after pushing are entrapment, and will be ruled out');
+  }
+}
+section('informants and undercover work: real people, registered and protected; tips checked before they count; entrapment does not stand');
+
+// ---------- 34. Officer wellbeing ----------
+{
+  const WB = await import('../js/engine/investigations/wellbeing.js');
+  const p = life('us', 40);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('homicide', { ownerId: a.id, truth: 'known' }).id);
+  const s0 = WB.strainOf(p);
+  WB.wellbeingYear(p);
+  check(WB.strainOf(p) > s0, 'open homicides weigh on a detective, year by year');
+  const s1 = WB.strainOf(p);
+  check(WB.seekSupport('counseling').ok && WB.strainOf(p) < s1 && !WB.seekSupport('counseling').ok, 'confidential counseling eases it, once a year');
+  r.wellbeing.strain = 95;
+  const h = p.stats.health;
+  for (let i = 0; i < 3; i++) { WB.wellbeingYear(p); r.wellbeing.strain = 95; store.state.year += 1; }
+  check(p.stats.health < h && r.wellbeing.offered, 'years at breaking point cost health, and bring the offer of a medical retirement');
+  check(WB.medicalRetirement(p).ok && !r.job && p.career.retired, 'a medical retirement ends the career, with its pension');
+}
+section('officer wellbeing: strain from the work, confidential support, health costs, a medical retirement');
+
+// ---------- 35. True-crime media ----------
+{
+  const TC = await import('../js/engine/investigations/truecrime.js');
+  const p = life('us', 55);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const old = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(old.id);
+  old.file.opened = core.now() - 12 * 20; old.file.coldSince = core.now() - 12 * 15;
+  let shown = null;
+  for (let i = 0; i < 20 && !shown; i++) { TC.mediaYear(p); shown = old.file.mediaId; if (!shown) store.state.year += 1; }
+  check(shown && old.file.publicAttention, 'a podcast or documentary takes up an old cold case, and public attention follows');
+  const inv = TC.invitations(p)[0];
+  check(inv && inv.as === 'investigator', 'the investigator who worked it is asked to take part');
+  if (inv) {
+    const n0 = Object.keys(core.W().complaints).length;
+    TC.takePart(inv.id, 'file');
+    check(Object.keys(core.W().complaints).length === n0 + 1 && !TC.takePart(inv.id, 'public').ok, 'telling a podcast what was in the case file is a breach; one answer');
+  }
+  check(!old.file.outcome, 'a show decides nothing about the case');
+}
+section('true-crime media: old cases taken up years later, public attention, people coming forward, and the investigator asked to take part');
+
+// ---------- 36. Police in more countries, and their unions' rules ----------
+{
+  const UN = await import('../js/engine/investigations/unions.js');
+  const want = { de: 'landespolizei', in: 'state_in', br: 'policia_civil', mx: 'policia_mx', kr: 'knpa', it: 'polizia_stato', es: 'policia_nacional_es' };
+  for (const [c, kind] of Object.entries(want)) check(A.kindsIn(c).join() === kind && D.SOURCES[D.AGENCY_KINDS[kind].source]?.verified === false, `${c}: its own police (${D.AGENCY_KINDS[kind].name}), source named and unverified`);
+  check(A.agencyOf('landespolizei', 'de', 'Berlin').name === 'Polizei Berlin' && A.agencyOf('policia_nacional_es', 'es', 'Barcelona').name === 'Mossos d\'Esquadra' && A.agencyOf('state_in', 'in', 'Mumbai').name === 'Mumbai City Police', 'real force names where cities have their own');
+  const p = life('de', 22);
+  p.city = 'Berlin';
+  const a = makeOfficer('landespolizei');
+  const r = core.I();
+  check(a.kind === 'landespolizei' && /Polizei/.test(p.career.title), `a German recruit serves in the state police (${p.career.title})`);
+  r.job.rank = 'sergeant';
+  check(C.rankName('lieutenant', r) === 'Polizeikommissar' && C.rankName('detective', r) === 'Kriminalkommissar', 'German ranks and detective ranks');
+  check(/Beamte/.test(UN.strikeNote('de')) && /trade unions/.test(UN.strikeNote('in')) && /may not strike/.test(UN.strikeNote('ng')), 'union rules differ by country, and police may not strike in any');
+  check(UN.unionOf(a).name === 'the Gewerkschaft der Polizei', 'a German department\'s union is the GdP');
+}
+section('police in Germany, India, Brazil, Mexico, South Korea, Italy and Spain, with their own forces, ranks and union rules');
+
+// ---------- Last: the academy's dates (kept last: a new life here would move the ids, and so the rolls, of the checks after it) ----------
+  // The academy ends on its own date too: graduation, field training and probation are dated from it, at any turn length.
+{
+  const setNow = (t) => { store.state.year = Math.floor(t / 12); store.state.month = t % 12; };
+  {
+    const p2 = life('us', 25);
+    const ag2 = A.agencyOf('municipal', 'us', p2.city);
+    core.I().apps.push({ id: 'app_g', kind: 'police', ownerId: ag2.id, status: 'offer', due: core.now(), outcome: 'offer' });
+    C.acceptAcademy('app_g');
+    Object.assign(core.I().skills, { law: 80, writing: 80, ethics: 80, communication: 80, observation: 80, interviewing: 80, teamwork: 80 });
+    const t0 = core.now();
+    const snap = JSON.stringify(store.state);
+    const runA = (times) => { store.state = JSON.parse(snap); for (const t of times) { setNow(t); C.settleAcademy(); C.settleProbation(); } const r = core.I(); return { grad: r.academy.graduated, field: r.job?.fieldEnd, prob: r.job?.probationEnd, stage: r.stage }; };
+    const q = runA([t0 + 3, t0 + 6, t0 + 9, t0 + 12]);
+    const yv = runA([t0 + 12]);
+    check(q.grad === yv.grad && q.field === yv.field && q.prob === yv.prob && q.stage === yv.stage && yv.grad === core.I().academy.end,
+      `graduation and field training dated from the academy's end, the same on quarterly and yearly turns (${JSON.stringify(q)} vs ${JSON.stringify(yv)})`);
+  }
+}
+section('the academy ends on its own date: graduation and field training the same on quarterly and yearly turns');
+
+// ---------- 37. Playtest fixes ----------
+{
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const wid = Object.keys(inv.file.witnesses)[0];
+  for (const q of ['observed', 'timeline', 'uncertainty', 'more', 'inconsistency']) W.act(inv.id, `interview:${wid}`, { question: q });
+  check(!W.steps(inv).some((s) => s.id === `interview:${wid}`), 'once the proper questions are asked, the interview is done: pressing is never what is left to do');
+  check(!inv.evidenceIds.some((id) => k.J().evidence[id]?.tainted), 'and nothing was pressed out of anyone');
+  const used = new Set();
+  for (let i = 0; i < 4; i++) { const f = W.openCase('fraud', { ownerId: a.id, truth: 'insider' }); if (f.file.employerId) used.add(f.file.employerId); }
+  check(used.size >= 3, `fraud cases spread across the city's companies (${used.size} of 4)`);
+}
+{
+  life('us', 35);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.caseIds = [];
+  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('burglary', { ownerId: a.id, truth: 'insider' }).id);
+  months(48);
+  const idle = r.caseIds.map(W.investigation).filter((inv) => inv.stage === 'suspended').length;
+  check(idle >= 2 && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && inv.stage === 'active'), `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${r.caseIds.length} in all)`);
+}
+{
+  const WPm = await import('../js/engine/investigations/workplace.js');
+  life('us', 40);
+  makeOfficer();
+  const r = core.I();
+  r.stats.years = 6; r.job.rank = 'senior'; r.job.rankSince = store.state.year - 6;
+  Object.assign(r.rep, { integrity: 80, skill: 80, reports: 80, ethics: 80, reliability: 80, teamwork: 80, leadership: 80 });
+  check(/leadership/i.test(C.promotionOptions()[0]?.block ?? ''), 'sergeant asks for leadership');
+  for (let y = 0; y < 8; y++) { WPm.mentor(); store.state.year += 1; r.job.rankSince -= 0; }
+  check(!/leadership/i.test(C.promotionOptions()[0]?.block ?? '') && r.skills.leadership >= 35, `mentoring builds it, so the way to sergeant is open (${r.skills.leadership})`);
+}
+{
+  const p = life('us', 45);
+  makeOfficer();
+  const r = core.I();
+  for (let i = 0; i < 5; i++) r.history.push({ year: store.state.year, text: 'Referred a case to the prosecutor: someone filed charges.', kind: 'career' });
+  r.history.push({ year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' }, { year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' });
+  const mine = IX.familyInvestigativeLegacy(p).find((x) => x.you);
+  check(!mine.history.some((h) => /Referred a case/.test(h.text)) && mine.history.filter((h) => /senior detective/.test(h.text)).length === 1, 'the Family Archive keeps a career\'s milestones, not every referral, and nothing twice');
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank; the archive keeps milestones');
+
+{
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { workplaceOf } = await import('../js/engine/conditions.js');
+  const p = life('us', 40);
+  makeOfficer();
+  const det = workplaceOf(p);
+  const offered = (id) => EVENT_BY_ID[id].workplaces.includes(workplaceOf(p));
+  check(det === 'police' && !offered('fd_law_client') && !offered('headhunter') && !offered('big_presentation') && offered('burnout') && offered('fd_safety_call'),
+    'an officer is not offered a law firm\'s client, a rival firm\'s headhunter or a boardroom presentation, but burnout and a safety call still find them');
+  p.career = { careerId: 'lawyer', partTime: null };
+  check(offered('fd_law_client') && offered('headhunter') && !offered('fd_safety_call'), 'a lawyer at a firm meets the firm\'s client and the headhunter, not the emergency call');
+}
+section('workplaces: scenes set at work happen only in the workplaces they name');
+
 for (const line of ok) console.log(`ok   ${line}`);
+
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

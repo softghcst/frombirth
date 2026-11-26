@@ -5,7 +5,8 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will'
+//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum', 'instruction', 'punitive', 'certiorari', 'judicial_retirement', 'probono',
+//          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
 const L = (id, countryIds, topic, name, from, summary, o = {}) => ({ id, countryIds, topic, name, from, summary, ...o });
@@ -33,6 +34,15 @@ export const REAL_LAWS = [
   L('us_graham', ['us'], 'force', 'Graham v. Connor (1989)', 1989, 'Force in an arrest is judged by whether it was objectively reasonable in the circumstances.'),
   L('us_ina', ['us'], 'removal', 'Immigration and Nationality Act, section 240A(b)', 1997, 'Cancellation of removal for some long-term residents: ten years\' presence, good moral character, and exceptional hardship to a citizen or resident spouse, parent or child.'),
   L('us_aba15d', ['us'], 'contingency', 'ABA Model Rule of Professional Conduct 1.5(d)', 1983, 'A lawyer may not charge a contingent fee in a domestic relations matter or for defending a criminal case.'),
+  // Campaigns for legal office (engine/lawCampaign.js): what a candidate for a judgeship may and may not do, and when a
+  // judge must step aside because of who paid for the campaign.
+  L('us_canons30', ['us'], 'campaign', 'ABA Canons of Judicial Ethics (1924), Canon 30', 1924, 'A candidate for judicial office should not make promises of conduct in office that appeal to self-interest or partisan prejudice.', { promises: false }),
+  L('us_code7', ['us'], 'campaign', 'ABA Code of Judicial Conduct (1972), Canon 7', 1972, 'A judicial candidate should not make pledges or promises of conduct in office, announce views on disputed legal or political issues, or personally solicit campaign funds; a committee raises them.', { promises: false, solicit: false, announce: false }),
+  L('us_rule82', ['us'], 'campaign', 'ABA Model Rule of Professional Conduct 8.2(a)', 1983, 'A lawyer must not make a statement known to be false, or made with reckless disregard for the truth, about the integrity or qualifications of a judge or a candidate for legal office.', { falsehood: false }),
+  L('us_white', ['us'], 'campaign', 'Republican Party of Minnesota v. White (2002)', 2002, 'A state may not forbid judicial candidates from announcing their views on disputed legal and political issues.', { announce: true }),
+  L('us_code41', ['us'], 'campaign', 'ABA Model Code of Judicial Conduct (2007), Rule 4.1', 2007, 'A judicial candidate must not make pledges, promises or commitments about cases likely to come before the court, personally solicit contributions, or knowingly make false statements.', { promises: false, solicit: false, falsehood: false }),
+  L('us_yulee', ['us'], 'campaign', 'Williams-Yulee v. Florida Bar (2015)', 2015, 'A state may forbid judicial candidates from personally asking for campaign money.', { solicit: false }),
+  L('us_caperton', ['us'], 'recusal', 'Caperton v. A.T. Massey Coal Co. (2009)', 2009, 'Due process requires a judge to step aside when a party\'s campaign support had a significant and disproportionate influence on the judge\'s election.'),
   // ---------- England and Wales ----------
   L('uk_sang', ['uk'], 'search', 'R v Sang (1979)', 1979, 'A judge has no general discretion to exclude relevant evidence because of how it was obtained (confessions apart).', { excludes: false, until: 1985 }),
   L('uk_pace78', ['uk'], 'search', 'Police and Criminal Evidence Act 1984, section 78', 1986, 'A court may exclude prosecution evidence whose admission would make the proceedings unfair.', { excludes: true }),
@@ -40,6 +50,73 @@ export const REAL_LAWS = [
   L('uk_pace76', ['uk'], 'confession', 'Police and Criminal Evidence Act 1984, section 76', 1986, 'A confession obtained by oppression, or in circumstances making it unreliable, must be excluded.', { excludes: true }),
   L('uk_cja_hearsay', ['uk'], 'hearsay', 'Criminal Justice Act 2003, sections 114 to 136', 2005, 'Hearsay is admissible in criminal proceedings only on the grounds the Act allows.'),
   L('uk_cpia', ['uk'], 'disclosure', 'Criminal Procedure and Investigations Act 1996', 1997, 'The prosecution must disclose material that might undermine its case or assist the defense.'),
+  // Prenups, support, protection, adoption and guardianship (the Family Law and Divorce Law cases).
+  L('us_upaa', ['us'], 'prenup', 'Uniform Premarital Agreement Act (1983)', 1983, 'A premarital agreement is not enforced if it was not signed voluntarily, or was unconscionable and signed without fair disclosure of the other side\'s property.'),
+  L('us_fsa88', ['us'], 'support', 'Family Support Act of 1988', 1989, 'States must set child support by guidelines and review orders, so support follows real changes in circumstances.'),
+  L('us_vawa', ['us'], 'protection', 'Violence Against Women Act (1994)', 1994, 'A protection order made in one state must be enforced in every other state.'),
+  L('uk_radmacher', ['uk'], 'prenup', 'Radmacher v Granatino (2010)', 2010, 'A court should give effect to a nuptial agreement made freely, with a full understanding of what it means, unless holding the couple to it would be unfair.'),
+  L('uk_csa91', ['uk'], 'support', 'Child Support Act 1991', 1993, 'Created the Child Support Agency to work out and collect child support.'),
+  L('uk_fla96', ['uk'], 'protection', 'Family Law Act 1996, Part IV', 1997, 'A court can make a non-molestation order, and an order about who may live in the family home.'),
+  L('uk_aca02', ['uk'], 'adoption', 'Adoption and Children Act 2002', 2005, 'The child\'s welfare, throughout their life, is the court\'s paramount consideration; a parent\'s consent can be dispensed with only if the child\'s welfare requires it.'),
+  L('uk_sgo', ['uk'], 'guardianship', 'Children Act 1989, section 14A (special guardianship, added 2002)', 2005, 'A relative can be made a special guardian: day-to-day parental responsibility, without ending the parents\' legal ties.'),
+  // Wages, housing, pollution, public records, eviction and asylum (more practice areas' cases).
+  L('us_flsa', ['us'], 'wages', 'Fair Labor Standards Act (1938)', 1938, 'Sets a minimum wage and overtime pay for hours over the standard week, unless an exemption applies; job duties, not titles, decide the exemption.'),
+  L('uk_nmwa', ['uk'], 'wages', 'National Minimum Wage Act 1998', 1999, 'Workers must be paid at least the national minimum wage for the hours they work.'),
+  L('us_fha', ['us'], 'housing', 'Fair Housing Act (1968)', 1968, 'Forbids refusing to rent or sell housing because of race, color, religion or national origin, with sex, disability and family status added later.'),
+  L('uk_rra68', ['uk'], 'housing', 'Race Relations Act 1968', 1968, 'Made it unlawful to discriminate on grounds of race in housing, employment and services.', { until: 2010 }),
+  L('uk_eqa10', ['uk'], 'housing', 'Equality Act 2010', 2010, 'Forbids discrimination in housing, work and services because of protected characteristics, including race, sex, disability and religion.'),
+  L('us_cwa', ['us'], 'pollution', 'Clean Water Act (1972)', 1972, 'Discharging pollutants into waters needs a permit, and its limits must be met; citizens may sue over violations.'),
+  L('uk_epa90', ['uk'], 'pollution', 'Environmental Protection Act 1990', 1990, 'Sets duties on polluters, and lets councils and residents act against statutory nuisances.'),
+  L('us_foia', ['us'], 'records', 'Freedom of Information Act (1967)', 1967, 'Federal agency records must be released on request, unless a listed exemption, such as personal privacy, applies.'),
+  L('uk_foia', ['uk'], 'records', 'Freedom of Information Act 2000', 2005, 'Anyone may ask a public authority for information it holds; it must be released unless an exemption applies.'),
+  L('uk_pfea', ['uk'], 'eviction', 'Protection from Eviction Act 1977', 1977, 'It is a crime to evict a residential occupier without a court order, or to harass them into leaving.'),
+  L('us_refugee', ['us'], 'asylum', 'Refugee Act of 1980', 1980, 'Asylum for anyone with a well-founded fear of persecution for race, religion, nationality, political opinion or membership of a particular social group.'),
+  L('uk_refugee', ['uk'], 'asylum', 'Convention Relating to the Status of Refugees (1951)', 1954, 'A refugee with a well-founded fear of persecution may not be returned to the country they fled.'),
+  // Appeals: a jury told the wrong standard, punitive damages out of all proportion, and how a case reaches the top court.
+  L('us_sullivan', ['us'], 'instruction', 'Sullivan v. Louisiana (1993)', 1993, 'A jury instruction that misstates reasonable doubt can never be harmless: the conviction must be reversed.'),
+  L('us_gore', ['us'], 'punitive', 'BMW of North America v. Gore (1996)', 1996, 'Punitive damages that are grossly excessive violate due process; courts weigh reprehensibility, the ratio to actual harm, and comparable penalties.'),
+  L('us_campbell', ['us'], 'punitive', 'State Farm v. Campbell (2003)', 2003, 'Few awards with a ratio of punitive to actual damages above single digits will satisfy due process.'),
+  L('us_judges_bill', ['us'], 'certiorari', 'Judiciary Act of 1925', 1925, 'Most cases reach the Supreme Court only if it grants certiorari: it chooses which cases to hear.'),
+  L('uk_cra05', ['uk'], 'certiorari', 'Constitutional Reform Act 2005', 2009, 'Created the Supreme Court of the United Kingdom, replacing the House of Lords as the final court of appeal; an appeal needs permission.'),
+  // ---------- Beyond the US and England: the same kinds of case in Canada, Australia, Germany, France, India, Japan ----------
+  L('ca_stinchcombe', ['ca'], 'disclosure', 'R. v. Stinchcombe (1991)', 1991, 'The Crown must disclose all relevant information to the defense, whether it helps or hurts its case.'),
+  L('ca_chra', ['ca'], 'housing', 'Canadian Human Rights Act (1977)', 1977, 'Forbids discrimination, including in residential accommodation, under federal jurisdiction; each province has its own human rights code as well.'),
+  L('ca_atia', ['ca'], 'records', 'Access to Information Act (1983)', 1983, 'Anyone in Canada may ask for federal government records; exemptions, such as personal information, are applied line by line.'),
+  L('ca_irpa', ['ca'], 'asylum', 'Immigration and Refugee Protection Act (2001)', 2002, 'Protects Convention refugees and people in need of protection; claims are heard by the Immigration and Refugee Board.'),
+  L('ca_cepa', ['ca'], 'pollution', 'Canadian Environmental Protection Act, 1999', 2000, 'Sets federal rules for toxic substances and pollution, with offenses for releases beyond what the law allows.'),
+  L('au_rda', ['au'], 'housing', 'Racial Discrimination Act 1975', 1975, 'Makes it unlawful to refuse accommodation, or offer it on worse terms, because of race, color, descent or national or ethnic origin.'),
+  L('au_fwa', ['au'], 'wages', 'Fair Work Act 2009', 2009, 'Sets national minimum wages and employment standards, and lets workers recover underpayments.'),
+  L('au_foi', ['au'], 'records', 'Freedom of Information Act 1982', 1982, 'A right to obtain documents held by federal government agencies, subject to exemptions.'),
+  L('au_migration', ['au'], 'asylum', 'Migration Act 1958, protection visas', 1958, 'Decides who may enter and stay; people owed protection under the Refugee Convention, which Australia joined in 1954, may be granted a protection visa.'),
+  L('de_milog', ['de'], 'wages', 'Minimum Wage Act (Mindestlohngesetz, 2015)', 2015, 'A national minimum wage for every hour worked.'),
+  L('de_agg', ['de'], 'housing', 'General Equal Treatment Act (AGG, 2006)', 2006, 'Forbids discrimination because of race, ethnic origin, sex, religion, disability, age or sexual identity, including in renting homes.'),
+  L('de_ifg', ['de'], 'records', 'Freedom of Information Act (IFG, 2006)', 2006, 'Anyone may ask federal authorities for official information, with exceptions such as personal data.'),
+  L('de_gewschg', ['de'], 'protection', 'Violence Protection Act (Gewaltschutzgesetz, 2002)', 2002, 'A court can forbid contact and approach, and give the victim the use of a shared home.'),
+  L('de_gg16', ['de'], 'asylum', 'Basic Law, Article 16 (from 1993, Article 16a)', 1949, 'Persons persecuted on political grounds have the right of asylum.'),
+  L('fr_cada', ['fr'], 'records', 'Law of 17 July 1978 on access to administrative documents', 1978, 'Anyone may obtain administrative documents; a commission (the CADA) hears refusals.'),
+  L('fr_smic', ['fr'], 'wages', 'Minimum wage (SMIC, 1970)', 1970, 'A national minimum hourly wage, raised each year, with premiums for overtime set by law.'),
+  L('fr_protection', ['fr'], 'protection', 'Law of 9 July 2010: the protection order', 2010, 'A family judge can issue a protection order quickly for a victim of violence within a couple.'),
+  L('fr_ofpra', ['fr'], 'asylum', 'French Office for the Protection of Refugees and Stateless Persons (OFPRA, 1952)', 1952, 'Decides asylum claims under the Refugee Convention; refusals can be appealed to a national asylum court.'),
+  L('in_minwages', ['in'], 'wages', 'Minimum Wages Act 1948', 1948, 'Governments set minimum wages for scheduled work, and workers can claim what they were underpaid.'),
+  L('in_rti', ['in'], 'records', 'Right to Information Act 2005', 2005, 'Any citizen may ask a public authority for information, which must answer within thirty days, with listed exemptions.'),
+  L('in_pwdva', ['in'], 'protection', 'Protection of Women from Domestic Violence Act 2005', 2006, 'A magistrate can make protection orders, residence orders and orders for support for women facing violence at home.'),
+  L('in_water', ['in'], 'pollution', 'Water (Prevention and Control of Pollution) Act 1974', 1974, 'Discharging pollutants into streams needs the pollution control board\'s consent, within its limits.'),
+  L('in_dkbasu', ['in'], 'counsel', 'D.K. Basu v. State of West Bengal (1997)', 1997, 'Rules for every arrest, including the right to meet a lawyer during interrogation and to have family told.'),
+  L('jp_lsa', ['jp'], 'wages', 'Labor Standards Act (1947)', 1947, 'Overtime beyond legal working hours must be paid at a premium; a job title alone does not make someone exempt.'),
+  L('jp_info', ['jp'], 'records', 'Act on Access to Information Held by Administrative Organs (1999)', 2001, 'Anyone may ask national government bodies for their administrative documents, with exemptions.'),
+  L('jp_dv', ['jp'], 'protection', 'Act on the Prevention of Spousal Violence (2001)', 2001, 'A court can order a violent spouse to stay away from the victim and leave the shared home for a time.'),
+  L('jp_refugee', ['jp'], 'asylum', 'Immigration Control and Refugee Recognition Act (refugee recognition from 1982)', 1982, 'Refugee status is recognized under the Refugee Convention, which Japan joined in 1981.'),
+  L('jp_water', ['jp'], 'pollution', 'Water Pollution Control Law (1970)', 1971, 'Factories must keep discharges into public waters within national standards.'),
+  // When judges must retire (engine/lawLife.js): the age in force, where Pathways lists it.
+  L('us_art3', ['us'], 'judicial_retirement', 'U.S. Constitution, Article III (federal judges)', 1789, 'Federal judges hold office during good behavior: no retirement age. Most states set one for their own judges, often 70.', { age: 70, note: 'State judges in Pathways retire at 70, the most common state age.' }),
+  L('uk_jpra93', ['uk'], 'judicial_retirement', 'Judicial Pensions and Retirement Act 1993', 1995, 'Judges must retire at 70.', { age: 70, until: 2021 }),
+  L('uk_pspjoa22', ['uk'], 'judicial_retirement', 'Public Service Pensions and Judicial Offices Act 2022', 2022, 'Raised the mandatory retirement age for judges to 75.', { age: 75 }),
+  L('ca_const60', ['ca'], 'judicial_retirement', 'Constitution Act, 1960 (superior court judges)', 1961, 'Judges of the superior courts retire at 75.', { age: 75 }),
+  L('au_1977', ['au'], 'judicial_retirement', 'Constitution Alteration (Retirement of Judges) 1977', 1977, 'Federal judges must retire at 70.', { age: 70 }),
+  L('in_const124', ['in'], 'judicial_retirement', 'Constitution of India, Article 124', 1950, 'Supreme Court judges retire at 65; High Court judges at 62.', { age: 65 }),
+  L('jp_court_act', ['jp'], 'judicial_retirement', 'Court Act (1947)', 1947, 'Judges of the lower courts retire at 65; Supreme Court justices at 70.', { age: 65 }),
+  // Pro bono: the profession's own expectation.
+  L('us_rule61', ['us'], 'probono', 'ABA Model Rule of Professional Conduct 6.1', 1983, 'Every lawyer has a professional responsibility to provide legal services to those unable to pay, aspiring to at least 50 hours a year.'),
   L('uk_children', ['uk'], 'custody', 'Children Act 1989, section 1', 1991, 'The child\'s welfare is the court\'s paramount consideration.'),
   L('uk_dra1969', ['uk'], 'divorce', 'Divorce Reform Act 1969 (in force 1971)', 1971, 'Divorce for irretrievable breakdown, shown by one of five facts: adultery, behavior or desertion, or two or five years\' separation.', { nofault: 'facts', until: 2021, note: 'Before 1971, divorce in England required proof of a matrimonial offense such as adultery or cruelty.' }),
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),
@@ -73,6 +150,7 @@ export const REAL_LAWS = [
 
 /** Court names that changed with the law. */
 export const COURT_HISTORY = {
-  uk: { trial: [[1972, 'Crown Court'], [0, 'Assizes (or Quarter Sessions)']], family: [[2014, 'Family Court'], [1971, 'Family Division of the High Court'], [0, 'Probate, Divorce and Admiralty Division']] },
-  us: { immigration: [[1983, 'Immigration Court'], [0, 'Immigration hearing before a special inquiry officer']] },
+  uk: { trial: [[1972, 'Crown Court'], [0, 'Assizes (or Quarter Sessions)']], family: [[2014, 'Family Court'], [1971, 'Family Division of the High Court'], [0, 'Probate, Divorce and Admiralty Division']],
+    supreme: [[2009, 'Supreme Court of the United Kingdom'], [0, 'Appellate Committee of the House of Lords']] },
+  us: { immigration: [[1983, 'Immigration Court'], [0, 'Immigration hearing before a special inquiry officer']], supreme: [[0, 'Supreme Court of the United States']] },
 };

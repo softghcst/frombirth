@@ -84,4 +84,17 @@ check(rl.governing('custody', 'ca', 2000).id === 'ca_custody' && rl.governing('s
 }
 setYear(2026);
 
+// The same kinds of case in other countries cite their own laws, in their own time.
+{
+  const { lawsFor } = await import('../js/engine/realLaw.js');
+  const has = (topic, c, y, re) => lawsFor(topic, c, y).some((l) => re.test(l.name));
+  check(has('wages', 'jp', 2020, /Labor Standards/) && has('wages', 'de', 2020, /Mindestlohn/) && !has('wages', 'de', 2010, /Mindestlohn/), 'wages: Japan since 1947; Germany\'s minimum wage only from 2015');
+  check(has('records', 'in', 2010, /Right to Information/) && !has('records', 'in', 2000, /Right to Information/), 'India\'s Right to Information Act, from 2005');
+  check(has('protection', 'fr', 2015, /protection order/) && has('protection', 'jp', 2015, /Spousal Violence/), 'protection orders in France and Japan');
+  check(has('asylum', 'ca', 2010, /Refugee Protection/) && has('asylum', 'au', 2010, /Migration Act/) && has('asylum', 'de', 1980, /Article 16/), 'asylum in Canada, Australia and Germany');
+  check(has('disclosure', 'ca', 2000, /Stinchcombe/) && !has('disclosure', 'ca', 1985, /Stinchcombe/), 'Canada\'s duty of disclosure, from Stinchcombe in 1991');
+  const countries = ['ca', 'au', 'de', 'fr', 'in', 'jp'];
+  check(countries.every((c) => ['wages', 'records', 'asylum', 'protection', 'housing', 'pollution'].filter((t) => lawsFor(t, c, 2020).length).length >= 3), 'each of six more countries has its own laws for at least three of the new kinds of case');
+}
+
 finish('Real laws hold, in their time.');

@@ -1,5 +1,6 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
+import { openPolitics } from '../politics.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
@@ -12,6 +13,7 @@ import { openMedicine, medicineOpen } from '../medicine.js';
 import { openInvestigations, investigationsOpen } from '../investigations.js';
 import { openFame } from '../fame.js';
 import { openIdol } from '../kpop.js';
+import { openJournalism } from '../journalism.js';
 import { openAthletics } from '../sports.js';
 import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
@@ -218,7 +220,8 @@ export const careerHandlers = (api) => ({
   'sc:writing': () => openFame(api, null, { career: 'writing' }),
   'sc:sports': () => openAthletics(api),
   'sc:kpop': () => openIdol(api),
-  'sc:politics': () => document.getElementById('politics-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+  'sc:journalism': () => openJournalism(api),
+  'sc:politics': () => openPolitics(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),

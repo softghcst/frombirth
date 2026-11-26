@@ -60,10 +60,17 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     store.notify();
   });
   await page.click('.tab-btn[data-tab="work"]'); await page.waitForTimeout(200);
-  const rowBtn = page.locator('[data-act="law"]');
+  // My Legal Career is on the Work tab's Special Careers screen.
+  if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
+  // The row that is on screen: under Special Careers at first, then (once practicing) the first row of the Work tab.
+  const rowBtn = page.locator('[data-act="law"]:visible').first();
   check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
   await rowBtn.click(); await hub().waitFor();
   check(/Every case tells a story/i.test(await hub().innerText()), `${label}: the hub opens, with its subtitle`);
+  const guide = page.locator('#modal-root .modal', { hasText: 'Your Legal Career' }).last();
+  check(await guide.count() === 1 && /Handle the Routine Steps/.test(await guide.innerText()), `${label}: the first time, a short guide explains how it works`);
+  await guide.locator('[data-guideok]').click(); await page.waitForTimeout(80);
+  check(await page.locator('#modal-root [data-guideok]').count() === 0, `${label}: and it closes`);
   await hub().locator('[data-tab="education"]').click();
   check(await hub().locator('[data-tab="cases"]').count() === 0 && await hub().locator('[data-tab="new"]').count() === 0, `${label}: no docket for someone who is not a lawyer`);
   await hub().locator('[data-law="sitEntrance"]').click(); await ok();
@@ -131,11 +138,12 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await shot('offers');
   await hub().locator('[data-accept]').first().click(); await ok();
   const page1 = await hub().innerText();
-  check(/Interview the client/i.test(page1) && /Evidence/.test(page1) && /Judge/.test(page1) && / v\. /.test(page1), `${label}: the case file opens, with its client, judge and evidence (${page1.replace(/\n/g, ' ').slice(0, 200)})`);
-  await hub().locator('[data-cact="interview"]').click(); await ok();
-  await hub().locator('[data-cact="review"]').click(); await ok();
+  check(/Handle the Routine Steps/i.test(page1) && /Evidence/.test(page1) && /Judge/.test(page1) && / v\. /.test(page1), `${label}: the case file opens, with its client, judge and evidence (${page1.replace(/\n/g, ' ').slice(0, 200)})`);
+  check(await hub().locator('[data-cact="interview"]').count() === 0, `${label}: the routine steps are one button, not three`);
+  await hub().locator('[data-cact="routine"]').click(); await ok();
+  check(/Interviewed the client|Met /.test(await hub().innerText()) || await hub().locator('[data-cact="routine"]').count() === 0, `${label}: the routine steps are done in one go`);
   check(await hub().locator('.law-ev .fit-bars').count() >= 1, `${label}: reviewed evidence shows how reliable it is`);
-  const rightR = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); return lc.researchQuestion(lc.caseById(L.caseIds.at(-1))).right; });
+  const rightR = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); window.__lawCase = L.caseIds.filter((id) => !lc.caseById(id).assigned).at(-1); return lc.researchQuestion(lc.caseById(window.__lawCase)).right; });
   await hub().locator('[data-cact="research"]').click();
   await page.locator('#modal-root .modal').last().locator('.choice-btn').nth(rightR).click(); await ok();
   const file = hub().locator('[data-cact="file"]');
@@ -143,30 +151,35 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Filings/.test(await hub().innerText()), `${label}: the filing is on the file, with the court's ruling`);
   await shot('case');
   await clear();
-  await engine(async () => { const { advanceTurn } = await import('/js/engine/turns.js'); const { store } = await import('/js/state.js'); const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(L.caseIds.at(-1)); for (let i = 0; i < 12 && !c.awaiting && !c.done; i++) { store.state.pendingEvents = []; advanceTurn(); } store.notify(); });
+  await engine(async () => { const { advanceTurn } = await import('/js/engine/turns.js'); const { store } = await import('/js/state.js'); const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(window.__lawCase); void L; for (let i = 0; i < 12 && !c.awaiting && !c.done; i++) { store.state.pendingEvents = []; advanceTurn(); } store.notify(); });
   await rowBtn.click(); await hub().waitFor(); await hub().locator('[data-tab="cases"]').click();
-  const lastId = await engine(async () => (await import('/js/engine/lawSchool.js')).lawOf().caseIds.at(-1));
-  await hub().locator(`[data-case="${lastId}"]`).click();
+  const lastId = await engine(async () => window.__lawCase);
+  check(/needs you/i.test(await hub().innerText()) && /in court:/i.test(await hub().innerText()), `${label}: one docket page puts the day in court at the top, under Needs You`);
+  check(await hub().locator('[data-tab="filings"], [data-tab="court"], [data-tab="clients"]').count() === 0, `${label}: no separate tabs for filings, the courtroom and clients`);
+  await hub().locator(`[data-case="${lastId}"]`).first().click();
   const court = hub().locator('[data-cact="court"]');
   check(await court.count() === 1, `${label}: the case reaches court and waits for the lawyer`);
   await court.click(); await ok();
   // Each phase in turn: the objection on its proper ground, the cross on what the file shows.
-  const phases = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); return lc.courtroom(lc.caseById(L.caseIds.at(-1))).phases.map((p) => ({ id: p.id, want: p.valid ?? p.good ?? p.options[0].v, values: p.options.map((o) => o.v) })); });
+  const phases = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); void L; return lc.courtroom(lc.caseById(window.__lawCase)).phases.map((p) => ({ id: p.id, want: p.valid ?? p.good ?? p.options[0].v, values: p.options.map((o) => o.v) })); });
   for (const ph of phases) {
     const m = page.locator('#modal-root .modal').last();
     await m.locator('.choice-btn').first().waitFor();
     await m.locator('.choice-btn').nth(Math.max(0, ph.values.indexOf(ph.want))).click(); await page.waitForTimeout(60);
   }
-  // The verdict is read out a line at a time: wait for it, rather than reading the page while it is still being said.
-  await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
+  // The result window: The Verdict, The Ruling or The Closing (Court, after a hung jury), and the case decided in the
+  // engine (or a retrial set). Its wording is each case's own, so the check is on what happened, not on the words.
+  await page.waitForFunction(() => /^\s*(?:‹ Back\s*)?(The Verdict|The Ruling|The Closing|Court)\b/.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
   const verdict = await page.locator('#modal-root .modal').last().innerText();
-  check(/Guilty|Not guilty|Judgment|Approved|Denied|court/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
-  check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
+  const decided = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(window.__lawCase); void L; return !!(c.done || c.outcome || c.mistrials); });
+  check(/(The Verdict|The Ruling|The Closing|Court)\b/.test(verdict) && decided, `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
+  // A trial asks for an objection or a cross-examination; an appeal is argued, with questions from the bench instead.
+  check(phases.some((x) => ['objection', 'cross', 'bench'].includes(x.id)), `${label}: the day in court asked for an objection, a cross-examination or, on appeal, answers to the bench (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
   await hub().getByText(/Outcome/).first().waitFor({ timeout: 10000 }).catch(() => {}); // the case page redraws after the verdict, however busy the machine
-  check(/Outcome/.test(await hub().innerText()), `${label}: the case shows its outcome`);
-  await hub().locator('[data-back]').click();
+  check(/Outcome|retrial|Retrial|mistrial/i.test(await hub().innerText()), `${label}: the case shows its outcome (or, after a hung jury, the retrial to come)`);
+  await page.locator('#modal-root .modal:has(.law-hub) .modal-back').click(); // the bar's Back steps back a level
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
   // The Family Archive keeps the legal career.
@@ -177,6 +190,38 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const legacy = await page.locator('#modal-root .modal').last().innerText();
   check(/Legal careers in the family/i.test(legacy) && /Admitted to practice/i.test(legacy) && /you/i.test(legacy), `${label}: Family Archive → Professional legacy shows the career (${legacy.replace(/\n/g, ' ').slice(0, 120)})`);
   await shot('legacy');
+  await clear();
+  // A race for District Attorney, from the Progress tab: the trail, the debate, the polls as bars, the count.
+  await engine(async () => {
+    const { store } = await import('/js/state.js');
+    const career = await import('/js/engine/career.js'); const { CAREER_BY_ID } = await import('/js/data/careers.js');
+    const p = store.state.player;
+    career.hire(CAREER_BY_ID.prosecutor, 2, 70, 'test');
+    p.age = 48; p.career.experience = { prosecutor: 16 }; p.finance.cash = 5e6;
+    store.notify();
+  });
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
+  await page.evaluate(() => document.querySelector('[data-act="law"]').click()); await hub().waitFor(); await hub().locator('[data-tab="progress"]').click();
+  const prog = await hub().innerText();
+  check(/Victims & Witnesses|Trial Advocacy/.test(prog) && !/Weighing Evidence/.test(prog), `${label}: a prosecutor's five skills carry a prosecutor's names`);
+  await hub().locator('[data-seek="da"]').click(); await ok(); await ok();
+  const trail = () => page.locator('#modal-root .law-campaign');
+  await trail().waitFor();
+  check(/Running for District Attorney/i.test(await trail().innerText()) && await trail().locator('.fit-bars').count() >= 1, `${label}: the campaign is a screen of its own, with the race drawn as bars`);
+  check(!/\d+%/.test(await trail().innerText()), `${label}: no percentages on the trail`);
+  check(/money/i.test(await trail().innerText()) && /your opponent/i.test(await trail().innerText()), `${label}: what can be done is grouped`);
+  await shot('campaign-start');
+  await trail().locator('[data-camp="committee"]').click(); await ok();
+  await trail().locator('[data-camp="town_hall"]').click(); await ok();
+  await trail().locator('[data-campnext]').click(); await ok();
+  await trail().locator('[data-campdebate]').click(); await pick(/what you would change/i); await ok();
+  await trail().locator('[data-campnext]').click(); await ok();
+  await trail().locator('[data-campnext]').click(); await ok();
+  await shot('campaign');
+  await trail().locator('[data-campvote]').click();
+  const count = await page.locator('#modal-root .modal').last().innerText();
+  check(/won the election|lost|voters/i.test(count), `${label}: election day (${count.replace(/\n/g, ' ').slice(0, 100)})`);
+  await ok();
   await clear();
   // Save, reload, continue: everything is still there, nothing counted twice.
   const before = await engine(async () => { const { store } = await import('/js/state.js'); const { saveGame } = await import('/js/save.js'); saveGame(store.state); const L = store.state.player.law; return { n: L.history.length, cases: L.caseIds.length, cash: store.state.player.finance.cash, slot: store.state.slotId }; });

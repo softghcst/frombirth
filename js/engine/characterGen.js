@@ -1,5 +1,6 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { giveBirthday, birthDate } from './birthday.js';
+import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
@@ -27,6 +28,7 @@ import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
+import { LATER_TALENTS } from '../data/talents.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -48,8 +50,10 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @returns {import('../types.js').GameState}
  */
 /** Every life starts with at least one gift (a talent of 75 or more): if none was inherited, one is picked at random. */
+// A gift for one of the newest talents (LATER_TALENTS) comes on top of it, so that adding them changes no other roll.
 function withAGift(talents) {
-  if (!Object.values(talents).some((v) => v >= 75)) talents[rng.pick(Object.keys(talents))] = rng.int(75, 100);
+  const first = Object.entries(talents).filter(([k]) => !LATER_TALENTS.includes(k));
+  if (!first.some(([, v]) => v >= 75)) talents[rng.pick(first.map(([k]) => k))] = rng.int(75, 100);
   return talents;
 }
 
@@ -192,6 +196,9 @@ function createOnce(opts = {}) {
 
   if (opts.birthday) player.birthday = { m: opts.birthday.m, d: opts.birthday.d }; // chosen (a test, or the creator)
   giveBirthday(player); // otherwise a day of the year of its own (engine/birthday.js)
+  // The language of the country they are born in, spoken from the start. A parent's other language is picked up at
+  // home over the years instead (engine/globalLife.js tickHeritage).
+  giveNativeLanguages(player);
 
   // Opening journal
   const an = (job) => `${/^[aeiou]/i.test(job) ? 'an' : 'a'} ${job}`;

@@ -19,6 +19,7 @@ import { ensureCareer } from '../worklife.js';
 import { residency, rightToLive } from '../citizenship.js';
 import { relocate, moveBlock } from '../cities.js';
 import { techAvailable } from '../digital/tech.js';
+import { storyBeat } from '../storyDirector.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, once, reputationOf, skillAvg, working, dateWords } from './core.js';
 import { agency, agencyOf, agenciesHere, office, officeOf, federalCities, vacancies, staffer, employerOf } from './agencies.js';
 import { trainingBonus } from './policing.js';
@@ -152,17 +153,22 @@ export function applyPolice(agencyId) {
 }
 
 const WHY = { written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' };
+/** What would help next time, for each part of the assessment. */
+export const WHY_HELP = { written: 'Studying for the entrance assessment helps.', fitness: 'Training for the fitness assessment helps, a little more each year you do it.', interview: 'A ride-along or open day helps you talk about the work.', background: 'A background check looks at your record and your conduct.', medical: 'Looking after your health helps.' };
 
 /** Decisions whose date has come, made known. Called from the year and whenever the hub is opened. */
 export function settleApplications(p = player()) {
   const r = rec(p);
   if (!r) return [];
   const out = [];
-  for (const app of r.apps.filter((x) => x.status === 'pending' && x.due <= now())) {
+  // Promotions are settled by settlePromotions, which applies the new rank; closing them here first lost it.
+  for (const app of r.apps.filter((x) => x.status === 'pending' && x.due <= now() && x.kind !== 'promotion')) {
     if (app.kind === 'federal') { const s = federalStage(app); if (s) out.push(s); continue; }
     app.status = app.outcome;
     const who = agency(app.ownerId)?.name ?? office(app.ownerId)?.name ?? 'The agency';
-    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. You can apply again next year.`);
+    // Refused, with nothing else pending: no longer applying (the record of the application stays).
+    if (app.kind === 'police' && app.outcome !== 'offer' && r.stage === 'applying' && !r.apps.some((x) => x !== app && x.status === 'pending' && x.kind === 'police')) r.stage = 'none';
+    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. ${WHY_HELP[app.why] ?? ''} You can apply again next year.`);
     if (app.kind === 'detective') out.push(settleDetective(app));
     if (app.kind === 'license') out.push(settleLicense(app));
   }
@@ -240,10 +246,16 @@ export function settleAcademy(p = player()) {
   const r = rec(p);
   const ac = r?.academy;
   if (ac?.status !== 'enrolled' || now() < ac.end) return null;
+  // Dated from the academy's own end, not from whenever the game next looks: on a yearly turn the academy still ends,
+  // and field training starts, on the day it would have on a shorter one.
   const roll = seeded(`${me()}/${ac.ownerId}/${ac.end}`);
   const score = readiness(r, p) + roll.int(-8, 8);
   if (score >= 50) return graduate(p, r);
-  if (!ac.extended) { ac.extended = true; ac.end = now() + 2; log('The academy needs more from you: two more months of training before you can graduate.', 'system', 'neutral'); return 'more'; }
+  if (!ac.extended) {
+    ac.extended = true; ac.end += 2;
+    log('The academy needs more from you: two more months of training before you can graduate.', 'system', 'neutral');
+    return now() >= ac.end ? settleAcademy(p) : 'more'; // the two months may already have passed in this turn
+  }
   ac.status = 'failed';
   quitCareer(); // the job was the place at the academy: it ends with it
   r.stage = 'none';
@@ -254,7 +266,7 @@ export function settleAcademy(p = player()) {
 function graduate(p, r) {
   const ac = r.academy;
   ac.status = 'graduated';
-  ac.graduated = now();
+  ac.graduated = ac.end; // the day the academy ended, however long the turn
   if (ac.federal) return federalGraduate(p, r);
   const a = agency(ac.ownerId);
   const d = AGENCY_KINDS[a.kind];
@@ -265,11 +277,84 @@ function graduate(p, r) {
   r.stage = 'field';
   r.job.rank = 'probationary';
   r.job.rankSince = year();
-  r.job.fieldEnd = now() + d.fieldMonths;
-  r.job.probationEnd = now() + d.probationMonths;
+  r.job.fieldEnd = ac.graduated + d.fieldMonths;
+  r.job.probationEnd = ac.graduated + d.probationMonths;
   p.career.title = (d.titles ?? [])[1] ?? 'Probationary officer';
   note(`Graduated from the academy at ${a.name}.`, 'career', { key: `graduated:${a.id}`, milestone: 'Graduated from the police academy.', significance: 2 });
   return 'graduated';
+}
+
+/** Extensions of field training a department gives before it decides: about a year of them. */
+export const FTO_EXTENSIONS = 4;
+const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
+
+/**
+ * The field training officer's reviews, one at the end of each stretch of training that has passed: the first at the
+ * end of field training, then every three months. Every review whose date has come is held, in order, however long
+ * the turn (a year's turn holds four at once), each with its own roll, so the outcome is the same at any turn length.
+ * The player hears once: signed off, or how many months were added and what to work on. After the last extension the
+ * department decides: a narrow pass, or a last chance to ask for (a scene, inv_fto_last_chance).
+ */
+function fieldReviews(p, r, j) {
+  const fto = name(r.people.ftoId);
+  const score = (at) => skillAvg(FTO_SKILLS, r) + (r.acted.field ?? 0) + seeded(`${me()}/fto/${at}`).int(-10, 10);
+  let added = 0;
+  while (r.stage === 'field' && now() >= j.fieldEnd) {
+    const s = score(j.fieldEnd);
+    if (s >= 30) {
+      r.stage = 'probation';
+      // Probation runs on past a late sign-off: at least six months as a probationary officer on their own.
+      j.probationEnd = Math.max(j.probationEnd ?? 0, j.fieldEnd + 6);
+      note(`${fto} signed off your field training${(j.ftoExtensions ?? 0) ? ` after ${j.ftoExtensions * 3} extra months` : ''}.`, 'career', { log: true });
+      return;
+    }
+    if ((j.ftoExtensions ?? 0) >= FTO_EXTENSIONS) {
+      if (s >= 22) {
+        r.stage = 'probation';
+        j.probationEnd = Math.max(j.probationEnd ?? 0, j.fieldEnd + 6);
+        note(`At the last review, ${fto} signed off your field training, just. Your sergeant will be watching your probation closely.`, 'career', { log: true });
+        regard('reliability', -2);
+        return;
+      }
+      j.ftoLastChance = j.fieldEnd;
+      const asked = storyBeat('inv_fto_last_chance', { words: { fto, months: String(j.ftoExtensions * 3) } }, { source: 'investigations', must: true });
+      if (!asked) ftoLetGo(p, r);
+      return;
+    }
+    j.ftoExtensions = (j.ftoExtensions ?? 0) + 1;
+    j.fieldEnd += 3;
+    added += 3;
+  }
+  if (!added) return;
+  // What is holding them back, and the patrol work that builds it (My Investigations).
+  const weakest = [...FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+  const act = Object.values(PATROL).find((x) => x.skills.includes(weakest));
+  const left = FTO_EXTENSIONS - j.ftoExtensions;
+  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" in My Investigations is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
+}
+
+/** The department lets a trainee go who has not passed field training. */
+function ftoLetGo(p, r) {
+  note('The department let you go at the end of field training.', 'career', { log: true, milestone: 'Did not complete police field training.' });
+  jobEnded(p, r, 'dismissed');
+  quitCareer();
+}
+
+/** The last-chance conversation (inv_fto_last_chance): one final three months, or not. */
+export function ftoLastChance(ask) {
+  const p = player();
+  const r = rec(p);
+  const j = r?.job;
+  if (!j?.ftoLastChance || r.stage !== 'field') return null;
+  const at = j.ftoLastChance;
+  delete j.ftoLastChance;
+  if (ask && seeded(`${me()}/fto-last/${at}`).chance(clamp(0.35 + (r.skills.ethics ?? 0) / 200 + (r.skills.teamwork ?? 0) / 300, 0.2, 0.8))) {
+    j.fieldEnd = at + 3;
+    j.ftoExtensions = FTO_EXTENSIONS - 1; // one review more: pass it, or the decision is final
+    return 'The captain agrees to three more months. Your field training officer says it plainly: this is the last.';
+  }
+  ftoLetGo(p, r);
+  return ask ? 'The captain listens, and says no. You hand in your badge at the front desk.' : 'You hand in your badge at the front desk.';
 }
 
 /** Field training and probation, as the calendar reaches their ends. */
@@ -277,12 +362,7 @@ export function settleProbation(p = player()) {
   const r = rec(p);
   if (!r?.job || r.family !== 'police') return null;
   const j = r.job;
-  if (r.stage === 'field' && j.fieldEnd && now() >= j.fieldEnd) {
-    const roll = seeded(`${me()}/fto/${j.fieldEnd}`);
-    const ok = skillAvg(['writing', 'observation', 'interviewing', 'ethics'], r) + (r.acted.field ?? 0) + roll.int(-10, 10) >= 30;
-    if (ok) { r.stage = 'probation'; note(`${name(r.people.ftoId)} signed off your field training.`, 'career', { log: true }); }
-    else { j.fieldEnd = now() + 3; log(`${name(r.people.ftoId)} wants three more months of field training before signing you off.`, 'system', 'neutral'); }
-  }
+  if (r.stage === 'field' && j.fieldEnd && now() >= j.fieldEnd && !j.ftoLastChance) fieldReviews(p, r, j);
   if (r.stage === 'probation' && j.probationEnd && now() >= j.probationEnd) {
     r.stage = 'officer';
     j.rank = 'officer';
@@ -296,13 +376,13 @@ export function settleProbation(p = player()) {
 
 /** What an officer in field training or on patrol does: each once a year, and it builds the skills a detective needs. */
 export const PATROL = {
-  report: { label: 'Write up an incident report', skills: ['writing', 'observation'], text: 'A shoplifting report, then a lost bicycle. Your field training officer read both and returned one.' },
-  call: { label: 'Respond to a call for help', skills: ['interviewing', 'ethics'], text: 'A neighbor dispute over a fence. Nobody was arrested; both sides went home a little calmer.' },
-  reporting: { label: 'Take a statement from a reporting person', skills: ['interviewing', 'writing'], text: 'A woman whose car was broken into. You wrote down exactly what she said, and what she was not sure of.' },
-  observe: { label: 'Document what you observe on shift', skills: ['observation', 'timeline'], text: 'You noted times, plates and details. Most of it was nothing. Some of it might not be.' },
-  supervisor: { label: 'Ask your supervisor about a hard call', skills: ['law', 'ethics'], text: 'Your sergeant walked you through what the law allowed, and what it did not.' },
-  community: { label: 'Get to know the people on your beat', skills: ['teamwork', 'interviewing'], text: 'The shop owners on your beat know your name now, and you know theirs.' },
-  assist: { label: 'Assist a detective on a case', skills: ['evidence', 'reasoning'], text: 'You canvassed a street for a detective and wrote down what three neighbors saw. One detail mattered.' },
+  report: { label: 'Write up an incident report', skills: ['writing', 'observation'], texts: ['A shoplifting report, then a lost bicycle. Your field training officer read both and returned one.', 'A burglary at a dry cleaner: you wrote what you saw at the back door, and what the owner only thought.', 'Three reports before lunch. The one that mattered was the shortest.'] },
+  call: { label: 'Respond to a call for help', skills: ['interviewing', 'ethics'], texts: ['A neighbor dispute over a fence. Nobody was arrested; both sides went home a little calmer.', 'A man on a bridge, a long talk, and a ride to the hospital he agreed to in the end.', 'A child lost at the fair, found asleep under a stall twenty minutes later.'] },
+  reporting: { label: 'Take a statement from a reporting person', skills: ['interviewing', 'writing'], texts: ['A woman whose car was broken into. You wrote down exactly what she said, and what she was not sure of.', 'An old man sure his neighbor took his mail. You took it all down, and the neighbor\'s side too.', 'A shop owner who saw the thief\'s face. You asked how long he had looked, and wrote that down too.'] },
+  observe: { label: 'Document what you observe on shift', skills: ['observation', 'timeline'], texts: ['You noted times, plates and details. Most of it was nothing. Some of it might not be.', 'The same van outside the same warehouse three nights running. You wrote it down and passed it on.', 'A quiet shift. Your notes are still the best record of it.'] },
+  supervisor: { label: 'Ask your supervisor about a hard call', skills: ['law', 'ethics'], texts: ['Your sergeant walked you through what the law allowed, and what it did not.', 'You and your sergeant went over a search you were unsure of. You were right to be unsure.', 'Your sergeant asked what you would do differently. You had an answer.'] },
+  community: { label: 'Get to know the people on your beat', skills: ['teamwork', 'interviewing'], texts: ['The shop owners on your beat know your name now, and you know theirs.', 'The kids at the basketball court stopped going quiet when you walk past.', 'A woman you helped last year waves you over to say her son got the job.'] },
+  assist: { label: 'Assist a detective on a case', skills: ['evidence', 'reasoning'], texts: ['You canvassed a street for a detective and wrote down what three neighbors saw. One detail mattered.', 'A detective asked for your notes from a night months ago. They were good enough to use.', 'You sat in on an interview and watched how a detective lets silence do the work.'] },
 };
 export function patrol(id) {
   const r = I();
@@ -313,7 +393,9 @@ export function patrol(id) {
   r.acted.field = (r.acted.field ?? 0) + 1;
   regard('reliability', 1);
   if (id === 'community') regard('teamwork', 1);
-  return result(true, d.text, 'neutral');
+  // A different moment each year (the same three sentences every year read like a form).
+  const texts = d.texts.filter((t) => !(id === 'supervisor' && r.stage === 'officer' && t.startsWith('Your sergeant walked')));
+  return result(true, texts[(year() + id.length) % texts.length], 'neutral');
 }
 
 // ---------- Detective selection ----------
@@ -564,7 +646,7 @@ function federalGraduate(p, r) {
   r.job.employerId = o.employerId;
   r.job.rank = 'agent';
   r.job.rankSince = year();
-  r.job.probationEnd = now() + 24;
+  r.job.probationEnd = (r.academy?.graduated ?? now()) + 24;
   r.stage = 'agent';
   const moved = city !== p.city;
   r.pendingMove = moved ? city : null;
@@ -647,6 +729,18 @@ export function jobEnded(p, r, why) {
   const u = r.job.agencyId && agency(r.job.agencyId)?.units?.[r.job.specialty];
   if (u) u.memberIds = u.memberIds.filter((id) => id !== me());
   r.past = [...(r.past ?? []), { ...r.job, until: year(), why }];
+  // Open cases do not leave with the investigator: each passes to a colleague, with the file as it is (serial.js).
+  for (const id of r.caseIds) {
+    const inv = store.state.justice?.investigations?.[id];
+    const f = inv?.file;
+    if (!f || f.outcome || f.leadId !== me()) continue;
+    const next = (r.people.partnerId && npc(r.people.partnerId)?.alive ? r.people.partnerId : null) ?? (u?.memberIds ?? []).find((x) => x !== me() && npc(x)?.alive) ?? null;
+    if (!next) continue;
+    f.handoff = [...(f.handoff ?? []), { from: me(), to: next, at: now(), why }];
+    f.leadId = next;
+    inv.investigatorIds = [next, ...inv.investigatorIds.filter((x) => x !== next)];
+    f.log.push({ at: now(), text: `${p.firstName} ${p.lastName} ${why === 'retired' ? 'retired' : 'left'}; the case passed to ${name(next)}, with everything in the file.` });
+  }
   if (r.people.partnerId) r.people.formerPartnerIds.push(r.people.partnerId);
   r.people.partnerId = null;
   r.job = null;

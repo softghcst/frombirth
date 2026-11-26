@@ -93,5 +93,52 @@ if (proc) {
   const surgeon = store.state.npcs[good?.surgeonNpcId];
   check(!!good?.surgeonNpcId && (/plastic/.test(surgeon?.flags.medSpecialty ?? '') && surgeon.life?.job?.employerId), `a renowned surgeon is a plastic surgeon on a hospital's staff (${good?.name})`);
 }
+// What the case screen shows has the patient's name in it, never a placeholder: plans, triage and decisions too.
+{
+  const named = Object.values(CASE_BY_ID).filter((x) => JSON.stringify([x.plans, x.triage, x.decision]).includes('{patient}'));
+  let leaks = [];
+  for (const fx2 of named) {
+    const pt2 = makeNpc({ role: 'patient', countryId: 'us', age: 40 }); store.state.npcs[pt2.id] = pt2;
+    const id = `c_names_${fx2.id}`;
+    core.W().cases[id] = { id, fixtureId: fx2.id, patientId: pt2.id, specialtyId: fx2.specialty[0], role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    const v = cases.caseView(id);
+    if (/\{[a-z]+\}/i.test(JSON.stringify([v.plans, v.triage, v.decision]))) leaks.push(fx2.id);
+    delete core.W().cases[id];
+  }
+  check(named.length > 0 && !leaks.length, `case plans and choices name the patient (${named.length} cases; placeholders left in: ${leaks.join(', ')})`);
+}
+// Family and friends get the same ailments as the player, from the same list, in their own health records.
+{
+  const { kinAilmentYear, kinAilmentChoice, kinHas } = await import('../js/engine/health/kinAilments.js');
+  const { ILLNESS_BY_ID } = await import('../js/data/health/ailments.js');
+  const beats = [];
+  const beat = (id, cast) => beats.push({ id, cast });
+  const gran = makeNpc({ role: 'grandparent', countryId: 'us', age: 80 }); store.state.npcs[gran.id] = gran; gran.meters.relationship = 70;
+  npcHealth(gran);
+  let hip = null;
+  for (let i = 0; i < 4000 && !hip; i++) { gran.health.ailments = []; const got = kinAilmentYear(gran, beat); if (got?.id === 'broken_hip') hip = got; }
+  check(hip && kinHas(gran, 'broken_hip') && ILLNESS_BY_ID[hip.id], 'an older relative can break a hip, and it is in their own health record');
+  check(beats.some((b) => b.id === 'med_family_ailment' && b.cast.who === gran.id), 'a physician\'s relative with a broken hip calls the doctor in the family first');
+  let flu = null;
+  for (let i = 0; i < 400 && !flu; i++) { gran.health.ailments = []; flu = kinAilmentYear(gran, () => {}); }
+  check(flu && !gran.health.conds.some((c) => c.id === flu.id), 'ailments are kept apart from long-term conditions');
+  const integrity = m.skills.integrity;
+  gran.health.ailments = [{ id: 'broken_hip', age: gran.age, year: store.state.year }];
+  drama.medicineChoice('familyAilment:self', { who: gran.id, words: { ailmentId: 'broken_hip' } });
+  check(!kinHas(gran, 'broken_hip') && m.skills.integrity < integrity, 'sorting out family yourself is a boundary crossed');
+  // Without a medical career: a broken hip is a hospital stay and its own scene; a small child's flu is a parent's scene.
+  m.job = null; m.training = null; m.clinicIds = [];
+  beats.length = 0;
+  for (let i = 0; i < 4000 && !beats.some((b) => b.id === 'kin_broken_hip'); i++) { gran.health.ailments = []; kinAilmentYear(gran, beat); }
+  check(beats.some((b) => b.id === 'kin_broken_hip') && gran.flags.inHospital === store.state.year, 'anyone\'s grandparent can break a hip: in the hospital, and a scene');
+  const kid = makeNpc({ role: 'child', countryId: 'us', age: 4 }); store.state.npcs[kid.id] = kid; npcHealth(kid);
+  for (let i = 0; i < 400 && !beats.some((b) => b.id === 'kin_child_sick'); i++) { kid.health.ailments = []; delete p.flags.kidSickYear; kinAilmentYear(kid, beat); }
+  const sick = beats.find((b) => b.id === 'kin_child_sick');
+  check(sick && /flu|ear|arm/.test(sick.cast.words.ailment), `a small child's illness is a parent's scene (${sick?.cast.words.ailment})`);
+  const cash = p.finance.cash;
+  kid.health.ailments = [{ id: 'flu', age: 4, year: store.state.year }];
+  kinAilmentChoice('doctor', kid, 'flu');
+  check(!kinHas(kid, 'flu') && p.finance.cash <= cash, 'taking them to the doctor sees to it, and the parent pays');
+}
 if (problems.length) { console.log(`PROBLEMS (${problems.length}):\n${problems.map((x) => ` - ${x}`).join('\n')}`); process.exit(1); }
 console.log('One health world: the same hospitals, doctors, conditions and family.');

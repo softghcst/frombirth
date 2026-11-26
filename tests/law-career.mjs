@@ -16,7 +16,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(lp.leadCap() === 2, 'a new associate leads cases up to "Developing"');
   lp.chooseSpecialty('criminal_defense');
   let seen = [];
-  for (let w = 0; w < 10; w++) { seen.push(...lp.offers()); L().offers = []; turn(); }
+  for (let w = 0; w < 10; w++) { seen.push(...lp.offers()); L().offers = []; p().career.yearsInRole = 0; turn(); } // kept an associate for this check
   check(seen.length && seen.every((o) => o.level <= 3) && seen.filter((o) => o.level > 2).every((o) => o.second), `offers fit the level: harder ones as second chair (${seen.map((o) => o.level).join(',')})`);
   const o = seen.find((x) => x.second) ?? null;
   check(!!o, 'some offers are above the junior\'s level, as second chair');
@@ -27,10 +27,10 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
     check(c.supervisorId && store.state.npcs[c.supervisorId] && lp.supervisor().id === c.supervisorId, 'second chair: a supervising partner leads, the same person each time');
   }
   // 2–3. Experience and skills grow with real work.
-  const before = L().skills.oral;
+  const before = L().skills.courtroom;
   const c2 = lc.createCase('theft', { role: 'defense' });
   playCase(c2);
-  check(L().skills.oral > before && (p().career.experience.lawyer ?? 0) >= 1, `skills and years of experience grow with the work (${before.toFixed(1)} → ${L().skills.oral.toFixed(1)})`);
+  check(L().skills.courtroom > before && (p().career.experience.lawyer ?? 0) >= 1, `skills and years of experience grow with the work (${before.toFixed(1)} → ${L().skills.courtroom.toFixed(1)})`);
 }
 
 // 4–5. Reputation follows conduct; the record is counted from real cases, wins, losses and everything in between.
@@ -97,6 +97,25 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   playCase(c);
   turn();
   check(c.fee.model !== 'salary' && c.fee.paid && lp.ownFirm().cash !== cash, `the fee goes into the firm, once (${c.fee.amount})`);
+  // Associates and partners.
+  lp.ownFirm().cash = 5e6;
+  const cap1 = lc.capacity();
+  check(lp.hireAssociate().ok && lp.hireAssociate().ok && lp.firmView().associates.length === 2, 'the firm hires associates');
+  check(lc.capacity() === cap1 + 4, 'and they carry part of the work');
+  const first = lp.firmView().associates[0];
+  check(!lp.makePartner(first.id).ok, 'nobody is made partner in their first year');
+  const cash2 = lp.ownFirm().cash;
+  store.state.settings = { ...(store.state.settings ?? {}), step: 12 };
+  for (let y = 0; y < 5; y++) turn();
+  for (const x of ls.lawOf().associates) x.since = Math.min(x.since, store.state.year - 5); // five years in, whatever the dates
+  check(lp.ownFirm().cash !== cash2, 'their fees and salaries go through the firm\'s books');
+  const r2 = lp.makePartner(first.id);
+  check(r2.ok && lp.firmView().associates.find((x) => x.id === first.id).partner, `after five years, a partner (${r2.text})`);
+  // Pass someone over long enough and they may leave.
+  ls.lawOf().associates.forEach((x) => { if (!x.partner) x.since -= 10; });
+  let left = false;
+  for (let y = 0; y < 30 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
+  check(left, 'an associate passed over for years leaves to open a practice of their own');
 }
 
 // 10. Government offices assign cases; a public defender is on a salary with a heavy caseload.
@@ -151,7 +170,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
 // Federal offices (US only): a nomination, then a Senate vote; each can fail; none is a promotion.
 {
   lawyer('prosecutor', { level: 2 });
-  p().age = 52; p().career.experience = { prosecutor: 18 }; L().rep.integrity = 75; L().rep.recognition = 60; L().skills.appellate = 60;
+  p().age = 52; p().career.experience = { prosecutor: 18 }; L().rep.integrity = 75; L().rep.recognition = 60; L().skills.research = 60;
   const ids = lp.opportunities().map((x) => x.id);
   check(['us_attorney', 'solicitor_general', 'ag_federal'].every((x) => ids.includes(x)), `a senior US prosecutor may seek the federal offices (${ids.join(', ')})`);
   check(/Senate/.test(lp.opportunities().find((x) => x.id === 'ag_federal').how), 'the US Attorney General is appointed by the President and confirmed by the Senate');
@@ -226,7 +245,8 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   const i2 = L().rep.integrity; lp.doDuty('opinion', 'politics');
   check(L().rep.integrity < i2, 'an opinion bent to politics costs integrity');
   lawyer('judiciary');
-  const m = lp.benchMatter();
+  let m = lp.benchMatter();
+  for (let i = 0; i < 20 && m?.benchCriminal; i++) { L().benchWindow = -1; L().bench = []; m = lp.benchMatter(); } // a civil matter, for this check
   check(m && m.bench && m.judgeId === p().id && !L().caseIds.includes(m.id) && lp.rulingOptions(m).length >= 3, `a judge hears a civil or family matter: ${m?.title}`);
   const r = lp.rule(m.id, m.templateId === 'custody' ? 'improper' : 'for');
   check(m.done && L().benchRecord.length === 1 && (m.templateId !== 'custody' || /Wealth is not the test/.test(r.text)), 'the ruling is recorded; custody never goes to the wealthier parent as such');
@@ -303,6 +323,71 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   const theirs = leg.find((x) => x.name === `${ancestor.first} ${ancestor.last}`);
   check(theirs && theirs.milestones.some((m) => /First case/i.test(m.title)), `the heir finds the ancestor's legal career in the Family Archive (${theirs?.milestones.map((m) => m.title).join('; ')})`);
   check(!JSON.stringify(leg).includes(secret), 'and nothing of a client\'s private matter');
+}
+
+// The practice area follows the job; the skills take its names.
+{
+  lawyer('lawyer');
+  lp.chooseSpecialty('divorce');
+  check(lp.overview().skills.some((x) => x.name === 'Divorce Trials'), 'a divorce lawyer\'s skills have divorce names');
+  const before = L().skills.courtroom;
+  career.hire(CAREER_BY_ID.prosecutor, 0, 60, 'test');
+  check(lp.fitSpecialty() === 'prosecution' && lp.overview().specialty.id === 'prosecution', 'joining the prosecutor\'s office makes the practice prosecution');
+  check(lp.overview().skills.some((x) => x.name === 'Trial Advocacy') && L().skills.courtroom === before, 'the names change; what was learned stays');
+}
+
+// Four reputation bars to follow, not six.
+{
+  lawyer('lawyer');
+  L().rep.clients = 80; L().rep.reliability = 40;
+  const rep = lp.overview().rep;
+  check(rep.length === 4 && rep.find((r) => r.id === 'trust').v === 60, `reputation is shown as four bars (${rep.map((r) => r.name).join(', ')})`);
+}
+
+// A judge presides over criminal trials: the rulings, the instruction on reasonable doubt, the verdict and sentence.
+{
+  const play = (answersFor) => {
+    lawyer('judiciary');
+    store.state.year = 2020;
+    let c = null;
+    for (let i = 0; i < 40 && !c; i++) { L().benchWindow = -1; L().bench = []; const x = lp.benchMatter(); if (x?.benchCriminal) c = x; else if (x) x.done = true; }
+    const steps = lp.trialSteps(c);
+    return { c, steps, r: lp.presideTrial(c.id, answersFor(steps)) };
+  };
+  const good = play((steps) => ({ ...Object.fromEntries(steps.map((s) => [s.id, s.right])), sentence: 'within' }));
+  check(good.c && good.steps.some((s) => s.id === 'instruct'), `a criminal trial comes before the judge (${good.c?.title})`);
+  check(good.c.done && good.r.ok && L().benchRecord.at(-1).criminal && L().benchRecord.at(-1).right, `rulings that follow the law are upheld (${good.r.text})`);
+  const jc = k.J().cases[good.c.justiceCaseId];
+  check(!jc || jc.verdict, 'the verdict is on the justice record');
+  // A wrong instruction on reasonable doubt: a conviction never survives it.
+  let bad = null;
+  for (let i = 0; i < 12 && !bad; i++) { const x = play((steps) => ({ ...Object.fromEntries(steps.map((s) => [s.id, s.right])), instruct: 'wrong', sentence: 'within' })); if (x.r.guilty) bad = x; }
+  check(bad && bad.r.reversed && /reversed/.test(bad.r.text), 'a jury told the wrong standard of proof: the conviction is reversed');
+  // A search without a warrant: the ruling depends on the law of the time (Mapp v. Ohio, 1961).
+  lawyer('judiciary');
+  let ds = null;
+  for (let i = 0; i < 80 && !ds; i++) { L().benchWindow = -1; L().bench = []; const x = lp.benchMatter(); if (x?.templateId === 'drug_supply') ds = x; else if (x) x.done = true; }
+  store.state.year = 2020;
+  check(ds && lp.trialSteps(ds).find((s) => s.id === 'motion').right === 'grant', 'in 2020, evidence from an unlawful search is excluded');
+  store.state.year = 1955;
+  check(lp.trialSteps(ds).find((s) => s.id === 'motion').right === 'deny', 'in a 1955 state court, it is not');
+  store.state.year = 2026;
+}
+
+// Public lawyers work for public offices, not private firms; job posts for them are the office's.
+{
+  const { employer, jobs, cityEmployers } = await import('../js/engine/employers.js');
+  for (const [id, re] of [['prosecutor', /District Attorney's Office$/], ['defender', /Public Defender's Office$/], ['judiciary', /Superior Court$/]]) {
+    lawyer(id);
+    turn();
+    const e = employer(p().career.employerId);
+    check(e?.public && re.test(e.name), `a ${id} works for ${e?.name}`);
+  }
+  lawyer('lawyer');
+  check(!employer(p().career.employerId)?.public, 'a lawyer in private practice works for a firm');
+  for (const c of ['Chicago', 'New York', 'Houston', 'Los Angeles']) cityEmployers('us', c);
+  const posts = Object.values(jobs().postings).filter((x) => ['prosecutor', 'defender'].includes(x.careerId));
+  check(posts.length > 0 && posts.every((x) => employer(x.employerId)?.public), `posts for prosecutors and public defenders are the public offices' (${posts.length})`);
 }
 
 finish('A legal career holds together.');

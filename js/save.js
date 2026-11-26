@@ -9,6 +9,7 @@ import { normalize, hash } from './avatar/catalog.js';
 import { ADDED_TALENTS } from './data/talents.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { migrateHealth } from './engine/health/record.js';
+import { migrateContraception } from './engine/health/contraception.js';
 import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
@@ -19,6 +20,7 @@ import { ensureEra, alignWorld } from './engine/eras.js';
 import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
 import { giveBirthday } from './engine/birthday.js';
+import { giveNativeLanguages } from './engine/languages.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -64,6 +66,8 @@ function migrate(state) {
   // A life saved before birthdays were kept was born on January 1. Between turns of the year (a yearly turn, or the
   // first month of one), it is given a day of its own now; otherwise at its next turn of the year (engine/turns.js).
   if (!pl.birthday && !(state.month > 0)) giveBirthday(pl);
+  // A life saved before native languages were kept: the language of the country they were born in, spoken fully.
+  if (pl.birthCountryId) giveNativeLanguages(pl);
   pl.skills ??= {};
   pl.flags.bornAs ??= pl.gender;
   pl.flags.gifts ??= Object.entries(pl.potential ?? pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
@@ -74,7 +78,8 @@ function migrate(state) {
     ADDED_TALENTS.forEach((id) => {
       if (who.talents[id] != null) return;
       const roll = (hash(`${who.id}:${id}`) % 1000) / 1000;
-      const lean = id === 'art' ? 0 : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
+      const lean = id === 'art' ? 0 : ['persuasion', 'modeling'].includes(id) ? (who.stats?.charm ?? who.meters?.charm ?? 50) - 50 // the charming ones can talk
+        : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
       who.talents[id] = Math.round(Math.max(0, Math.min(100, 6 + roll * 50 + lean / 4)));
     });
   };
@@ -93,6 +98,8 @@ function migrate(state) {
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
   // Lives saved before the health record: conditions carried over, nothing invented.
   migrateHealth(state);
+  // Contraception (engine/health/contraception.js): made lazily from the old birth-control switch; nothing invented.
+  migrateContraception(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);

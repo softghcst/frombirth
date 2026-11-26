@@ -1,4 +1,5 @@
 // Raising children, and looking after the family you came from.
+import { AT } from '../workplaces.js';
 import { st, hid, cash, rel, ok, bad, any, chk, need, mem, count, animalHealth } from './helpers.js';
 
 const kidAged = (lo, hi) => [need('cast.kid.age', '>=', lo), need('cast.kid.age', '<=', hi)];
@@ -122,7 +123,7 @@ export default [
     ],
   },
   {
-    id: 'kid_school_play', category: 'parenthood', ageRange: [24, 70], cooldown: 5, cast: { kid: 'child' }, castRequires: kidAged(6, 12),
+    id: 'kid_school_play', workplaces: AT.any, category: 'parenthood', ageRange: [24, 70], cooldown: 5, cast: { kid: 'child' }, castRequires: kidAged(6, 12),
     requires: [need('employed', '==', true)],
     text: '{kid}\'s school play is at two on Thursday. So is the meeting your boss has called "non-negotiable".',
     choices: [

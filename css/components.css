@@ -285,6 +285,7 @@ button.row:active { transform: scale(0.99); background: var(--accent-soft); }
 .epitaph-row.locked strong { color: var(--muted); font-weight: 500; font-style: italic; }
 .epitaph-list { max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .btn small { display: block; font-weight: 400; opacity: 0.75; font-size: 0.8rem; }
+.btn.has-why { flex-direction: column; gap: 2px; } /* a greyed action with the reason underneath */
 
 .contact { padding: 8px 0; }
 .contact + .contact { border-top: 1px dashed var(--line); }
@@ -401,7 +402,7 @@ button.tree-row:active { background: var(--accent-soft); }
 .character-avatar { display: block; overflow: hidden; }
 .world-modal { max-width: 560px; width: 100%; max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .world-search { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: inherit; font: inherit; }
-.world-groups { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; -webkit-overflow-scrolling: touch; }
+.world-groups { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; } /* every tab in view on a phone, none hidden off the edge */
 .world-group { flex: none; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; min-height: 40px; padding: 4px 12px; font-size: 0.85rem; cursor: pointer; }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
@@ -506,6 +507,8 @@ button.dyn-event { cursor: pointer; }
 
 /* My Health */
 .hl-modal { max-width: 600px; }
+/* As a full screen, every section of My Health stays in view: the tabs wrap instead of running off the edge. */
+.modal-full .hl-tabs { flex-wrap: wrap; overflow: visible; }
 .hl-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; margin-bottom: 10px; background: var(--line); border-radius: 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex: none; }
 .hl-tabs::-webkit-scrollbar { display: none; }
 .hl-tabs button { flex: none; border: 0; background: transparent; border-radius: 9px; padding: 9px 12px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--muted); cursor: pointer; min-height: 40px; white-space: nowrap; }
@@ -519,7 +522,7 @@ button.dyn-event { cursor: pointer; }
 .hl-small { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; }
 .btn.hl-small { gap: 6px; padding: 6px 10px; }
 .btn.hl-small .ico { width: 16px; height: 16px; }
-.hl-pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; background: var(--line); color: var(--ink); }
+.hl-pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; background: var(--line); color: var(--ink); white-space: nowrap; }
 .hl-pill.good { background: var(--accent-soft); color: var(--good); }
 .hl-meter { display: grid; grid-template-columns: 6.5em 1fr 5.5em; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.9rem; }
 .hl-meter span { color: var(--muted); }
@@ -540,6 +543,10 @@ button.dyn-event { cursor: pointer; }
 .hl-module:last-of-type { border-bottom: 0; }
 .hl-milestone { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .hl-lock { font-size: 0.75rem; opacity: 0.7; }
+/* Birth control & family planning: compared methods side by side where there is room, stacked on a phone */
+.bc-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 10px; }
+.bc-compare .kv { flex-wrap: wrap; }
+.bc-compare .kv span:last-child { text-align: right; overflow-wrap: anywhere; }
 @media (max-width: 380px) { .hl-meter { grid-template-columns: 5.5em 1fr 4.5em; } }
 .tab-btn { position: relative; }
 .tab-btn.badge::after { content: ''; position: absolute; top: 6px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 2px var(--card); }
@@ -602,6 +609,9 @@ small.zoo-link { color: var(--accent) !important; font-weight: 600; }
 div.row { cursor: default; }
 /* Lines in the life story that tell a moment in an animal's life, and the way back from one */
 .entry.linked { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+/* An everyday moment in the life story, to answer while its year lasts (ui/shell.js tellAside). */
+.entry.aside { text-decoration: none; }
+.entry.aside .aside-go { display: inline-block; margin-left: 4px; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
 .entry.lit { background: var(--accent-soft); border-radius: 0 8px 8px 0; }
 .story-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 4; max-width: calc(100% - 32px); padding: 11px 18px; min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 
@@ -801,6 +811,7 @@ button.dl-card { cursor: pointer; }
 .dl-mono svg { width: 70%; height: 70%; }
 .dl-news { border-left-color: var(--muted); }
 .era-note { margin-top: 6px; display: grid; gap: 4px; font-size: 0.9rem; }
+.gift-note { margin: -4px 0 12px; font-size: 0.9rem; line-height: 1.4; }
 .era-note details summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .era-list { margin: 4px 0 0 18px; display: grid; gap: 3px; }
 .gl-era { font-size: 0.85rem; margin: 4px 0 0; }
@@ -1268,9 +1279,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .gl-pair { display: grid; gap: 4px; }
 
 /* My Legal Career (ui/lawCareer.js) */
-.law-tabs { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.law-tabs { margin: 6px 0 12px; flex-wrap: wrap; gap: 6px; } /* every tab in view on a phone, none hidden off the edge */
 .law-tabs .av-chip { flex: none; }
 .law-row { width: 100%; }
+.camp-steps { margin: 6px 0 12px; flex-wrap: wrap; gap: 6px; }
+.camp-steps .av-chip { flex: none; cursor: default; }
+.camp-steps .av-chip.done { opacity: 0.55; }
 .law-ev { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
 .law-ev:last-child { border-bottom: 0; }
 .law-ev small { color: var(--muted); }
@@ -1445,6 +1459,11 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .modal-full .fame-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 6px; }
 .modal-full .fame-tabs .world-group { min-height: 44px; justify-content: center; text-align: center; white-space: normal; border-radius: 14px; padding: 6px 8px; }
 @media (min-width: 640px) { .modal-full .fame-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* A full-screen career page's sections (My Medical Career, My Legal Career, My Investigations and the rest): a grid of
+   buttons that all stay in view. */
+.modal-full .page-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 6px; }
+.modal-full .page-tabs > button { min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; border-radius: 14px; padding: 6px 8px; line-height: 1.2; }
+@media (min-width: 640px) { .modal-full .page-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* The wedding on one page, with the scenes turned off in Settings (openQuickWedding in js/ui/weddingPlanner.js). */
 .wq-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
@@ -1492,6 +1511,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-postcard-screen.sv-still .wp-postcard { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
 
+/* Journalism: a claim's status in the reporter's notebook (js/ui/journalism.js). */
+.hl-pill.bad { background: var(--bad-soft, rgba(220, 80, 80, 0.15)); color: var(--bad); }
+.jn-claim .kv span:first-child { white-space: normal; }
+.jn-claim small { display: block; margin-top: 4px; line-height: 1.35; }
+.jn-article p { line-height: 1.5; }
+
 /* The journey: a map of the world, the route drawn as the plane (ship, train, car) follows it (js/ui/journey.js). */
 .journey-screen { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #5FA9D6; cursor: pointer; animation: sv-fade-in .3s ease both; }
 .journey-screen.journey-out { animation: sv-fade-out .35s ease forwards; }
@@ -1515,3 +1540,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-hm .chip.on { background: var(--accent); color: #FFFFFF; }
 .wp-hm-note { margin: 0; color: var(--bad, #B23A48); font-size: .9rem; }
 .wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.more-talents { margin-top: 4px; }
+.more-talents summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+
+/* Journalism: a button with a line under it reads left to right, the label first and whole, the line beneath. */
+.jn-page .btn:has(> small) { flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; gap: 2px; }
+.jn-page .btn:has(> small) small { opacity: 0.7; }
