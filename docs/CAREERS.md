@@ -74,6 +74,23 @@ A job lost during the review is not paid for the following year.
 Actions during a year are keyed to the year of age (as the rest of the game does). The tick and payroll look
 back at `age − 1`, the year just lived.
 
+## Finding ordinary work
+
+Work that is not a special career is found from Work → Find work (the hub's Find a job section,
+`js/engine/jobSearch.js`). The whole market is not shown at once; there are two ways in:
+
+- **This year's openings**: a short list drawn once a year from the openings in the player's city and remote ones in
+  the country, one per line of work. About eight in a steady year, ten in a boom, five in a recession. Most are
+  jobs the player can apply for; the rest are greyed with what they would need. The list stays the same all year
+  (`p.flags.jobList`, keyed to the year of age); openings someone else takes stay on it, marked closed. A new
+  list comes with the next year.
+- **The job recruiter**: brings one opening the player qualifies for, mostly in their city, never one already on
+  the list. Not keen? Ask for another, twice more: three looks a year (`RECRUITER_LOOKS`), then nothing until
+  next year (`p.flags.jobRecruiter`). The last pitch can still be looked at again. A recruiter's opening gets a
+  small word put in at the interview (`RECRUITER_BONUS`).
+
+Either way, applying is the same interview or audition, then an offer under Offers & recruiters.
+
 ## Time
 
 `weeklyLoad()` counts every commitment: the main job and overtime, part-time jobs, freelance contracts, school

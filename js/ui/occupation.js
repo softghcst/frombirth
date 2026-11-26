@@ -6,7 +6,7 @@ import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
-import { FAMILIES, FAMILY_BY_ID } from '../data/occupations.js';
+import { FAMILY_BY_ID } from '../data/occupations.js';
 import { CERTS } from '../data/schools.js';
 import { RATES, AVAILABILITY } from '../data/freelance.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from './modals.js';
@@ -25,6 +25,8 @@ import * as side from '../engine/sideJobs.js';
 import * as pt from '../engine/partTime.js';
 import * as free from '../engine/freelance.js';
 import * as recruit from '../engine/recruiters.js';
+import * as search from '../engine/jobSearch.js';
+import { navRow } from './kit.js';
 import * as record from '../engine/careerRecord.js';
 import { roleLabel } from '../engine/relationships.js';
 import { rule } from '../engine/rules.js';
@@ -68,7 +70,7 @@ function sectionsFor(p) {
  * @param {string} [start] a section id
  */
 export function openOccupation(api, start = 'now') {
-  const st = { section: start, scope: 'here', family: null, kind: 'all', eligibleOnly: true };
+  const st = { section: start };
   const modal = openModal('<div data-occ></div>', { dismissable: true });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-occ]');
@@ -179,19 +181,26 @@ const VIEWS = {
       ${t.former.length ? `<div class="section-label">People you used to work with (${t.former.length})</div>${t.former.slice(0, 8).map((n) => person(n, n.flags.workedWith ? esc(n.flags.workedWith) : '')).join('')}` : ''}`;
   },
 
-  find(p, st) {
-    const posts = market.board({ scope: st.scope, family: st.family, partTime: st.kind === 'full' ? false : st.kind === 'part' ? true : null });
-    const views = posts.map((x) => hiring.postingView(x.id)).filter((v) => v && (!st.eligibleOnly || v.eligible));
-    const chip = (key, val, label) => `<button type="button" class="world-group av-chip ${st[key] === val ? 'on' : ''}" data-act="filter" data-arg="${key}:${val}">${esc(label)}</button>`;
-    return `
-      <div class="world-groups">${chip('scope', 'here', p.city)}${chip('scope', 'country', 'Whole country')}${chip('scope', 'remote', 'Remote')}</div>
-      <div class="world-groups">${chip('kind', 'all', 'All')}${chip('kind', 'full', 'Full-time')}${chip('kind', 'part', 'Part-time')}${chip('eligibleOnly', true, 'You qualify')}${chip('eligibleOnly', false, 'Everything')}
-        <button type="button" class="world-group av-chip ${st.family ? 'on' : ''}" data-act="family">${esc(st.family ? FAMILY_BY_ID[st.family].name : 'Any field')}</button></div>
-      <p class="muted" style="margin:6px 0">${views.length} ${views.length === 1 ? 'opening' : 'openings'}</p>
-      <div class="world-list">${views.slice(0, 60).map((v) => `<button type="button" class="row world-row" data-act="posting" data-arg="${v.post.id}">
-        <div class="main"><strong>${esc(v.post.title)}</strong><small>${esc(v.employer.name)} · ${esc(v.post.city)}${v.post.remote !== 'none' ? ` · ${v.post.remote}` : ''}${v.post.partTime ? ` · ${v.post.hours} h/week` : ''}</small>
-        <small>${v.eligible ? esc(v.note ?? '') : esc(v.reasons[0])}</small></div>
-        <div class="side">${money(v.post.pay[0], COUNTRIES[v.post.countryId])}<br>–${money(v.post.pay[1], COUNTRIES[v.post.countryId])}</div></button>`).join('') || '<p class="empty">Nothing matching right now. New openings appear every year.</p>'}</div>`;
+  // Ordinary work: a recruiter who brings one opening at a time, and this year's short list (engine/jobSearch.js).
+  find(p) {
+    const r = search.recruiter();
+    const list = search.yearList();
+    const open = list.filter((v) => v.eligible).length;
+    const pitch = r.view ? `<div class="kv"><span>Last pitch</span><span>${esc(r.view.post.title)}, ${esc(r.view.employer.name)}</span></div>` : '';
+    const status = r.done ? 'No more looks this year. Come back next year.' : r.used ? `${r.left} ${r.left === 1 ? 'look' : 'looks'} left this year.` : '';
+    const rows = list.map((v) => {
+      const cty = COUNTRIES[v.post.countryId];
+      const where = [v.employer.name, v.post.remote === 'remote' ? 'remote' : v.post.city !== p.city ? v.post.city : '', v.post.partTime ? `${v.post.hours} h/week` : ''].filter(Boolean).join(' · ');
+      return navRow({ attrs: `data-act="posting" data-arg="${esc(v.post.id)}"`, label: v.post.title, ico: 'briefcase', disabled: !v.eligible, why: v.reasons[0], sub: where,
+        extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}</small>` });
+    });
+    return `<div class="card"><h3>Job recruiter</h3>
+        <p class="muted" style="margin:0 0 8px">Brings you one opening you qualify for. Not for you? Ask for another: ${search.RECRUITER_LOOKS} looks a year.${status ? ` <strong>${esc(status)}</strong>` : ''}</p>
+        ${pitch}
+        <div class="btn-stack">${btn('recruiter', r.view && !r.done ? 'See the recruiter again' : r.view ? 'See the last opening again' : 'See a recruiter', { cls: 'primary', disabled: r.done && !r.view?.eligible })}</div></div>
+      <div class="section-label">Openings this year · ${esc(p.city)}</div>
+      ${rows.length ? `<div class="nav-group">${rows.join('')}</div>` : '<p class="empty">Nothing is advertised right now.</p>'}
+      <p class="muted" style="margin:8px 2px">${rows.length ? `${open} of ${rows.length} open to you. ` : ''}A new list comes with the new year.</p>`;
   },
 
   offers() {
@@ -372,6 +381,37 @@ async function interview(questions) {
   return out;
 }
 
+/**
+ * The recruiter's pitch: one opening, on a card of its own. Resolves 'apply', 'again' (another look) or null.
+ * @param {object} v a postingView
+ * @param {{used:number, left:number}} r
+ */
+function recruiterPitch(v, r) {
+  const cty = COUNTRIES[v.post.countryId];
+  const where = v.post.remote === 'remote' ? 'From home' : `${v.post.city}${v.post.remote === 'hybrid' ? ', some days from home' : ''}`;
+  const line = v.eligible ? (r.used === 1 ? '“I think I have something for you.”' : r.left ? '“All right, how about this one?”' : '“This is the last one I have for you this year.”') : v.reasons[0];
+  return new Promise((resolve) => {
+    const m = openModal(`
+      <div class="eyebrow">Job recruiter · look ${r.used} of ${search.RECRUITER_LOOKS}</div>
+      <h2>${esc(v.post.title)}</h2>
+      <p class="body">${esc(line)}</p>
+      <div class="card" style="margin:10px 0">${kv([['Employer', v.employer.name], ['What they do', market.describe(v.employer)], ['Where', where],
+    ['Pay', `${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year`], ['Hours', `${v.post.hours} a week${v.post.partTime ? ' (part-time)' : ''}`],
+    ['Experience wanted', v.want ? `About ${years(v.want)} (you have ${v.have})` : 'None']])}</div>
+      <div class="btn-stack">
+        <button type="button" class="btn primary" data-go="apply" ${v.eligible ? '' : 'disabled'}>Apply${v.eligible && v.note ? `<small>${esc(v.note)}</small>` : ''}</button>
+        <button type="button" class="btn" data-go="again" ${r.left ? '' : 'disabled'}>Show me another<small>${r.left ? `${r.left} ${r.left === 1 ? 'look' : 'looks'} left this year` : 'No more looks this year'}</small></button>
+        <button type="button" class="btn" data-go="">Not now</button>
+      </div>`, { dismissable: true, back: false, onDismiss: () => resolve(null) });
+    m.el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-go]');
+      if (!b || b.disabled) return;
+      m.close();
+      resolve(b.dataset.go || null);
+    });
+  });
+}
+
 /** The whole application for an opening: interview or audition, then the offer. */
 async function applyTo(id, ctx, o = {}) {
   const start = hiring.apply(id);
@@ -445,17 +485,6 @@ const ACTIONS = {
     if (what === 'review' && !how) return;
     await x.say(place.withColleague(id, what, how));
   },
-  filter(arg, x) {
-    const [k, v] = arg.split(':');
-    x.st[k] = v === 'true' ? true : v === 'false' ? false : v;
-    x.render();
-  },
-  async family(_, x) {
-    const f = await pickModal({ title: 'Which field?', options: [{ value: '', label: 'Any field' }, ...FAMILIES.filter((y) => y.id !== 'military').map((y) => ({ value: y.id, label: y.name }))] });
-    if (f == null) return;
-    x.st.family = f || null;
-    x.render();
-  },
   async posting(id, x) {
     const v = hiring.postingView(id);
     if (!v) return;
@@ -463,6 +492,25 @@ const ACTIONS = {
     const body = `${v.employer.name}, ${v.post.city.replace(/\.$/, '')}. ${market.describe(v.employer)}. ${v.culture.blurb} Pays ${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year for ${v.post.hours} hours a week${v.post.remote !== 'none' ? ` (${v.post.remote})` : ''}. They ask for about ${years(v.want)} of relevant experience; you have ${v.have}.${v.eligible ? '' : ` ${v.reasons.join(' ')}`}`;
     const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? v.note : v.reasons[0] }] });
     if (go) await applyTo(id, x);
+  },
+  async recruiter(_, x) {
+    let r = search.recruiter();
+    let view = r.view;
+    if (!view || (!view.eligible && !r.done)) {
+      const look = search.recruiterLook();
+      if (!look.ok) { await messageModal({ title: 'Job recruiter', body: look.text }); x.render(); return; }
+      view = look.view;
+    }
+    for (;;) {
+      x.render();
+      r = search.recruiter();
+      const go = await recruiterPitch(view, r);
+      if (go === 'apply') { await applyTo(view.post.id, x, { bonus: search.RECRUITER_BONUS }); return; }
+      if (go !== 'again') return;
+      const look = search.recruiterLook();
+      if (!look.ok) { await messageModal({ title: 'Job recruiter', body: look.text }); x.render(); return; }
+      view = look.view;
+    }
   },
   accept: async (id, x) => {
     const o = hiring.offers().find((y) => y.id === id);
