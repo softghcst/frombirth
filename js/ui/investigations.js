@@ -61,6 +61,46 @@ import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+/** Skills by plain names, for "what is holding you back". */
+const SKILL_SAY = { writing: 'report writing', observation: 'observation', interviewing: 'interviewing', ethics: 'ethics', reasoning: 'reasoning', evidence: 'handling evidence', law: 'knowing the law', teamwork: 'teamwork', leadership: 'leadership', timeline: 'timelines' };
+
+/**
+ * "This year" at the top of My Investigations: where you stand, the next step and when, what is holding you back
+ * (named), and the patrol work still open this year.
+ */
+function invThisYear(p, r) {
+  const j = r?.job;
+  if (!j) return '';
+  const rows = [['Now', `${p.career.title ?? 'Officer'}${r.stats.years ? `, ${r.stats.years} year${r.stats.years === 1 ? '' : 's'} of service` : ''}`]];
+  const holding = [];
+  const acts = [];
+  if (r.stage === 'academy') rows.push(['Next', r.academy?.end ? `Graduating from the academy, ${dateWords(r.academy.end)}` : 'Graduating from the academy']);
+  else if (r.stage === 'field') {
+    rows.push(['Next', `Your training officer signs off your field training${j.fieldEnd ? `: the review is ${dateWords(j.fieldEnd)}` : ''}`]);
+    const weak = [...C.FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+    holding.push(`Your training officer looks at report writing, observation, interviewing and ethics. Your weakest is ${SKILL_SAY[weak]} (${Math.round(r.skills[weak] ?? 0)}).`);
+    if (j.ftoExtensions) holding.push(`Field training has been extended ${j.ftoExtensions} time${j.ftoExtensions === 1 ? '' : 's'} (${C.FTO_EXTENSIONS} at most).`);
+  } else if (r.stage === 'probation') rows.push(['Next', `A full police officer${j.probationEnd ? `, ${dateWords(j.probationEnd)}` : ''}`]);
+  else {
+    const promo = C.promotionOptions(p)[0];
+    const det = !j.detective && r.family === 'police' ? C.detectiveUnmet(p) : null;
+    if (det) rows.push(['Next', det.length ? 'Detective (selected from serving officers)' : 'Detective: you can apply now']);
+    else if (promo) rows.push(['Next', `${promo.name}${promo.block ? '' : ': you can apply now'}`]);
+    else rows.push(['Next', 'You are at the top of this path']);
+    if (det?.length) holding.push(`For detective work: ${det.join(' ')}`);
+    if (promo?.block && !det) holding.push(`For ${promo.name.toLowerCase()}: ${promo.block}`);
+  }
+  const left = C.patrolLeft(r);
+  if (left.length && r.stage !== 'academy') {
+    const weak = [...C.FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+    const best = left.find((x) => x.skills.includes(weak)) ?? left[0];
+    holding.push(`${left.length} kind${left.length === 1 ? '' : 's'} of patrol work still open this year: they build the skills reviews look at.`);
+    acts.push(btn('patrol', best.label, { arg: best.id }));
+  }
+  if (['field', 'probation', 'officer'].includes(r.stage) && !j.detective) acts.push(btn('autoPatrol', r.autoPatrol ? 'Patrol work: done for you (tap to choose it yourself)' : 'Let routine patrol work be done for you'));
+  return `<div class="card this-year-card"><h3>This year</h3>${kv(rows)}${holding.length ? `<div class="section-label">What is holding you back</div>${holding.map((x) => `<p class="body" style="margin:4px 0">${esc(x)}</p>`).join('')}` : ''}${acts.length ? stack(acts.join('')) : ''}</div>`;
+}
+
 /** The parts of the police assessment, as the player reads them. */
 const WHYNAME = { written: 'the written test', fitness: 'the fitness test', interview: 'the interview', background: 'the background check', medical: 'the medical' };
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}</button>`;
@@ -136,11 +176,11 @@ const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses 
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
-    let out = card('Where you stand', kv([
+    let out = invThisYear(p, r) + card('Where you stand', kv([
       ['Status', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
-      ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
+      ['Country rules', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
     ]) + muted('Investigative careers here are gameplay. Agency rules are simplified and not verified against the agencies themselves.'));
     if (!r?.job) out += waysIn(p);
     if (!r?.job) {
@@ -707,6 +747,7 @@ const ACTIONS = {
   decline: (a, x) => x.say(C.declineOffer(a)),
   academy: (a, x) => x.say(C.academyAct(a)),
   patrol: (a, x) => x.say(C.patrol(a)),
+  autoPatrol: (_, x) => x.say(C.setAutoPatrol(!rec()?.autoPatrol)),
   applyDetective: (a, x) => x.say(C.applyDetective(a)),
   applyFed: (a, x) => x.say(C.applyFederal(a)),
   report: (a, x) => x.say(C.reportToOffice()),

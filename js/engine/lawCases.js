@@ -344,6 +344,13 @@ export function routineAll() {
   return done.length ? result(true, `Routine work done on ${done.length === 1 ? done[0] : `${done.length} cases`}. What is left needs your judgment.`, 'good', { cases: done })
     : result(false, 'Nothing routine is waiting.', 'neutral');
 }
+/** Routine work done for the player (on) or left to them (off). @returns {object} result */
+export function setAutoRoutine(on, p = player()) {
+  const L = lawOf(p);
+  L.autoRoutine = !!on;
+  if (on) routineAll();
+  return result(true, on ? 'Routine work is done for you now: meeting clients, going through the evidence and routine filings. The decisions that matter stay yours.' : 'You handle the routine work yourself again.', 'neutral');
+}
 /** Whether a case has routine steps waiting. */
 export const hasRoutine = (c) => !c.done && ((c.clientId && !c.tasks.interview) || !c.tasks.review || proceduralDue(c).length > 0);
 
@@ -956,7 +963,10 @@ export function progressCases(p = player()) {
   const load = open.reduce((s, c) => s + c.level, 0);
   for (const c of open) {
     let guard = 0;
-    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) advanceStage(c, load, p);
+    // With routine work left to the office (L.autoRoutine), each stage's routine steps are done as the case reaches it,
+    // so a long turn misses no filing a shorter one would have made.
+    if (L.autoRoutine && hasRoutine(c)) routine(c);
+    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) { advanceStage(c, load, p); if (L.autoRoutine && hasRoutine(c)) routine(c); }
     // A day in court left unattended for six months is handled routinely, never in the turn it fell due.
     if (c.awaiting && !c.done && now - c.awaiting.since >= 6 && c.awaiting.turn !== now) {
       note(c, 'You were not there to make the decisions: the case was handled routinely.');
