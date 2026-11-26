@@ -1524,3 +1524,5 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-hm .chip.on { background: var(--accent); color: #FFFFFF; }
 .wp-hm-note { margin: 0; color: var(--bad, #B23A48); font-size: .9rem; }
 .wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.more-talents { margin-top: 4px; }
+.more-talents summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
