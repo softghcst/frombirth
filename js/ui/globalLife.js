@@ -21,7 +21,7 @@ import * as cit from '../engine/citizenship.js';
 import * as imm from '../engine/immigration.js';
 import * as move from '../engine/emigration.js';
 import * as chron from '../engine/chronicle.js';
-import { languagesOf, fluency } from '../engine/languages.js';
+import { languagesOf, fluency, languageNote } from '../engine/languages.js';
 import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engine/geo.js';
 import { avatarSvg } from './avatar.js';
 import { openPassportBook } from './passportBook.js';
@@ -230,7 +230,7 @@ export function openExplore(api, start = {}) {
       const d = travel.destination(id, city);
       const e = d.entry;
       return `<div class="world-head"><div class="world-flag big">${d.flag}</div><div><h2 style="margin:0">${esc(d.city)}</h2><p class="muted" style="margin:0">${esc(d.name)}</p></div></div>
-        <div class="card"><h3>Overview</h3>${kvt('Distance', `${(d.km ?? 0).toLocaleString('en-US')} km from home`)}${kvt('Climate', d.climate ?? '—')}${kvt('Now', d.season ?? '—')}${kvt('Languages', d.languages.join(', '))}${kvt('Currency', d.currency)}${kvt('A week, for one', money(d.weekCost))}
+        <div class="card"><h3>Overview</h3>${kvt('Distance', `${(d.km ?? 0).toLocaleString('en-US')} km from home`)}${kvt('Climate', d.climate ?? '—')}${kvt('Now', d.season ?? '—')}${kvt('Languages', d.languages.join(', '))}${languageNote(id) ? `<p class="muted">${esc(languageNote(id))}</p>` : ''}${kvt('Currency', d.currency)}${kvt('A week, for one', money(d.weekCost))}
           <label class="field" style="margin-top:8px">City <select data-destcity>${d.cities.map((c) => `<option ${c === d.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label></div>
         <div class="card"><h3>Entry requirements</h3>${e ? `${kvt('For you', e.name)}${e.days ? kvt('Longest stay', `${e.days} days${e.rolling ? ` in any ${e.rolling}` : ''}`) : ''}<p class="muted">${esc(e.why)} Simplified game rules, not travel advice.</p>` : '<p class="muted">No border to cross.</p>'}</div>
         <div class="card"><h3>Getting there</h3>${d.modes.length ? d.modes.map((m) => kvt(m.name, `${m.hours < 48 ? `${Math.round(m.hours)} hours` : `${Math.round(m.hours / 24)} days`}`)).join('') : '<p class="muted">No way to make this journey in this period.</p>'}</div>
@@ -386,7 +386,7 @@ export function openExplore(api, start = {}) {
               <div class="btn-stack">${btn('Complete the move', `data-complete="${a.id}"`, 'primary')}</div>` : ''}</div>`;
         }).join('')}
         <div class="card"><h3>Explore countries</h3><select data-dest aria-label="Country"><option value="">Choose a country…</option>${COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select>
-          ${dest ? `<div class="section-label">Immigration options</div>${ways.map((r) => `<div class="gl-route ${r.eligible ? '' : 'closed'}"><strong>${esc(r.name)}</strong><small>${esc(r.blurb)}</small><small>${esc(r.eligible ? `${r.outlook} ${r.fee ? money(r.fee) : 'No fee'}${r.years ? ` · ${r.years} years, then renewed or ended` : ''}. You arrive as: ${cit.STATUS_WORDS[r.status] ?? r.status}.` : r.why)}</small>
+          ${dest ? `<div class="section-label">Immigration options</div>${languageNote(dest) ? `<p class="muted">${esc(languageNote(dest))}</p>` : ''}${ways.map((r) => `<div class="gl-route ${r.eligible ? '' : 'closed'}"><strong>${esc(r.name)}</strong><small>${esc(r.blurb)}</small><small>${esc(r.eligible ? `${r.outlook} ${r.fee ? money(r.fee) : 'No fee'}${r.years ? ` · ${r.years} years, then renewed or ended` : ''}. You arrive as: ${cit.STATUS_WORDS[r.status] ?? r.status}.` : r.why)}</small>
             ${r.eligible ? btn(['right', 'free'].includes(r.id) ? 'Start arranging the move' : `Apply (${money(Math.round(r.fee * 0.2))} now)`, `data-applymove="${r.id}"`, 'small') : ''}</div>`).join('')}
             <div class="section-label">Family relocation</div><p>Coming: ${esc(move.household(dest).map((n) => n.firstName).join(', ') || 'only you')}.</p>
             ${move.askable().map((x) => `<button type="button" class="tree-row" data-ask="${x.npc.id}" ${x.asked ? 'disabled' : ''}><strong>Ask ${esc(x.npc.firstName)}</strong><small>${x.coming ? 'Has said yes' : x.asked ? 'Has said no' : 'They decide for themselves'}</small></button>`).join('')}` : ''}</div>

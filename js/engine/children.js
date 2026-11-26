@@ -4,6 +4,7 @@
 import { birthdayFor, dateNow } from './birthday.js';
 import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo, adoptionInfoFor } from './birthTag.js';
 import { announce } from './pregnancyChoice.js';
+import { dropStageScenes } from './pregnancyStages.js';
 import * as contra from './health/contraception.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
@@ -168,6 +169,7 @@ function birth() {
   const other = store.state.npcs[p.flags.pregnancy.otherId];
   const ivf = !!p.flags.pregnancy.ivf;
   p.flags.pregnancy = null;
+  dropStageScenes(); // anything about the months before that is still waiting
   const babies = [newborn(other)];
   // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
   // Twins run in families (on the mother's side, mostly), and come more often to mothers in their late thirties: a
