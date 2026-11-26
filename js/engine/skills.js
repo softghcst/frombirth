@@ -6,6 +6,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { guardians } from './childhood.js';
+import { nativeLanguages } from './languages.js';
 import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS } from '../data/skills.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -44,10 +45,12 @@ export function aptitude(id) {
 /** Skills on offer, grouped, with where the player stands on each. */
 export function skillOptions() {
   const p = player();
+  const natives = nativeLanguages(p); // a language spoken from birth is not one to learn
   return SKILL_GROUPS.map((g) => ({ ...g, skills: SKILLS.filter((s) => s.group === g.id).map((s) => {
     const level = levelOf(s.id);
-    return { id: s.id, name: s.name, level, levelName: levelName(level), started: level > 0 && (!!s.talent || s.id in book()),
-      tooYoung: p.age < s.minAge ? s.minAge : 0, natural: aptitude(s.id) >= 1.7, mastered: level >= 100 };
+    const native = s.group === 'language' && natives.includes(s.id);
+    return { id: s.id, name: s.name, level, levelName: native ? 'Native' : levelName(level), started: level > 0 && (!!s.talent || s.id in book()),
+      tooYoung: native ? 0 : p.age < s.minAge ? s.minAge : 0, natural: aptitude(s.id) >= 1.7, mastered: native || level >= 100, native };
   }) }));
 }
 
