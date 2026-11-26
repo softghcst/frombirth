@@ -496,7 +496,9 @@ export function postcardArt({ countryId, cruise = false, lat = 40, coastal = tru
  * a country's code, or a general card (city, beach, mountains, cruise). Listed here as each arrives; any other place
  * keeps its drawn card.
  */
-export const POSTCARD_PHOTOS = new Set(['us', 'ca']);
+export const POSTCARD_PHOTOS = new Set([
+  'ae', 'ar', 'au', 'aw', 'beach', 'bo', 'br', 'bs', 'bz', 'ca', 'city', 'cl', 'co', 'cr', 'cruise', 'cu', 'do', 'ec', 'fj', 'ge', 'gt', 'gy', 'ht', 'il', 'iq', 'ir', 'jm', 'jo', 'kw', 'lb', 'mountains', 'mx', 'ni', 'nz', 'pa', 'pe', 'pf', 'pg', 'pr', 'py', 'qa', 'sa', 'sv', 'sy', 'tr', 'us', 'uy', 've', 'ws',
+]);
 
 /**
  * How each painted card is lettered, and in what color: picked to suit the painting (the red of Canada's canoe).
