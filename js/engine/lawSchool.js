@@ -16,6 +16,7 @@ import { convictionsOf } from './records.js';
 import { rule } from './rules.js';
 import { COUNTRIES } from '../data/countries.js';
 import { COUNTRY_LAW, LAW_PROFILES, LEGAL_SKILLS, SKILL_GROUP, skillId, CORE_COURSES, ELECTIVES, COURSE_BY_ID, SCHOOL_ACTS, INTERNSHIPS, INTERNSHIP_BY_ID, BAR_SUBJECTS, BAR_PASS, SPECIALTY_BY_ID } from '../data/law.js';
+import { addGifts } from './aptitudes.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -32,6 +33,7 @@ export function lawOf(p = player()) {
       rep: { integrity: 55, clients: 50, advocacy: 35, preparation: 45, reliability: 50, recognition: 5 },
       entrance: null, school: null, bar: { attempts: [], prep: null, fitness: null, admitted: null }, internships: [], acts: {},
       caseIds: [], history: [], seen: {}, specialty: null };
+    addGifts(p.law.skills, 'law', p); // a gift for writing or acting (engine/aptitudes.js)
   }
   if (!('courtroom' in p.law.skills)) groupSkills(p.law);
   // Years on the police force come with a lawyer into court: testifying, reports, and how cases are built.

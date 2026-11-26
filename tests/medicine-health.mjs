@@ -93,6 +93,20 @@ if (proc) {
   const surgeon = store.state.npcs[good?.surgeonNpcId];
   check(!!good?.surgeonNpcId && (/plastic/.test(surgeon?.flags.medSpecialty ?? '') && surgeon.life?.job?.employerId), `a renowned surgeon is a plastic surgeon on a hospital's staff (${good?.name})`);
 }
+// What the case screen shows has the patient's name in it, never a placeholder: plans, triage and decisions too.
+{
+  const named = Object.values(CASE_BY_ID).filter((x) => JSON.stringify([x.plans, x.triage, x.decision]).includes('{patient}'));
+  let leaks = [];
+  for (const fx2 of named) {
+    const pt2 = makeNpc({ role: 'patient', countryId: 'us', age: 40 }); store.state.npcs[pt2.id] = pt2;
+    const id = `c_names_${fx2.id}`;
+    core.W().cases[id] = { id, fixtureId: fx2.id, patientId: pt2.id, specialtyId: fx2.specialty[0], role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    const v = cases.caseView(id);
+    if (/\{[a-z]+\}/i.test(JSON.stringify([v.plans, v.triage, v.decision]))) leaks.push(fx2.id);
+    delete core.W().cases[id];
+  }
+  check(named.length > 0 && !leaks.length, `case plans and choices name the patient (${named.length} cases; placeholders left in: ${leaks.join(', ')})`);
+}
 // Family and friends get the same ailments as the player, from the same list, in their own health records.
 {
   const { kinAilmentYear, kinAilmentChoice, kinHas } = await import('../js/engine/health/kinAilments.js');

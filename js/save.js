@@ -78,7 +78,8 @@ function migrate(state) {
     ADDED_TALENTS.forEach((id) => {
       if (who.talents[id] != null) return;
       const roll = (hash(`${who.id}:${id}`) % 1000) / 1000;
-      const lean = id === 'art' ? 0 : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
+      const lean = id === 'art' ? 0 : ['persuasion', 'modeling'].includes(id) ? (who.stats?.charm ?? who.meters?.charm ?? 50) - 50 // the charming ones can talk
+        : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
       who.talents[id] = Math.round(Math.max(0, Math.min(100, 6 + roll * 50 + lean / 4)));
     });
   };

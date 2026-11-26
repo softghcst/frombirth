@@ -455,11 +455,11 @@ export function openHealth(api, to = {}) {
   const p = player();
   healthOf(p);
   const young = p.age < OWN_CARE_AGE;  // a baby or small child: one simple page (youngView)
+  // A screen of its own, like the careers: the whole screen on a phone, Back and its name in the bar along the top.
   const m = openModal(`
-    <div class="dyn-head"><div><div class="eyebrow">${esc(p.firstName)}</div><h2>My Health</h2></div>
-      <button class="icon-btn" data-close aria-label="Close">✕</button></div>
+    <div class="dyn-head" style="flex:none"><div class="eyebrow">${esc(p.firstName)}</div></div>
     ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${SECTIONS.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
-    <div class="dyn-body hl-body" data-body></div>`, { dismissable: true });
+    <div class="dyn-body hl-body" data-body></div>`, { dismissable: true, full: true, title: 'My Health' });
   m.el.classList.add('dyn-modal', 'hl-modal');
   const body = m.el.querySelector('[data-body]');
 

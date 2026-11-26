@@ -147,6 +147,12 @@ export const AUDITION_PIECES = {
     { t: 'A showpiece at the edge of what you can play', path: 'talents.music', edge: -0.15, bonus: 0.3 },
     { t: 'Sight-reading whatever they put in front of you', path: 'stats.intellect', edge: -0.1 },
   ],
+  modelLook: [
+    { t: 'Walk in as yourself and let them see it', path: 'modelLook', edge: 0.05 },
+    { t: 'A bold, editorial look that not everyone will like', path: 'modelLook', edge: -0.15, bonus: 0.3 },
+    { t: 'Pose for the test shots and find the light', path: 'talents.modeling', edge: -0.05 },
+  ],
+  // (kept for any older career that is judged on charm alone)
   'stats.charm': [
     { t: 'Walk in as yourself and let them see it', path: 'stats.charm', edge: 0.05 },
     { t: 'A bold, editorial look that not everyone will like', path: 'stats.charm', edge: -0.15, bonus: 0.3 },

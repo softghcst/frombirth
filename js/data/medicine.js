@@ -333,6 +333,19 @@ export const JURISDICTIONS = {
   default: SIMPLE,
 };
 export const jurisdiction = (countryId) => JURISDICTIONS[countryId] ?? JURISDICTIONS.default;
+/**
+ * The same, with the exams and the license as they were called in a given year. In the United States the USMLE
+ * began in 1992; from 1916 the National Board examinations (Parts I, II and III) came before it, and before them
+ * a school's own examinations and a state board.
+ */
+export function jurisdictionIn(countryId, y) {
+  const j = jurisdiction(countryId);
+  if (j !== JURISDICTIONS.us || y >= 1992) return j;
+  const placed = y >= ERA.residencyMatch ? {} : { selection: 'places offered by each hospital, and accepted directly' };
+  return y >= 1916
+    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National Board Part I', year: 2 }, { id: 'step2', name: 'National Board Part II', year: 4 }], license: { ...j.license, name: 'National Board Part III and a state medical license' } }
+    : { ...j, ...placed, exams: [{ id: 'step1', name: 'Second-year examinations', year: 2 }, { id: 'step2', name: 'Final examinations', year: 4 }], license: { ...j.license, name: 'a state board examination and medical license' } };
+}
 
 /** Premedical activities (before medical school): what each does for an application. */
 export const PREMED = [
@@ -357,6 +370,14 @@ export const ROTATIONS = [
   { id: 'ortho', name: 'Orthopedics (elective)', specialty: 'ortho', shows: 'bones, joints, sports injuries and rehabilitation' },
   { id: 'radiology', name: 'Radiology (elective)', specialty: 'radiology', shows: 'reading the images every other team asks about' },
 ];
+/**
+ * A rotation in the years before its specialty existed, by the name it went by then: an emergency rotation was
+ * the accident ward (emergency medicine from 1979), family medicine was general practice (from 1969).
+ */
+export const ROTATION_BEFORE = {
+  emergency: { name: 'Accident Ward', shows: 'injuries and emergencies as they come through the door, and deciding who is seen first' },
+  family: { name: 'General Practice', specialty: 'general', shows: 'home visits, the surgery, and patients known for years' },
+};
 
 /** The skills a physician builds (0-100). Reputation is built from them, never from survival counts. */
 export const SKILLS = {

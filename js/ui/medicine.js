@@ -13,7 +13,7 @@
 // cases are confidential: they are shown here only, to the physician.
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, PROCEDURE_BY_ID, PRACTICE_TYPES, jurisdiction } from '../data/medicine.js';
+import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, PROCEDURE_BY_ID, PRACTICE_TYPES, ERA, jurisdiction, jurisdictionIn } from '../data/medicine.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
 // Five skills to follow on screen, not nine: each is the average of the finer ones the engine keeps.
 const SKILL_GROUPS = [
@@ -134,8 +134,9 @@ const caseButton = (c) => {
 
 const VIEWS = {
   overview(p, m) {
-    const j = jurisdiction(p.countryId);
-    if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, a residency place applied for, and years of supervised training.</p>
+    const j = jurisdictionIn(p.countryId, store.state.year);
+    const gpYears = store.state.year < ERA.gpEra;
+    if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, ${gpYears ? 'a year as a hospital intern, and for most doctors of these years, general practice; a few train on for years as residents to specialize.' : 'a residency place applied for, and years of supervised training.'}</p>
       ${kv([['Route here', `${j.entry === 'graduate' ? 'After a university degree' : 'Direct entry in reality; in the game, after a university degree'} · ${j.detail === 'detailed' ? 'modeled in detail' : 'simplified profile'}`], ['Training places', j.selection]])}`);
     const spec = currentSpecialty(m);
     const at = m.training?.hospitalId ?? m.job?.hospitalId;
@@ -145,7 +146,7 @@ const VIEWS = {
       ...(m.offer && m.offer.year === year() ? [`an offer to become ${RANKS[m.offer.rank].title.toLowerCase()}`] : []),
       ...(train.fellowshipOptions(m).some((f) => !f.block) ? ['fellowships open to you'] : [])];
     const glance = at ? card('Hospital life', kv([
-      ['Hospital', hospitalName(at)], ['Department', DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
+      ['Hospital', hospitalName(at)], ['Department', spec === 'general' ? 'General Practice' : DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
       ...(sup && m.training ? [['Supervising physician', `${sup.firstName} ${sup.lastName}`]] : []),
       ['Colleagues you know', String([...m.people.colleagueIds, ...m.people.friendIds, ...(m.people.traineeIds ?? [])].filter((id) => npc(id)?.alive).length)],
       ['Patients open this year', String(open)],
@@ -171,7 +172,7 @@ const VIEWS = {
     if (s) {
       out += card(`${s.name}${s.graduated ? ' (graduated)' : `, year ${s.year}`}`, kv([
         ['Degree', m.route === 'dpm' ? 'DPM' : m.route === 'do' ? 'DO' : jurisdiction(s.countryId ?? p.countryId).degrees[0]],
-        ['Exams', Object.entries(s.exams).map(([id, x]) => `${id.toUpperCase()}: ${x.pass ? 'passed' : 'not passed'}`).join(', ') || 'None sat yet'],
+        ['Exams', Object.entries(s.exams).map(([id, x]) => `${x.name ?? id.toUpperCase()}: ${x.pass ? 'passed' : 'not passed'}`).join(', ') || 'None sat yet'],
       ]) + (s.rotations.length ? `<div class="section-label">${year() < 1950 ? 'Clerkships' : 'Rotations'}</div>${kv(s.rotations.slice(-12).map((r) => [`${r.name} (${r.year})`, r.grade]))}` : muted('Clinical years begin in year three.'))
         + (!s.graduated && (s.year >= 3 || p.education.yearInStage >= 3) ? applyBlock(m) : ''));
     }
@@ -390,7 +391,8 @@ function applyBlock(m) {
 
 /** A case, worked step by step: review, evaluate, assess, decide, operate, follow up. */
 async function openCase(id, api) {
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  // A case is a page of its own, like the career it belongs to: the whole screen, Back in the bar along the top.
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: 'Patient case' });
   const root = modal.el.querySelector('[data-case]');
   let last = '';
   const render = () => {
@@ -548,7 +550,8 @@ const ACTIONS = {
 /** Opens My Medical Career, at a tab (and, coming back from a profile, at the same place it was left). */
 export function openMedicine(api, start = 'overview') {
   const st = typeof start === 'string' ? { section: start } : { section: 'overview', ...start };
-  const modal = openModal('<div data-med></div>', { dismissable: true });
+  // A screen of its own: the whole screen on a phone, a readable column on a desktop, Back and the name in the bar.
+  const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: 'My Medical Career' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-med]');
   const render = () => {
@@ -556,10 +559,9 @@ export function openMedicine(api, start = 'overview') {
     const m = med(p);
     const list = tabsFor(p, m);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0">My Medical Career</h2><p class="muted" style="margin-top:-6px">Every patient has a story.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>
-      <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
+    root.innerHTML = `<p class="muted" style="margin:0 0 4px">Every patient has a story.</p>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>`;
   };
   const refresh = () => { api.changed(); render(); };
   const say = async (r) => { refresh(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };

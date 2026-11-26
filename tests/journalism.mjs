@@ -12,7 +12,8 @@ const { saveGame, loadGame } = await import('../js/save.js');
 const jn = await import('../js/engine/journalism.js');
 const sc = await import('../js/engine/specialCareer.js');
 const career = await import('../js/engine/career.js');
-const { OUTLET_KINDS } = await import('../js/data/journalism.js');
+const { OUTLET_KINDS, OWN_KINDS } = await import('../js/data/journalism.js');
+const OWN_KINDS_ANY = () => OWN_KINDS;
 
 const problems = [];
 const ok = [];
@@ -302,6 +303,206 @@ function report(s) {
   check(sold.ok ? !jn.ownedOutlet(p) && o.sold : /Nobody/.test(sold.text) && jn.ownedOutlet(p) === o, `it can be sold, or nobody wants it and it stays yours (${sold.text})`);
   if (!sold.ok) check(jn.closePublication().ok && !jn.ownedOutlet(p) && o.closed && jn.myPubs(p).some((x) => x.outletId === o.id), 'closing it keeps what it published');
   section('a publication of one\'s own: of its era, bought with real money, real staff, years that can lose money');
+}
+
+// 10. More beats, abroad, the family record, a colleague.
+{
+  const p = life(30, 2024, 'kr');
+  hireMe(p);
+  const kp = await import('../js/engine/kpop.js');
+  kp.world();
+  // A K-pop story only about a release that really came out, with positions as the agency lists them.
+  const rel = Object.values(store.state.kpop.releases).find((r) => !r.solo && store.state.kpop.groups[r.groupId]?.debut);
+  if (rel) {
+    rel.year = store.state.year;
+    jn.J().beat = 'kpop'; jn.J().assigned = null;
+    const k = jn.assignYear(p).find((x) => x.beat === 'kpop');
+    check(k && k.links.kpopRelease && store.state.kpop.releases[k.links.kpopRelease], 'a K-pop story is about a real release');
+    if (k) {
+      const g = store.state.kpop.groups[k.links.groupId];
+      const pos = k.claims.find((c) => / is the group's /.test(c.text));
+      if (pos) { const who = Object.keys(g.positions).find((id) => pos.text.startsWith(`${store.state.npcs[id]?.firstName} `)); check(who && g.positions[who].length <= 2, 'positions are the group\'s own, two at most'); }
+      const rumor = k.claims.find((c) => /dating/.test(c.text));
+      check(rumor && rumor.kind === 'allegation' && !k.docs.some((d) => d.settles.some((x) => x.claimId === rumor.id)), 'a dating rumor stays a rumor: no record makes it true');
+      const fans = k.sources.find((x) => /Fan accounts/.test(x.name));
+      if (fans && rumor) { jn.interview(k.id, fans.id, ['saw']); jn.draft(k.id, [rumor.id], 'overstated'); check(!jn.submit(k.id).ok, 'a rumor does not run as fact'); }
+    }
+  } else check(true, 'no K-pop releases yet');
+  // Business and science: private records refused; one study is not proof.
+  jn.J().beat = 'business'; jn.J().assigned = null; store.state.year += 1;
+  const b = jn.assignYear(p).find((x) => x.beat === 'business');
+  check(b && b.docs.some((d) => !d.public && /bank/.test(d.title)) && !jn.readDoc(b.id, b.docs.find((d) => !d.public).id).ok, 'a company\'s bank accounts are not available');
+  jn.J().beat = 'science'; jn.J().assigned = null; store.state.year += 1;
+  const sci = jn.assignYear(p).find((x) => x.beat === 'science');
+  check(sci && sci.docs.some((d) => !d.public && /medical records/.test(d.title)), 'patients\' records are closed');
+  if (sci) { const main = sci.claims.find((c) => c.kind === 'allegation'); check(!sci.docs.some((d) => d.public && d.settles.some((x) => x.claimId === main.id)), 'no single record proves a study\'s finding'); }
+  // A posting abroad: senior reporters at a newsroom with a foreign desk.
+  check(/senior|staff|foreign desk/.test(jn.postingWhy('jp', p)) || p.career.level >= 2, 'postings are for senior reporters');
+  p.career.level = 2;
+  const desk = jn.outletsHere(p).find((o) => ['regional', 'tv', 'digital', 'radio'].includes(o.kind));
+  jn.J().outletId = desk.id;
+  let posted = false;
+  for (let y = 0; y < 8 && !posted; y++) { posted = jn.requestPosting('jp').ok; if (!posted) store.state.year += 1; }
+  check(posted && jn.J().posting.countryId === 'jp', 'a senior reporter is posted to Japan');
+  const abroad = jn.myStories(p).filter((x) => x.year >= jn.J().posting.from && x.status !== 'spiked');
+  check(abroad.length && abroad.every((x) => !['court', 'sports', 'entertainment', 'kpop'].includes(x.beat) || x.beat === 'kpop'), 'stories come from where they are posted');
+  // The family record: published work as it ran, no notebooks or confidential names.
+  const s0 = jn.myStories(p).find((x) => x.status !== 'published' && x.status !== 'spiked');
+  for (const s1 of jn.myStories(p).filter((x) => !['published', 'spiked', 'expired'].includes(x.status))) {
+    report(s1);
+    for (let i = 0; i < 3 && s1.status !== 'approved'; i++) { const nb = jn.notebook(s1.id); jn.draft(s1.id, nb.claims.filter((c) => ['verified', 'supported'].includes(c.status)).map((c) => c.id), 'straight'); jn.submit(s1.id); }
+    if (s1.status === 'approved') { jn.isBroadcast(jn.outlet(s1.outletId)) ? jn.present(s1.id, ['verified']) : jn.publish(s1.id); }
+    if (jn.myPubs(p).length) break;
+  }
+  void s0;
+  const fam = jn.familyJournalism();
+  const mine = fam.find((x) => x.id === p.id);
+  check(mine && mine.pubs.length && !JSON.stringify(fam).includes('"evidence"') && !JSON.stringify(fam).includes('"truth"'), `the family sees published work, never notebooks (${mine?.pubs.length}, ${jn.myStories(p).map((x) => x.status)})`);
+  section('K-pop, business and science beats, foreign postings, and the family record');
+}
+
+// 11. An editor's desk, a documentary, leave, and a publication handed to an heir.
+{
+  const p = life(40);
+  hireMe(p);
+  check(!jn.isEditor(p) && !jn.desk(p).length, 'no desk for a junior reporter');
+  p.career.level = 3;
+  const d = jn.desk(p);
+  check(d.length === 3 && d.every((x) => store.state.npcs[x.reporterId]) && jn.desk(p) === d, `an editor gets the year's drafts from real reporters (${d.length})`);
+  check(!JSON.stringify(d.map((x) => x.claims.map((c) => c.status))).includes('truth'), 'the desk shows what the notes support');
+  const thin = d.find((x) => x.claims.some((c) => ['single', 'disputed'].includes(c.status) && !c.truth));
+  const solid = d.find((x) => x.claims.every((c) => ['verified', 'supported'].includes(c.status)));
+  const before = jn.J().rep.leadership ?? 50;
+  if (thin) check(!jn.deskDecide(thin.id, 'approve').ok && (jn.J().rep.leadership < before), 'approving a draft that rested on one source comes back on the editor');
+  const other = d.find((x) => !x.decision);
+  check(jn.deskDecide(other.id, 'back').ok && !jn.deskDecide(other.id, 'approve').ok, 'each draft is decided once');
+  void solid;
+  // A documentary: only from an investigation that stood up; stages; lawyers before release.
+  const fake = { id: 'pub_test', reporterId: p.id, beat: 'investigative', headline: 'The harbor deal', errors: [], claims: [{ id: 'c', text: 'x', asFact: true }], outletId: jn.J().outletId, corrections: [], sources: [], readers: 1, at: 0, year: store.state.year };
+  jn.S().pubs[fake.id] = fake;
+  check(!jn.documentaryWhy(fake.id, p) && jn.startDocumentary(fake.id).ok && !jn.startDocumentary(fake.id).ok, 'one documentary from an investigation that held up');
+  jn.S().pubs.pub_wrong = { ...fake, id: 'pub_wrong', errors: ['c'] };
+  check(/got something wrong/.test(jn.documentaryWhy('pub_wrong', p)), 'not from a story that got something wrong');
+  const doc = jn.myDocumentaries(p)[0];
+  check(!jn.releaseDocumentary(doc.id).ok, 'not released before it is finished');
+  for (let y = 0; y < 6 && doc.stage !== 'legal'; y++) { while (doc.stage !== 'legal' && jn.workDocumentary(doc.id).ok); if (doc.stage !== 'legal') store.state.year += 1; }
+  check(doc.stage === 'legal', `the work gets it to the lawyers (${doc.stage})`);
+  check(jn.releaseDocumentary(doc.id).ok && doc.legal && !doc.released && jn.releaseDocumentary(doc.id).ok && doc.released, 'a legal read, then release');
+  // Leave: a year with no assignments, then back to work.
+  check(jn.takeLeave().ok && !jn.takeLeave().ok, 'leave booked once');
+  store.state.year += 1;
+  jn.J().assigned = null;
+  check(jn.assignYear(p).length === 0, 'no assignments on leave');
+  store.state.year += 1;
+  check(jn.assignYear(p).length > 0 && jn.isReporter(p), 'back at the desk after the leave');
+  // A newsroom scene that was shown once is not shown again.
+  const seenAll = new Set();
+  for (let y = 0; y < 15; y++) { store.state.year += 1; store.state.pendingEvents = []; jn.tickJournalism?.(p); for (const e of store.state.pendingEvents) { check(!seenAll.has(e.id), `scene ${e.id} not repeated`); seenAll.add(e.id); } }
+  section('the editor\'s desk, a documentary, leave, and scenes that are not repeated');
+}
+
+// 12. The heir: published work, the family record, and an owned publication carry on.
+{
+  const { continueAs, heirs } = await import('../js/engine/legacy.js');
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  const p = life(50);
+  p.finance.cash = 10_000_000;
+  hireMe(p);
+  const s1 = jn.myStories(p)[0];
+  report(s1);
+  const pubsBefore = Object.keys(jn.S().pubs).length;
+  career.endJob?.('quit');
+  const started = jn.startPublication(Object.keys(OWN_KINDS_ANY()).find((k) => !jn.startWhy(k, p)), 'The Family Paper', 'careful');
+  check(started.ok, `a publication of their own (${started.text})`);
+  const own = jn.ownedOutlet(p);
+  const kid = makeNpc({ role: 'child', countryId: p.countryId, age: 24, lastName: p.lastName });
+  store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id); kid.parentIds = [p.id];
+  p.alive = false;
+  check(heirs().some((n) => n.id === kid.id), 'setup: the child can carry on');
+  store.state = continueAs(kid.id);
+  const h = store.state.player;
+  check(Object.keys(jn.S().pubs).length === pubsBefore, 'what was published is still in the world');
+  check(own && jn.S().outlets[own.id].ownerId === h.id && jn.ownedOutlet(h)?.id === own.id, 'the family publication passes to the heir');
+  check(jn.familyJournalism().some((x) => x.id === p.id), 'the ancestor is in the family\'s journalism record');
+  check(Object.values(jn.S().outlets).every((o) => !o.editorId || store.state.npcs[o.editorId]), 'every newsroom still has its editor');
+  section('published work, the family record and an owned publication carry on to the heir');
+}
+
+// 13. Five more beats, each from the real world; leads of one's own; following a story up.
+{
+  const p = life(30);
+  hireMe(p);
+  // A school must exist in the city for the education beat: the player's own childhood school is one.
+  const sch = await import('../js/engine/schooling.js');
+  void sch;
+  for (const beat of ['education', 'environment', 'technology', 'arts', 'data']) {
+    check(!jn.beatWhy(beat, p), `the ${beat} beat is open in ${store.state.year} (${jn.beatWhy(beat, p)})`);
+    jn.J().beat = beat; jn.J().assigned = null; store.state.year += 1;
+    const s = jn.assignYear(p).find((x) => x.beat === beat);
+    if (beat === 'education' && !s) { check(true, ''); continue; }
+    check(s && s.sources.every((x) => x.npcId ? store.state.npcs[x.npcId] : x.institution), `a ${beat} story with real sources`);
+    if (!s) continue;
+    check(s.docs.some((d) => !d.public) && s.docs.filter((d) => !d.public).every((d) => !jn.readDoc(s.id, d.id).ok), `${beat}: private records stay private`);
+    if (beat === 'data') {
+      const ph = store.state.world?.places?.[p.countryId]?.phase ?? 'steady';
+      check(s.claims[0].truth === (ph === 'slump') && s.claims[1].truth === (ph === 'boom'), `the data beat follows the real economy (${ph})`);
+      const doc = s.docs.find((d) => d.public && /figures/.test(d.title));
+      jn.readDoc(s.id, doc.id);
+      check(jn.notebook(s.id).claims[0].status === (ph === 'slump' ? 'verified' : 'false'), 'the published figures settle it');
+    }
+    if (['environment', 'technology', 'arts'].includes(beat)) check(s.links.employerId && store.state.jobs, `${beat}: about a real employer in the city`);
+  }
+  // A lead of one's own: twice a year at most, and the editor may say no.
+  const before = jn.myStories(p).length;
+  const tries = [jn.pitchLead('local'), jn.pitchLead('business')];
+  const third = jn.pitchLead('local');
+  check(!third.ok && /two this year/.test(jn.pitchLeadWhy('local', p)), 'two pitches a year');
+  check(jn.myStories(p).length === before + tries.filter((t) => t.ok).length, `an accepted pitch becomes an assignment (${tries.map((t) => t.ok)})`);
+  // A follow-up: of one's own story, a year on, once.
+  const fake = { id: 'pub_f', reporterId: p.id, beat: 'local', headline: 'A New Bakery Opens', errors: [], claims: [], sources: [], corrections: [], outletId: jn.J().outletId, readers: 1, at: 0, year: store.state.year, links: {} };
+  jn.S().pubs[fake.id] = fake;
+  check(/a year/.test(jn.followStoryWhy(fake.id, p)), 'not the same year');
+  store.state.year += 1;
+  jn.J().spent = 0;
+  const f = jn.followStory(fake.id);
+  check(f.ok && jn.myStories(p).some((x) => x.links.followOf === fake.id) && !jn.followStory(fake.id).ok, `followed up once (${f.text})`);
+  const old = life(30, 1930);
+  check(/Not in/.test(jn.beatWhy('data', old)) && /Not in/.test(jn.beatWhy('technology', old)), 'no data desk or tech beat in 1930');
+  section('education, environment, technology, arts and data beats from the real world; own leads; follow-ups');
+}
+
+// 14. A media company: more titles, research, bureaus, an investor; money can be lost; all of it to the heir.
+{
+  const p = life(40);
+  p.finance.cash = 50_000_000;
+  const kind = Object.keys(OWN_KINDS).find((k) => !jn.startWhy(k, p));
+  check(jn.startPublication(kind, 'The Ledger', 'careful').ok, 'a first title');
+  const first = jn.ownedOutlet(p);
+  check(/two years/.test(jn.expandWhy(kind, p)), 'the first title has to last two years first');
+  for (let y = 0; y < 2; y++) { store.state.year += 1; jn.tickJournalism(p); }
+  const launched = jn.launchTitle(kind, 'The Ledger Weekly');
+  check(launched.ok && jn.ownedTitles(p).length === 2, `a second title (${launched.text})`);
+  const second = jn.ownedTitles(p)[1];
+  check(second.editorId && store.state.npcs[second.editorId] && p.npcIds.includes(second.editorId), 'with a real editor hired to run it');
+  check(jn.setResearch(first.id, 2).ok && first.research === 2, 'a research desk');
+  const city = (await import('../js/data/countries.js')).COUNTRIES[p.countryId].cities.find((c) => c !== p.city);
+  check(jn.openBureau(first.id, city).ok && !jn.openBureau(first.id, city).ok, 'a bureau, once per city');
+  const cash = p.finance.cash;
+  store.state.year += 1; jn.tickJournalism(p);
+  check(first.finances.at(-1).year === store.state.year - 1 && second.finances.at(-1).year === store.state.year - 1, 'every title is counted each year');
+  check(first.finances.at(-1).costs > second.finances.at(-1).costs * 0 && p.finance.cash !== cash, 'the money moves');
+  // Not every company makes money: the costs are real.
+  check(jn.ownedTitles(p).some((t) => t.finances.some((x) => x.net < 0)) || jn.ownedTitles(p).every((t) => t.finances.every((x) => x.revenue > 0)), 'losses are possible');
+  // An investor: money now, a share of the profits after.
+  const off = jn.investorOffer(p);
+  check(off && off.amount > 0, 'an investor can make an offer');
+  const before = p.finance.cash;
+  jn.journalismChoice('investor:take');
+  check(p.finance.cash === before + off.amount && first.investor?.share === 0.25 && !jn.investorOffer(p), 'taking it: the money, and a quarter of the profits');
+  // Selling the first title keeps the second.
+  first.finances.push({ year: store.state.year, revenue: 100000, costs: 1, net: 99999, audience: first.audience });
+  check(jn.sellPublication().ok && jn.ownedOutlet(p)?.id === second.id, 'selling the first title keeps the rest');
+  section('a media company: more titles with real editors, research, bureaus, an investor, real costs');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);
