@@ -15,6 +15,11 @@ import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsAction } from '../politics.js';
 import { openAthletics } from '../sports.js';
 import * as special from '../../engine/specialCareer.js';
+import { LEGAL_CAREERS } from '../../data/law.js';
+import { INVESTIGATIVE } from '../../engine/investigations/index.js';
+import { caseload as medCaseload } from '../../engine/medicine/cases.js';
+import { lawOf } from '../../engine/lawSchool.js';
+import { caseById as lawCaseById } from '../../engine/lawCases.js';
 import * as fameEng from '../../engine/fame.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -417,6 +422,35 @@ function findWork(p, list) {
  * page of its own. A life follows one at a time (engine/specialCareer.js): the one taken up is marked, and the others
  * wait, greyed with why, until it is left. Sport for fun stays open to anyone.
  */
+/**
+ * The career the player is in, when it has a screen of its own: the first row of the Work tab, named, with their title,
+ * and a dot when something there needs them (a patient, a day in court). Nothing to look for under Special Careers.
+ */
+function ownCareer(p, list) {
+  const sc = special.current(p);
+  if (sc) return { act: `sc:${sc}`, title: special.SPECIAL_BY_ID[sc].name, sub: `Your career${p.career?.title ? `: ${p.career.title}` : ''}`, dot: false };
+  const m = p.medicine;
+  if (has(list, 'medicine') && (m?.job || m?.training)) {
+    let dot = false;
+    try { dot = medCaseload(m, p).some((c) => c.status !== 'closed'); } catch { /* no caseload this year */ }
+    return { act: 'medicine', title: 'My Medical Career', sub: dot ? 'Patients are waiting for you' : (p.career?.title ?? 'Patients, training and your hospital'), dot };
+  }
+  if (LEGAL_CAREERS.includes(p.career?.careerId)) {
+    let dot = false;
+    try { dot = (lawOf(p).caseIds ?? []).map(lawCaseById).some((c) => c && !c.done && c.awaiting); } catch { /* not practicing yet */ }
+    return { act: 'law', title: 'My Legal Career', sub: dot ? 'A day in court is waiting for you' : (p.career?.title ?? 'Your cases'), dot };
+  }
+  if (INVESTIGATIVE.includes(p.career?.careerId) || p.investigator?.job) {
+    return { act: 'investigations', title: 'My Investigations', sub: p.career?.title ?? 'Your cases and your department', dot: false };
+  }
+  return null;
+}
+
+/** Whether the player's own career needs them now (a dot on the Work tab, ui/shell.js). */
+export function careerWaiting(p = player()) {
+  try { return !!ownCareer(p, careerButtons())?.dot; } catch { return false; }
+}
+
 function specialCareers(p, list) {
   const now = special.current(p);
   const jailed = p.legal.incarceration ? 'Not from where you are' : '';
@@ -527,7 +561,7 @@ export default {
       <div class="section-label">You</div>
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${(() => { const sc = special.current(p); const c0 = careerCard(); return sc ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="sc:${sc}" data-direct-sub="Your career: ${esc(special.SPECIAL_BY_ID[sc].name)}">`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${(() => { const d = ownCareer(p, work); const c0 = careerCard(); return d ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="${esc(d.act)}" data-direct-title="${esc(d.title)}" data-direct-sub="${esc(d.sub)}"${d.dot ? ' data-direct-dot="1"' : ''}>`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
       ${findWork(p, work)}
       ${specialCareers(p, work)}`;
 
