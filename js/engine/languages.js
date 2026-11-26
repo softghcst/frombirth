@@ -15,15 +15,12 @@ export const languagesOf = (countryId) => Object.entries(SPOKEN).filter(([, wher
 
 /**
  * The languages someone grew up speaking: those of the country they were born in (Spanish for a Puerto Rican, French
- * and Arabic for a Moroccan), and, for a child, those their parents were raised in. English is everyone's common tongue
- * in the game, and is never a skill to learn.
+ * and Arabic for a Moroccan). A parent's other language is learned at home, at a child's own pace (globalLife.js
+ * tickHeritage), not given. English is everyone's common tongue in the game, and is never a skill to learn.
  */
-export function nativeLanguages(p = player()) {
-  return [...new Set([...languagesOf(p.birthCountryId), ...(p.flags?.homeLanguages ?? [])])];
-}
+export const nativeLanguages = (p = player()) => languagesOf(p.birthCountryId);
 /** Gives someone their native languages, spoken fully, from birth (and to an older life when it loads). */
-export function giveNativeLanguages(p, extra = []) {
-  if (extra.length) p.flags.homeLanguages = [...new Set([...(p.flags.homeLanguages ?? []), ...extra])];
+export function giveNativeLanguages(p) {
   p.skills ??= {};
   for (const id of nativeLanguages(p)) if (SKILL_BY_ID[id]) p.skills[id] = 100;
   return p;

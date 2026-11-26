@@ -3,7 +3,7 @@
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
 import { giveBirthday, yearSpan } from './birthday.js';
-import { giveNativeLanguages, languagesOf } from './languages.js';
+import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
@@ -299,8 +299,8 @@ export function continueAs(npcId) {
   }
   if (old.medicine) next.medicine = { v: old.medicine.v, seq: old.medicine.seq ?? 0, hospitals: old.medicine.hospitals ?? {}, programs: old.medicine.programs ?? {}, schools: old.medicine.schools ?? {}, patients: {}, cases: {}, episodes: {} };
   giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
-  // The heir grew up speaking their birth country's language, and their parent's.
-  giveNativeLanguages(player, languagesOf(op.birthCountryId).filter((id) => (op.skills?.[id] ?? 0) >= 60));
+  // The heir grew up speaking their birth country's language.
+  giveNativeLanguages(player);
   next.today = yearSpan(next).start;
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
