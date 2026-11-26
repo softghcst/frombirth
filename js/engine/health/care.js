@@ -227,7 +227,8 @@ export function resolveAppointments(p = player()) {
 
 function attended(a, npc, p) {
   a.status = 'attended';
-  a.paid = charge(`appt:${a.id}`, VISIT_COST[a.kind === 'specialist' ? 'assessment' : a.kind] ?? VISIT_COST.review, { fee: a.fee, what: `${a.kind} with ${clinicianName(npc)}` });
+  // A visit can carry its own price (treatment for an ailment); otherwise it is priced by its kind.
+  a.paid = charge(`appt:${a.id}`, a.base ?? VISIT_COST[a.kind === 'specialist' ? 'assessment' : a.kind] ?? VISIT_COST.review, { fee: a.fee, what: a.what ?? `${a.kind} with ${clinicianName(npc)}` });
   npc.lastInteractionAge = p.age;
   npc.meters.relationship = Math.min(100, npc.meters.relationship + 2);
   return a;

@@ -6,20 +6,17 @@
  * manage: true means it cannot be cured, only kept under control (most of
  * its yearly harm goes away for as long as you stay on treatment).
  */
+/**
+ * What a doctor's visit for an ailment costs (before cover) and how likely it is to work. Long-term conditions
+ * (asthma, diabetes, heart disease, depression and the rest) are not here: they are the Health Engine's, with
+ * diagnoses, care plans, medicines and therapy (engine/health/).
+ */
 export const TREATMENTS = {
   flu: { cost: 80, chance: 0.95 },
   ear_infection: { cost: 80, chance: 0.95 },
   broken_arm: { cost: 1500, chance: 0.95 },
   acne: { cost: 300, chance: 0.7 },
-  asthma: { cost: 400, chance: 0.9, manage: true },
-  anxiety: { cost: 900, chance: 0.6 },
-  depression: { cost: 900, chance: 0.6 },
-  back_pain: { cost: 1200, chance: 0.5 },
-  high_bp: { cost: 500, chance: 0.9, manage: true },
-  diabetes: { cost: 900, chance: 0.9, manage: true },
   broken_hip: { cost: 12000, chance: 0.8 },
-  heart_disease: { cost: 25000, chance: 0.75, manage: true },
-  cancer: { cost: 60000, chance: 0.55 },
   botched_surgery: { cost: 9000, chance: 0.7 },
 };
 /** Where health care is public, patients pay this share of the cost. */
