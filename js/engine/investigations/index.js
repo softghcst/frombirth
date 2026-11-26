@@ -110,6 +110,8 @@ export function tickInvestigations() {
     const use = r.job.detective || r.family === 'federal' ? ['reasoning', 'evidence', 'interviewing', 'management'] : ['observation', 'writing', 'interviewing', 'teamwork'];
     for (const s of use) grow(s, 1);
     if (['sergeant', 'lieutenant', 'captain', 'deputy_chief', 'chief', 'detective_sergeant', 'detective_lieutenant', 'supervisory', 'asac', 'sac'].includes(r.job.rank)) grow('leadership', 2);
+    // Experience teaches leading too: a seasoned officer or detective is the one newer colleagues ask (promotion to sergeant needs it).
+    if (r.stats.years >= 5) grow('leadership', 1);
     p.career.performance = clamp(Math.round(p.career.performance * 0.5 + reputationOf(r) * 0.5 + rng.int(-3, 3)));
     autoProgress(p, r);
     considerYear(p, r); // considered for the next rank, a step raise, or a warning (autoPromotion.js)

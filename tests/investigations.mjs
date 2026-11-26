@@ -1651,7 +1651,18 @@ section('the academy ends on its own date: graduation and field training the sam
   const idle = r.caseIds.map(W.investigation).filter((inv) => inv.stage === 'suspended').length;
   check(idle >= 2 && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && inv.stage === 'active'), `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${r.caseIds.length} in all)`);
 }
-section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come');
+{
+  const WPm = await import('../js/engine/investigations/workplace.js');
+  life('us', 40);
+  makeOfficer();
+  const r = core.I();
+  r.stats.years = 6; r.job.rank = 'senior'; r.job.rankSince = store.state.year - 6;
+  Object.assign(r.rep, { integrity: 80, skill: 80, reports: 80, ethics: 80, reliability: 80, teamwork: 80, leadership: 80 });
+  check(/leadership/i.test(C.promotionOptions()[0]?.block ?? ''), 'sergeant asks for leadership');
+  for (let y = 0; y < 8; y++) { WPm.mentor(); store.state.year += 1; r.job.rankSince -= 0; }
+  check(!/leadership/i.test(C.promotionOptions()[0]?.block ?? '') && r.skills.leadership >= 35, `mentoring builds it, so the way to sergeant is open (${r.skills.leadership})`);
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank');
 
 for (const line of ok) console.log(`ok   ${line}`);
 

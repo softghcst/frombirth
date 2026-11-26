@@ -274,7 +274,8 @@ const VIEWS = {
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
-      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')
+        + (r.job && !r.retired && (r.stats.years ?? 0) >= 3 ? kv([['Leadership', `${Math.round(r.skills.leadership)} / 100`]]) + muted('Sergeant and above ask for leadership: it grows with mentoring newer colleagues, and with the years.') + stack(btn('mentor', 'Mentor a newer colleague')) : '')) : '')
       + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
         + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
       + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
@@ -602,6 +603,7 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  mentor: (a, x) => x.say(WP.mentor()),
   goDepartments: (a, x) => { x.st.section = 'agency'; x.render(); },
   hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
   hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
