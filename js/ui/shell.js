@@ -1,6 +1,7 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
 import { openBirthTag, nameBabyModal, announceMultiples } from './birthTag.js';
+import { graduationNotice } from './graduation.js';
 import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
@@ -348,6 +349,7 @@ export function mountGame(app, hooks) {
     if (player().alive) await deathNotice(aliveBefore);
     if (player().alive) await birthNotice(knownBefore);
     if (player().alive && player().legal.pending) await tabApi.justice();
+    if (player().alive) await graduationNotice(tabApi);
     await yearUpdate();
     await healthNotice();
     if (player().alive) await drivingNotice();
@@ -538,5 +540,6 @@ export function mountGame(app, hooks) {
   (async () => {
     if (store.state.pendingEvents.length) await runPending();
     if (player().alive && player().legal.pending) await tabApi.justice();
+    if (player().alive) await graduationNotice(tabApi);
   })();
 }

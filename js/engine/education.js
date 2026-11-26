@@ -412,6 +412,13 @@ function graduate() {
     certificate: `your course with a certificate in ${CERT_BY_ID[e.majorId]?.name.toLowerCase()}`,
   }[e.stage] ?? prog?.done ?? stageLabel(e.stage).toLowerCase();
   const plain = ['medical', 'podiatric', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.license;
+  // The graduation card (ui/graduation.js): shown once, after the turn, with what comes next.
+  p.flags.gradCard = { stage: e.stage, year: store.state.year, age: p.age,
+    school: e.stage === 'high' ? (place && place.kind !== 'home' ? place.name : null) : e.schoolName ?? null,
+    award: e.stage === 'high' ? leaving : null,
+    subject: e.stage === 'doctorate' ? e.thesis?.topic ?? null : major?.name ?? trade?.name ?? (e.stage === 'certificate' ? CERT_BY_ID[e.majorId]?.name : null) ?? null,
+    mark: ['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? null : e.stage === 'high' ? sch.mark(e.gpa) : sch.degreeMark(e.gpa),
+    honors: plain ? '' : honors.replace(/^ with /, '') };
   log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honors}${['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (${sch.degreeMark(e.gpa)})`}.`, 'system', 'good');
   milestone(e.stage === 'cosmetology' ? 'Earned a license in hair and makeup.'
     : e.stage === 'apprenticeship' || e.stage === 'technical' ? `Qualified as a ${trade?.name.toLowerCase()}.`

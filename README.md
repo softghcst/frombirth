@@ -55,6 +55,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
 node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
+node tests/graduation-ui.mjs  # browser: the graduation card after high school and university, and where each next step leads
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations

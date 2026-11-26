@@ -75,7 +75,7 @@ async function leaveSchool(api) {
 }
 
 /** Housing picker. Resolves {housing, roommateId} or null. */
-async function chooseHousing(housingAid) {
+export async function chooseHousing(housingAid) {
   const c = country();
   const housing = await pickModal({
     title: 'Where will you live?',
@@ -172,7 +172,7 @@ function pickMajor(progId) {
 }
 
 /** Funding picker. Resolves a funding id, 'public' when nothing is owed, or null. */
-async function chooseFunding(api, fee, length, offer) {
+export async function chooseFunding(api, fee, length, offer) {
   const c = country();
   const p = player();
   if (!fee) return 'public';
@@ -220,7 +220,7 @@ function chooseOffer(offers) {
 }
 
 /** What comes next: program → subject → decision(s) → funding → housing → enroll. */
-async function applyFlow(api) {
+export async function applyFlow(api) {
   const c = country();
   const progId = await pickModal({
     title: 'What comes next?',
