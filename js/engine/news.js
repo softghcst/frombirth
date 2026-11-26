@@ -24,7 +24,7 @@ export function press(w) {
 /** Adds an item to the country's news. */
 export function post(w, text, o = {}) {
   const outlet = o.outlet ?? press(w).find((x) => x.kind === 'broadcaster');
-  (w.news ??= []).push({ year: store.state.year, outlet: outlet.name, text, tone: o.tone ?? 'neutral', you: !!o.you });
+  (w.news ??= []).push({ year: store.state.year, outlet: outlet.name, text, tone: o.tone ?? 'neutral', you: !!o.you, ...(o.kind ? { kind: o.kind } : {}) });
   if (w.news.length > 80) w.news.shift();
 }
 
@@ -52,9 +52,9 @@ export function report(w, kind, words = {}) {
   const papers = press(w).filter((x) => x.kind !== 'broadcaster');
   const friend = papers.find((x) => side && x.lean === side) ?? null;
   const foe = papers.find((x) => side && x.lean === -side) ?? papers.find((x) => x.kind === 'tabloid');
-  if (set.plain) post(w, fill(rng.pick(set.plain)), { tone: set.tone, you: true });
-  if (friend && set.kind) post(w, fill(rng.pick(set.kind)), { outlet: friend, tone: set.tone, you: true });
-  if (foe && set.harsh) post(w, fill(rng.pick(set.harsh)), { outlet: foe, tone: set.tone, you: true });
+  if (set.plain) post(w, fill(rng.pick(set.plain)), { tone: set.tone, you: true, kind });
+  if (friend && set.kind) post(w, fill(rng.pick(set.kind)), { outlet: friend, tone: set.tone, you: true, kind });
+  if (foe && set.harsh) post(w, fill(rng.pick(set.harsh)), { outlet: foe, tone: set.tone, you: true, kind });
 }
 
 /** The news as the screen shows it: newest first, grouped by year. */

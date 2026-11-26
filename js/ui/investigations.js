@@ -10,10 +10,28 @@ import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { SKILLS, SPECIALTIES, FEDERAL, WITNESS_QUESTIONS, PI_SERVICES, AGENCY_KINDS, STUDY, coverageOf, SOURCES } from '../data/investigations.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
+// Five skills to follow on screen, not sixteen: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Detective Work', ['observation', 'reasoning', 'evidence', 'timeline', 'planning']],
+  ['Interviews & Reports', ['interviewing', 'writing']],
+  ['Law & Ethics', ['law', 'ethics']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership', 'interagency']],
+  ['Specialist Skills', ['financial', 'digital', 'forensic']],
+];
+/** The same five, named for the unit: a fraud detective follows money; a cold case detective reads old files. */
+function skillNames(unit) {
+  const n = SKILL_GROUPS.map(([name]) => name);
+  const first = { homicide: 'Homicide Work', fraud: 'Following the Money', cyber: 'Digital Trails', cold: 'Reading Old Files', missing: 'Search & Urgency', special_victims: 'Trauma-Informed Work', organized: 'Building Networks', corruption: 'Following the Money', arson: 'Fire Scenes', professional_standards: 'Internal Inquiry' }[unit];
+  if (first) n[0] = first;
+  if (['special_victims', 'family', 'juvenile'].includes(unit)) n[1] = 'Careful Interviews & Reports';
+  if (['fraud', 'cyber', 'corruption'].includes(unit)) n[4] = unit === 'cyber' ? 'Digital Evidence' : 'Financial Analysis';
+  return n;
+}
 import { rec, I, reputationOf, dateWords, now, working, legacies } from '../engine/investigations/core.js';
 import * as C from '../engine/investigations/careers.js';
 import * as A from '../engine/investigations/agencies.js';
 import * as W from '../engine/investigations/casework.js';
+import * as RT from '../engine/investigations/routine.js';
 import * as V from '../engine/investigations/views.js';
 import * as PI from '../engine/investigations/private.js';
 import * as O from '../engine/investigations/oversight.js';
@@ -219,7 +237,7 @@ const VIEWS = {
       ['Cases completed', String(st.completed)], ['Referred to a prosecutor', String(st.referred)], ['Charged', String(st.charged)], ['Charges declined', String(st.declined)], ['Convictions', String(st.convicted)],
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
-      + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
+      + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
       + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
@@ -396,7 +414,9 @@ const CASE_VIEWS = {
   actions: (v, inv) => {
     const st = W.steps(inv);
     const left = W.workLeft(inv);
-    let b = st.map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
+    const ground = RT.groundworkSteps(inv.id);
+    let b = (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the Groundwork', { arg: inv.id, cls: 'primary' }) : '')
+      + st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id)).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
     if (!inv.file.outcome && !inv.file.courtCaseId) {
       b += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
       for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
@@ -441,6 +461,7 @@ function openCaseFile(api, invId, refreshHub) {
       const pick = await pickModal({ title: `Interview ${nm(wid)}`, body: 'One question at a time. People remember more when they are not rushed.', options: opts.map(([q, d]) => ({ value: q, label: d.label, sub: d.sub })) });
       if (pick) await say(W.act(id, x, { question: pick }));
     } else if (act === 'step') await say(W.act(id, x));
+    else if (act === 'groundwork') await say(RT.groundwork(id));
     else if (act === 'writeReport') await say(W.writeReport(id, x));
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));

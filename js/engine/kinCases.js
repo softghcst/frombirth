@@ -11,6 +11,7 @@ import { facilityFor } from './prison.js';
 import { checkCare } from './guardianship.js';
 import { LAWYERS } from '../data/crimes.js';
 import { OFFENSE_BY_ID, INMATE_LIVES, responsibilityAge } from '../data/justice.js';
+import { admitted, lawOf } from './lawSchool.js';
 
 const FAMILY = ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandchild', 'relative', 'inlaw', 'niece', 'grandparent'];
 /** A year's chance, for each grown relative. Kept low: most families never see a courtroom. */
@@ -61,7 +62,9 @@ export function charge(n, o = {}) {
   const b = k.bailHearing(c);
   n.flags.openCaseId = c.id;
   const bail = b.decision === 'bail' ? `Bail is set at ${fmtMoney(b.amount, country())}.` : b.decision === 'remand' ? 'They are being held until the trial.' : 'They are home until the trial.';
-  store.state.pendingEvents.push({ id: 'kin_charged', cast: { kin: n.id, words: { offense: off.name.toLowerCase(), bail } } });
+  // A relative who practices law is asked to defend them (a judge cannot: they do not take clients).
+  const counsel = admitted(p) && p.career?.careerId !== 'judiciary';
+  store.state.pendingEvents.push({ id: counsel ? 'kin_charged_lawyer' : 'kin_charged', cast: { kin: n.id, words: { offense: off.name.toLowerCase(), bail } } });
   return c;
 }
 
@@ -86,6 +89,17 @@ export function standBy(choice, kinId) {
       n.meters.relationship = clamp(n.meters.relationship + 12);
     } else lines.push('You could not afford a lawyer for them. Legal aid will have to do.');
   }
+  if (choice === 'kin_defend' && admitted(p)) {
+    // The player as their counsel: how it goes rests on their own courtroom skill. Family will remember either way.
+    const L = lawOf(p);
+    const skill = L.skills.courtroom ?? 30;
+    tier = skill >= 75 ? 'star' : skill >= 50 ? 'good' : 'public';
+    c.defenseId = null;
+    k.appoint(c, tier, p.id);
+    n.meters.relationship = clamp(n.meters.relationship + 15);
+    remember(n, 'defendedByYou', 'You defended them in court yourself.');
+    lines.push(`You defended ${n.firstName} yourself.`);
+  }
   if (choice === 'kin_court') {
     if (c.bail?.decision === 'bail' && c.bail.status === 'unpaid') {
       if (k.postBail(c, p.id)) lines.push('You posted their bail.');
@@ -104,6 +118,12 @@ export function standBy(choice, kinId) {
     lines.push(`${who} was convicted: ${k.describe(s)}.`);
     if (s.type === 'custody') sendInside(n, c, s);
   } else lines.push(c.stage === 'acquitted' ? `${who} was found not guilty.` : `The case against ${who} was dropped.`);
+  if (choice === 'kin_defend' && admitted(p)) {
+    const won = c.stage !== 'sentenced';
+    n.meters.relationship = clamp(n.meters.relationship + (won ? 10 : -6));
+    (lawOf(p).history ??= []).push({ caseId: c.id, title: `The State v. ${n.firstName} ${n.lastName}`, kind: 'criminal', role: 'defense', outcome: c.stage, favorable: won ? 1 : -1, trial: c.stage !== 'dismissed', level: 3, year: year(), personal: n.role });
+    lines.push(won ? 'They hug you on the courthouse steps.' : 'You did everything you could. Some days that is not enough, and they know it.');
+  }
   k.note(p.id, 'family', `${n.firstName} ${n.lastName} was ${c.stage === 'sentenced' ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : 'cleared'} in the ${c.court}.`, c.id);
   return lines.join(' ');
 }
