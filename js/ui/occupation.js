@@ -118,6 +118,7 @@ function jobCard(p) {
     [car.type === 'freelance' ? 'Earnings this year' : car.payModel === 'hourly' ? 'Pay (at contracted hours)' : 'Salary', `${money(c.salary)} a year${car.payModel === 'commission' ? ' + commission' : car.payModel === 'tips' ? ' + tips' : ''}`],
     ['Hours', `${c.hours}${c.extra > 0 ? ` + ${c.extra} overtime` : c.extra < 0 ? ` − ${-c.extra}` : ''} a week · ${car.schedule.replace('_', '-')}${c.remote !== 'none' ? ` · ${c.remote === 'remote' ? 'from home' : 'hybrid'}` : ''}`],
     ['In this role', years(c.yearsInRole)],
+    ...childPayRows(p, car),
     ...(away ? [['On leave', away]] : []),
     ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honors ? ` · ${c.military.honors} honors` : ''}`]] : []),
     ...(c.missions ? [['Space missions', String(c.missions)]] : []),
@@ -126,6 +127,16 @@ function jobCard(p) {
     <div style="margin-top:8px">${meterHtml('Performance', c.performance, true)}${meterHtml('Satisfaction', c.satisfaction, true)}${meterHtml('Stress', c.stress, true)}</div>
     ${work.benefits().length ? `<div class="section-label">Benefits</div><p style="margin:4px 0">${esc(work.benefits().join(' · '))}</p>` : ''}
   </div>`;
+}
+
+/** A working child's pay: what they have earned, what the law keeps in trust, and who holds the rest. What was spent is not known until 18. */
+function childPayRows(p, car) {
+  const cp = p.childPay;
+  if (!car.agesOut || p.age >= 18) return [];
+  if (!cp) return [['Your pay', 'A parent signs for you and manages what you earn until you are 18.']];
+  const m = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.id === cp.managerId);
+  const who = m ? `${m.firstName} (your ${m.gender === 'female' ? 'mother' : m.gender === 'male' ? 'father' : 'parent'})` : 'A guardian';
+  return [['Earned so far', money(cp.total)], ...(cp.trust ? [['In trust until 18', money(cp.trust)]] : []), ['Managed by', `${who}, until you are 18`]];
 }
 
 function mainActions(p) {
