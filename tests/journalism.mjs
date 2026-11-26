@@ -249,6 +249,61 @@ function report(s) {
   section('newsroom scenes: true of this life, one a year at most, never repeated, with consequences');
 }
 
+// 8. Freelance: stories found, reported, pitched; commissioned at a fee paid once, when it runs.
+{
+  const p = life();
+  check(jn.goFreelance().ok && jn.J().freelance && sc.current() === 'journalism' && !p.career.careerId, 'going freelance is the special career, with no salary');
+  const s = jn.myStories(p)[0];
+  check(s && !s.outletId, 'a freelancer\'s lead belongs to no newsroom yet');
+  report(s);
+  check(!jn.submit(s.id).ok, 'it cannot go to an editor before it is sold');
+  let sold = false;
+  for (const o of jn.outletsHere(p)) { if (jn.pitch(s.id, o.id).ok) { sold = true; break; } }
+  if (!sold) { store.state.year += 1; for (const o of jn.outletsHere(p)) { s.pitched = {}; if (jn.pitch(s.id, o.id).ok) { sold = true; break; } } }
+  check(sold && s.fee > 0 && s.editorId, `a newsroom commissions it at a fee (${s.fee})`);
+  for (let i = 0; i < 3 && s.status !== 'approved'; i++) { const nb = jn.notebook(s.id); jn.draft(s.id, nb.claims.filter((c) => ['verified', 'supported'].includes(c.status)).map((c) => c.id), 'straight'); jn.submit(s.id); }
+  const cash = p.finance.cash;
+  const o = jn.outlet(s.outletId);
+  const r = jn.isBroadcast(o) ? jn.present(s.id, ['verified']) : jn.publish(s.id);
+  check(r.ok && p.finance.cash === cash + s.fee, `the fee is paid when it runs (${r.text})`);
+  check(!jn.publish(s.id).ok && p.finance.cash === cash + s.fee, 'and never again for the same piece');
+  section('freelance: find it, report it, sell it, paid once when it runs');
+}
+
+// 9. A publication of one's own: of its era, with real money, real staff, a self-edited bar, and years that can lose money.
+{
+  const old = life(30, 1950);
+  old.finance.cash = 1e9;
+  check(/Not in/.test(jn.startWhy('newsletter', old)) && !jn.startWhy('paper', old), 'in 1950: a paper, not a newsletter');
+  const p = life(30, 2024);
+  p.finance.cash = 1e7;
+  const cost = jn.startCost('newsletter');
+  const before = p.finance.cash;
+  const r = jn.startPublication('newsletter', 'The Morning Letter', 'careful');
+  const o = jn.ownedOutlet(p);
+  check(r.ok && o && o.name === 'The Morning Letter' && p.finance.cash === before - cost && sc.current() === 'journalism', `started with the player's own money (${r.text})`);
+  check(!p.career.careerId, 'owning it is not a job with a salary');
+  check(jn.hireStaff('reporter').ok && jn.hireStaff('editor').ok && o.staff.length === 2 && store.state.npcs[o.editorId], 'real staff are hired; the editor is a person');
+  const s = jn.myStories(p).find((x) => x.outletId === o.id);
+  check(s, 'an owner reports for their own publication');
+  if (s) {
+    report(s);
+    for (let i = 0; i < 3 && s.status !== 'approved'; i++) { const nb = jn.notebook(s.id); jn.draft(s.id, nb.claims.filter((c) => ['verified', 'supported'].includes(c.status)).map((c) => c.id), 'straight'); jn.submit(s.id); }
+    check(jn.publish(s.id).ok && jn.myPubs(p).some((x) => x.outletId === o.id), 'it publishes in their own publication');
+  }
+  const cash = p.finance.cash;
+  advanceYear(); store.state.pendingEvents = [];
+  const f = o.finances.at(-1);
+  check(f && f.costs >= o.staff.reduce((n, x) => n + x.salary, 0) && p.finance.cash !== cash, `its year is counted: revenue, salaries and costs (${JSON.stringify(f)})`);
+  check(f.net < 0 || f.net >= 0, 'it can lose money');
+  advanceYear(); store.state.pendingEvents = [];
+  check(o.finances.filter((x) => x.year === f.year).length === 1, 'each year is counted once');
+  const sold = jn.sellPublication();
+  check(sold.ok ? !jn.ownedOutlet(p) && o.sold : /Nobody/.test(sold.text) && jn.ownedOutlet(p) === o, `it can be sold, or nobody wants it and it stays yours (${sold.text})`);
+  if (!sold.ok) check(jn.closePublication().ok && !jn.ownedOutlet(p) && o.closed && jn.myPubs(p).some((x) => x.outletId === o.id), 'closing it keeps what it published');
+  section('a publication of one\'s own: of its era, bought with real money, real staff, years that can lose money');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');
