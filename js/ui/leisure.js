@@ -36,7 +36,9 @@ export async function seeDoctor(api) {
   const price = (n) => (!n ? 'Free' : med.parentsPayCare(p) ? `Your parents pay ${fmtMoney(n, c)}` : fmtMoney(n, c));
   const pick = await pickModal({
     title: 'The doctor',
-    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}${k.model.name}. ${k.how}` : `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
+    // The health system in a sentence, and what this patient (or their family) pays of a bill.
+    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}Health care here: ${k.model.name.toLowerCase()}. ${k.model.line} As a child you are covered, and your family pays ${Math.round(k.share * 100)}% of a bill.`
+      : `Health care here: ${k.model.name.toLowerCase()}. ${k.how === k.model.line ? k.how : `${k.model.line} ${k.how}`} You pay ${Math.round(k.share * 100)}% of a bill.`,
     options: [
       ...list.map((x) => ({ value: x.id, label: `Treat your ${x.name.replace(/^an? /, '')}`, disabled: x.seen || !x.affordable || (x.manage && x.managed),
         sub: x.manage && x.managed ? 'Under control. Nothing more to do.' : x.seen ? 'Already seen this year.'
