@@ -162,9 +162,11 @@ function birth() {
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
   // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
-  // Twins run in families (on the mother's side, mostly), and come more often to mothers in their late thirties.
+  // Twins run in families (on the mother's side, mostly), and come more often to mothers in their late thirties: a
+  // higher level of the hormone FSH then sometimes releases two eggs in one cycle (fraternal twins). The effect peaks
+  // at 35 to 39 and eases after 40, as fewer eggs are left; IVF, with its own boost, accounts for most twins later on.
   const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : other?.age ?? 30;
-  const odds = (ivf ? 2 : 1) * (motherAge >= 40 ? 1.6 : motherAge >= 35 ? 1.35 : 1) * (twinsInFamily(p, other) ? 1.8 : 1);
+  const odds = (ivf ? 2 : 1) * (motherAge >= 40 ? 1.2 : motherAge >= 35 ? 1.4 : 1) * (twinsInFamily(p, other) ? 1.8 : 1);
   if (rng.chance(0.025 * odds)) {
     babies.push(newborn(other));
     if (rng.chance(0.06 * Math.min(odds, 2.5))) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
