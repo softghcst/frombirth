@@ -107,6 +107,34 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(baby && baby.disabled && /implant/i.test(baby.why) && /removed first/i.test(baby.why) && baby.ivf !== false, `${label}: "Try for a baby" is greyed out with the reason underneath (${JSON.stringify(baby)})`);
   if (process.env.SHOT) { await page.evaluate(() => document.querySelector('#modal-root [data-act="baby"]')?.scrollIntoView({ block: 'center' })); await page.screenshot({ path: `${process.env.SHOT}/bc-${label}-baby.png` }); }
   check(!(await overflow()), `${label}: the profile does not scroll sideways`);
+  // No method now, and not planning a pregnancy: a night together brings the emergency contraception choice at once.
+  const ec = await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const C = await import('/js/engine/health/contraception.js');
+    const p = store.state.player;
+    for (const r of C.active(p)) if (C.def(r).remove) C.removeDevice(r.id, { provider: C.defaultProvider(C.def(r).remove) });
+    C.legacySwitch(false); C.setPlanning('not');
+    const n = p.npcIds.map((id) => store.state.npcs[id]).find((x) => x?.role === 'partner');
+    // What the game does with scenes an action queued (ui/shell.js pending): here, note the emergency decision was there.
+    window.__pending = async () => { if (store.state.pendingEvents.some((e) => e.id === 'repro_ec')) window.__ecSeen = true; store.state.pendingEvents = []; };
+    document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
+    const { openNpc } = await import('/js/ui/tabs/people.js');
+    for (let i = 0; i < 25; i++) {
+      n.meters.relationship = 95; n.flags.acts = {};
+      openNpc(n, { changed() {}, rerender() {}, pending: window.__pending });
+      await new Promise((r) => setTimeout(r, 80));
+      const b = document.querySelector('#modal-root [data-act="bondIntimate"], #modal-root [data-act="hookUp"]');
+      if (!b) return 'no button';
+      b.click();
+      await new Promise((r) => setTimeout(r, 120));
+      document.querySelector('#modal-root .scrim:last-child .btn')?.click(); // the night's message
+      await new Promise((r) => setTimeout(r, 120));
+      if (window.__ecSeen) return 'shown';
+      document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
+    }
+    return 'never';
+  }).catch((e) => `error ${e.message}`);
+  check(ec === 'shown', `${label}: the emergency contraception decision is asked straight after the night (${ec})`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }

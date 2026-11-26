@@ -941,7 +941,12 @@ function settleExposure(e, ec, p, lead = '') {
 }
 /** Any exposure still open when the months move on: its window has passed. Settled with no emergency contraception. */
 function closeOpenExposures(p) {
-  for (const e of cx(p).exposures) if (e.status === 'open' && e.abs < absNow()) settleExposure(e, null, p);
+  for (const e of cx(p).exposures) {
+    if (e.status !== 'open' || e.abs >= absNow()) continue;
+    settleExposure(e, null, p);
+    // Its "next morning" scene, if still waiting, would come too late to mean anything: it goes.
+    store.state.pendingEvents = store.state.pendingEvents.filter((x) => !(x.id === 'repro_ec' && x.cast?.words?.exp === e.id));
+  }
 }
 
 // ---------- The months ----------

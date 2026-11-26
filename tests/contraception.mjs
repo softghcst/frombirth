@@ -215,8 +215,9 @@ section('fertility awareness: limited by cycles, explicitly approximate, never a
   const preg = JSON.stringify(p.flags.pregnancy);
   // A second exposure, left open: once the months move on, its window has passed.
   const e2 = C.recordExposure({ npcId: n.id, failed: true, would: false });
-  store.state.settings.step = 3; turn();
+  store.state.settings.step = 3; advanceTurn(store.state);
   check(C.ecOptions(e2.id).length === 0 && C.cx().exposures.find((x) => x.id === e2.id).status === 'settled', 'after the window has passed nothing is offered');
+  check(!store.state.pendingEvents.some((x) => x.id === 'repro_ec' && x.cast.words.exp === e2.id), 'and its scene, too late now, is not shown');
   check(JSON.stringify(p.flags.pregnancy) === preg || p.flags.pregnancy?.otherId === n.id, 'never more than one pregnancy from these');
   // An exposure the night would have led to: the copper IUD almost always prevents it.
   let prevented = 0;
@@ -230,6 +231,18 @@ section('fertility awareness: limited by cycles, explicitly approximate, never a
   check(/does not end/.test(EVENT_BY_ID.repro_ec.text) && !/abort/i.test(JSON.stringify(D.EMERGENCY)), 'emergency contraception is described as preventing, not ending, a pregnancy');
 }
 section('emergency contraception: after a real exposure, asked at once, gone when its window passes');
+// Every night together goes through the same rules: a main partner's night (romance.js hookUp) as much as another's.
+{
+  const love = await import('../js/engine/romance.js');
+  const runs = (setup) => { let preg = 0; for (let i = 0; i < 400; i++) { const p = life(); const n = partner(p); n.role = 'spouse'; p.hidden.fertility = 90; setup(); store.state.pendingEvents = []; n.flags.acts = {}; love.hookUp(n.id); if (p.flags.pregnancy) preg++; } return preg; };
+  const none = runs(() => bonds.setBirthControl(false));
+  const implant = runs(() => C.startMethod('implant', { provider: prov('implant') }));
+  check(none > 5 && implant <= 1, `a main partner's night respects contraception too (${none} with nothing, ${implant} with an implant, in 400)`);
+  const p = life(); const n = partner(p); n.role = 'spouse';
+  bonds.setBirthControl(false); C.setPlanning('not'); store.state.pendingEvents = [];
+  love.hookUp(n.id);
+  check(store.state.pendingEvents.some((e) => e.id === 'repro_ec'), 'and brings the emergency contraception decision when it should');
+}
 
 // ---------- 13. Permanent contraception: the patient's own consent ----------
 {

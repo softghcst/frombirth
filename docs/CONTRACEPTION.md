@@ -34,7 +34,8 @@ kept in the data file, versioned by year and country, and the UI only shows what
 ## How it fits the existing game
 
 - **Pregnancy remains the existing resolvers' job.** `engine/children.js surpriseChance` (a couple living together,
-  rolled once a year) and `engine/bonds.js maybeConceive` (a night together) still decide. They now ask the
+  rolled once a year), `engine/bonds.js maybeConceive` and `engine/romance.js hookUp` (a night together), and the
+  teen story in `engine/loveStories.js` (which honors a specific method, not the unspecified default) still decide. They now ask the
   contraception engine for a relative risk. The contraception engine never starts a pregnancy itself. The one
   exception is settling an emergency-contraception decision, and it settles that exposure's own roll, which was
   already drawn. It never creates a second pregnancy.
