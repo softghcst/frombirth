@@ -2,6 +2,31 @@
 // country's own mix of languages and communities. Added to the lists in countries.js and names.js (same format: names
 // separated by spaces, an underscore for a space inside one name).
 export const MORE_NAMES = {
+  fj: {
+    male: "Apisalome Sitiveni Ratu Inoke Isikeli Jone Josaia Kaliova Laisenia Manasa Mosese Naibuka Peceli Ratu_Epeli Semesa Setareki Tevita Timoci Vilikesa Waisale Akuila Alipate Eroni Iliesa Jiuta Lepani Livai Maika Netani Osea Pita Ropate Saimoni Simione Taniela Uraia Vatimi Rakesh Sanjay Pradeep Ravinesh Shiva Anil Ashwin Kamal Mohammed Salim Imran",
+    female: "Adi Akosita Alesi Asenaca Elenoa Kalesi Kelera Litiana Luisa Makereta Mereani Nanise Ofa Paulini Raijieli Salanieta Seruwaia Silika Siteri Sisilia Talei Torika Unaisi Vani Varanisese Vasiti Viniana Losana Miliakere Ateca Naomi Mele Reshmi Anita Kajal Shalini Roshni Nirmala Savita Rajni Nazia Farzana Shabnam Kavita Shirley",
+    last: "Bainimarama Rabuka Nailatikau Qarase Mara Cakobau Tora Seruvakula Volavola Nawalu Matanitobua Ratuvou Lesavua Bulikiobo Koroi Naivalu Tuinamata Vakatawa Waqanivalu Domoni Raikadroka Turaga Nadolo Baleilevuka Rokotuiloma Chaudhry Reddy Sharma Nand Lal Chand Ali Khan Hussein Deo Chandra Narayan Pillay Goundar Ram",
+  },
+  pf: {
+    male: "Teiva Tahiri Heimanu Mana Rahiti Tehau Tavita Vaitea Heirani Raihau Tematai Tuarii Moana Kahaia Taaroa Turia Tehina Teva_Mana Hotu Taimana Matahi Poema Herenui Tamatea Ariitai Tihoni Jean-Claude Pierre Jacques Michel Gaston Édouard Gilles Patrick Thierry Lucas Hugo Nathan Enzo Mathis Théo Kevin Ludovic Christophe Yves",
+    female: "Vaiana Hinatea Tumata Raimana Manuia Tehani Mahina Hinarii Ranihei Vaite Heilani Teura_Mana Tiare_Moe Mareva Hinanui Puarii Teanuanua Titaua Vaihere Nohea Hereiti Poehere Rautini Tahia Matarii Marie Sylvie Isabelle Nathalie Christine Josiane Sandrine Céline Laura Emma Chloé Léa Manon Inès Camille Jade Lina Valérie Sophie",
+    last: "Teriierooiterai Teihotaata Tetauira Teriipaia Tauraa Tefaatau Haumani Tetuanui Pambrun Tetuanui_a_Hiti Tehei Tematahotoa Tapu Tuheiava Atger Bambridge Brander Salmon Peu Taputu Teai Raoulx Lehartel Chang Chin Lai Wong Mou Tang Tchong Bonno Dauphin Leboucher Garnier Martin Bernard Dubois Moreau Lefèvre Picard Roux",
+  },
+  mv: {
+    male: "Abdul Adam Ahusan Ameen Anwar Asif Azim Fayaz Hamid Haroon Ilham Imad Ismail_Shafeeu Jaufar Khaleel Latheef Mauroof Mujthaba Musthafa Nasheed Nazim Riyaz Rilwan Saeed Shafeeu Shareef Shiyam Solih Thoriq Umar Yameen Zaki Zubair Ziyad Ihusan Ihsaan Aiman Ashraf Faisal Hussain_Ali Jameel Moosa Naeem Shuaib Waheed",
+    female: "Aisha Asma Azeema Dheena Eva Fareesha Fazna Hana Haleema Hidhaya Isha Jeehan Lamya Leena Liusha Maisha Mariyam_Shifa Nadha Nashwa Nasreena Raufa Raya Reesha Sana Shaheen Shazna Shiuna Sofoora Thasneem Thuhfa Wafa Yumna Zahira Zuhana Aminath_Leena Ruqiyya Haneefa Fazeela Saudha Nashida Ibthihal Shiyama Zaha Imna Aishath_Reesha",
+    last: "Nasheed Gayoom Solih Muizzu Yameen Shahid Hameed Saleem Waheed_Deen Didi Manik Kaleyfaanu Faiz Saeed Riyaz Latheef Zahir Rasheed Khalid Shafeeq Ibrahim_Didi Fulhu Jameel Majeed Naseer Mauroof Nazim Rilwan Thaufeeq Haleem Ahmed_Didi Mausoom Moosa Shareef Umar Zubair Fikry Adam Hilmy Shakoor",
+  },
+  mu: {
+    male: "Navin Anerood Pravind Seewoosagur Ramesh Dev Sanjeev Vishal Arvind Prakash Rajiv Nitish Ashok Vinod Kailash Jean-Claude Jean-Marie Louis Pierre Patrick Christophe Sébastien Gaëtan Olivier Fabrice Mathieu Ludovic Yannick Didier Cédric Ahmad Faizal Irfan Riaz Shafiq Yusuf Kwan Wing Liang Chong Kevin Jordan Ryan Nathan Ethan",
+    female: "Sunita Anjalie Leela Shalini Vidya Poonam Kavitha Rekha Deepa Shanti Nisha Pooja Sheela Usha Divya Marie-Claire Josiane Nathalie Isabelle Christelle Valérie Vanessa Mélanie Laetitia Stéphanie Cindy Jessica Fatima Nazia Shabana Rehana Ayesha Mei Ling Yan Lily Grace Sophie Chloé Emma Léa Zoé Ananya Priyanka",
+    last: "Jugnauth Ramgoolam Bérenger Duval Gungadin Bhadain Collendavelloo Uteem Jeetah Gayan Soodhun Seeruttun Sooroojebally Mohamed Ruhee Ah-Chuen Ah-Kong Lam_Po_Tang Leung Wong Chan Low Kow Rault Lagesse Espitalier-Noël De_Chazal Koenig Lenoir Laval Hossen Joomun Bholah Ramjaun Beegun Gopee Purmessur Baichoo Ramphul Callikan",
+  },
+  sc: {
+    male: "France-Albert James Wavel Danny Jean-Paul Joachim Philippe Ronny Roger Antoine Gerard Marcel Joseph Paul Henri Bernard_Marc Dereck Allen Sylvestre Guy Claude Raymond Robert Vincent Martin Andy Kevin Rodney Jude Darrel Glenny Dylan Ethan Liam Noah Luca Mathis Jordan Ryan Brandon Larry Terence Neddy Jeffrey",
+    female: "Anne Marie-Antoinette Sylvette Linda Brigitte Jacqueline Jeanne Rose Juliette Simone Mireille Josianne Nathalie Myriam Angelique Jessica Shania Kelly Natacha Melissa Sabrina Vanessa Laura Emma Chloé Léa Sophia Mia Zara Lucie Amelie Jade Ella Noemie Celine Charlotte Isabelle Christine Patricia Monique Gisele Danielle Marguerite Elisa Rita",
+    last: "Rene Mancham Michel Faure Ramkalawan Adam Belmont Pierre Hoareau Bonnelame Labrosse Morel Payet Esparon Savy Barbe Laporte Larue Ernesta Dogley Uranie Rose Nicette Lablache Pillay Mondon Marie Albert Simeon Dubel Agathine Jumeau Loustau-Lalanne Ferrari Delorie Camille Ah-Time Chang-Him Hoarau Monthy",
+  },
   aw: {
     male: "Jandino Rignald Glenbert Ryan Mike Eric Richard Evelino Mervin Ronald Edward Sherwin Jurgen Rudy Ricardo Raymond Gregory Jeffrey Erwin Roberto Hubert Francisco Lionel Frederick Gilbert Glenn Rendell Jeroen Sven Ruud Bas Daan Luuk Thijs Liam Noah Mateo Dylan Jayden Xavier Ethan Lucas Sebastian Adrian Damian Dennis Rudolph Benito Wilfred Henny Shurendy Andrew Anthony Elvis Nelson Michiel Hendrik Eddy Rafael Miguel",
     female: "Evelyn Daphne Sharon Tamara Glenda Jacqueline Gisela Mariela Rosalia Melissa Natasha Chantal Ingrid Linda Monique Carolina Esther Wendy Yvette Suzanne Anouk Lotte Sanne Fleur Femke Isabella Sofia Emma Mia Zoë Luna Naomi Jayla Aaliyah Nicole Stephanie Angelique Desiree Jennifer Cindy Priscilla Clarissa Gracita Rosita Juana Elvira Hilda Ana Lucia Isabel Margarita Thelma Lorraine Ellen Doreen Myrna Yolanda Kimberly Kayla Ashley",
@@ -411,5 +436,35 @@ export const MORE_NAMES = {
     male: "Haziq Hazwan Ikhwan Khairul Nazri Rashid Shahrul Syahmi Yusri Zakaria Aqil Rayyan Faris Aidil Azman Kamal Rosli Hisham Wei_Liang Chun_Kit Boon_Hock Kah_Seng Jia_Le Kumaresan Muthu Rajesh Sivakumar Ravi Prakash Ryan Daniel Kevin Nicholas Alvin Brandon",
     female: "Ain Aqilah Farhana Husna Intan Liyana Maisarah Najwa Nurin Qistina Sakinah Syafiqah Zara Rohani Zaleha Rosnah Fatimah Siew_Mei Pei_Ying Hui_Wen Jia_Yi Wei_Ying Mei_Yee Kalaivani Revathi Shanti Meena Nisha Jessica Rachel Vanessa Amanda Melissa Cheryl Shu_Ting",
     last: "Abu_Bakar Ali Ahmad Daud Hashim Ishak Jaafar Kassim Mohamad Musa Omar Salleh Sulaiman Yaacob Lau Liew Loh Yap Chin Khoo Ong Teh Chua Govindasamy Muniandy",
+  },
+  // Fiji: iTaukei and Indo-Fijian names, and the Muslim, Rotuman and part-European families.
+  fj: {
+    male: "Apisai Epeli Inoke Isikeli Jone Kaliova Kitione Lepani Maika Manasa Meli Mosese Napolioni Nemani Osea Paula Peceli Ponipate Rupeni Sailosi Semesa Sitiveni Tevita Timoci Tomasi Vilimone Waisea Akuila Asaeli Eroni Iliesa Jiuta Josaia Lemeki Leone Pio Taniela Vereniki Anand Ashok Dinesh Mahendra Pravin Ravindra Sanjay Sunil Vijay Arvind Krishna Ronil Shalendra Imran Mohammed",
+    female: "Akanisi Alesi Asenaca Ateca Elenoa Erelia Kalesi Kelera Lavenia Loata Losana Lusiana Makereta Mareta Merewalesi Miliakere Nanise Paulini Raijieli Salanieta Sereana Seruwaia Silina Sisilia Taina Torika Unaisi Vasemaca Vasiti Litiana Luisa Mereoni Sainimere Anjali Asha Kamla Lata Meena Nirmala Pushpa Radhika Reshma Shalini Shobna Usha Shazia Rachel",
+    last: "Bainimarama Rabuka Qarase Ganilau Nailatikau Seruvakula Tuisese Vunibaka Delana Ratuva Naivalu Volavola Nayacakalou Koroi Lomaloma Nawaikula Radrodro Rokovada Saukuru Tabua Tuwai Vakarau Vatubua Waqanivalu Bulitavu Chaudhry Reddy Sharma Lal Chand Khan Ali Deo Sami Nand Patel Goundar Maharaj Ram Chandra Whippy Simpson Fatiaki Rigamoto",
+  },
+  // French Polynesia: Tahitian and Marquesan names, French names, and the Chinese-Polynesian families.
+  pf: {
+    male: "Teiva Tehina Tamatea Teraimana Vaiarii Tihoti Raitini Moerani Teaki Tahiarii Mihimana Rauarii Tuarii Taiarii Heimata Tamahau Taaroa Toa Tavana Matahi Ariitea Ariinui Tunui Raimana Heimana Rahiti Tepua Manutea Heiarii Jean Pierre Michel Patrick Jacques Gaston Édouard Bruno Thierry Lucien Marcel Gérard Henri Stéphane Laurent Frédéric Nicolas Julien Steeve Teddy Rémi Hugo Nathan Enzo Mathis",
+    female: "Vaea Tehani Hina Titaua Maima Mareva Vaitiare Hinatea Tumata Rava Hereiti Teumere Maimiti Poema Heimiti Vaihere Mahana Tevahine Raiatea Tahia Heipua Moeata Vaimana Marie Josiane Thérèse Yolande Annie Chantal Sandrine Valérie Nathalie Sophie Isabelle Céline Émilie Laura Manon Chloé Léa Camille Jade Inès Océane Lucie Anaïs Juliette Mélanie Yvette",
+    last: "Flosse Fritch Brotherson Tong_Sang Teriitehau Tumahai Teariki Tuheiava Tapati Teihotaata Teuira Teriierooiterai Raapoto Paeamara Bouissou Buillard Sandras Chin_Foo Lau Lehartel Vernaudon Peu Taputu Tehei Taputuarai Mahinui Tehiva Tefaatau Pomare Salmon Brander Bambridge Drollet Atger Maraetaata Puputauki Teriiteanuanua Lecerf Vanizette Richmond Hart Wan Tumarae Kautai",
+  },
+  // Maldives: Dhivehi forms of Arabic and older island names; family names are few, and often a father's name.
+  mv: {
+    male: "Moosa Yoosuf Adam Hamid Saeed Shiyam Shahid Shareef Nasheed Riyaz Ilham Fayaz Imran Mujthaba Mauroof Nasir Zahir Ziyad Hamza Yameen Solih Fazeel Shujau Faisal Ashraf Thoriq Asim Azim Habeeb Latheef Rauf Zaid Ayaan Ayman Rayyan Aiman Shifan Shaheem Shamaal Haisham Ishaq Ilyas Umar Uthman Easa Haroon Suood Amir Inaz Ahusan",
+    female: "Zulaikha Asiya Mausooma Shifaza Sana Shiuna Nashida Hudha Ruqiyya Habeeba Sajida Sofiyya Raheema Saeeda Zubeidha Nazima Laila Liusha Shazna Thasneem Thahumeena Fazeela Shareefa Nasreena Muna Raufa Lubna Sameera Nadhiya Haleema Noora Zeenath Shaheena Mufeeda Iruthisham Nasha Dheena Leesha Shahula Zaha Inaya Hana Amira Raya Miha Yumna Zahra Safa",
+    last: "Moosa Adam Ali Ismail Saeed Yoosuf Abdulla Shakoor Gasim Nasheed Gayoom Solih Yameen Riyaz Jameel Shahid Haleem Zahir Ihusan Zuhair Thoriq Latheef Mauroof Hameed Naeem Fikry Shiham Shifaz Rauf Faiz Hashim Inaz Zameer Mansoor Fahmy Ashraf Habeeb Kaleem Nasir Jaleel Haneef Fareed Umar",
+  },
+  // Mauritius: Indo-Mauritian (Hindu and Muslim), Creole, Franco-Mauritian and Sino-Mauritian names.
+  mu: {
+    male: "Navin Pravind Anerood Sanjay Anil Rajiv Vikram Deepak Ashok Kailash Satish Dharmesh Nitin Rakesh Sunil Mahen Bhanu Vishnu Arvin Kavish Yudhish Nikhil Ishaan Aryan Reeyaz Imran Shafiq Nazir Ameen Faizal Irfan Paul Xavier Claude Pierre Michel Louis Gérard Bernard Jacques Jérôme Christophe Olivier Ludovic Kersley Wesley Clifford Fabrice Didier Thierry Mathieu Lucas Noah Wei",
+    female: "Leela Devi Sheila Savita Reena Pooja Neha Divya Anisha Shreya Kavisha Varsha Lakshmi Indira Nisha Ruksana Nazia Fatima Aisha Shabnam Yasmine Ameenah Shirin Josiane Mireille Nathalie Valérie Sandrine Stéphanie Corinne Danielle Géraldine Brigitte Isabelle Chantal Natacha Laetitia Mélanie Chloé Léa Manon Océane Meiling Mei Jessica Vanessa Cindy",
+    last: "Jugnauth Bérenger Duval Boolell Gungah Jhugroo Bhadain Uteem Collendavelloo Ganoo Soodhun Gokhool Hurreeram Mohamed Peerbocus Joomun Jeewa Dulthummon Wong Chan Lam Leung Ng Koenig Lagesse Espitalier Rivalland Desvaux Lebreton Labonne Ramful Ramsamy Moorghen Veerapen Appadu Bundhoo Daby Gopee Hossen Jahangeer Khodabux Mungur Persand Rughoo Sewraj Tirvengadum Chellen",
+  },
+  // Seychelles: Creole and French names above all, with English ones and Indian and Chinese families.
+  sc: {
+    male: "Albert Joel Michel Gervais Antoine Alain Roger Georges Christopher Kevin Gerard Allan Derrick Ronny Barry Jeffrey Nigel Vincent Jacques Maurice Paul Louis Francis Dominique Joseph Philippe André Bertrand Clifford Egbert Gilbert Jude Ivan Steve Wilfred Raj Sebastien Ryan Dylan Lucas Nathan Ethan Liam Noah Jayden Kyle Shane France",
+    female: "Sylvia Bernadette Jeanne Josette Rose Rosemary Daniella Sheryl Danielle Brigitte Simone Juliette Nadine Monique Mariette Lise Vivienne Jacqueline Sabrina Melissa Vanessa Stephanie Chantal Veronique Sandra Michelle Stella Anna Nathalie Caroline Doris Myriam Gina Gillian Wendy Tessa Kelly Kimberley Shannon Lisa Amelie Emma Chloe Zoe Mia Ashley Shania",
+    last: "Mancham René Faure Ramkalawan Afif Adam Belmont Bonnelame Ernesta Gappy Gill Lablache Lalanne Larue Loizeau Marie Mondon Nageon Parcou Pierre Quatre Rassool Rose Sinon Souffe Vidot Volcere Arissol Barallon Camille Confait Dubel Hermitte Jumeau Labiche Lesperance Louise Madeleine Nourrice Servina Uzice Antat Boniface Dine Dogley",
   },
 };
