@@ -15,8 +15,20 @@ import { agency, staffer } from './agencies.js';
 import { budgetOf } from './policing.js';
 
 const nm = (id) => nameOfId(id);
-const UNION_NAME = { us: (a) => `${a.city} Police Officers' Association`, uk: () => 'the Police Federation', ca: (a) => `${a.city} Police Association`, au: () => 'the Police Association' };
-export const NO_STRIKE = 'Police may not strike here (a simplified rule): the strongest action open to the union is working to rule.';
+const UNION_NAME = { us: (a) => `${a.city} Police Officers' Association`, uk: () => 'the Police Federation', ca: (a) => `${a.city} Police Association`, au: () => 'the Police Association',
+  de: () => 'the Gewerkschaft der Polizei', fr: () => 'Alliance Police nationale', jp: () => 'the officers\' mutual association', it: () => 'the SIULP police union', es: () => 'the JUPOL police union', br: (a) => `the civil police union of ${a.city}`, in: () => 'the police welfare association', mx: () => 'the police mutual association', kr: () => 'the police workplace council' };
+/** What a union may do, by country (simplified rules, unverified). Nowhere modeled may police strike. */
+const STRIKE_NOTE = {
+  default: 'Police may not strike here (a simplified rule): the strongest action open to the union is working to rule.',
+  uk: 'Police officers may not strike by law, and may not join a trade union; the Police Federation speaks for them instead.',
+  de: 'Police are civil servants (Beamte) and may not strike; the union bargains and campaigns instead.',
+  in: 'Police may not form trade unions; welfare associations speak for officers instead.',
+  jp: 'Police may not form unions or strike in Japan; a mutual association looks after officers.',
+  br: 'Police strikes are unlawful; some have happened all the same, and the courts have ruled against them.',
+  kr: 'Police may not form unions; a workplace council represents officers.',
+};
+export const strikeNote = (countryId) => STRIKE_NOTE[countryId] ?? STRIKE_NOTE.default;
+export const NO_STRIKE = STRIKE_NOTE.default;
 
 /** A department's union, made once and kept: its name, its representative, its contract. */
 export function unionOf(a) {

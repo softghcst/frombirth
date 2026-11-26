@@ -647,6 +647,18 @@ export function jobEnded(p, r, why) {
   const u = r.job.agencyId && agency(r.job.agencyId)?.units?.[r.job.specialty];
   if (u) u.memberIds = u.memberIds.filter((id) => id !== me());
   r.past = [...(r.past ?? []), { ...r.job, until: year(), why }];
+  // Open cases do not leave with the investigator: each passes to a colleague, with the file as it is (serial.js).
+  for (const id of r.caseIds) {
+    const inv = store.state.justice?.investigations?.[id];
+    const f = inv?.file;
+    if (!f || f.outcome || f.leadId !== me()) continue;
+    const next = (r.people.partnerId && npc(r.people.partnerId)?.alive ? r.people.partnerId : null) ?? (u?.memberIds ?? []).find((x) => x !== me() && npc(x)?.alive) ?? null;
+    if (!next) continue;
+    f.handoff = [...(f.handoff ?? []), { from: me(), to: next, at: now(), why }];
+    f.leadId = next;
+    inv.investigatorIds = [next, ...inv.investigatorIds.filter((x) => x !== next)];
+    f.log.push({ at: now(), text: `${p.firstName} ${p.lastName} ${why === 'retired' ? 'retired' : 'left'}; the case passed to ${name(next)}, with everything in the file.` });
+  }
   if (r.people.partnerId) r.people.formerPartnerIds.push(r.people.partnerId);
   r.people.partnerId = null;
   r.job = null;

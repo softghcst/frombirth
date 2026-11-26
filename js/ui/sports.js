@@ -628,7 +628,7 @@ function show() {
       <button class="icon-btn" data-x aria-label="Close">✕</button></div>
     ${s.tabs ? `<div class="zoo-tabs" role="tablist">${s.tabs.map(([id, t]) => `<button role="tab" aria-selected="${id === s.tab}" class="${id === s.tab ? 'on' : ''}" data-set="tab:${id}">${esc(t)}</button>`).join('')}</div>` : ''}
     <div class="dyn-body" data-body>${s.body}</div>
-    <div class="btn-stack zoo-foot"><button class="btn" data-back>${esc(backText(nav.under()))}</button></div>`, { dismissable: true, onDismiss: () => { modal = null; nav.clear(); } });
+    <div class="btn-stack zoo-foot"><button class="btn" data-back>${esc(backText(nav.under()))}</button></div>`, { dismissable: true, full: true, onDismiss: () => { modal = null; nav.clear(); } });
   modal.el.classList.add('dyn-modal', 'zoo-modal', 'sport-modal');
   modal.el.dataset.screen = step.screen;
   modal.el.addEventListener('click', onClick);

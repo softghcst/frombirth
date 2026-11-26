@@ -60,6 +60,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     store.notify();
   });
   await page.click('.tab-btn[data-tab="work"]'); await page.waitForTimeout(200);
+  // My Legal Career is on the Work tab's Special Careers screen.
+  if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
   const rowBtn = page.locator('[data-act="law"]');
   check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
   await rowBtn.click(); await hub().waitFor();
@@ -165,15 +167,15 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     await m.locator('.choice-btn').nth(Math.max(0, ph.values.indexOf(ph.want))).click(); await page.waitForTimeout(60);
   }
   // The verdict is read out a line at a time: wait for it, rather than reading the page while it is still being said.
-  await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court|mistrial|dropped the case|dismissed/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
   const verdict = await page.locator('#modal-root .modal').last().innerText();
-  check(/Guilty|Not guilty|Judgment|Approved|Denied|court|mistrial|dropped the case|dismissed/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
+  check(/Guilty|Not guilty|Judgment|Approved|Denied|court/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
   check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
   await hub().getByText(/Outcome/).first().waitFor({ timeout: 10000 }).catch(() => {}); // the case page redraws after the verdict, however busy the machine
   check(/Outcome|retrial|Retrial|mistrial/i.test(await hub().innerText()), `${label}: the case shows its outcome (or, after a hung jury, the retrial to come)`);
-  await page.locator('#modal-root .scrim:has(.law-hub) .modal-back').click(); // the bar's Back steps out of the case to All Cases
+  await page.locator('#modal-root .modal:has(.law-hub) .modal-back').click(); // the bar's Back steps back a level
   await hub().locator('[data-tab="history"]').click();
   check(/Admitted to practice/i.test(await hub().innerText()) && /Completed cases/i.test(await hub().innerText()), `${label}: the history has the admission and the case`);
   // The Family Archive keeps the legal career.

@@ -12,7 +12,7 @@ import * as sch from '../../engine/schooling.js';
 import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
-import { politicsCard, politicsAction } from '../politics.js';
+import { politicsAction } from '../politics.js';
 import { openAthletics } from '../sports.js';
 import * as special from '../../engine/specialCareer.js';
 import * as fameEng from '../../engine/fame.js';
@@ -25,7 +25,7 @@ import { roleLabel } from '../../engine/relationships.js';
 import { PROGRAMS, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIORITY_BY_ID } from '../../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
-import { messageModal, pickModal, confirmModal } from '../modals.js';
+import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
 import { navRow, icon, lockedRow, fromAge } from '../kit.js';
 import { workLaw } from '../../engine/worklife.js';
@@ -390,7 +390,7 @@ const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family:
 /** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
 const FIND = new Set(['hub', 'findwork', 'gigs']);
 /** The careers with worlds of their own: fame, idols, sport, politics. */
-const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations']); // (these have lists of their own, below)
+const SPECIAL = new Set(['myfame', 'myidol', 'fame', 'investigations', 'medicine']); // (these are on the Special Careers screen)
 const has = (list, id) => list.find(([x]) => x === id);
 const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
 
@@ -408,10 +408,6 @@ function findWork(p, list) {
   const mil = military.joinOptions();
   rows.push(military.serving() || mil.some((o) => !o.why) ? navRow({ attrs: 'data-act="military"', label: 'Military', sub: military.serving() ? `${p.career.title}, ${military.serving().branch}` : '' })
     : lockedRow('Military', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 18) || mil[0].why));
-  // Law: school, the bar and practice in one place (ui/lawCareer.js), for anyone with a first degree or more.
-  if (showLawRow(p)) rows.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
-  // Law enforcement and investigations: police, detectives, federal agents, private investigators (ui/investigations.js).
-  rows.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
   if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
   return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
 }
@@ -447,13 +443,19 @@ function specialCareers(p, list) {
     return navRow({ attrs: `data-act="sc:${c.id}"`, label: c.name, sub: now === c.id ? 'Your career' : c.blurb, ico: c.ico, tone: now === c.id ? 'peach' : '' });
   });
   const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';
-  const politics = !now || now === 'politics' ? politicsCard() : '';
+  // Careers with a page of their own that are not one-at-a-time special careers: the law, law enforcement, medicine.
+  const own = [];
+  own.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
+  if (showLawRow(p)) own.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
+  const m = p.medicine;
+  const medStudy = !m?.training && !m?.job && !(m?.completed ?? []).length;
+  if (has(list, 'medicine') && !medStudy) own.push(navRow({ attrs: 'data-act="medicine"', label: 'My Medical Career', sub: 'Training, posts, patients and cases', ico: 'book' }));
   return `<div class="card"><h3>Special careers</h3>
     <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career. You can follow one at a time.'}</p>
-    <div class="nav-group">${rows.join('')}${useFame}</div></div>
-    ${politics ? `<div id="politics-card">${politics}</div>` : ''}`;
+    <div class="nav-group">${rows.join('')}${useFame}</div>
+    <div class="section-label">Professions with their own training and ranks</div>
+    <div class="nav-group">${own.join('')}</div></div>`;
 }
-
 /** Opposite choices, shown side by side: Study harder | Slack off. */
 const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
 /** Leaving: restrained, set apart, and confirmed where the game already asks. */
@@ -535,12 +537,13 @@ export default {
       if (pol) return politicsAction(pol, api);
       const id = ev.target.closest('[data-act]')?.dataset.act;
       if (!id) return;
-      ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
+      handlers(api)[id]?.();
+    };
+    function handlers(api) { return ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         clique: () => chooseClique(api), housing: () => changeHousing(api), military: () => openMilitary(api), law: () => openLawCareer({ changed: () => api.changed(), openNpc: async (n) => { const { openNpc } = await import('./people.js'); openNpc(n, { changed: () => api.changed() }); } }),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
-        findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
-    };
+        findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) }); }
   },
 };
