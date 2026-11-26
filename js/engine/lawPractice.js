@@ -19,7 +19,7 @@ import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } fro
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
-import { employer as employerOf } from './employers.js';
+import { employer as employerOf, placeAt } from './employers.js';
 import { duel } from './elections.js';
 import * as world from './polity.js';
 import { VOTERS } from '../data/parties.js';
@@ -620,6 +620,11 @@ export function tickLaw(o = {}) {
   const admittedNow = progressBar(p); // practical training ends, and admission follows (engine/lawSchool.js)
   if (admittedNow) log(admittedNow.text, 'system', 'good');
   cases.progressCases(p);
+  // A public lawyer works for the public office (older saves had some at private firms).
+  if (['prosecutor', 'defender', 'gov_counsel', 'judiciary'].includes(p.career?.careerId) && !employerOf(p.career.employerId)?.public) {
+    const office = placeAt(p.career.careerId, p.countryId, p.city);
+    if (office?.public) p.career.employerId = office.id;
+  }
   if (trackOf(p)) refreshOpportunities(p);
   storyBeats(p);
   firmYear(p);

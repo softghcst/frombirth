@@ -88,9 +88,10 @@ function education() {
   if (S?.done || ls.hasLawDegree(p)) {
     const b = ls.barStatus(p);
     const att = L.bar.attempts;
-    parts.push(card(`The ${ls.barExamName(p)}`, `${kv('Status', b.stage === 'admitted' ? 'Admitted' : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
+    const adm = L.bar.admitted;
+    parts.push(card(`The ${ls.barExamName(p)}`, `${kv('Status', b.stage === 'admitted' ? (adm?.year && !adm.legacy ? `Admitted in ${adm.year}` : 'Admitted') : b.text)}${att.length ? kv('Attempts', att.map((a) => `${a.year}: ${a.passed ? 'passed' : 'not passed'}`).join('; ')) : ''}
       ${b.stage === 'admitted' || b.stage === 'training' ? '' : `<div class="btn-stack">${!b.prepared ? `${btn('Take a Bar Course', 'data-law="prepCourse"')}${btn('Study on Your Own', 'data-law="prepSelf"')}` : ''}${b.stage === 'open' ? btn(`Sit the ${prof.exam}`, 'data-law="bar"', 'primary') : ''}</div>`}
-      <p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`));
+      ${b.stage === 'admitted' ? '' : `<p class="muted">Then the ${esc(prof.fitness)}, and ${esc(prof.admission)}.</p>`}`));
   }
   const rl = ls.canReadLaw(p);
   if (!rl || p.law?.readLaw) parts.push(card('Reading the law', p.law?.readLaw ? kv('Status', p.law.readLaw.done ? 'Done: you may be examined for the bar' : `In ${nameOf(p.law.readLaw.mentorId)}'s office, ${Math.max(0, p.law.readLaw.until - ls.nowM())} months to go`)

@@ -374,4 +374,20 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   store.state.year = 2026;
 }
 
+// Public lawyers work for public offices, not private firms; job posts for them are the office's.
+{
+  const { employer, jobs, cityEmployers } = await import('../js/engine/employers.js');
+  for (const [id, re] of [['prosecutor', /District Attorney's Office$/], ['defender', /Public Defender's Office$/], ['judiciary', /Superior Court$/]]) {
+    lawyer(id);
+    turn();
+    const e = employer(p().career.employerId);
+    check(e?.public && re.test(e.name), `a ${id} works for ${e?.name}`);
+  }
+  lawyer('lawyer');
+  check(!employer(p().career.employerId)?.public, 'a lawyer in private practice works for a firm');
+  for (const c of ['Chicago', 'New York', 'Houston', 'Los Angeles']) cityEmployers('us', c);
+  const posts = Object.values(jobs().postings).filter((x) => ['prosecutor', 'defender'].includes(x.careerId));
+  check(posts.length > 0 && posts.every((x) => employer(x.employerId)?.public), `posts for prosecutors and public defenders are the public offices' (${posts.length})`);
+}
+
 finish('A legal career holds together.');

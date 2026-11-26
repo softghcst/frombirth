@@ -24,7 +24,7 @@ import { store, player } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
 import { FAMILY_BY_ID } from '../data/occupations.js';
-import { NAME_PATTERNS, WORDS, SIZES, CULTURES, CITY_FOCUS, FAMILY_BASE, EVERYWHERE } from '../data/employers.js';
+import { NAME_PATTERNS, WORDS, SIZES, CULTURES, CITY_FOCUS, FAMILY_BASE, EVERYWHERE, publicOfficeName } from '../data/employers.js';
 import { cityOf } from './cities.js';
 import { phase } from './economy.js';
 
@@ -148,7 +148,7 @@ function connected(e) {
 }
 
 /** Every employer that exists in a country (only cities that have been looked at). */
-export const countryEmployers = (countryId) => Object.values(jobs().employers).filter((e) => e.countryId === countryId && !e.closed);
+export const countryEmployers = (countryId) => Object.values(jobs().employers).filter((e) => e.countryId === countryId && !e.closed && !e.public);
 
 /** What a level pays at an employer, in the local currency, for a year at full time. */
 export function payAt(e, career, level) {
@@ -163,6 +163,22 @@ function pickLevel(r, career) {
   const roll = r.next();
   const lv = roll < 0.5 ? 0 : roll < 0.78 ? 1 : roll < 0.93 ? 2 : roll < 0.985 ? 3 : 4;
   return Math.min(top, lv);
+}
+
+/**
+ * A city's public legal office for a job (the prosecutor's office, the public defender's, the court), or null for any
+ * other job. Kept apart from the city's list of firms, with an id of its own, so it changes nothing about them.
+ */
+export function publicOffice(careerId, countryId, city) {
+  const name = publicOfficeName(careerId, countryId, city);
+  if (!name) return null;
+  const id = `emp_pub_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+  const J = jobs();
+  if (!J.employers[id]) J.employers[id] = { id, name, family: CAREER_BY_ID[careerId]?.family ?? 'law', tracks: [], countryId, city, size: 'large', culture: 'supportive', payK: 1, health: 70, remote: false,
+    founded: (store.state?.year ?? 2000) - 90, closed: null, staff: [], history: [], owned: false, public: true };
+  const e = J.employers[id];
+  if (!e.tracks.includes(careerId)) e.tracks.push(careerId);
+  return e;
 }
 
 /**
@@ -182,6 +198,8 @@ export function openPosting(e, o = {}) {
   const pay = partTime ? full.map((x) => Math.round(x * hours / career.hours)) : full;
   const posted = (store.state?.year ?? 0) - (o.age ?? 0);
   const id = nextId('job');
+  // A prosecutor's or public defender's post is advertised by the public office, never by a private firm.
+  if (!e.public) { const office = publicOffice(career.id, e.countryId, e.city); if (office) e = office; }
   const post = {
     id, employerId: e.id, careerId: career.id, level, title: career.levels[level].title, countryId: e.countryId, city: e.city,
     pay, hours, partTime, remote: e.remote && career.remote !== 'none' ? career.remote : 'none',
@@ -247,6 +265,9 @@ export const describe = (e) => `${FAMILY_BY_ID[e.family]?.name ?? 'Business'} ·
 export function placeAt(careerId, countryId, city) {
   const career = CAREER_BY_ID[careerId];
   const list = cityEmployers(countryId, city);
+  // A public office: the one office of its kind in the city, not a private firm.
+  const office = publicOffice(careerId, countryId, city);
+  if (office) return office;
   const fits = list.filter((e) => e.tracks.includes(careerId));
   if (fits.length) return rng.pick(fits);
   const same = list.filter((e) => e.family === career.family);
@@ -278,7 +299,7 @@ export function tickEmployers() {
   // Lighten the records of employers nobody is connected to.
   for (const e of Object.values(J.employers)) if (!connected(e) && e.history.length > 3) e.history = e.history.slice(-3);
   for (const e of Object.values(J.employers)) {
-    if (e.closed || e.owned || e.sportClub) continue; // a business the player owns is run by engine/business.js; a sports club by engine/sportsLife.js
+    if (e.closed || e.owned || e.sportClub || e.public) continue; // a public office has no market year; a business the player owns is run by engine/business.js; a sports club by engine/sportsLife.js
     const local = e.countryId === p.countryId ? ph : { hiring: 0, layoff: 0.03 };
     const detailed = connected(e);
     const live = (J.seen[`${e.countryId}/${e.city}`] ?? -99) >= now - 1 || detailed; // markets being watched
