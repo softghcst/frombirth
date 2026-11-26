@@ -503,10 +503,23 @@ export function postcardFront(art, title, hex, countryId = null) {
   const photo = [countryId, { 'the Seychelles': 'beach', 'the Maldives': 'beach' }[art] ?? art].find((k) => k && POSTCARD_PHOTOS.has(k));
   const draw = photo ? () => `<image href="./assets/postcards/${photo}.webp" width="300" height="200" preserveAspectRatio="xMidYMid slice"/>` : POSTCARDS[art] ?? POSTCARDS.city;
   const name = String(title).replace(/^the /, 'The ');
-  const big = name.length > 16 ? 22 : name.length > 11 ? 26 : 32;
-  return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
-    <text x="20" y="36" font-family="'Great Vibes', cursive" font-size="22" fill="#FFFFFF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke">Greetings from</text>
-    <text x="16" y="${40 + big}" font-family="Pacifico, 'Great Vibes', cursive" font-size="${big}" fill="${hex}" stroke="#23140f" stroke-width="4.5" stroke-linejoin="round" paint-order="stroke">${name.replace(/&/g, '&amp;')}</text>
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // The classic "large letter" postcard: the place's name in big block letters, each filled with the scene itself,
+  // edged in white and standing out on a dark extruded side; "Greetings" in red script above, "from" in a fine hand.
+  // Alfa Slab One runs about 0.86 of its size a letter: the name fills the card's width, never past it.
+  const fit = Math.min(60, 262 / (name.length * 0.86));
+  const wide = ` textLength="${n1(Math.min(262, name.length * fit * 0.86))}" lengthAdjust="spacingAndGlyphs"`;
+  const y = 132;
+  const word = (extra) => `<text x="150" y="${y}" text-anchor="middle" font-family="'Alfa Slab One', 'Arial Black', sans-serif" font-size="${n1(fit)}"${wide} ${extra}>${esc(name.toUpperCase())}</text>`;
+  const depth = Array.from({ length: 6 }, (_, i) => `<g transform="translate(${n1((i + 1) * 0.8)} ${n1((i + 1) * 0.8)})">${word('fill="#1E2A50"')}</g>`).join('');
+  return `<svg viewBox="0 0 300 200" aria-hidden="true">
+    <defs><pattern id="pc-fill" patternUnits="userSpaceOnUse" width="300" height="200"><g transform="translate(150 ${y - fit * 0.35}) scale(1.35) translate(-150 -100)">${draw(`${id}f`, hex)}</g>
+      <rect width="300" height="200" fill="#FFFFFF" opacity=".08"/></pattern>
+      <filter id="pc-sh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="1.5" dy="2" stdDeviation="1.4" flood-color="#14182E" flood-opacity=".6"/></filter></defs>
+    ${draw(id, hex)}
+    <g filter="url(#pc-sh)">${depth}${word('fill="url(#pc-fill)" stroke="#FFFFFF" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"')}${word('fill="none" stroke="#1E2A50" stroke-width=".6"')}</g>
+    <g filter="url(#pc-sh)"><text x="18" y="42" font-family="Lobster, Pacifico, cursive" font-size="30" fill="#E8413A" stroke="#FFFFFF" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke">Greetings</text>
+      <text x="58" y="${y - fit * 0.82 - 4}" font-family="'Great Vibes', cursive" font-size="22" fill="#FFFFFF" stroke="#1E2A50" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke">from</text></g>
     <g transform="translate(256 10) rotate(6)"><rect width="34" height="40" fill="${hex}" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="3 2"/><rect width="34" height="40" fill="none" stroke="#23140f" stroke-width="1"/><path d="M17 27 c-9 -6 -10 -12 -6 -15 c3 -2 6 0 6 3 c0 -3 3 -5 6 -3 c4 3 3 9 -6 15z" fill="#FFFFFF"/></g>
     <g fill="none" stroke="#23140f" stroke-width="1" opacity=".35"><circle cx="246" cy="44" r="14"/><path d="M228 50 q8 -4 16 0 t16 0 t16 0 M228 56 q8 -4 16 0 t16 0 t16 0"/></g></svg>`;
 }
