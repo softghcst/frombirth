@@ -161,7 +161,8 @@ function taskForces(p, r) {
     if (!f || f.taskForceId || f.outcome || !['robbery', 'fraud', 'cyber'].includes(f.template)) continue;
     if (!seeded(`${inv.id}/tf`).chance(0.3)) continue;
     const res = formTaskForce(inv.id, f.template === 'robbery' ? 'fbi' : 'fbi');
-    if (res.ok) { log(res.text, 'system', 'neutral'); if (!r.scenes[`tf:${inv.id}`]) { r.scenes[`tf:${inv.id}`] = year(); store.state.pendingEvents.push({ id: 'inv_task_force', cast: { words: { case: f.title } } }); } }
+    if (res.ok) { log(res.text, 'system', 'neutral'); const lastTf = Math.max(0, ...Object.entries(r.scenes).filter(([key2]) => key2.startsWith('tf:')).map(([, y]) => y));
+      if (!r.scenes[`tf:${inv.id}`] && year() - lastTf >= 4) { r.scenes[`tf:${inv.id}`] = year(); store.state.pendingEvents.push({ id: 'inv_task_force', cast: { words: { case: f.title } } }); } }
     break;
   }
 }

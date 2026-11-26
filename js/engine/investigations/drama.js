@@ -59,7 +59,9 @@ export function dramaYear(p = player()) {
     const changed = Object.values(f.witnesses).find((x) => x.statements.some((s) => s.q === 'inconsistency') && f.clues.some((c) => c.sourceId === x.id && !c.accurate));
     if (changed && queue(r, 'inv_witness_changes', { ...w, witness: nm(changed.id) }, `changes:${inv.id}`)) continue;
     if (!f.outcome && !f.report && now() > f.due && queue(r, 'inv_report_due', w, `due:${inv.id}`)) continue;
-    if (f.outcome && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
+    // A closed case is a moment for the first few, and for the serious ones; after that it is routine.
+    const closedBefore = Object.keys(r.scenes).filter((x) => x.startsWith('closed:')).length;
+    if (f.outcome && (closedBefore < 3 || ['homicide', 'missing', 'collision'].includes(f.template)) && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
     if (caseStatus(inv) === 'cold' && queue(r, 'inv_cold', w, `cold:${inv.id}`)) continue;
     if (f.courtCaseId && !f.outcome && queue(r, 'inv_reporter', { ...w, reporter: nm(reporterFor(inv)) }, `press:${inv.id}`)) continue;
     if (['homicide', 'missing'].includes(f.template) && !f.outcome && year() > Math.floor(f.opened / 12) && queue(r, 'inv_family_answers', w, `family:${inv.id}`)) continue;

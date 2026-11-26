@@ -1624,6 +1624,24 @@ section('police in Germany, India, Brazil, Mexico, South Korea, Italy and Spain,
 }
 section('the academy ends on its own date: graduation and field training the same on quarterly and yearly turns');
 
+// ---------- 37. Playtest fixes ----------
+{
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const wid = Object.keys(inv.file.witnesses)[0];
+  for (const q of ['observed', 'timeline', 'uncertainty', 'more', 'inconsistency']) W.act(inv.id, `interview:${wid}`, { question: q });
+  check(!W.steps(inv).some((s) => s.id === `interview:${wid}`), 'once the proper questions are asked, the interview is done: pressing is never what is left to do');
+  check(!inv.evidenceIds.some((id) => k.J().evidence[id]?.tainted), 'and nothing was pressed out of anyone');
+  const used = new Set();
+  for (let i = 0; i < 4; i++) { const f = W.openCase('fraud', { ownerId: a.id, truth: 'insider' }); if (f.file.employerId) used.add(f.file.employerId); }
+  check(used.size >= 3, `fraud cases spread across the city's companies (${used.size} of 4)`);
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city');
+
 for (const line of ok) console.log(`ok   ${line}`);
 
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
