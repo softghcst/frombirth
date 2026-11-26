@@ -505,16 +505,16 @@ export function postcardFront(art, title, hex, countryId = null) {
   const name = String(title).replace(/^the /, 'The ');
   const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   // The classic "large letter" postcard, in the top-left corner: "Greetings" in red edged in white, "from" in a fine
-  // hand beneath, and the place's name in block letters filled with a bright close-up of the scene, edged in white on
-  // a dark extruded side.
+  // hand beneath, and the place's name in block letters in the couple's color, lit from above, edged in cream on a
+  // dark extruded side.
   const fit = Math.min(38, 236 / (name.length * 0.86));
   const len = Math.min(236, name.length * fit * 0.86);
   const x = 16; const y = 64 + fit * 0.82;
   const word = (extra) => `<text x="${x}" y="${n1(y)}" font-family="'Alfa Slab One', 'Arial Black', sans-serif" font-size="${n1(fit)}" textLength="${n1(len)}" lengthAdjust="spacingAndGlyphs" ${extra}>${esc(name.toUpperCase())}</text>`;
   const depth = Array.from({ length: 5 }, (_, i) => `<g transform="translate(${n1((i + 1) * 0.7)} ${n1((i + 1) * 0.7)})">${word('fill="#1E2A50"')}</g>`).join('');
   return `<svg viewBox="0 0 300 200" aria-hidden="true">
-    <defs><filter id="pc-pop"><feColorMatrix type="saturate" values="1.7"/><feComponentTransfer><feFuncR type="linear" slope="1.12"/><feFuncG type="linear" slope="1.12"/><feFuncB type="linear" slope="1.12"/></feComponentTransfer></filter>
-      <pattern id="pc-fill" patternUnits="userSpaceOnUse" width="300" height="200"><g filter="url(#pc-pop)" transform="translate(${n1(x + len / 2)} ${n1(y - fit * 0.4)}) scale(1.8) translate(-150 -100)">${draw(`${id}f`, hex)}</g></pattern>
+    <defs>
+      <linearGradient id="pc-fill" x1="0" y1="${n1(y - fit * 0.8)}" x2="0" y2="${n1(y)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".35" stop-color="${hex}"/><stop offset="1" stop-color="${hex}"/></linearGradient>
       <filter id="pc-sh" x="-10%" y="-20%" width="130%" height="160%"><feDropShadow dx="1.2" dy="1.6" stdDeviation="1.2" flood-color="#14182E" flood-opacity=".55"/></filter></defs>
     ${draw(id, hex)}
     <g filter="url(#pc-sh)">
