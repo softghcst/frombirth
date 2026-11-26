@@ -230,6 +230,50 @@ export function profile(state = store.state) {
 }
 
 /** How good someone is at a sport overall, 0–100: their skills (weighted by position), and their body and head on the day. */
+// ---------- The record: what scouts, drafts and clubs go by ----------
+//
+// A player is judged on what they have done, not only on what they could do: the years they have played the sport
+// competitively (for a school, a club, an academy, a university, their country or a professional club; playing for
+// fun does not count), the seasons in college, the titles and awards. Someone who has never played it competitively
+// almost never turns professional, however gifted.
+
+const COMPETITIVE = ['school', 'club', 'academy', 'college', 'elite', 'pro'];
+/** Years the sport has been played competitively. */
+export function competitiveYears(e, state = store.state) {
+  if (!e) return 0;
+  const legacy = e.legacySeasons ?? 0;
+  const h = [...(e.history ?? [])].sort((x, y) => x.year - y.year);
+  if (!h.length) return (COMPETITIVE.includes(e.level) ? e.seasonsPlayed ?? 0 : 0) + legacy;
+  const years = new Set();
+  h.forEach((x, i) => {
+    if (!COMPETITIVE.includes(x.level)) return;
+    const next = h[i + 1]?.year;
+    const end = next != null ? Math.max(x.year, next - 1) : e.status === 'active' ? state.year : e.retiredYear ?? x.year;
+    for (let y = x.year; y <= end; y++) years.add(y);
+  });
+  if (e.schoolTeamId) years.add(state.year); // a club player who also plays for the school
+  return Math.min(years.size, (e.seasonsPlayed ?? 0) + 1) + legacy;
+}
+/** The chance a club, a tour or a job takes a player on, against their record: about one in a hundred with none. */
+export const recordOdds = (years) => (years >= 2 ? 1 : years === 1 ? 0.3 : 0.01);
+/**
+ * The record, as scouts weigh it: years played, college seasons, titles, awards, and the pro scouts who came to watch.
+ * Roughly −15 for someone who has never played competitively, 0 for an ordinary two years, up to about +12.
+ */
+export function recordScore(e, state = store.state) {
+  const years = competitiveYears(e, state);
+  if (years === 0) return -15;
+  const college = Math.min(4, e.college?.played?.length ?? 0) * 1.2;
+  const titles = Math.min(3, e.titles?.length ?? 0);
+  const awards = Math.min(4, e.awards?.length ?? 0) * 0.8;
+  const long = Math.min(3, Math.max(0, years - 2)) * 0.3;
+  const scouts = Math.min(3, Object.keys(e.scouted ?? {}).length) * 0.7;
+  return Math.round(((years === 1 ? -4 : 0) + college + titles + awards + long + scouts) * 10) / 10;
+}
+/** The player's best record in any sport, for a job that hires athletes. */
+export const bestCompetitiveYears = (state = store.state) =>
+  Math.max(0, ...Object.values(ensure(state).athletes?.[state.player.id]?.sports ?? {}).map((e) => competitiveYears(e, state)));
+
 export function overall(e, p = player(), position = e.position) {
   const sport = sportOf(e.id);
   const pos = sport.positions?.find((x) => x[0] === position);
@@ -779,6 +823,7 @@ export function leaveClub(sportId, state = store.state) {
   const org = orgOf(e.orgId, state);
   if (org.kind === 'school') return result(false, 'Leave the school team from your school activities.', 'neutral');
   const scholarship = org.kind === 'college' && (state.player.education.aidParts ?? []).some((x) => x.kind === 'athletic');
+  if (org.key?.startsWith('uniclub/')) e.uniClub = null; // off the university's club until they try out again
   leaveOrg(e, state, 'left');
   joinOrg(rec(state, sportOf(sportId)), state, { quiet: true });
   const text = `You left ${org.name}.${scholarship ? ' The athletic scholarship goes with it: from next year you pay that part of the tuition.' : ''}`;
@@ -795,7 +840,14 @@ export function schoolSportId(name, countryId) {
   return { soccer: 'soccer', 'american football': 'american_football', basketball: 'basketball', baseball: 'baseball', softball: 'softball',
     'track and field': 'track', athletics: 'track', swimming: 'swimming', tennis: 'tennis', volleyball: 'volleyball', 'ice hockey': 'ice_hockey',
     rugby: 'rugby', cricket: 'cricket', badminton: 'badminton', judo: 'martial_arts', taekwondo: 'martial_arts', wrestling: 'wrestling',
-    golf: 'golf', pickleball: 'pickleball' }[n] ?? null;
+    golf: 'golf', pickleball: 'pickleball', 'table tennis': 'table_tennis', 'cross country': 'running', cycling: 'cycling', gymnastics: 'gymnastics',
+    'figure skating': 'figure_skating', 'martial arts': 'martial_arts', karate: 'martial_arts', boxing: 'boxing' }[n] ?? null;
+}
+/** What a school calls a registry sport (soccer is football outside North America, track is athletics). */
+export function schoolSportName(id, countryId) {
+  const na = ['us', 'ca'].includes(countryId);
+  return { soccer: na ? 'soccer' : 'football', american_football: 'American football', track: na ? 'track and field' : 'athletics', running: 'cross country',
+    ice_hockey: 'ice hockey', table_tennis: 'table tennis', figure_skating: 'figure skating', martial_arts: 'martial arts' }[id] ?? (sportOf(id)?.name ?? id).toLowerCase();
 }
 /**
  * A season with the school team, played through the engine: the school's team, its coach, its league and its record are

@@ -317,7 +317,9 @@ function offerFor(state, e, org) {
   const big = org.level === 'pro' && !(org.tier > 1) && !org.minorLevel && (sport.draftIn ?? []).includes(org.countryId) && org.div !== 'women' ? (COUNTRY_LEAGUE_PAY[org.countryId] ? COUNTRY_LEAGUE_PAY[org.countryId][sport.id] ?? 1 : BIG_LEAGUE_PAY[sport.id] ?? 1) : 1;
   // A club abroad pays in its own money: what that is worth where the player lives.
   const abroad = org.countryId && org.countryId !== p.countryId ? money(state, 1e6) / localMoney(1e6, COUNTRIES[org.countryId]) : 1;
-  const salary = Math.round((lo + (hi - lo) * clamp((o - 60) / 35, 0, 1)) * pop * agent * big * abroad);
+  // The record counts for the money too: college seasons, titles and awards are worth more; no record, much less.
+  const record = clamp(1 + sp.recordScore(e, state) * 0.03, 0.55, 1.35);
+  const salary = Math.round((lo + (hi - lo) * clamp((o - 60) / 35, 0, 1)) * pop * agent * big * abroad * record);
   const r = seeded(`offer/${org.id}/${p.id}/${state.year}`);
   return { level, salary, years: maxYears(p, e.id, r.int(1, 4)) };
 }
@@ -498,7 +500,13 @@ function collegeTeam(state, a, e) {
   const juco = p.education.enrolled && p.education.stage === 'community';
   if (!p.education.enrolled || (p.education.stage !== 'university' && !juco) || (!juco && !p.education.schoolId)) return null;
   const sport = sportOf(e.id);
-  if (!sp.hasCollegeSport(sport, p.countryId)) return null;
+  // Where universities do not play in a college system, a university has its own club, which a player tries out for.
+  if (!sp.hasCollegeSport(sport, p.countryId)) {
+    if (juco || e.uniClub !== p.education.schoolId) return null;
+    const org = uniClubOrg(state, sport);
+    if (e.orgId !== org.id && !e.contractId && !['academy', 'elite', 'pro'].includes(e.level)) { joinOrg(org, state); log(`You joined ${org.name}.`, 'system', 'good'); }
+    return org;
+  }
   // Junior college: the community college the player signed with, or the one in their own city.
   if (juco) {
     const signed = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId?.startsWith('juco:'));
@@ -510,7 +518,8 @@ function collegeTeam(state, a, e) {
     return org;
   }
   const offer = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId === p.education.schoolId);
-  const walkOn = !offer && overall(e, p) >= 60;
+  // Without a scholarship, a place is won at a walk-on tryout (collegeTryout).
+  const walkOn = !offer && e.walkOn === p.education.schoolId;
   if (!offer && !walkOn) return null;
   if (e.leftCollege === p.education.schoolId) return null; // left this university's team: not put back on it
   const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${p.education.schoolId}`, name: `${p.education.schoolName} ${sport.name}`, uniId: p.education.schoolId });
@@ -521,6 +530,63 @@ function collegeTeam(state, a, e) {
   }
   return org;
 }
+const uniClubOrg = (state, sport) => findOrg(state, sport, 'club', { key: `uniclub/${sport.id}/${state.player.education.schoolId}`, name: `${state.player.education.schoolName} ${sport.name} Club`, uniId: state.player.education.schoolId });
+
+/**
+ * The university's team in a sport, for the player studying there: the college program (the United States and Canada),
+ * or elsewhere the university's own club. What it is, whether the player is on it, and how to get on it.
+ */
+export function universityTeam(sportId, state = store.state) {
+  const p = state.player;
+  const sport = sportOf(sportId);
+  const e = sp.entryOf(sportId, p.id, state);
+  const juco = p.education.stage === 'community';
+  if (!p.education.enrolled || !['university', 'community'].includes(p.education.stage) || !sport) return null;
+  const org = sp.orgOf(e?.orgId, state);
+  const college = sp.hasCollegeSport(sport, p.countryId);
+  if (!college && juco) return { sport, kind: 'none', why: 'Community colleges here have no teams of their own. Play for a club.' };
+  const u = !juco && uniOf(p.education.schoolId);
+  const division = juco ? 'JUCO' : college ? (u && divisionOf(state, u)) : null;
+  if (college && !division) return { sport, kind: 'none', why: `${p.education.schoolName} has no ${sport.name.toLowerCase()} program.` };
+  const onTeam = !!org && (college ? org.kind === 'college' : org.key === `uniclub/${sportId}/${p.education.schoolId}`);
+  const name = onTeam ? org.name : college ? `${juco ? `${p.city} Community College` : p.education.schoolName} ${sport.name}` : `${p.education.schoolName} ${sport.name} Club`;
+  const offer = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === sportId && (o.instId === p.education.schoolId || (juco && o.instId?.startsWith('juco:'))));
+  const bar = college ? ({ D1: 64, IVY: 60, D2: 58, NAIA: 55, D3: 52, JUCO: 50 })[division] ?? 60 : 42;
+  const tried = e?.walkOnTried === state.year;
+  const why = !e || e.status !== 'active' ? `You do not play ${sport.name.toLowerCase()}. Take it up first.`
+    : e.contractId ? 'You are under contract with a professional club.'
+    : tried ? 'You tried out this year. The coaches look again next year.' : '';
+  return { sport, kind: college ? 'college' : 'club', name, division, onTeam, scholarship: !!offer, bar, tried, why, entry: e ?? null };
+}
+
+/**
+ * A walk-on tryout for the university team: the coaches watch the player against the level the team plays at. Once a
+ * year, and the same however often the save is reloaded. A place won now is taken straight away.
+ */
+export function collegeTryout(sportId, state = store.state) {
+  const p = state.player;
+  const t = universityTeam(sportId, state);
+  if (!t || t.kind === 'none') return result(false, t?.why ?? 'You are not in college.', 'neutral');
+  if (t.onTeam) return result(false, `You are already on the ${t.name} team.`, 'neutral');
+  if (t.why) return result(false, t.why, 'neutral');
+  const e = t.entry;
+  e.walkOnTried = state.year;
+  const show = overall(e, p) + seeded(`walkon/${p.id}/${sportId}/${state.year}`).normal(0, 5) + Math.min(3, sp.competitiveYears(e, state)) * 1.5;
+  if (show < t.bar) {
+    p.stats.mood = clamp(p.stats.mood - 4);
+    const text = `You tried out for ${t.name}. ${show >= t.bar - 5 ? 'The coaches said it was close, and to come back next year.' : 'The coaches thanked you; the team is a level above you for now.'}`;
+    log(text, 'system', 'bad');
+    sp.moment(state, { type: 'tryout', sportId, text: `Tried out for ${t.name} and was not taken.`, sig: 1 });
+    return result(false, text, 'bad');
+  }
+  if (t.kind === 'college') { e.walkOn = p.education.schoolId; if (e.leftCollege === p.education.schoolId) e.leftCollege = null; }
+  else e.uniClub = p.education.schoolId;
+  const org = collegeTeam(state, sp.profile(state), e);
+  const text = org ? `You made it: you are on the ${org.name} team${t.kind === 'college' ? ' as a walk-on' : ''}.` : `The coaches liked what they saw, but there is no place on ${t.name} this year.`;
+  if (org) { milestone(`Made the ${org.name} team.`, 'education'); sp.moment(state, { type: 'tryout', sportId, text: `Made the ${org.name} team.`, sig: 2 }); }
+  return result(!!org, text, org ? 'good' : 'neutral');
+}
+
 /** Leaving the team in college costs the athletic part of a scholarship, from the next year's fees. */
 export function quitCollegeTeam(sportId, state = store.state) {
   const p = state.player;
@@ -544,8 +610,12 @@ function proRoutes(state, a, e) {
   if (Object.values(sp.ensure(state).contracts).some((k) => k.kind === 'pro' && k.status === 'active' && k.personId === p.id)) return; // under contract in another sport
   const route = sp.proPath(sport, p.countryId);
   const o = overall(e, p);
+  // Clubs, selectors and the tour go by the record: with none, almost never (engine/sports.js recordOdds).
+  const years = sp.competitiveYears(e, state);
+  const odds = sp.recordOdds(years);
+  const seen = (what) => years >= 2 || seeded(`${what}/record/${p.id}/${e.id}/${state.year}`).chance(odds);
   if (route === 'none') {
-    if (o >= 74 && e.level !== 'elite') {
+    if (o >= 74 && e.level !== 'elite' && seen('national')) {
       e.level = 'elite';
       log(`You were picked for the national ${sport.name.toLowerCase()} squad. There is no professional league; the best compete for their country.`, 'system', 'good');
       milestone(`Selected for the national ${sport.name.toLowerCase()} squad.`, 'career');
@@ -554,7 +624,7 @@ function proRoutes(state, a, e) {
     return;
   }
   if (route === 'tour') {
-    if (e.pr >= 1300 && p.age <= 34) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
+    if (e.pr >= 1300 && p.age <= 34 && seen('tour')) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
@@ -580,7 +650,7 @@ function proRoutes(state, a, e) {
   const fromRight = ['academy', 'college', 'club', 'elite'].includes(e.level);
   if (o < need || !fromRight || p.age > 29) return;
   const r = seeded(`signing/${p.id}/${e.id}/${state.year}`);
-  if (!r.chance(0.45 + (o - need) / 30)) return;
+  if (!r.chance((0.45 + (o - need) / 30 + sp.recordScore(e, state) * 0.02) * odds)) return;
   const org = proClub(state, sport, r.int(0, 7), o >= 74 ? 1 : 2);
   const off = offerFor(state, e, org);
   decide(state, { kind: 'contract', how: 'signing', sportId: e.id, orgId: org.id, orgName: org.name, ...off, key: `signing/${e.id}/${state.year}`,
@@ -1092,6 +1162,21 @@ const rankPlace = (x) => (x === 'Champion' ? 1 : x === 'Final' ? 2 : x === 'Semi
 
 function scouting(state, a, e, sum) {
   const p = state.player;
+  // Professional scouts watch college games: a good season puts the player on their lists, and that counts at the draft
+  // and with the clubs (engine/sports.js recordScore).
+  if (e.level === 'college') {
+    const o = overall(e, p);
+    if (sum.rating >= 6.8 && o >= 60 && !e.scouted?.[state.year] && seeded(`proScouts/${p.id}/${e.id}/${state.year}`).chance(clamp(0.25 + (sum.rating - 6.8) / 3 + (o - 60) / 60, 0, 0.9))) {
+      (e.scouted ??= {})[state.year] = true;
+      const n = Object.keys(e.scouted).length;
+      const text = n === 1 ? `Professional scouts were at your ${sportOf(e.id).name.toLowerCase()} games this season, and wrote your name down.`
+        : `The professional scouts came back to watch you again: ${n} seasons on their lists now.`;
+      log(text, 'system', 'good');
+      if (n === 1) milestone(`Watched by professional ${sportOf(e.id).name.toLowerCase()} scouts at college.`, 'career');
+      sp.moment(state, { type: 'scouted', sportId: e.id, text: 'Watched by professional scouts.', sig: 2 });
+    }
+    return;
+  }
   if (!['recreational', 'club', 'school'].includes(e.level) || p.age < 10 || p.age > 17) return;
   if (e.intl?.trainer) return; // in a trainer's program: the clubs' scouts come to its showcases instead (engine/international.js)
   const sport = sportOf(e.id);

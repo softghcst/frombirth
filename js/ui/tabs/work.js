@@ -435,14 +435,19 @@ function specialCareers(p, list) {
     kpop: fromAge(p.age, 12) || (y < 1996 ? 'K-pop begins in the 1990s' : ''),
     politics: fromAge(p.age, 14),
   };
+  // Sport is a special career only once it is the player's job: signed by a club, drafted, on the tour, or hired as a
+  // professional athlete. Playing for fun, for a club or a school is under Pursuits; university sport is on the
+  // University screen.
+  const sportJob = now === 'sports' || (p.career?.careerId === 'athlete' && !p.career.retired);
   const rows = special.SPECIAL_CAREERS.map((c) => {
     const why = jailed || notYet[c.id];
     if (why) return lockedRow(c.name, why, c.ico);
-    if (now && now !== c.id) {
-      // Sport for fun is open to anyone; the rest wait until the career is left.
-      if (c.id === 'sports') return navRow({ attrs: 'data-act="sc:sports"', label: c.name, sub: 'For fun only, while you have another career', ico: c.ico });
-      return lockedRow(c.name, `You are ${special.SPECIAL_BY_ID[now].noun} now`, c.ico);
+    if (c.id === 'sports') {
+      if (sportJob) return navRow({ attrs: 'data-act="sc:sports"', label: c.name, sub: 'Your career', ico: c.ico, tone: 'peach' });
+      if (now) return lockedRow(c.name, `You are ${special.SPECIAL_BY_ID[now].noun} now`, c.ico);
+      return lockedRow(c.name, 'Once you turn professional', c.ico);
     }
+    if (now && now !== c.id) return lockedRow(c.name, `You are ${special.SPECIAL_BY_ID[now].noun} now`, c.ico);
     return navRow({ attrs: `data-act="sc:${c.id}"`, label: c.name, sub: now === c.id ? 'Your career' : c.blurb, ico: c.ico, tone: now === c.id ? 'peach' : '' });
   });
   const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';

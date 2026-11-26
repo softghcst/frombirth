@@ -21,7 +21,7 @@ export const SPECIAL_CAREERS = [
   { id: 'dance', name: 'Dance', noun: 'a dancer', ico: 'sparkle', blurb: 'Auditions, gigs, competitions and tours.' },
   { id: 'modeling', name: 'Modeling', noun: 'a model', ico: 'star', blurb: 'An agency, castings, bookings.' },
   { id: 'writing', name: 'Writing', noun: 'an author', ico: 'book', blurb: 'Books, a literary agent, publishers and the lists.' },
-  { id: 'sports', name: 'Sports', noun: 'a professional athlete', ico: 'trophy', blurb: 'College, the pros or the tour, seasons and contracts.' },
+  { id: 'sports', name: 'Sports', noun: 'a professional athlete', ico: 'trophy', blurb: 'Professional sport: a club, a draft or the tour, seasons and contracts.' },
   { id: 'kpop', name: 'K-pop Idol', noun: 'an idol', ico: 'star', blurb: 'Auditions, training, a debut and a group.' },
   { id: 'politics', name: 'Politics', noun: 'a politician', ico: 'compass', blurb: 'Parties, campaigns and office.' },
 ];
@@ -31,7 +31,8 @@ export const SPECIAL_BY_ID = Object.fromEntries(SPECIAL_CAREERS.map((c) => [c.id
 function inferred(p, state) {
   if (inOffice()) return 'politics';
   const a = state.sports?.athletes?.[p.id];
-  if (a && Object.values(a.sports ?? {}).some((e) => e.status === 'active' && ['pro', 'elite', 'college'].includes(e.level))) return 'sports';
+  // Sport is a special career when it is the job: a professional, or the national squad. University sport is not.
+  if (a && Object.values(a.sports ?? {}).some((e) => e.status === 'active' && ['pro', 'elite'].includes(e.level))) return 'sports';
   if (p.idol && (p.idol.traineeId || p.idol.groupId)) return 'kpop';
   // (Read only where there is a fame record already: nothing is created just by looking.)
   if (p.fame && myAct(p)) return 'music';
@@ -99,7 +100,7 @@ export function leave(p = player(), state = store.state) {
   if (now === 'music' && myAct(p)) leaveAct();
   if (now === 'sports') {
     const a = state.sports?.athletes?.[p.id];
-    for (const e of Object.values(a?.sports ?? {})) if (e.status === 'active' && ['pro', 'elite', 'college'].includes(e.level)) retireSport(e.id, state);
+    for (const e of Object.values(a?.sports ?? {})) if (e.status === 'active' && ['pro', 'elite'].includes(e.level)) retireSport(e.id, state);
   }
   if (now === 'kpop' && trainee(p)) leaveTraining();
   if (now === 'modeling' && isModel(p)) quitCareer();

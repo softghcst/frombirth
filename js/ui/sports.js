@@ -763,14 +763,14 @@ export function openAthleticsAt(tabApi, link, back = null) {
   return show();
 }
 
-/** A card for the Pursuits tab. */
+/** A card for the Pursuits tab: playing a sport for fun, for a club or a school, and everything else in My Athletics. */
 export function athleticsCard() {
   const p = player();
   if (p.age < 4) return '';
   const a = sp.myAthlete();
   const active = sp.activeSports();
   const waiting = life.openDecisions().length;
-  return `<div class="card"><h3>My Athletics</h3><p class="muted" style="margin-bottom:10px">${active.length ? esc(active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ')) : a ? 'Not playing right now.' : 'Pick a sport.'}${waiting ? ` · ${waiting} waiting for you` : ''}</p>
-    <button class="btn" data-go="athletics">Open My Athletics</button></div>`;
+  const sub = `${active.length ? active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ') : a ? 'Not playing right now' : 'Play for fun, join a club, train and compete'}${waiting ? ` · ${waiting} waiting for you` : ''}`;
+  return `<div class="nav-group">${navRow({ attrs: 'data-go="athletics"', label: 'Sports', sub, ico: 'trophy' })}</div>`;
 }
 export const internals = { nav, SCREENS, show: () => show(), INJURIES };

@@ -56,6 +56,7 @@ import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
+import { recordOdds, bestCompetitiveYears } from './sports.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -256,7 +257,7 @@ export function finishApplication(id, answers = []) {
   if (career.hire === 'audition') {
     const piece = (AUDITION_PIECES[career.skill] ?? AUDITION_PIECES['talents.acting'])[answers[0] ?? 0];
     const need = career.req.stats?.[career.skill] ?? 50;
-    const chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus, 0.03, 0.97);
+    const chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus, 0.03, 0.97) * (career.id === 'athlete' ? recordOdds(bestCompetitiveYears()) : 1);
     if (rng.chance(chance)) {
       return hire(career, back, 55 + (piece.bonus ? 15 : 0), `You chose ${piece.t.toLowerCase()}, and it landed.`);
     }
