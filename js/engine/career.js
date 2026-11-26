@@ -57,7 +57,7 @@ import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
 import { leaveNewsroom } from './journalism.js';
-import { gift as giftLevel } from './talentGrowth.js';
+import { gift as giftLevel, maturity } from './talentGrowth.js';
 import { managerOf, coachingYear } from './childEarnings.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -152,12 +152,26 @@ export function unmet(career, o = {}) {
   if (r.trade && !hasTrade(r.trade)) out.push(`Needs a completed ${TRADE_BY_ID[r.trade].name.toLowerCase()} apprenticeship.`);
   if (r.minAge && p.age < r.minAge) out.push(`You need to be ${r.minAge}.`);
   if (r.maxAge && p.age > r.maxAge) out.push(`They only take people up to ${r.maxAge}.`);
-  for (const [path, min] of Object.entries(r.stats ?? {})) {
+  for (const [path, req] of Object.entries(r.stats ?? {})) {
+    const min = statNeed(career, path, req, p);
     const have = Math.round(Number(resolve(path)) || 0);
     if (have < min) out.push(`Needs ${STAT_NAMES[path] ?? path} of ${min} (yours: ${have}).`);
   }
   if (r.cleanRecord && hasRecord(p)) out.push('Needs a clean record.');
   return out;
+}
+
+/**
+ * The skill a job needs. A child is measured against other children of their age: casting does not ask a six-year-old
+ * to act like a teenager. The bar is where a child with a real gift would be by that age with no lessons.
+ */
+function statNeed(career, path, min, p = player()) {
+  if (!career?.giftFor || path !== career.skill || p.age >= 18) return min;
+  // The way in is where a gifted child of this age would be; each step up asks a little more than that, not an
+  // adult's skill: a child star is a child who is very good for their age.
+  const base = career.req.stats?.[career.skill] ?? min;
+  const bar = 55 * maturity(p.age) + 5;
+  return Math.min(min, Math.round(bar + Math.max(0, min - base) * 0.6));
 }
 
 const doorOpen = (d) => (d.flag ? !!player().flags[d.flag] : hasTrade(d.trade));
@@ -264,7 +278,7 @@ export function finishApplication(id, answers = []) {
 
   if (career.hire === 'audition') {
     const piece = (AUDITION_PIECES[career.skill] ?? AUDITION_PIECES['talents.acting'])[answers[0] ?? 0];
-    const need = career.req.stats?.[career.skill] ?? 50;
+    const need = statNeed(career, career.skill, career.req.stats?.[career.skill] ?? 50, p);
     // Casting directors see hundreds of children: they call back the ones with something that cannot be taught.
     const knack = career.giftFor ? (giftLevel(p, career.giftFor) - 60) / 60 : 0;
     const chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus + knack, 0.03, 0.97);
@@ -555,7 +569,7 @@ function missingFor(level) {
   const c = player().career;
   const career = currentCareer();
   const at = career?.levels.indexOf(level) ?? -1;
-  return [...Object.entries(level?.needs ?? {})
+  return [...Object.entries(level?.needs ?? {}).map(([path, min]) => [path, statNeed(career, path, min)])
     .filter(([path, min]) => (Number(resolve(path)) || 0) < min)
     .map(([path, min]) => `${STAT_NAMES[path] ?? path} of ${min.toLocaleString('en-US')}`),
   ...(at > 0 && c.careerId ? promotionGates().flatMap((g) => g(c.careerId, at) ?? []) : [])];
@@ -567,7 +581,7 @@ export function nextStep() {
   const career = currentCareer();
   const next = career?.levels[c.level + 1];
   if (!next) return null;
-  return { title: next.title, missing: missingFor(next), yearsLeft: Math.max(0, career.levels[c.level].years - c.yearsInRole) };
+  return { title: localTitle(career, c.level + 1, c.military?.branch), missing: missingFor(next), yearsLeft: Math.max(0, career.levels[c.level].years - c.yearsInRole) };
 }
 
 export function promote() {
@@ -772,7 +786,8 @@ export function tickCareer() {
   if (investigationRuns(career.id, p)) return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
-  const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
+  // Craft is judged against what the work asks of someone this age: a child against children (statNeed).
+  const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - statNeed(career, career.skill, 60, p)) / 6 : (p.stats.intellect - 55) / 15;
   const gift = career.skill ? 0 : workEdge(career, p) * 4; // a gift for the work: science for a doctor, acting for a lawyer (engine/aptitudes.js)
   const mentor = livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 55) ? 2 : 0;
   const strain = c.stress > 75 ? -(c.stress - 75) / 4 : c.stress < 15 ? -1 : 0; // some pressure helps; too much does not
@@ -852,7 +867,8 @@ export function tickCareer() {
   // Each year past the usual time in the role, with a good record, makes the next step likelier: seniority counts.
   const seniority = Math.min(0.3, Math.max(0, c.yearsInRole - level.years) * 0.05);
   // A promotion needs a seat to be free: big, healthy employers have more of them.
-  const odds = clamp((0.25 + (c.performance - bar) / 100 + mentor * 0.03 + seniority) * leadFactor(), 0, 0.9) * (toTop ? 0.35 : 1) * vacancyOdds(c);
+  const odds = clamp((0.25 + (c.performance - bar) / 100 + mentor * 0.03 + seniority) * leadFactor(), 0, 0.9) * (toTop ? 0.35 : 1) * vacancyOdds(c)
+    * (career.agesOut ? 1.7 : 1); // a child's whole career is ten years or so: parts come, or the child grows out of them
   if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {

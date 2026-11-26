@@ -35,7 +35,7 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
   const rate = (g) => {
     let wins = 0;
     for (let i = 0; i < 300; i++) {
-      const p = kid('us', 9, g, 40);
+      const p = kid('us', 9, g, Math.round(g * 0.31) + 2); // where a 9-year-old with this gift would be, no lessons
       const r = career.finishApplication('child_actor', [0]);
       if (r.ok && p.career.careerId === 'child_actor') wins += 1;
     }
@@ -45,6 +45,8 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
   const plain = rate(35);
   check(gifted > plain + 0.3, `casting calls back a gifted child far more often (${Math.round(gifted * 100)}% against ${Math.round(plain * 100)}%)`);
   check(plain < 0.25, 'a child with no gift for it is rarely cast');
+  kid('us', 6, 85, 21);
+  check(career.unmet(CA).length === 0, 'a gifted six-year-old is measured against other six-year-olds, not teenagers');
 }
 {
   const p = kid();
@@ -71,6 +73,16 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
   const fast = grow(95);
   const slow = grow(40);
   check(fast >= slow + 5, `on set, a gift comes on faster (+${fast} against +${slow} in three years)`);
+}
+
+// ---- A child can move up: the steps are measured against children of their age too ----
+{
+  const p = kid('us', 10, 85, 34);
+  career.hire(CA, 0, 70, 'cast');
+  check(career.nextStep().missing.length === 0, 'a gifted ten-year-old extra can be promoted to bit parts (not asked for an adult\'s acting)');
+  let lvl = 0;
+  for (let y = 0; y < 6; y++) { p.age += 1; p.career.performance = 75; career.tickCareer(); lvl = p.career.level; }
+  check(lvl >= 2, `a gifted child who works well moves up in a few years (level ${lvl} by 16)`);
 }
 
 // ---- Teenage parts ----
@@ -120,6 +132,15 @@ function kid(countryId = 'us', age = 8, giftLevel = 80, now = 45) {
   p.career.salary = 30000;
   tickFinance();
   check(p.childPay.trust === 0 && p.childPay.total > 0, 'outside the US no share is set aside by law: it is up to the parent');
+}
+
+// ---- A parent's nature, as their profile shows it, leans how they handle the money ----
+{
+  const w1 = CE.styleWeights({ traits: ['gentle'], meters: { generosity: 90, money: 70 } });
+  const w2 = CE.styleWeights({ traits: ['sly'], meters: { generosity: 10, money: 20 } });
+  const share = (w, k) => w[k] / Object.values(w).reduce((a, b) => a + b, 0);
+  check(share(w1, 'saver') > 0.6 && share(w2, 'spender') > 0.4 && share(w2, 'household') > share(w1, 'household'),
+    'a generous, gentle parent usually saves it; a sly, tight-fisted one usually spends it; a hard-up family needs more of it');
 }
 
 // ---- A coaching parent ----

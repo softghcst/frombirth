@@ -49,16 +49,29 @@ export function keeperWord(n) {
     : n.role === 'grandparent' ? (f ? 'your grandmother' : m ? 'your grandfather' : 'your grandparent') : 'your guardian';
 }
 
-/** How a parent goes about a child's money: their nature leans it one way or another, without deciding it. */
-function styleOf(n) {
+/**
+ * How a parent goes about a child's money, from what the player can see on their profile (ui/tabs/people.js): their
+ * Generosity and Money meters and their traits. It leans the odds; it does not decide.
+ *   generous    more likely to keep it for you        tight-fisted  more likely to spend it
+ *   hard up     more likely to need it for the family's costs
+ *   Gentle, Steady, Worrier: savers; Dramatic: pays for coaching; Sly, Restless: spenders
+ */
+export function styleWeights(n) {
   const t = new Set(n?.traits ?? []);
-  const w = { saver: 40, coach: 22, household: 26, spender: 12 };
+  const gen = n?.meters?.generosity ?? 50;
+  const money = n?.meters?.money ?? 50;
+  const w = { saver: 40 + (gen - 50) / 2, coach: 20, household: 22 + Math.max(0, 50 - money) / 2, spender: 12 + Math.max(0, 50 - gen) / 2 };
   if (t.has('gentle') || t.has('steady') || t.has('worrier')) { w.saver += 20; w.spender -= 6; }
   if (t.has('dramatic')) w.coach += 25;
   if (t.has('sly') || t.has('restless')) { w.spender += 22; w.saver -= 15; }
-  const roll = rng.next() * Object.values(w).reduce((s, x) => s + Math.max(0, x), 0);
+  for (const k of Object.keys(w)) w[k] = Math.max(1, w[k]);
+  return w;
+}
+function styleOf(n) {
+  const w = styleWeights(n);
+  const roll = rng.next() * Object.values(w).reduce((s, x) => s + x, 0);
   let acc = 0;
-  for (const [k, x] of Object.entries(w)) { acc += Math.max(0, x); if (roll < acc) return k; }
+  for (const [k, x] of Object.entries(w)) { acc += x; if (roll < acc) return k; }
   return 'saver';
 }
 
@@ -76,7 +89,9 @@ export function holdChildPay(net, lines, p = player()) {
   const main = lines.filter((l) => l.source === 'main').reduce((s, l) => s + l.gross, 0);
   const earned = Math.round(net * main / gross);
   if (earned <= 0) return 0;
-  const parent = managerOf(p);
+  // The adult who signed goes on managing it while they can; another steps in only if they cannot.
+  const was = p.childPay && store.state.npcs[p.childPay.managerId];
+  const parent = was?.alive && !was.flags.abroad && livingNpcs().includes(was) ? was : managerOf(p);
   const cp = (p.childPay ??= { managerId: null, style: null, trust: 0, kept: 0, spent: 0, coached: 0, total: 0, released: false });
   cp.total += earned;
   const trust = Math.round(earned * (TRUST_SHARE[p.countryId] ?? 0));
@@ -154,4 +169,15 @@ export function childMoneyChoice(how, p = player()) {
   if (back) book({ cat: 'giftIn', src: 'childPay', desc: 'Repaid by a parent, by order of the court' });
   p.flags.suedParent = true;
   return back ? `The court orders ${fmtMoney(back, cty)} repaid. You win, and you do not speak for a long time.` : 'The court finds for you, but there is nothing left to repay.';
+}
+
+/** What a working child sees of their pay: what they have earned, what the law keeps in trust, and who holds the rest. What was spent is not known until 18. */
+export function childPayRows(career, p = player()) {
+  if (!career?.agesOut || p.age >= 18) return [];
+  const cp = p.childPay;
+  if (!cp) return [['Your pay', 'A parent or guardian signs for you and manages what you earn until you are 18.']];
+  const cty = country();
+  const m = store.state.npcs[cp.managerId];
+  return [['Earned so far', fmtMoney(cp.total, cty)], ...(cp.trust ? [['In trust until 18', fmtMoney(cp.trust, cty)]] : []),
+    ['Managed by', m ? `${m.firstName} (${keeperWord(m)}), until you are 18` : 'The court, in trust, until you are 18']];
 }
