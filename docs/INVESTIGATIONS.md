@@ -82,13 +82,14 @@ The 3.0 prompt names careers to support in time, without building them all now. 
 | Investigative journalist, editor | **Fully playable** on the journalism track (`crossover.js`) |
 | Corporate and internal investigator | **Fully playable** on the private investigation track (`workplace.js`) |
 | Conviction integrity and innocence work | **Fully playable** as a post for lawyers and seasoned investigators (`integrity.js`) |
-| Digital forensic examiner | **Partially playable**: digital forensics is a laboratory discipline a forensic scientist can specialize in |
-| Insurance investigator | **Partially playable**: a private investigator's insurance service; insurers settle collision claims. No insurance-company career |
-| Criminal intelligence analyst, crime analyst | **Registry only**: the intelligence track exists; no casework for analysts |
-| Probation officer | **Registry only**: sentences carry supervision; there is no probation officer career |
-| Court reporter | **Registry only**: court reporters exist as people (the journalist's beat), not as a career |
-| Victim advocate | **Registry only**: advocates appear in family cases as people, not as a career |
-| Inspector general investigator, compliance investigator | **Not yet implemented** |
+| Digital forensic examiner | **Fully playable**: a forensic scientist who specializes in digital forensics carries the title and gets digital work |
+| Crime analyst, criminal intelligence analyst | **Fully playable** (`allied.js`): patterns across real open cases, given to detectives as leads that name nobody; profiling people from past arrests brings a complaint |
+| Probation officer | **Fully playable** (`allied.js`): real sentences of probation, suspended sentences and community service, supervised to completion; reporting small slips as breaches wastes the court's time |
+| Victim advocate | **Fully playable** (`allied.js`): the person harmed in a real case, supported in their own choices; pushing them to testify is not the job |
+| Court reporter | **Fully playable** (`allied.js`): certified transcripts of real hearings; tidying what was said is altering the record |
+| Inspector general investigator | **Fully playable** (`allied.js`): allegations about real government employers, reported to the legislature; letting the agency soften the report breaks independence |
+| Compliance investigator | **Fully playable** (`allied.js`): hotline reports at real companies, the reporter kept confidential; revealing them is retaliation |
+| Insurance investigator | **Fully playable** (`allied.js`): claims after real fires, verified against the fire investigation and the policy; a claim inflated before the fire is reported to the police; denial on suspicion is bad faith |
 
 ## Studying for the work
 
@@ -124,6 +125,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (29 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (30 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer; a fatal collision's hospital, family claim and insurer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

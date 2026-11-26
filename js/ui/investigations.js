@@ -47,6 +47,7 @@ import * as FP from '../engine/investigations/forensicPsych.js';
 import * as IG from '../engine/investigations/integrity.js';
 import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
+import * as AL from '../engine/investigations/allied.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -78,6 +79,7 @@ function sectionsFor(p, r) {
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
   if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Conviction Review']);
   if (BK.bookRole(p)) out.push(['books', 'Financial Review']);
+  if (p.age >= 21) out.push(['allied', 'Related Careers']);
   if (p.medicine?.job?.hospitalId || MD.myRequests(p).length) out.push(['hospital', 'Hospital & Police']);
   if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
@@ -362,6 +364,16 @@ const VIEWS = {
         return card(`${nm(c.defendantId)}: ${inv.file.title}`, kv([['Done', m.steps.join(', ') || 'nothing yet'], ...(m.lab ? [['Laboratory result due', dateWords(m.lab.due)]] : [])])
           + stack(Object.entries(IG.STEPS).filter(([id]) => !m.steps.includes(id) || id === 'refer').map(([id, label]) => btn('integrityStep', label, { arg: `${m.id}|${id}` })).join(''))); }).join('') : muted('No matter open. Requests for review come as the year turns.'));
   },
+  allied(p) {
+    const A = AL.alliedOf(p);
+    const mine = A && p.career?.careerId === `ally_${A.id}`;
+    let out = mine ? card(AL.ALLIED[A.id].name, kv([['Position', p.career.title], ['Careful work', String(A.careful)], ['Misconduct', String(A.misconduct)]])) : '';
+    for (const w of mine ? AL.openAllied(p) : []) out += card(w.words.charAt(0).toUpperCase() + w.words.slice(1), stack(AL.ALLIED[A.id].options.map((o) => btn('alliedDo', o.label, { arg: `${w.id}|${o.id}`, cls: o.good ? '' : 'danger' })).join('')));
+    if (mine && !AL.openAllied(p).length) out += muted('No work waiting. It comes as the year turns.');
+    out += card('Careers around the cases', muted('Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators: their work meets the same cases, people and courts.')
+      + Object.entries(AL.ALLIED).filter(([id]) => !(mine && A.id === id)).map(([id, d]) => { const why = AL.alliedBlock(id, p); return kv([[d.name, why || 'Open to you']]) + (why ? '' : stack(btn('alliedTake', `Become a ${d.ranks[0].toLowerCase()}`, { arg: id }))); }).join(''));
+    return out;
+  },
   books(p) {
     const list = BK.engagements(p);
     const b = p.books;
@@ -478,6 +490,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  alliedTake: (a, x) => x.say(AL.takeUp(a)),
+  alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },
   integrityJoin: (a, x) => x.say(IG.takePost(a)),
   integrityStep: (a, x) => { const [id, s] = a.split('|'); return x.say(IG.step(id, s)); },
   forensicAcct: (a, x) => x.say(BK.qualifyForensic()),
