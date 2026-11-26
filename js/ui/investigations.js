@@ -48,6 +48,7 @@ import * as IG from '../engine/investigations/integrity.js';
 import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
 import * as AL from '../engine/investigations/allied.js';
+import * as FA from '../engine/investigations/family.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -132,6 +133,8 @@ const VIEWS = {
         + stack(Object.entries(C.ACADEMY).map(([id, d]) => btn('academy', d.label, { arg: id })).join('')));
     }
     if (r?.pendingMove) out += card('Your assignment', muted(`You are posted to ${r.pendingMove}.`) + stack(btn('report', `Move to ${r.pendingMove} and report for duty`)));
+    for (const { inv, fam } of FA.relativeCases(p).slice(0, 2)) out += card(`${nm(fam[0].id)} is in a police case`, kv([['Case', inv.file.title], ['Their part', fam[0].role], ['Detective', nm(inv.file.leadId)]]) + muted('It is someone else\'s case. Family is family; the case is theirs.')
+      + stack(btn('relative', 'Stay out of the case, and stand by them', { arg: `${inv.id}|support` }) + btn('relative', 'Stay out of it entirely', { arg: `${inv.id}|apart` }) + btn('relative', 'Call the detective and ask how it looks', { arg: `${inv.id}|favor`, cls: 'danger' })));
     return out;
   },
   agency(p, r) {
@@ -398,7 +401,17 @@ function caseTabs(v) {
   return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
 }
 const CASE_VIEWS = {
-  overview: (v) => card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]])),
+  overview: (v, inv) => {
+    const f = inv?.file;
+    let out = card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]]));
+    if (f?.conflict?.status === 'open') out += card('Your family is in this case', kv(f.conflict.relatives.map((x) => [nm(x.id), x.role])) + muted('The rule is to step aside when a relative is involved. It protects the case as much as you.')
+      + stack(btn('recuse', 'Tell your sergeant, and step aside', { arg: inv.id }) + btn('keepCase', 'Keep the case, and say nothing', { arg: inv.id, cls: 'danger' })));
+    const notes = FA.ancestorNotes(inv);
+    if (notes) out += card(`${notes.name}'s notes`, muted(`${notes.name} led this case first. Their notes are in the file, in their hand.`) + notes.done.map((t) => `<p>• ${esc(t)}</p>`).join('')
+      + (notes.open.length ? `<div class="eyebrow">Leads they left open</div>${notes.open.map((t) => `<p>• ${esc(t)}</p>`).join('')}` : '')
+      + (f.oldPartnerAsked ? '' : stack(btn('oldPartner', `Find ${notes.name}'s old partner`, { arg: inv.id }))));
+    return out;
+  },
   notebook: (v) => card('Known facts', v.facts.map((f) => `<p>• ${esc(f.text)}</p>`).join('') || muted('Only the report so far.'))
     + card('Reported claims', v.claims.map((c) => `<p>• ${esc(c.text)} <span class="muted">(${esc(c.by)}${c.confidence != null ? `, says they are ${c.confidence >= 0.8 ? 'sure' : c.confidence >= 0.5 ? 'fairly sure' : 'unsure'}` : ''})</span></p>`).join('') || muted('No statements yet.'))
     + card('Hypotheses', v.hypotheses.map((h) => kv([[h.text, h.status]])).join('') + muted('These follow what has been found. A strong claim is not a fact.'))
@@ -467,6 +480,9 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
     else if (act === 'medical') await say(MD.requestMedical(id, x));
+    else if (act === 'recuse') await say(FA.recuse(id));
+    else if (act === 'keepCase') await say(FA.keepCase(id));
+    else if (act === 'oldPartner') await say(FA.askOldPartner(id));
     else if (act === 'crossExam') {
       const inv = W.investigation(id);
       const answers = {};
@@ -490,6 +506,7 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  relative: (a, x) => { const [id, how] = a.split('|'); return x.say(FA.relativeChoice(id, how)); },
   alliedTake: (a, x) => x.say(AL.takeUp(a)),
   alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },
   integrityJoin: (a, x) => x.say(IG.takePost(a)),

@@ -38,6 +38,7 @@ import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
 import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
+import { settleAncestor } from './family.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -68,6 +69,7 @@ export function settle(p = player()) {
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
   out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
+  for (const id of r.caseIds) { const line = settleAncestor(investigation(id), p); if (line) out.push(line); }
   return out;
 }
 

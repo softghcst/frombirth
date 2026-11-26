@@ -1360,6 +1360,55 @@ section('journalism: an editor\'s desk, editorial standards, corrections');
 }
 section('careers around the cases: analysts, probation, victim advocates, court reporters, inspectors general, compliance and insurance investigators, digital forensic examiners');
 
+// ---------- 31. Family: conflicts of interest, and an ancestor's case ----------
+{
+  const FA = await import('../js/engine/investigations/family.js');
+  const p = life('us', 38);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.people.partnerId ??= Object.values(a.units)[0].memberIds.find((x) => store.state.npcs[x]?.alive);
+  const rel = [...FA.relatives(p)].map((id) => store.state.npcs[id]).find((n) => n?.alive);
+  check(rel, 'the player has relatives the game keeps');
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  inv.file.people.push({ id: rel.id, role: 'witness' });
+  FA.checkConflict(inv, p);
+  check(inv.file.conflict?.status === 'open' && inv.file.conflict.relatives[0].id === rel.id, 'a relative in the player\'s own case is a conflict of interest');
+  check(FA.recuse(inv.id).ok && inv.file.leadId !== p.id && !r.caseIds.includes(inv.id), 'stepping aside hands the case to a colleague');
+  const inv2 = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv2.id);
+  inv2.file.people.push({ id: rel.id, role: 'witness' });
+  FA.checkConflict(inv2, p);
+  const integ = r.rep.integrity;
+  FA.keepCase(inv2.id);
+  check(inv2.file.conflict.status === 'kept' && r.rep.integrity < integ, 'keeping the case is a mark against the investigator');
+  // A relative in someone else's case: stay out of it.
+  const det = Object.values(a.units)[0].memberIds.find((x) => x !== p.id && store.state.npcs[x]?.alive);
+  const other = W.openCase('robbery', { ownerId: a.id, lead: det, truth: 'known' });
+  other.file.people.push({ id: rel.id, role: 'witness' });
+  check(FA.relativeCases(p).some((x) => x.inv.id === other.id), 'a relative in another detective\'s case is seen');
+  const n0 = Object.keys(core.W().complaints).length;
+  FA.relativeChoice(other.id, 'favor');
+  check(Object.keys(core.W().complaints).length === n0 + 1 && !FA.relativeCases(p).some((x) => x.inv.id === other.id), 'asking the detective for a favor is misconduct, written down');
+  // An ancestor's cold case, reopened by a descendant.
+  const anc = 'npc_ancestor_test';
+  store.state.investigations.legacies = [...(store.state.investigations.legacies ?? []), { id: anc, name: 'Ada Whitlock', died: store.state.year - 6, years: 30, units: [], history: [] }];
+  const old = W.openCase('burglary', { ownerId: a.id, lead: anc, truth: 'insider' });
+  old.file.opened = core.now() - 12 * 25; old.file.log.forEach((x) => { x.at = old.file.opened; });
+  old.file.leads.push({ id: 'l_old', text: 'A van seen twice on the street that week.', why: 'A neighbor', status: 'open', at: old.file.opened });
+  old.file.coldSince = core.now() - 12 * 20; old.stage = 'cold';
+  old.file.partnerId = Object.values(store.state.npcs).find((x) => x.alive && x.id !== p.id && x.age > 50)?.id;
+  W.reopen(old.id);
+  const notes = FA.ancestorNotes(old);
+  check(old.file.ancestorId === anc && notes?.name === 'Ada Whitlock' && notes.open.some((t) => /van/.test(t)), 'reopening an ancestor\'s case brings their notes and the leads they left open');
+  if (old.file.partnerId) check(FA.askOldPartner(old.id).ok && old.file.leads.some((l) => /never made it into the file/.test(l.text)) && !FA.askOldPartner(old.id).ok, 'their old partner remembers, once');
+  old.file.outcome = { kind: 'resolved', at: core.now() };
+  const line = FA.settleAncestor(old, p);
+  check(line && r.history.some((h) => /Ada Whitlock began/.test(h.text)) && !FA.settleAncestor(old, p), 'closing it goes into the family\'s history, once');
+}
+section('family: a relative in the player\'s case means stepping aside; a relative in another\'s case is theirs; an ancestor\'s case, their notes and their old partner');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
