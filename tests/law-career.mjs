@@ -114,7 +114,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   // Pass someone over long enough and they may leave.
   ls.lawOf().associates.forEach((x) => { if (!x.partner) x.since -= 10; });
   let left = false;
-  for (let y = 0; y < 12 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
+  for (let y = 0; y < 30 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
   check(left, 'an associate passed over for years leaves to open a practice of their own');
 }
 

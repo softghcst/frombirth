@@ -188,6 +188,11 @@ function openWindow(p, w) {
     }
     return;
   }
+  // A junior lawyer at a firm is handed work by the partners as well as offered it: one matter each half-year.
+  if (t === 'lawyer' && (p.career?.level ?? 0) <= 1 && cases.workload(p).open < 8) {
+    const tid = pickTemplate(L.specialty, cap);
+    if (tid) openCase(p, tid, { assigned: true, second: inTraining(p) || CASE_TEMPLATES[tid].level > cap, role: CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined });
+  }
   const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) + (L.adBoost === w ? 1 : 0) : 2);
   const taken = new Set((L.offers ?? []).map((o) => o.templateId));
   for (let i = 0; i < n; i++) {
@@ -209,7 +214,7 @@ function openWindow(p, w) {
     const tid = rng.pick(ownCases);
     who.flags.askedForLegalHelp = store.state.year;
     const rel = { bestFriend: 'best friend', inlaw: 'in-law' }[who.role] ?? who.role;
-    L.offers.push({ id: `of${w}_personal`, window: w, second: false, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
+    L.offers.push({ id: `of${w}_personal`, window: w, second: inTraining(p), templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
       summary: `Your ${rel} ${who.firstName} asks for your help. ${CASE_TEMPLATES[tid].summary.replace(/\{client\}/g, who.firstName).replace(/\{\w+\}/g, (m) => ({ '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'their company' }[m] ?? 'some'))} You would not charge them.` });
   }
   // A person charged in a case from a police investigation may want a defense lawyer who practises criminal law.
@@ -636,7 +641,7 @@ export function tickLaw(o = {}) {
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
     if (h.clinic || h.referred) continue;
-    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.favorable < -0.4 ? -1 : 1);
+    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.track === 'defender' ? 1 : h.favorable < -0.4 ? -1 : 1) /* a public defender is judged on the defense, not on winning cases the evidence decides */;
     const c = cases.caseById(h.caseId);
     const firm = ownFirm(p);
     if (c && firm && h.track === 'own' && c.fee.amount && !c.fee.toFirm) { c.fee.toFirm = true; firm.cash += c.fee.amount; firm.reputation = clamp((firm.reputation ?? 30) + (h.favorable > 0 ? 2 : 0)); }

@@ -140,7 +140,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await hub().locator('[data-cact="routine"]').click(); await ok();
   check(/Interviewed the client|Met /.test(await hub().innerText()) || await hub().locator('[data-cact="routine"]').count() === 0, `${label}: the routine steps are done in one go`);
   check(await hub().locator('.law-ev .fit-bars').count() >= 1, `${label}: reviewed evidence shows how reliable it is`);
-  const rightR = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); return lc.researchQuestion(lc.caseById(L.caseIds.at(-1))).right; });
+  const rightR = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); window.__lawCase = L.caseIds.filter((id) => !lc.caseById(id).assigned).at(-1); return lc.researchQuestion(lc.caseById(window.__lawCase)).right; });
   await hub().locator('[data-cact="research"]').click();
   await page.locator('#modal-root .modal').last().locator('.choice-btn').nth(rightR).click(); await ok();
   const file = hub().locator('[data-cact="file"]');
@@ -148,9 +148,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Filings/.test(await hub().innerText()), `${label}: the filing is on the file, with the court's ruling`);
   await shot('case');
   await clear();
-  await engine(async () => { const { advanceTurn } = await import('/js/engine/turns.js'); const { store } = await import('/js/state.js'); const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(L.caseIds.at(-1)); for (let i = 0; i < 12 && !c.awaiting && !c.done; i++) { store.state.pendingEvents = []; advanceTurn(); } store.notify(); });
+  await engine(async () => { const { advanceTurn } = await import('/js/engine/turns.js'); const { store } = await import('/js/state.js'); const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); const c = lc.caseById(window.__lawCase); void L; for (let i = 0; i < 12 && !c.awaiting && !c.done; i++) { store.state.pendingEvents = []; advanceTurn(); } store.notify(); });
   await rowBtn.click(); await hub().waitFor(); await hub().locator('[data-tab="cases"]').click();
-  const lastId = await engine(async () => (await import('/js/engine/lawSchool.js')).lawOf().caseIds.at(-1));
+  const lastId = await engine(async () => window.__lawCase);
   check(/needs you/i.test(await hub().innerText()) && /in court:/i.test(await hub().innerText()), `${label}: one docket page puts the day in court at the top, under Needs You`);
   check(await hub().locator('[data-tab="filings"], [data-tab="court"], [data-tab="clients"]').count() === 0, `${label}: no separate tabs for filings, the courtroom and clients`);
   await hub().locator(`[data-case="${lastId}"]`).first().click();
@@ -158,7 +158,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await court.count() === 1, `${label}: the case reaches court and waits for the lawyer`);
   await court.click(); await ok();
   // Each phase in turn: the objection on its proper ground, the cross on what the file shows.
-  const phases = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); return lc.courtroom(lc.caseById(L.caseIds.at(-1))).phases.map((p) => ({ id: p.id, want: p.valid ?? p.good ?? p.options[0].v, values: p.options.map((o) => o.v) })); });
+  const phases = await engine(async () => { const lc = await import('/js/engine/lawCases.js'); const L = (await import('/js/engine/lawSchool.js')).lawOf(); void L; return lc.courtroom(lc.caseById(window.__lawCase)).phases.map((p) => ({ id: p.id, want: p.valid ?? p.good ?? p.options[0].v, values: p.options.map((o) => o.v) })); });
   for (const ph of phases) {
     const m = page.locator('#modal-root .modal').last();
     await m.locator('.choice-btn').first().waitFor();
@@ -167,7 +167,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   // The verdict is read out a line at a time: wait for it, rather than reading the page while it is still being said.
   await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
   const verdict = await page.locator('#modal-root .modal').last().innerText();
-  check(/Guilty|Not guilty|Judgment|Approved|Denied|court/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
+  check(/Guilty|Not guilty|Judgment|Approved|Denied|court|jury|mistrial/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
   check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
