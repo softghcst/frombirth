@@ -89,7 +89,7 @@ rs = await rows();
 check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is open');
 check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military is open');
 // Joining: the way in, then the branch from a dropdown, then basic training.
-await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
+await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; p.flags.citizenOf = [...(p.flags.citizenOf ?? []), p.countryId]; }); // a citizen where they live (a random life may have moved abroad), as the armed forces take only citizens
 await tab('work');
 await page.waitForSelector('[data-act="military"]', { state: 'attached', timeout: 15000 }).catch(async (err) => {
   console.log('DIAG', await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; const M = await import('/js/engine/military.js');
