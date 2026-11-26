@@ -48,7 +48,7 @@ const VIEWS = {
       const indie = j.freelance ? `<div class="card"><h3>Freelance</h3>${kv([['Since', String(j.freelance.since)], ['Stories sold', String(jn.myPubs(p).filter((x) => x.fee).length)], ['Earned from them', fmtMoney(jn.myPubs(p).reduce((n, x) => n + (x.fee ?? 0), 0), c)]])}<p class="muted" style="margin:6px 0 0">Report a lead, then pitch it to a newsroom from its notebook. They pay once, when it runs.</p></div>` : '';
       const ways = p.age >= 18 ? `<div class="section-label">Working for yourself</div><div class="btn-stack">${j.freelance ? '' : btn('freelance', 'Go freelance', { disabled: !!fwhy, sub: fwhy || 'Find stories and sell them to newsrooms. No salary.' })}${own ? '' : btn('start', 'Start your own publication', { sub: 'A newsletter, a podcast, a website or a paper, with your own money.' })}</div>` : '';
       const titles = jn.ownedTitles(p);
-      const growRows = (t) => kv([['Research', ['None', 'A fact-checker', 'A research desk'][t.research ?? 0]], ['Bureaus', (t.bureaus ?? []).join(', ') || 'None'], ...(t.investor ? [['Investor', `${Math.round(t.investor.share * 100)}% of profits`]] : [])]);
+      const growRows = (t) => kv([['Loyal readers', `${Math.round(t.loyalty ?? 50)}/100`], ['Research', ['None', 'A fact-checker', 'A research desk'][t.research ?? 0]], ['Bureaus', (t.bureaus ?? []).join(', ') || 'None'], ...(t.investor ? [['Investor', `${Math.round(t.investor.share * 100)}% of profits`]] : [])]);
       const growBtns = (t) => `<div class="btn-stack" style="margin-top:6px">${btn('research', 'Research budget', { arg: t.id, sub: 'Checking costs money; mistakes cost readers.' })}${btn('bureau', 'Open a bureau', { arg: t.id, sub: 'Another city to cover.' })}</div>`;
       const sisters = titles.filter((t) => t.id !== own?.id);
       const company = own ? `<div class="section-label">${sisters.length ? 'Your media company' : 'Growing it'}</div>
@@ -117,6 +117,8 @@ const VIEWS = {
     const heard = (c) => c.heard.map((h) => `${h.offRecord ? '(off the record) ' : ''}${h.from}: ${h.says ? 'yes' : 'no'}`).join(' · ');
     return `<div class="card"><h3>${esc(nb.title)}</h3>${kv([['Status', STAGE[nb.status] ?? nb.status], ['Beat', BEATS[nb.beat].name], ['About', nb.subject ?? '—'], ['For', nb.outlet], ...(nb.deadline ? [['Due by', when(nb.deadline)]] : [])])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Editor', '', ed) : ''}</div>
+      ${live && nb.race ? `<div class="card"><h3>${nb.race.over ? 'The rival has run it' : 'A rival is on it'}</h3><p class="muted" style="margin:0">${esc(nb.race.outlet)} ${nb.race.over ? 'got there first. Yours can still be the one that is right.' : `is working on the same story, and may run it by ${when(nb.race.by)}. First is not the same as right: what is unchecked can wait, or stay out.`}</p></div>` : ''}
+      ${live && nb.conflict ? `<div class="card"><h3>A conflict of interest</h3><p class="muted" style="margin:0 0 6px">This story involves ${esc(nb.conflict)}. ${nb.disclosed ? 'You have disclosed it; the story will say so.' : 'Tell your editor, and the readers.'}</p>${nb.disclosed ? '' : btn('disclose', 'Disclose it', { arg: nb.id })}</div>` : ''}
       ${nb.review?.notes?.length && nb.status === 'revise' ? `<div class="card"><h3>Your editor's notes</h3>${nb.review.notes.map((x) => `<p style="margin:4px 0">${esc(x)}</p>`).join('')}</div>` : ''}
       <div class="section-label">Claims</div>
       ${nb.claims.map((c) => `<div class="card jn-claim"><div class="kv"><span>${esc(c.text)}${c.kind === 'allegation' ? ' <small class="muted">(allegation)</small>' : c.kind === 'opinion' ? ' <small class="muted">(opinion)</small>' : ''}</span><span>${pill(c.status)}</span></div>
@@ -165,7 +167,12 @@ const VIEWS = {
 
   career(p) {
     const j = jn.J(p);
-    return `<div class="card"><h3>Your journalism</h3>${kv([['Stories published', String(jn.myPubs(p).length)], ['Corrections run', String(jn.myPubs(p).reduce((n, x) => n + x.corrections.length, 0))], ['Prizes', String(j.awards.length)]])}</div>
+    const r0 = (v) => `${Math.round(v ?? 0)}/100`;
+    const cs = jn.contacts(p);
+    return `<div class="card"><h3>Your journalism</h3>${kv([['Stories published', String(jn.myPubs(p).length)], ['Exclusives', String(jn.myPubs(p).filter((x) => x.exclusive).length)], ['Corrections run', String(jn.myPubs(p).reduce((n, x) => n + x.corrections.length, 0))], ['Prizes', String(j.awards.length)]])}</div>
+      <div class="card"><h3>Standing</h3><p class="muted" style="margin:0 0 6px">Each is its own: famous is not the same as accurate.</p>${kv([['Accuracy', r0(j.rep.accuracy)], ['Trust of sources and readers', r0(j.rep.trust)], ['Public recognition', r0(j.rep.recognition)], ...(j.rep.leadership != null ? [['Leadership', r0(j.rep.leadership)]] : [])])}
+        ${kv([['Reporting', r0(j.skills.reporting)], ['Interviewing', r0(j.skills.interviewing)], ['Verification', r0(j.skills.verification)], ['Writing', r0(j.skills.writing)], ...(j.skills.broadcast != null ? [['On air', r0(j.skills.broadcast)]] : [])])}</div>
+      ${cs.length ? `<div class="section-label">Your contacts</div>${cs.slice(0, 12).map((c) => row('person', c.npcId, `${c.n.firstName} ${c.n.lastName}`, `${c.n.occupation ?? ''} · spoken ${c.times} time${c.times === 1 ? '' : 's'}`, c.trust >= 60 ? 'Trusts you' : c.trust < 35 ? 'Wary' : '', c.n)).join('')}` : ''}
       ${j.awards.length ? `<div class="section-label">Prizes</div>${j.awards.map((a) => `<div class="kv"><span>${esc(a.name)}</span><span>${a.year}</span></div>`).join('')}` : ''}
       ${jn.isReporter(p) ? `<div class="btn-stack">${btn('takeleave', 'Take a year\'s leave', { sub: 'A year away from the desk. Your job is kept.' })}${btn('lighter', 'Ask for a lighter year', { sub: 'Fewer assignments next year.' })}</div>` : ''}
       <div class="section-label">History</div>${[...j.history].reverse().map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('') || '<p class="empty">Nothing yet.</p>'}`;
@@ -275,6 +282,7 @@ const ACTIONS = {
     if (b) await x.say(jn.pitchLead(b));
   },
   follow: (id, x) => x.say(jn.followStory(id)),
+  disclose: (id, x) => x.say(jn.disclose(id)),
   help: (id, x) => x.say(jn.requestSupport(id)),
   lighter: (_, x) => x.say(jn.askLighterYear()),
   async share(id, x) {
