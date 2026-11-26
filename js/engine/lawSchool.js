@@ -408,7 +408,7 @@ export function startReadingLaw(p = player()) {
 function progressReading(p) {
   const R = p.law?.readLaw;
   if (!R || R.done || nowM() < R.until) return;
-  R.done = nowM();
+  R.done = R.until;
   gain(p, { research: 8, writing: 6, procedure: 6, drafting: 5, counseling: 4 });
   log(`You have read the law for two years. ${store.state.npcs[R.mentorId]?.firstName ?? 'Your mentor'} says you are ready to be examined for the bar.`, 'system', 'good');
 }
@@ -506,11 +506,11 @@ function fitness(p, examName) {
   return admit(p, examName);
 }
 /** Admission to practice, at the end of the route. */
-function admit(p, examName) {
+function admit(p, examName, at = nowM()) {
   const L = lawOf(p);
   const prof = profileFor(p.countryId);
-  L.bar.training = L.bar.training ? { ...L.bar.training, done: nowM() } : null;
-  L.bar.admitted = { year: store.state.year, m: nowM(), where: COUNTRY_NAME(p.countryId), body: prof.admission };
+  L.bar.training = L.bar.training ? { ...L.bar.training, done: at } : null;
+  L.bar.admitted = { year: Math.floor(at / 12), m: at, where: COUNTRY_NAME(p.countryId), body: prof.admission };
   (p.flags.licenses ??= []).includes('law') || p.flags.licenses.push('law');
   p.stats.mood = clamp(p.stats.mood + 12);
   canon(`law:admitted:${aid()}`, 'Admitted to practice law', `Passed the ${examName}${L.bar.attempts.length > 1 ? ` at the ${['', 'first', 'second', 'third', 'fourth'][L.bar.attempts.length] ?? 'latest'} attempt` : ''} and was granted ${prof.admission}.`, { sig: 3, privacy: 'public' });
@@ -542,7 +542,7 @@ export function progressBar(p = player()) {
   const B = p.law?.bar;
   // When the law changes, a woman who passed the exam and was barred is admitted.
   if (B?.fitness === 'barred' && !B.admitted && rule('womenInLaw', p.countryId)) { B.fitness = 'cleared'; return admit(p, barExamName(p)); }
-  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam);
+  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam, B.training.until); // admitted when the training ended
   return null;
 }
 

@@ -328,6 +328,7 @@ section('cases: one identity, real witnesses, facts apart from claims, steps fou
     check(c.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => e?.tainted).every((e) => e.admissible === false), 'a statement got by pressure is ruled out at trial');
     const outcome = inv2.file.outcome?.kind;
     check(['convicted', 'acquitted', 'dismissed'].includes(outcome) && ['sentenced', 'acquitted', 'dismissed'].includes(c.stage), `the court decides (${outcome})`);
+    check(inv2.file.outcome.at === c.trialDue && c.trialDue < core.now(), `the decision is dated from the court date, not from when the game next looked (${inv2.file.outcome.at} vs ${c.trialDue})`);
     W.settleCourt(inv2);
     check(inv2.file.outcome.kind === outcome, 'a verdict is not decided twice');
   }
