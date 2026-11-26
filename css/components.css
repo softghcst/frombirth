@@ -1492,6 +1492,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-postcard-screen.sv-still .wp-postcard { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wp-banner, .wp-side, .wp-postcard { animation: none !important; } }
 
+/* Journalism: a claim's status in the reporter's notebook (js/ui/journalism.js). */
+.hl-pill.bad { background: var(--bad-soft, rgba(220, 80, 80, 0.15)); color: var(--bad); }
+.jn-claim .kv span:first-child { white-space: normal; }
+.jn-claim small { display: block; margin-top: 4px; line-height: 1.35; }
+.jn-article p { line-height: 1.5; }
+
 /* The journey: a map of the world, the route drawn as the plane (ship, train, car) follows it (js/ui/journey.js). */
 .journey-screen { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #5FA9D6; cursor: pointer; animation: sv-fade-in .3s ease both; }
 .journey-screen.journey-out { animation: sv-fade-out .35s ease forwards; }

@@ -9,6 +9,7 @@ import { myAct, leaveAct } from './music.js';
 import { retire as retireSport } from './sportsLife.js';
 import { trainee, leaveTraining } from './kpop.js';
 import { quitCareer } from './career.js';
+import { leaveNewsroom, onRetire } from './journalism.js';
 import { workOf } from './entertainment.js';
 import { isModel } from './modeling.js';
 import { danceOf } from './dance.js';
@@ -22,6 +23,7 @@ export const SPECIAL_CAREERS = [
   { id: 'modeling', name: 'Modeling', noun: 'a model', ico: 'star', blurb: 'An agency, castings, bookings.' },
   { id: 'writing', name: 'Writing', noun: 'an author', ico: 'book', blurb: 'Books, a literary agent, publishers and the lists.' },
   { id: 'sports', name: 'Sports', noun: 'a professional athlete', ico: 'trophy', blurb: 'College, the pros or the tour, seasons and contracts.' },
+  { id: 'journalism', name: 'Journalism', noun: 'a journalist', ico: 'book', blurb: 'A newsroom, a beat, and stories that have to stand up.' },
   { id: 'kpop', name: 'K-pop Idol', noun: 'an idol', ico: 'star', blurb: 'Auditions, training, a debut and a group.' },
   { id: 'politics', name: 'Politics', noun: 'a politician', ico: 'compass', blurb: 'Parties, campaigns and office.' },
 ];
@@ -30,6 +32,7 @@ export const SPECIAL_BY_ID = Object.fromEntries(SPECIAL_CAREERS.map((c) => [c.id
 /** What an older save was already doing, for a life that has no special career recorded yet. */
 function inferred(p, state) {
   if (inOffice()) return 'politics';
+  if (p.career?.careerId === 'journalist') return 'journalism';
   const a = state.sports?.athletes?.[p.id];
   if (a && Object.values(a.sports ?? {}).some((e) => e.status === 'active' && ['pro', 'elite', 'college'].includes(e.level))) return 'sports';
   if (p.idol && (p.idol.traineeId || p.idol.groupId)) return 'kpop';
@@ -56,7 +59,7 @@ export function current(p = player(), state = store.state) {
  * Any other job is work of another kind: a special career is a full-time career, so it is one or the other.
  */
 const OWN_JOBS = { acting: ['actor'], music: ['singer', 'music_prod'], dance: ['dancer'], modeling: ['modeling'], writing: ['author', 'screenwriting'],
-  sports: ['athlete', 'coaching'], kpop: [], politics: [] };
+  sports: ['athlete', 'coaching'], journalism: ['journalist', 'broadcast', 'publishing'], kpop: [], politics: [] };
 
 /** Why this career cannot be taken up now, or ''. o.replacesJob: taking it up is itself a new job (a professional contract). */
 export function whyNot(id, p = player(), state = store.state, o = {}) {
@@ -103,6 +106,7 @@ export function leave(p = player(), state = store.state) {
   }
   if (now === 'kpop' && trainee(p)) leaveTraining();
   if (now === 'modeling' && isModel(p)) quitCareer();
+  if (now === 'journalism') { leaveNewsroom(p); if (p.career?.careerId === 'journalist') quitCareer(); }
   // (Winding down may already have closed it: leaving the act does.)
   release(now, p, state);
   const text = `You stepped away from ${SPECIAL_BY_ID[now].name.toLowerCase()}. Whatever you built is still yours; another special career is open to you now.`;
@@ -116,3 +120,6 @@ export function release(id, p = player(), state = store.state) {
   (p.flags.specialPast ??= []).push({ id, from: p.flags.special.since, to: state.year });
   p.flags.special = null;
 }
+
+// A journalist retiring from a newsroom scene leaves the special career the same way as from its page.
+onRetire(() => leave().text);
