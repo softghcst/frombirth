@@ -19,6 +19,7 @@ import * as realLaw from './realLaw.js';
 import { policeWitness } from './lawPolice.js';
 import * as world from './polity.js';
 import { report } from './news.js';
+import { familyHears } from './lawLife.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -813,6 +814,7 @@ export function discipline(level) {
   (L.discipline ??= []).push({ level, m: nowM(), year: store.state.year });
   if (level === 'suspended') { L.suspendedUntil = nowM() + 12; canon(`law:suspended:${player().id}:${nowM()}`, 'Suspended from practice', 'Suspended for a year by the bar for professional misconduct.', { privacy: 'public', sig: 2 }); }
   if (level === 'disbarred') report(world.polity(player().countryId), 'disbarred', {});
+  if (level !== 'reprimand') familyHears('shame', player());
   if (level === 'disbarred') { L.bar.disbarred = nowM(); (player().flags.licenses ?? []).splice((player().flags.licenses ?? []).indexOf('law'), 1); canon(`law:disbarred:${player().id}`, 'Disbarred', 'Struck off for serious professional misconduct.', { privacy: 'public', sig: 3 }); }
   const text = { reprimand: 'The bar issued a formal reprimand.', suspended: 'The bar suspended you from practice for a year.', disbarred: 'You were disbarred.' }[level];
   log(text, 'system', 'bad');
@@ -896,6 +898,7 @@ export function close(c, out, lines = []) {
     else if (c.templateId === 'criminal_appeal' && out.favorable > 0) report(w, 'conviction_overturned', words);
     else if (c.level >= 3 && c.jury) report(w, out.favorable > 0 ? 'courtWin' : 'courtLoss', words);
   }
+  if (c.level >= 4 && !c.clinic && open && out.favorable > 0) familyHears('win', p); // the family sees the news
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.

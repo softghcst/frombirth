@@ -147,6 +147,16 @@ export default [
     ['Say it was just your job', 'childReads:modest', 'You shrug. It was a long time ago.'],
     ['Tell them what it taught you about being fair', 'childReads:lesson', 'You tell them what you learned, more than what you won.', 'good'],
   ]),
+  scene('law_family_strain', [24, 100], 'Late Again. {name} has stopped asking when you will be home. You have {trials} trials coming, and every one of them is somebody\'s life.', [
+    ['Be home for dinner, case or no case', 'strain:home', 'You close the laptop at six.', 'good'],
+    ['Ask {name} for patience, and explain', 'strain:ask', 'You sit down and talk it through.'],
+    ['Bury yourself in the work', 'strain:work', 'You tell yourself it is only for a few weeks.', 'bad'],
+  ]),
+  scene('law_retirement', [55, 120], 'The Last Day. {years} years in the law. People will remember {big}. Your office is in boxes.', [
+    ['Give a short speech, and thank the clerks', 'retire:speech', 'You stand up at the farewell.', 'good'],
+    ['Offer to mentor young lawyers', 'retire:mentor', 'You leave your number with the bar association.', 'good'],
+    ['Slip away quietly', 'retire:quiet', 'You let the day pass like any other.'],
+  ]),
   scene('law_old_rival', [28, 90], 'An Old Rival. Across the aisle in {title} is {rival}, whom you have faced before.', [
     ['Shake hands and get to work', 'rival:respect', 'Rivals, not enemies.'],
     ['Make it personal', 'rival:personal', 'You have not forgotten last time.', 'bad'],

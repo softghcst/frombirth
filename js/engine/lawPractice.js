@@ -26,6 +26,7 @@ import { VOTERS } from '../data/parties.js';
 import * as realLawMod from './realLaw.js';
 import { discipline } from './lawCases.js';
 import { tickAcademy, clerking } from './lawAcademy.js';
+import { tickLawLife, strainChoice, retirementChoice } from './lawLife.js';
 import { pendingBriefs, takeBrief, templateFor, takeClaim } from './investigations/legal.js';
 import { openClaims, settleClaims } from './investigations/local.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
@@ -92,6 +93,7 @@ export function mayPractice(p = player()) {
   if (L.bar.disbarred) return 'You were disbarred.';
   if ((L.suspendedUntil ?? 0) > nowM()) return 'You are suspended from practice.';
   if (trackOf(p) === 'judiciary') return 'A judge does not represent clients.';
+  if (L.retired && !LEGAL.has(p.career?.careerId)) return 'You have retired from practice.';
   return '';
 }
 /** The specialties open on the current track. Only playable ones can be chosen as the main practice. */
@@ -629,6 +631,7 @@ export function tickLaw(o = {}) {
   storyBeats(p);
   firmYear(p);
   tickAcademy(p);
+  tickLawLife(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
@@ -779,6 +782,8 @@ export function lawChoice(value) {
       if (choice === 'apply') { const r = seek('judge', p); return r.text; }
       return 'You let the vacancy pass. There will be others.';
     }
+    case 'strain': return strainChoice(choice, p);
+    case 'retire': return retirementChoice(choice, p);
     case 'childReads': {
       const kid = store.state.npcs[L.childReads];
       if (!kid) return '';
