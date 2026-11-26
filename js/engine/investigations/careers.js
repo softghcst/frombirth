@@ -7,6 +7,7 @@
 // may be refused; an academy may need more time or be failed; a detective seat or a rank needs a
 // vacancy, and others apply for it too. Each step is dated (core.at/now) when it starts and becomes
 // known when the calendar reaches it, so the length of a turn changes nothing.
+import { inForce, decertified } from './reform.js';
 import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
@@ -107,6 +108,7 @@ export function policeUnmet(a, p = player()) {
   if (d.maxAge && p.age > d.maxAge) out.push(`Applicants must be ${d.maxAge} or younger.`);
   if (!highSchool(p)) out.push('Needs a high school diploma or the equivalent.');
   if (record(p).some((x) => (x.severity ?? 2) >= 2)) out.push('A serious criminal record rules this out.');
+  if (decertified(p)) out.push('Your certification was revoked after a dismissal for misconduct: no department here may hire you.');
   if (p.legal.incarceration || p.legal.pending) out.push('Not with a criminal case open.');
   if (coverageOf(a.countryId) === 'full' ? !rightToLive(a.countryId, p) && residency(p).status !== 'permanent_resident' : !residency(p).workAuthorized) out.push('Needs to be a citizen or permanent resident here.');
   if (p.countryId !== a.countryId) out.push('Only people living here can apply.');
@@ -220,6 +222,8 @@ export function academyAct(id) {
   for (const m of d.marks) ac.marks[m] += 1;
   for (const s of d.skills ?? []) grow(s, 4);
   if (id === 'fitness') p.stats.health = clamp(p.stats.health + 2);
+  // Under a national use-of-force standard, de-escalation is taught as the core of the job (reform.js).
+  if (id === 'talk' && inForce(p.countryId, 'force')) { ac.marks.deescalation += 1; grow('interviewing', 2); }
   if (d.feedback) { const weak = Object.entries(ac.marks).sort((x, y) => x[1] - y[1])[0][0]; return result(true, `The instructor was direct: your ${weak.replace('deescalation', 'de-escalation')} needs the most work before graduation.`, 'neutral'); }
   return result(true, { study: 'You read the statutes until they made sense, then read them again.', write: 'Your reports came back with fewer red marks each week.', talk: 'In the role-plays you learned to slow a situation down instead of speeding it up.',
     ethics: 'The ethics seminar was mostly cases where the right thing cost someone something.', fitness: 'You met the physical readiness standard with room to spare.' }[id]);

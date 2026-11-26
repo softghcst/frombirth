@@ -29,6 +29,8 @@ import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
 import { settleWorkplace, workplaceYear } from './workplace.js';
 import { labYear, careerYear as labCareerYear } from './forensicLab.js';
+import { unionYear } from './unions.js';
+import { reformYear } from './reform.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -102,6 +104,8 @@ export function tickInvestigations() {
   // A licensed assistant investigator takes the full title (the 'pi' track's second rung).
   if (p.career.careerId === 'pi' && p.career.level === 0 && licensed(p)) { promote(); p.career.title = 'Private investigator'; }
   for (const line of workplaceYear(p)) log(line, 'system', 'good');
+  for (const line of unionYear(p)) log(line, 'system', 'neutral');
+  for (const line of reformYear(p)) log(line, 'system', 'neutral');
   peopleYear(p);
   dramaYear(p);
 }

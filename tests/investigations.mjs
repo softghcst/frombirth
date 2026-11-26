@@ -1046,6 +1046,83 @@ section('a homicide from the first night to the verdict, scene by scene; the Mar
 }
 section('the forensic scientist: a discipline, a backlog from real cases, proficiency and accreditation, testimony within the science, promotion on the record');
 
+// ---------- 21. Police unions ----------
+{
+  const UN = await import('../js/engine/investigations/unions.js');
+  const p = life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  const u = UN.unionOf(a);
+  check(u && store.state.npcs[u.repId] && u.contract.until > store.state.year && UN.unionOf(a) === u, 'a department has one union, with a real representative and a contract');
+  const cash = p.finance.cash;
+  check(UN.join().ok && !UN.join().ok && r.union.member, 'an officer joins once');
+  UN.unionYear(); check(p.finance.cash < cash, 'members pay dues');
+  // Discipline: the finding stays the evidence's; a dismissal may be reduced at arbitration.
+  let reduced = 0; let upheld = 0;
+  for (let i = 0; i < 12; i++) {
+    const c = { id: `cx${i}`, action: 'dismissal' };
+    const out = UN.represent(c, r);
+    if (out.action === 'dismissal') upheld += 1; else reduced += 1;
+  }
+  check(reduced > 0 && upheld > 0, `arbitration sometimes reduces a dismissal, sometimes upholds it (${reduced}/${upheld})`);
+  // Records removed by contract do not count as a prior record.
+  r.discipline = [{ year: store.state.year - 6, finding: 'substantiated' }, { year: store.state.year, finding: 'substantiated' }];
+  check(UN.priorRecord(r).length === 2, 'records kept: both count');
+  u.contract.records = 'removed after three years';
+  check(UN.priorRecord(r).length === 1, 'records removed after three years: the old one does not');
+  r.discipline = [];
+  // The representative bargains; work to rule takes hours from cases.
+  r.union.since = store.state.year - 6; r.rep.teamwork = 90; r.skills.leadership = 90;
+  for (let i = 0; i < 8 && !r.union.rep; i++) { UN.standForRep(); store.state.year += 1; }
+  check(r.union.rep && u.repId === p.id, 'a member can be elected representative');
+  u.contract.until = store.state.year;
+  check(UN.talks()?.side === 'union' && UN.stancesFor('union').length === 3, 'the representative sits at the table when the contract ends');
+  const res = UN.bargain('training');
+  check(res.ok && u.contract.training && u.contract.until === store.state.year + 3, 'a contract is agreed, with what was bargained for');
+  u.stalled = store.state.year;
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const h = W.workLeft(inv);
+  for (let i = 0; i < 6 && u.action !== store.state.year; i++) { r.union.voted = null; UN.vote('yes'); }
+  if (u.action === store.state.year) check(W.workLeft(inv) === Math.max(0, h - 2), 'working to rule takes hours from every case');
+  check(/may not strike/.test(UN.NO_STRIKE), 'police may not strike: the rule is shown');
+}
+section('police unions: one per department, dues, representation that never changes a finding, records clauses, the representative at the table, working to rule');
+
+// ---------- 22. National police reform ----------
+{
+  const RF = await import('../js/engine/investigations/reform.js');
+  const p = life('us', 45);
+  check(!RF.propose('bodycams').ok, 'only the legislature or the head of government passes national reform');
+  p.politics = { officeId: 'head' };
+  let passed = false;
+  for (let i = 0; i < 8 && !passed; i++) { RF.propose('bodycams'); passed = RF.inForce('us', 'bodycams'); if (!passed) store.state.year += 1; }
+  check(passed && !RF.propose('bodycams').ok, 'the head of government puts a measure to a vote; once law, it stays law');
+  // Body cameras: pressing a witness is on camera, and brings a complaint.
+  p.politics = null;
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const n0 = Object.values(core.W().complaints).filter((c) => c.subjectId === p.id).length;
+  W.act(inv.id, `interview:${Object.keys(inv.file.witnesses)[0]}`, { question: 'press' });
+  check(inv.file.recorded && Object.values(core.W().complaints).filter((c) => c.subjectId === p.id).length === n0 + 1, 'under body-camera law, pressing a witness is recorded and brings a complaint');
+  // Independent complaints and decertification.
+  core.W().reform.us.independent = { year: store.state.year }; core.W().reform.us.decertify = { year: store.state.year };
+  r.discipline.push({ year: store.state.year, finding: 'substantiated' });
+  const id = 'complaint_ref';
+  core.W().complaints[id] = { id, subjectId: p.id, kind: 'fabrication', text: 'A test.', opened: core.now(), due: core.now(), status: 'open', true: true };
+  for (const c of Object.values(core.W().complaints)) if (c.id !== id && c.status === 'open' && c.subjectId === p.id) c.status = 'decided';
+  O.settleComplaints();
+  const c = core.W().complaints[id];
+  check(c.reviewer === 'independent', 'complaints are decided by an independent body');
+  if (c.action === 'dismissal') check(RF.decertified(p) && C.policeUnmet(a, p).some((x) => /certification/.test(x)), 'an officer dismissed for misconduct is decertified: no department may hire them');
+  check(RF.reformList('us').length === 4, 'four measures a country can pass');
+}
+section('national police reform: passed by the legislature, body cameras that record, independent complaints, decertification');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
