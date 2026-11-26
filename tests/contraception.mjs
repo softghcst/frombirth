@@ -584,6 +584,31 @@ section('vertical slice: compare, consult, choose, pay, start, live, switch, sav
 }
 section('pregnancy planning and life stages: preferences, removals, menopause timing that varies');
 
+// ---------- A long life ----------
+{
+  for (const step of [3, 12]) {
+    rng.seed(900 + step);
+    const p = life({ age: 20, year: 2000 });
+    const n = partner(p); n.role = 'spouse';
+    store.state.settings.step = step;
+    C.startMethod('coc', { provider: prov('prescribe') });
+    let bad = '';
+    for (let y = 0; y < 30 && p.alive; y++) {
+      const before = store.state.year;
+      while (store.state.year === before && p.alive) turn();
+      if (p.age === 27 && C.primaryNow()?.methodId === 'coc') C.switchMethod(C.primaryNow().id, 'iud_copper', { provider: prov('iud') });
+      if (p.age === 36 && C.primaryNow()?.deviceId) C.replaceDevice(C.primaryNow().id, { provider: prov('iud') });
+      const act = C.active();
+      if (act.filter((r) => !C.def(r).barrier).length > 1) bad ||= `two main methods at ${p.age}`;
+      if (new Set(act.filter((r) => r.deviceId).map((r) => r.deviceId)).size !== act.filter((r) => r.deviceId).length) bad ||= `duplicate device at ${p.age}`;
+      if (C.cx().processed !== store.state.year * 12 - 1) bad ||= `months not processed through the year at ${p.age}`;
+    }
+    check(!bad, `thirty years in ${step}-month turns: one main method at a time, no duplicate devices, every month processed (${bad || 'ok'})`);
+    check(C.cx().methods.length >= 2 && C.cx().methods.every((r) => r.events.length), 'the whole history kept, each record with its own events');
+  }
+}
+section('long lives: thirty years of turns, switches and replacements, the record stays sound');
+
 console.log(passed.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.map((x) => ` ✗ ${x}`).join('\n')}`); process.exit(1); }
 console.log('\nContraception checks out.');

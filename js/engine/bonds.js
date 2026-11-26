@@ -544,7 +544,7 @@ export function bondActions(npc) {
   }
   if ((main || b) && givable().length) a.push({ id: 'bondTransfer', label: 'Make a car or a home over to them' });
   if (main) a.push({ id: 'bondTrip', label: 'Go away together' });
-  if (main || b) a.push({ id: 'bondControl', label: birthControl() ? 'Stop using birth control' : 'Use birth control' });
+  if (main || b) a.push({ id: 'bondControl', label: 'Birth control & family planning' });
   return a;
 }
 

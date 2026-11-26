@@ -443,7 +443,7 @@ export function openNpc(npc, api, back, o = {}) {
       bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),
       bondEnd: () => report(api, bonds.end(npc.id)),
       bondConfess: () => report(api, bonds.confess(npc.id)),
-      bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
+      bondControl: async () => { const { openHealth } = await import('../health/hub.js'); openHealth(api, { section: 'repro', page: 'bc' }); },
       baby: () => report(api, kids.tryForBaby(npc.id)),
       ivf: () => report(api, kids.tryIvf(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
