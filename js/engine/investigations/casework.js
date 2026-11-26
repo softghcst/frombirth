@@ -30,6 +30,8 @@ import { meet } from './careers.js';
 import { labMonths, hoursBonus } from './policing.js';
 import { lawyerOnIt, lawCaseFor } from './legal.js';
 import { realBusiness, neighborWitness, placeCase } from './local.js';
+import { workingToRule } from './unions.js';
+import { inForce } from './reform.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -341,7 +343,8 @@ export function workLeft(inv) {
   // Extra hours this year: support approved, a partner's routine work, a task force; and this year's priority (workplace.js).
   const r = rec();
   const pri = r?.priority?.year === year() && r.caseIds.includes(inv.id) ? (r.priority.invId === inv.id ? 2 : -1) : 0;
-  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri - used);
+  const rule = workingToRule(inv.agencyId) ? -2 : 0; // the union is working to rule (unions.js)
+  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri + rule - used);
 }
 const spend = (f) => { f.work[year()] = (f.work[year()] ?? 0) + 1; };
 
@@ -483,6 +486,8 @@ export function interview(inv, wid, q) {
     if (named) {
       const ev = k.addEvidence(incidentOf(inv), 'witness', named, { sourceId: wid, reliability: 0.2, summary: `${nm(wid)}, pressed hard, gave ${nm(named)}'s name.` });
       ev.tainted = 'leading';
+      // Where body cameras are the law, the interview is recorded: the pressure is on camera, and a complaint follows (reform.js).
+      if (inForce(incidentOf(inv).countryId, 'bodycams') && !f.recorded) { f.recorded = true; ev.recorded = true; complain(inv, 'conduct', 'A recorded interview shows a witness pressed until their account changed.'); }
       inv.evidenceIds.push(ev.id);
     }
     f.log.push({ at: now(), text: `Pressed ${nm(wid)} hard. ${named ? 'They gave a name, but it was the one you suggested.' : 'They shut down.'}` });

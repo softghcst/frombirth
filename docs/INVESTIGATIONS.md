@@ -23,6 +23,7 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Area | Status |
 |---|---|
 | Local police (US municipal, county, state) | **Playable**: preparation, application with assessments and a dated decision, academy over real time, field training with a persistent training officer, probation, patrol work |
+| Police in the UK, Canada, Australia, France and Japan | **Playable**: each country's own forces (UK territorial forces such as the Metropolitan Police Service and Police Scotland; Canadian municipal services and the RCMP; Australian state police; France's Police nationale and Gendarmerie; Japan's prefectural police and the Tokyo Metropolitan Police Department), with their own names, chiefs, rank names (constable, inspector; gardien de la paix, commissaire; junsa, keibu), entry routes and prosecuting authority. Ranks map to the same ladder underneath |
 | Police elsewhere | **Simplified**: one national service per city, marked simplified |
 | Detective selection | **Playable**: a vacancy, an assessment, a real rival applicant, a panel decision; transfers between units |
 | Burglary | **Playable** (the Ashford Street case is a burglary template) |
@@ -36,7 +37,7 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | DEA, ATF | **Playable** to the same depth as the FBI, each with its own case types: the DEA drug supply, the ATF firearms and arson; the FBI fraud, cybercrime, corruption, robbery and homicide |
 | Task forces | **Playable**: a US robbery or fraud case may gain a federal partner, as one shared case; a yearly task force meeting (share everything, agree who does what, or hold leads back; holding back year after year ends it) |
 | Private investigation | **Playable**: license by exam, an agency on the business engine, clients who come or not by price and reputation, lawful steps only, fees paid once |
-| Forensic scientist (crossover) | **Partial**: requests from real cases on the bench; the report joins the same case file |
+| Forensic scientist | **Playable**: a discipline of their own; a backlog of requests from real cases, larger when the department's budget is cut, with due dates (overdue requests hold cases up); serious cases first, or in order; a yearly blind proficiency test that keeps the laboratory accredited (looking for the answer fails it and takes the scientist off casework); promotion up the forensic track on careful reports; expert testimony in court on their own reports, where overclaiming is found out and their other cases are reviewed (`forensicLab.js`) |
 | Medical examiner | **Playable** for a physician who completes the Forensic Pathology fellowship (after pathology): death referrals from real investigations; cause and manner of death found separately; toxicology takes time; findings the evidence does not support are refused; the signed report is the examiner's finding in the same case file |
 | Forensic psychiatry | **Playable** for a physician who completes the Forensic Psychiatry fellowship (after psychiatry): competency evaluations ordered by a court in a real case; the role and the limits of confidentiality come first; a firm opinion needs a structured assessment; the court decides |
 | Policing and accountability | **Playable**: department budgets read from the country's police policy and the mayor's safety budget, with effects on laboratory time, caseload hours and training; a chief's yearly priority; a civilian oversight board proposed by a mayor or council member and voted on, with arguments on both sides; elected sheriffs |
@@ -58,7 +59,9 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Homicide scenes | **Playable**: a homicide brings its own scenes, each once and when the file says it is time: telling the family (a real next of kin, kept on the file), the first night at the scene (moving things before they are recorded leaves a custody gap), the first forty-eight hours (naming a suspect early costs integrity), the press conference (an appeal may bring a lead), the vigil, the funeral (a promise of an arrest is heavy), a year unsolved, and the verdict |
 | Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
 | Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
-| Forensic psychology outside the courts, police unions, national police reform | **Not built** |
+| Police unions | **Playable**: one union per department, with a real representative and a three-year contract (pay, training, whether disciplinary records are kept or removed); members pay dues, may stand for representative and bargain, and vote on working to rule when talks stall (cases get fewer hours). Police may not strike (a simplified rule, shown). Representation never changes a finding; a dismissal may be reduced at arbitration (`unions.js`) |
+| National police reform | **Playable**: four measures a legislature can pass (body cameras, a register of dismissed officers, independent investigation of complaints, a use-of-force standard), put forward by a player in the national legislature or leading the government, or passed in their own time after scandals. Each changes the engine: recorded interviews bring complaints for pressure, decertified officers cannot be rehired, complaints go to an independent body, de-escalation is trained (`reform.js`) |
+| Forensic psychology | **Playable** for a licensed psychologist (a doctorate in psychology): consultations on real open cases that describe behavior and never name anyone; risk assessments of real prisoners for the parole board, which decides; confidential care for officers after critical incidents, where telling a supervisor what was said brings a complaint (`forensicPsych.js`) |
 
 ## Studying for the work
 
@@ -94,6 +97,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (19 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (24 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer; a fatal collision's hospital, family claim and insurer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

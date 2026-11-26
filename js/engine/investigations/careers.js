@@ -7,6 +7,7 @@
 // may be refused; an academy may need more time or be failed; a detective seat or a rank needs a
 // vacancy, and others apply for it too. Each step is dated (core.at/now) when it starts and becomes
 // known when the calendar reaches it, so the length of a turn changes nothing.
+import { inForce, decertified } from './reform.js';
 import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
@@ -107,6 +108,7 @@ export function policeUnmet(a, p = player()) {
   if (d.maxAge && p.age > d.maxAge) out.push(`Applicants must be ${d.maxAge} or younger.`);
   if (!highSchool(p)) out.push('Needs a high school diploma or the equivalent.');
   if (record(p).some((x) => (x.severity ?? 2) >= 2)) out.push('A serious criminal record rules this out.');
+  if (decertified(p)) out.push('Your certification was revoked after a dismissal for misconduct: no department here may hire you.');
   if (p.legal.incarceration || p.legal.pending) out.push('Not with a criminal case open.');
   if (coverageOf(a.countryId) === 'full' ? !rightToLive(a.countryId, p) && residency(p).status !== 'permanent_resident' : !residency(p).workAuthorized) out.push('Needs to be a citizen or permanent resident here.');
   if (p.countryId !== a.countryId) out.push('Only people living here can apply.');
@@ -220,6 +222,8 @@ export function academyAct(id) {
   for (const m of d.marks) ac.marks[m] += 1;
   for (const s of d.skills ?? []) grow(s, 4);
   if (id === 'fitness') p.stats.health = clamp(p.stats.health + 2);
+  // Under a national use-of-force standard, de-escalation is taught as the core of the job (reform.js).
+  if (id === 'talk' && inForce(p.countryId, 'force')) { ac.marks.deescalation += 1; grow('interviewing', 2); }
   if (d.feedback) { const weak = Object.entries(ac.marks).sort((x, y) => x[1] - y[1])[0][0]; return result(true, `The instructor was direct: your ${weak.replace('deescalation', 'de-escalation')} needs the most work before graduation.`, 'neutral'); }
   return result(true, { study: 'You read the statutes until they made sense, then read them again.', write: 'Your reports came back with fewer red marks each week.', talk: 'In the role-plays you learned to slow a situation down instead of speeding it up.',
     ethics: 'The ethics seminar was mostly cases where the right thing cost someone something.', fitness: 'You met the physical readiness standard with room to spare.' }[id]);
@@ -390,8 +394,15 @@ export function becomeDetective(p, r, a, unitId) {
   meet(partner, 'Detective partner');
   meet(u.headId, 'Detective sergeant');
   r.stats.units = [...new Set([...r.stats.units, u.specialty])];
-  p.career.title = `${DETECTIVE_RANKS[r.job.rank]?.name ?? 'Detective'}, ${SPECIALTIES[u.specialty].name.toLowerCase()}`;
+  p.career.title = `${rankName(r.job.rank, r) ?? 'Detective'}, ${SPECIALTIES[u.specialty].name.toLowerCase()}`;
   note(`Became a detective in ${SPECIALTIES[u.specialty].name.toLowerCase()} at ${a.name}.`, 'career', { key: `detective:${a.id}:${u.specialty}`, milestone: `Became a detective: ${SPECIALTIES[u.specialty].name}.`, significance: 2 });
+}
+
+/** A rank's name where the player serves: a UK force has constables and inspectors, a Japanese one junsa and keibu. */
+export function rankName(rankId, r = rec()) {
+  if (r?.family === 'federal') return FEDERAL_RANKS[rankId]?.name ?? null;
+  const d = AGENCY_KINDS[agency(r?.job?.agencyId)?.kind];
+  return d?.rankNames?.[rankId] ?? d?.detectiveNames?.[rankId] ?? POLICE_RANKS[rankId]?.name ?? DETECTIVE_RANKS[rankId]?.name ?? null;
 }
 
 // ---------- Promotions ----------
@@ -403,7 +414,7 @@ export function promotionOptions(p = player()) {
   const table = r.family === 'federal' ? FEDERAL_RANKS : r.job.detective ? DETECTIVE_RANKS : POLICE_RANKS;
   const cur = table[r.job.rank];
   if (!cur) return [];
-  const next = Object.entries(table).filter(([, x]) => x.order === cur.order + 1).map(([id, x]) => ({ id, ...x }));
+  const next = Object.entries(table).filter(([, x]) => x.order === cur.order + 1).map(([id, x]) => ({ id, ...x, name: rankName(id, r) ?? x.name }));
   return next.map((x) => {
     const served = year() - (r.job.rankSince ?? year());
     let block = '';
@@ -447,11 +458,12 @@ export function settlePromotions(p = player()) {
     r.job.rank = app.rank;
     r.job.rankSince = year();
     while (p.career.level < x.level && promote()) { /* the payroll follows the rank */ }
-    p.career.title = x.name;
+    const title = rankName(app.rank, r) ?? x.name;
+    p.career.title = title;
     if (x.leader) grow('leadership', 5);
     if (app.rank === 'chief') { const a = agency(r.job.agencyId); if (a) { const old = npc(a.chiefId); if (old) { old.occupation = 'Retired chief of police'; old.flags.justice.retired = year(); } a.chiefId = me(); } }
-    note(`Promoted to ${x.name.toLowerCase()}.`, 'career', { key: `rank:${app.rank}:${app.ownerId}`, milestone: `Promoted to ${x.name.toLowerCase()}.`, significance: x.leader ? 2 : 1 });
-    out.push(`You are now ${x.name.toLowerCase()}.`);
+    note(`Promoted to ${title.toLowerCase()}.`, 'career', { key: `rank:${app.rank}:${app.ownerId}`, milestone: `Promoted to ${title.toLowerCase()}.`, significance: x.leader ? 2 : 1 });
+    out.push(`You are now ${title.toLowerCase()}.`);
   }
   for (const line of out) log(line, 'system', 'neutral');
   return out;
