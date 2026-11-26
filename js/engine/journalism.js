@@ -35,6 +35,7 @@ import { levelOf } from './skills.js';
 import { exists } from './fame.js';
 import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
+import { J as casesJ } from './cases.js';
 import { polity } from './polity.js';
 import { askOut } from './romance.js';
 import { post as postNews } from './economy.js';
@@ -315,26 +316,52 @@ function localStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
 }
 
 /** A court story, from a case in the public record (engine/investigations). Only what is public is available. */
-function courtStory(p, o, r, cases, w = { countryId: p.countryId, city: p.city }) {
-  const pub = cases.find((x) => !Object.values(S().stories).some((s) => s.links.caseId === x.caseId && s.reporterId === p.id));
+function courtStory(p, o, r, cases, w = { countryId: p.countryId, city: p.city }, only = null) {
+  const pub = only ? cases.find((x) => x.caseId === only) : cases.find((x) => !Object.values(S().stories).some((s) => s.links.caseId === x.caseId && s.reporterId === p.id));
   if (!pub) return null;
-  const s = newStory(p, o, 'court', `${pub.title}: ${pub.outcome === 'pending' ? 'the case goes on' : `the court's decision`}`, { subject: pub.defendant, links: { caseId: pub.caseId }, needsComment: true });
+  const inv = Object.values(casesJ().investigations ?? {}).find((x) => x.file?.courtCaseId === pub.caseId);
+  const f = inv?.file;
+  const title = pub.outcome === 'pending' ? 'the case goes on' : pub.outcome === 'conviction quashed on appeal' ? 'the conviction is overturned' : 'the court\'s decision';
+  const s = newStory(p, o, 'court', `${pub.title}: ${title}`, { subject: pub.defendant, links: { caseId: pub.caseId, ...(inv ? { invId: inv.id } : {}) }, needsComment: true, needsLegal: !!f?.sensitive, protectedName: !!f?.sensitive });
   const convicted = pub.outcome === 'convicted';
   const c1 = addClaim(s, { text: `${pub.defendant} was charged with ${(pub.charge ?? 'an offense').toLowerCase()}`, truth: true, important: true });
   const c2 = addClaim(s, { text: pub.outcome === 'pending' ? 'The case has not yet been decided' : `The case ended: ${pub.outcome}`, truth: true, important: true });
+  // Guilt is the court's to decide: only a conviction makes it so, and an acquittal is never reported as anything else.
   const c3 = addClaim(s, { text: `${pub.defendant} committed the crime`, kind: 'allegation', truth: convicted, important: true });
-  const c4 = addClaim(s, { text: 'A neighbor saw someone at the scene that night', truth: r.chance(0.6) });
   addDoc(s, { title: `The public court record (${pub.court ?? 'the court'})`, settles: [{ claimId: c1.id }, { claimId: c2.id }, ...(pub.outcome !== 'pending' ? [{ claimId: c3.id }] : [])] });
   addDoc(s, { title: 'The police case file', public: false, why: 'Case files are not available to a reporter, and asking someone to leak one puts you both in the wrong. The court record is public.' });
   addDoc(s, { title: 'Sealed witness statements', public: false, why: 'Sealed records stay sealed. A witness who chooses to talk can talk to you.' });
-  const wit = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(25, 75) });
-  wit.occupation = `A witness in ${pub.title.split(',')[0].toLowerCase()}`;
-  store.state.npcs[wit.id] = wit;
-  const c4true = s.claims.find((x) => x.id === c4.id).truth;
-  addSource(s, { npcId: wit.id, name: nameOf(wit), role: 'A neighbor who was there', type: 'witness', willing: 0.55, knows: [{ claimId: c4.id, says: r.chance(0.7) ? c4true : !c4true }, { claimId: c3.id, says: true }] });
+  if (f?.sensitive) addDoc(s, { title: 'The name of the person harmed', public: false, why: 'The law protects them: they are not named, by anyone.' });
+  // The case's own witnesses, those who choose to talk: their memory of that night, which may be wrong.
+  const real = f ? Object.values(f.witnesses ?? {}).filter((x) => x.willing >= 0.5 && npc(x.id)?.alive).slice(0, 2) : [];
+  for (const x of real) {
+    const clue = f.clues.find((c) => c.via === `q:${x.id}:observed`);
+    const cl = addClaim(s, { text: clue?.text ?? `${nameOf(npc(x.id))} remembers the night clearly`, truth: clue ? clue.accurate !== false : x.accurate !== false });
+    addSource(s, { npcId: x.id, name: nameOf(npc(x.id)), role: 'A witness in the case', type: 'witness', willing: x.willing * 0.8, knows: [{ claimId: cl.id, says: true }, { claimId: c3.id, says: true }] });
+  }
+  if (!real.length) {
+    const c4 = addClaim(s, { text: 'A neighbor saw someone at the scene that night', truth: r.chance(0.6) });
+    const wit = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(25, 75) });
+    wit.occupation = `A witness in ${pub.title.split(',')[0].toLowerCase()}`;
+    store.state.npcs[wit.id] = wit;
+    const c4true = s.claims.find((x) => x.id === c4.id).truth;
+    addSource(s, { npcId: wit.id, name: nameOf(wit), role: 'A neighbor who was there', type: 'witness', willing: 0.55, knows: [{ claimId: c4.id, says: r.chance(0.7) ? c4true : !c4true }, { claimId: c3.id, says: true }] });
+  }
   addSource(s, { institution: true, name: 'The defense', role: 'The defendant\'s lawyer', type: 'lawyer', willing: 0.5, knows: [{ claimId: c3.id, says: false }, { claimId: c1.id, says: true }] });
   addSource(s, { institution: true, name: pub.agency ?? 'The police', role: 'The investigating agency', type: 'official', willing: 0.35, knows: [{ claimId: c1.id, says: true }] });
   return s;
+}
+/** Takes a case from the public court record onto the reporter's desk (from the case screens). */
+export function coverCase(caseId) {
+  const p = player();
+  if (!working(p)) return result(false, 'You need to be working as a reporter: with a newsroom, freelance, or your own publication.', 'neutral');
+  if (Object.values(S().stories).some((x) => x.links.caseId === caseId && x.reporterId === p.id && open(x, p))) return result(false, 'You are already covering it.', 'neutral');
+  const cases = (() => { try { return publicCases(p); } catch { return []; } })();
+  if (!cases.some((x) => x.caseId === caseId)) return result(false, 'There is no public record of that case.', 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const o = isReporter(p) ? outlet(J(p).outletId) : ownedOutlet(p);
+  const s = courtStory(p, o, seeded(`${p.id}/cover/${caseId}`), cases, { countryId: p.countryId, city: p.city }, caseId);
+  return s ? result(true, `"${s.title}" is in your assignments. What you can use: the public record, and people willing to talk.`, 'neutral', { storyId: s.id }) : result(false, 'There is no public record of that case.', 'neutral');
 }
 
 /** A sports story, from a season really played (engine/sports): who won, and by how much. */
@@ -700,6 +727,17 @@ export function publish(storyId, o2 = {}) {
   if (!j.history.some((h) => /first byline/i.test(h.text))) { j.history.push({ year: year(), text: `First byline: "${pub.headline}", ${o.name}.` }); milestone(`Your first byline: "${pub.headline}" in ${o.name}.`, 'career'); }
   for (const x of pub.sources) if (x.npcId && npc(x.npcId)) { const n = npc(x.npcId); (n.memories ??= []).push({ age: p.age, text: `Was quoted in your story "${pub.headline}".` }); }
   log(`"${pub.headline}" ran in ${o.name}. About ${pub.readers.toLocaleString('en-US')} people ${o.medium === 'print' ? 'read' : o.medium === 'online' ? 'read' : 'saw or heard'} it.`, 'system', 'good');
+  // A careful story about a case: public attention to a conviction (a review is for the authorities), or a reader with
+  // something to tell the investigator. Never a verdict, and never an arrest.
+  if (s.links.invId && !errors.length) {
+    const inv = casesJ().investigations?.[s.links.invId];
+    const stage = inv?.file?.courtCaseId && casesJ().cases?.[inv.file.courtCaseId]?.stage;
+    if (inv?.file && stage === 'sentenced') inv.file.publicAttention = year();
+    else if (inv?.file && !['acquitted', 'dismissed', 'quashed'].includes(stage) && seeded(`${id}/lead`).chance(0.4)) {
+      inv.file.leads.push({ id: `story_${id}`, text: 'After the story ran, a reader called the newsroom: they saw something that night and never told anyone. It needs checking.', why: 'A published story', status: 'open', at: now() });
+      pub.lead = true;
+    }
+  }
   // A story that matters makes the world's news: one entry, pointing at this article (never a second event).
   if ((pub.quality >= 75 || ['investigative', 'politics', 'war'].includes(pub.beat)) && !pub.errors.length) { postNews(o.countryId, 'press', `${o.name} reports: "${pub.headline}".`, 'neutral', false); pub.inNews = true; }
   return result(true, `It runs: "${pub.headline}", ${o.name}. About ${pub.readers.toLocaleString('en-US')} ${o.medium === 'television' ? 'viewers' : o.medium === 'radio' ? 'listeners' : 'readers'}.`);
