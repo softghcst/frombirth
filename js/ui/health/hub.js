@@ -82,7 +82,7 @@ function clinicianRow(npc, extra = '') {
   const f = care.facility(c.facilityId);
   return `<button class="row hl-person" data-person="${npc.id}">
     <div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: 60, label: npc.firstName })}</div>
-    <div class="main"><strong>${esc(care.clinicianName(npc))}</strong><small>${esc(PROFESSIONS[c.profession].name)}${c.dbt ? ', DBT-trained' : ''} · ${esc(f?.name ?? '')}</small>${extra ? `<small>${extra}</small>` : ''}</div>
+    <div class="main"><strong>${esc(care.clinicianName(npc))}</strong><small>${esc(PROFESSIONS[c.profession].name)}${c.dbt ? ', trained in emotion skills therapy' : ''} · ${esc(f?.name ?? '')}</small>${extra ? `<small>${extra}</small>` : ''}</div>
     <div class="side">›</div></button>`;
 }
 
@@ -427,11 +427,11 @@ function dbtPage(p, h) {
   const goalsList = h.plans.flatMap((x) => x.goals);
   const done = s.groupCourses.flatMap((c) => Object.keys(c.moduleDone ?? {}));
   const hasBpd = activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
-  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My DBT Journey</h3>
+  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My Emotion Skills</h3>
     
-    ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
+    ${card('Emotion skills therapy, one to one', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
       : `${muted('Weekly sessions with a DBT-trained therapist.')}${btn('Find a DBT therapist', 'findTherapy', { arg: 'dbt' })}`)}
-    ${card('DBT skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
+    ${card('Emotion skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
         ${s.module ? kv('Teaching now', `${esc(MODULE_BY_ID[s.module.id].name)}, week ${s.module.weekIn} of ${s.module.of}`) : ''}${kv('Your attendance', `${grpCourse.attended} of ${grpCourse.attended + grpCourse.missed}`)}
         ${muted('What people share in the group stays in the group.')}`
       : `${muted('A weekly class teaching the four skills modules.')}${btn('Join a skills group', 'findTherapy', { arg: 'dbt_group' })}`)}
@@ -512,7 +512,7 @@ export function openHealth(api, to = {}) {
   }
 
   const flows = {
-    dbtFocus: async () => { const m = await pickModal({ title: 'Your DBT focus this year', body: 'Your therapist will put extra time into it. The group goes on through all four modules.', options: [{ value: 'auto', label: 'Whatever I need most', sub: 'Your therapist decides as the year goes.' }, ...DBT_MODULES.map((x) => ({ value: x.id, label: x.name, sub: x.blurb }))] }); return m ? after(ther.setDbtFocus(m === 'auto' ? null : m)) : draw(true); },
+    dbtFocus: async () => { const m = await pickModal({ title: 'Your emotion skills focus this year', body: 'Your therapist will put extra time into it. The group goes on through all four modules.', options: [{ value: 'auto', label: 'Whatever I need most', sub: 'Your therapist decides as the year goes.' }, ...DBT_MODULES.map((x) => ({ value: x.id, label: x.name, sub: x.blurb }))] }); return m ? after(ther.setDbtFocus(m === 'auto' ? null : m)) : draw(true); },
     seek: (arg) => seek(arg), seekOther: () => seek(null), doctor: async () => { await seeDoctor(api); draw(true); },
     journey: () => { nav.page = 'journey'; draw(); }, dbt: () => { nav.page = 'dbt'; draw(); },
     follow: () => { const h = healthOf(p); h.settings.follow = !h.settings.follow; api.changed(); draw(true); },

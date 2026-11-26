@@ -138,7 +138,8 @@ function hubFor(p, m) {
 
 function stageWords(m, p) {
   if (!m) return train.premedOpen(p) ? 'Premedical' : 'Not on the medical route';
-  if (m.training) return `${m.training.kind === 'fellowship' ? 'Fellow' : m.training.kind === 'internship' ? 'Intern' : p.countryId === 'us' ? 'Resident' : 'Specialty trainee'}, ${p.countryId === 'us' ? 'PGY-' : 'year '}${m.training.pgy} of ${m.training.years}`;
+  // In plain words: a trainee doctor, the year of training, and how many years it has (no PGY and the like on screen).
+  if (m.training) return `${m.training.kind === 'fellowship' ? 'Advanced trainee' : m.training.kind === 'internship' ? 'Hospital intern' : 'Trainee doctor'}, year ${m.training.pgy} of ${m.training.years}`;
   if (m.job) return RANKS[m.job.rank]?.title ?? 'Physician';
   if (m.clinicIds.length) return 'In private practice';
   return { school: `Medical school, year ${m.school?.year ?? 1}`, graduate: 'Graduate, without a training place', retired: 'Retired from medicine', none: 'Premedical' }[m.stage] ?? m.stage;
@@ -157,7 +158,7 @@ const VIEWS = {
     const j = jurisdictionIn(p.countryId, store.state.year);
     const gpYears = store.state.year < ERA.gpEra;
     if (!m) return card('Becoming a doctor', `<p>A medical career starts with a university degree in a science or health subject, good grades, and time spent learning what medicine is like. Then four years of medical school, ${gpYears ? 'a year as a hospital intern, and for most doctors of these years, general practice; a few train on for years as residents to specialize.' : 'a residency place applied for, and years of supervised training.'}</p>
-      ${kv([['Route here', `${j.entry === 'graduate' ? 'After a university degree' : 'Direct entry in reality; in the game, after a university degree'} · ${j.detail === 'detailed' ? 'modeled in detail' : 'simplified profile'}`], ['Training places', j.selection]])}`);
+      ${kv([['How you get in', `${j.entry === 'graduate' ? 'After a university degree' : 'Direct entry in reality; in the game, after a university degree'} · ${j.detail === 'detailed' ? 'modeled in detail' : 'simplified profile'}`], ['Training places', j.selection]])}`);
     const spec = currentSpecialty(m);
     const at = m.training?.hospitalId ?? m.job?.hospitalId;
     const sup = (m.people.supervisorIds ?? []).map(npc).find((n) => n?.alive);
@@ -167,18 +168,18 @@ const VIEWS = {
       ...(train.fellowshipOptions(m).some((f) => !f.block) ? ['fellowships open to you'] : [])];
     const glance = at ? card('Hospital life', kv([
       ['Hospital', hospitalName(at)], ['Department', spec === 'general' ? 'General Practice' : DEPARTMENTS[deptOf(spec)] ?? 'Medicine'], ['Title', p.career.title ?? '—'],
-      ...(sup && m.training ? [['Supervising physician', `${sup.firstName} ${sup.lastName}`]] : []),
+      ...(sup && m.training ? [['Your supervisor', `${sup.firstName} ${sup.lastName}`]] : []),
       ['Colleagues you know', String([...m.people.colleagueIds, ...m.people.friendIds, ...(m.people.traineeIds ?? [])].filter((id) => npc(id)?.alive).length)],
       ['Patients open this year', String(open)],
       ...(m.training ? [['Training', `${m.training.pgy} of ${m.training.years} years`]] : []),
       ...(chances.length ? [['Opportunities', chances.join('; ')]] : []),
     ])) : '';
     return glance + card(stageWords(m, p), kv([
-      ['Route', m.route === 'dpm' ? 'Podiatric medicine (DPM)' : m.route === 'do' ? 'Osteopathic medicine (DO)' : 'Medicine (MD)'],
+      ['Degree', m.route === 'dpm' ? 'Foot and ankle medicine (DPM)' : m.route === 'do' ? 'Osteopathic medicine (DO)' : 'Medical degree (MD)'],
       ['Specialty', spec ? specialtyName(spec) : 'Not yet chosen'],
-      ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Training license: practices under supervision' : 'None yet'],
-      ['Reputation', `${reputationOf(m)} (from how you practice, never from survival counts)`],
-      ['Jurisdiction', `${p.countryId === 'us' ? 'United States, modeled in detail' : 'Simplified profile: the broad shape, not the rules'}`],
+      ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Can treat patients, with a supervisor' : 'None yet'],
+      ['Reputation', `${reputationOf(m)}`],
+      ['Country', `${p.countryId === 'us' ? 'United States' : 'Simplified: the broad shape, not the rules'}`],
     ])) + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(currentSpecialty(m))[i], Math.round(ids.reduce((t, k) => t + (m.skills[k] ?? 0), 0) / ids.length), true)).join(''));
   },
   education(p, m) {
@@ -208,8 +209,8 @@ const VIEWS = {
       const t = m.training;
       out += card(`${t.kind === 'fellowship' ? 'Fellowship' : t.kind === 'internship' ? 'Internship' : 'Residency'}${t.specialtyId ? `: ${specialtyName(t.specialtyId)}` : ''}`, kv([
         ['Hospital', hospitalName(t.hospitalId)], ['Year', `${t.pgy} of ${t.years}`], ['Started', String(t.startYear)],
-        ['Evaluations', t.evals.map((e) => `year ${e.pgy}: ${e.score}`).join(', ') || 'The first comes at the end of the year'],
-        ...(t.chief ? [['Chief resident', 'Yes']] : []), ...(t.probation ? [['Remediation', 'Under closer supervision this year']] : []),
+        ['Reviews', t.evals.map((e) => `year ${e.pgy}: ${e.score}`).join(', ') || 'The first comes at the end of the year'],
+        ...(t.chief ? [['Lead trainee', 'Yes: you lead the other trainees this year']] : []), ...(t.probation ? [['Extra help', 'Under closer supervision this year']] : []),
       ]) + (t.kind === 'internship' && year() <= 1968 ? `<div class="section-label">After the internship</div>${btn('afterIntern', 'Go into general practice', { arg: 'gp', cls: m.afterInternship === 'gp' ? 'primary' : '' })}${btn('afterIntern', 'Apply for a specialty residency', { arg: 'residency', cls: m.afterInternship === 'residency' ? 'primary' : '' })}${m.afterInternship === 'residency' ? applyBlock(m) : ''}` : '')
         + muted('A trainee decides nothing alone: plans are reviewed, and operations are done with a supervising surgeon.'));
     }
@@ -219,7 +220,7 @@ const VIEWS = {
   specialization(p, m) {
     const spec = currentSpecialty(m);
     const s = SPECIALTY_BY_ID[spec];
-    let out = card(s?.name ?? 'Specialty', kv([['As', s?.doctor ?? '—'], ['Board certification', m.boards.filter((b) => b.passed).map((b) => specialtyName(b.specialtyId)).join(', ') || 'None yet'],
+    let out = card(s?.name ?? 'Specialty', kv([['You would be', s?.doctor ?? '—'], ['Specialist exam', m.boards.filter((b) => b.passed).map((b) => specialtyName(b.specialtyId)).join(', ') || 'None yet'],
       ['Qualified in', qualified(m).map((id) => specialtyName(id)).join(', ') || 'Still training']]));
     const fel = train.fellowshipOptions(m);
     if (fel.length) out += card('Fellowships', `<p class="muted">Only after the residency they follow from. Places are competitive.</p>${fel.map((f) => btn('fellowship', `${f.name} (${f.years} ${f.years === 1 ? 'year' : 'years'})`, { arg: f.id, disabled: !!f.block && !(m.training?.pgy >= m.training?.years), sub: m.applyFellowship === f.id ? 'Applied' : f.block })).join('')}`);
@@ -267,7 +268,7 @@ const VIEWS = {
     const r = research.researchOptions(m, p);
     const rs = m.research;
     if (r.length) out += card('Research and teaching', `${rs ? kv([['Papers', String(rs.papers.length)], ['Projects under way', String(rs.projects.length)], ['Years teaching', String(rs.taught)],
-      ...(rs.faculty ? [['Faculty', rs.director ? 'Residency program director' : 'Assistant professor']] : [])]) : ''}${r.map((o) => btn('research', o.name, { arg: o.id, disabled: !!o.block, sub: o.block })).join('')}`);
+      ...(rs.faculty ? [['Teaching post', rs.director ? 'Residency program director' : 'Assistant professor']] : [])]) : ''}${r.map((o) => btn('research', o.name, { arg: o.id, disabled: !!o.block, sub: o.block })).join('')}`);
     const c = p.career;
     if (c.careerId) out += card('Wellbeing', `${meterHtml('Stress', c.stress ?? 0, true)}<p class="muted">A demanding career does not have to cost your health. Asking for help is part of the job.</p>
       ${btn('support', 'Ask for support')}${m.training ? '' : btn('hours', 'Ask for fewer hours')}${btn('leave', 'Take your vacation')}`);
@@ -369,8 +370,8 @@ const HUB_VIEWS = {
     if (iv) out += card(`Interview: ${iv.hospital} (question ${iv.number} of ${iv.of})`, `<p>${esc(iv.question)}</p>${iv.options.map((o) => btn('answer', o.label, { arg: o.id })).join('')}`);
     for (const o of jobs.offers(m)) {
       const name = market.employer(o.hospitalId)?.name ?? 'A hospital';
-      out += card(`Offer: ${name}`, `${kv([['Post', o.locum ? 'Temporary post, one year' : RANKS[o.rank].title], ['Salary', `${fmtMoney(o.salary, country())} a year`], ['Hours', `${o.hours} a week`], ['On-call', o.call],
-        ...(o.bonus ? [['Signing bonus', fmtMoney(o.bonus, country())]] : []), ['Where', `${o.city}${o.city !== p.city ? (o.relocation ? ', move paid' : ', move at your own cost') : ''}`], ...(o.nonCompete ? [['Non-compete', `${o.nonCompete} years in ${o.city} after leaving`]] : [])])}
+      out += card(`Offer: ${name}`, `${kv([['Post', o.locum ? 'Temporary post, one year' : RANKS[o.rank].title], ['Salary', `${fmtMoney(o.salary, country())} a year`], ['Hours', `${o.hours} a week`], ['Nights and weekends', o.call],
+        ...(o.bonus ? [['Signing bonus', fmtMoney(o.bonus, country())]] : []), ['Where', `${o.city}${o.city !== p.city ? (o.relocation ? ', move paid' : ', move at your own cost') : ''}`], ...(o.nonCompete ? [['If you leave', `${o.nonCompete} years in ${o.city} after leaving`]] : [])])}
         ${btn('accept', 'Accept', { arg: o.hospitalId, cls: 'primary' })}${btn('negotiate', 'Negotiate a term', { arg: o.hospitalId, disabled: o.negotiated })}${btn('review', 'Review the employer', { arg: o.hospitalId })}${btn('decline', 'Decline', { arg: o.hospitalId })}`);
     }
     const scope = st.jobScope ?? 'city';

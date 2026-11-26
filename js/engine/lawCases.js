@@ -270,10 +270,11 @@ export function feeModelFor(templateId, countryId, wanted) {
 
 export const template = (c) => CASE_TEMPLATES[c.templateId];
 export const stageOf = (c) => c.stages[c.stageIdx]?.s ?? 'closed';
-export const STAGE_NAME = { intake: 'Intake', discovery: 'Discovery', pretrial: 'Pretrial motions', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
-  disclosure: 'Financial disclosure', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody evaluation', review: 'Case review', services: 'Family services',
-  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Pleadings', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
-  distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed', record: 'The trial record', briefing: 'Briefing', argument: 'Oral argument' };
+// Stages in plain words: what is happening, not the legal term for it.
+export const STAGE_NAME = { intake: 'First meeting', discovery: 'Gathering evidence', pretrial: 'Requests to the judge before trial', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
+  disclosure: 'Sharing finances', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody assessment', review: 'Case review', services: 'Family services',
+  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Opening papers', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
+  distribution: 'Distribution', diligence: 'Checking the deal', closing: 'Closing', closed: 'Closed', record: 'Reviewing the trial', briefing: 'Written arguments', argument: 'Arguing in court' };
 /** The side's evidence: for the defense, what favors the client; for a prosecutor (or the agency's counsel), what the state relies on. */
 const ours = (c, e) => (c.role === 'prosecution' || CHILD_ROLES[c.role]?.side === 'other' ? e.favors === 'other' : e.favors === 'client');
 const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
