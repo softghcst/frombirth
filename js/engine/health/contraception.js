@@ -39,6 +39,7 @@ import { policyNow } from './insurance.js';
 import { HEALTH_PATHS } from './story.js';
 import { storyBeat } from '../storyDirector.js';
 import { med, qualified } from '../medicine/core.js';
+import { privileges } from '../medicine/cases.js';
 import { conceive } from '../children.js';
 
 export { METHODS, METHOD_BY_ID, EMERGENCY, SOURCES };
@@ -359,10 +360,13 @@ export function playerScope(p = player()) {
   const m = med(p);
   if (!m) return null;
   const q = qualified(m);
-  const prof = q.includes('obgyn') ? 'obgyn' : q.includes('family') ? 'gp' : q.length ? 'doctor' : null;
+  const prof = q.includes('obgyn') ? 'obgyn' : q.includes('family') ? 'gp' : q.includes('urology') ? 'urologist' : q.length ? 'doctor' : null;
   if (!prof) return null;
+  // The same procedures the career's cases allow (engine/medicine/cases.js privileges): one source of truth.
+  const priv = privileges(m);
+  const PROC = { iud: 'lc_iud', implant: 'lc_implant', tubal: 'tubal', vasectomy: 'vasectomy' };
   const scope = PROVIDER_SCOPE[prof];
-  return { profession: prof, services: Object.keys(scope).filter((k) => scope[k] === true || scope[k] === 'always' || (scope[k] === 'trained' && seeded('own-training', p.id, k).chance(0.7))) };
+  return { profession: prof, services: Object.keys(scope).filter((k) => (PROC[k] ? priv.has(PROC[k]) : scope[k] === true)) };
 }
 
 const REPRO_FACILITIES = ['sexual_health', 'womens', 'primary', 'hospital'];

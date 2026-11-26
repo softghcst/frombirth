@@ -32,6 +32,19 @@ the game uses the CDC figure and says so.
 | `js/data/events/repro.js` | the scenes, all queued by the engine from saved facts |
 | `tests/contraception.mjs` | the engine checks, including the Part 41 vertical slice and the 3/6/12-month equivalence |
 | `tests/contraception-ui.mjs` | the browser check at phone and desktop widths |
+| `js/data/medicineCases.js` (`contra_*`) | the physician's side: nine patient cases (counseling with a migraine history, IUD placement and its follow-up, implant removal, emergency contraception, sterilization, postpartum, a confidential teen visit, vasectomy) |
+| `tests/obgyn-contraception.mjs` | privileges, referral, the cases played, judgment |
+
+## The physician's side
+
+A player in the medical career sees contraception patients among the year's cases (OB-GYN, family medicine, and for
+some cases urology, emergency medicine and pediatrics). Procedures are privileges by specialty
+(`js/data/medicine.js`): OB-GYNs place IUDs and implants and perform tubal sterilization; family physicians place
+implants and refer IUDs; urologists perform vasectomies. A plan needing a procedure the physician does not hold
+becomes a referral. The cases reward the history that changes the choice, laying out every suitable option without
+pushing one, consent, and pausing when the patient asks. Deferring to a partner's or a parent's wishes over the
+patient's own decision is always marked poor or unsafe practice, and costs integrity. The player's own care is never
+their own: the health screen lists what they may provide for patients, read from the same privileges.
 
 ## How it fits the existing game
 
