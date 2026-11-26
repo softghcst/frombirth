@@ -86,7 +86,7 @@ const BASE_CAREERS = [
       { flag: 'stringer', bonus: 0.25 }],
     levels: L(['Junior reporter', 30, 40, 2], ['Reporter', 44, 60, 3], ['Senior reporter', 65, 88, 4], ['Editor', 95, 140, 5], ['Editor-in-chief', 150, 230, 0]) },
   { id: 'police', name: 'Police', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
-    req: { degree: 'high', minAge: 19, stats: { 'stats.health': 55 }, cleanRecord: true },
+    req: { degree: 'high', minAge: 19, stats: { 'stats.health': 55 }, cleanRecord: true }, pensionAfter: 25,
     levels: L(['Police officer', 44, 58, 4], ['Sergeant', 62, 78, 5], ['Lieutenant', 82, 100, 5], ['Chief of police', 115, 160, 0]) },
   { id: 'office', name: 'Office administration', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
     req: { degree: 'high' }, doors: [{ flag: 'internship', bonus: 0.2 }],

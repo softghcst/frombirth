@@ -57,11 +57,38 @@ The engine is `js/engine/investigations/` with its data in `js/data/investigatio
 | Corporate investigators | **Playable**: with a license, five years of investigative work or a relevant degree, a post on a real company's investigations team (the private investigation track, salaried); one internal matter a year, lawful steps only, no police powers; a crime is for the company to report |
 | More federal agencies | **Playable** to the same depth as the FBI: the US Marshals Service (deputy US marshals; fugitive inquiries; fugitive, witness security and judicial security squads), the Secret Service (counterfeit currency, financial and cyber fraud; protective detail), Homeland Security Investigations (from 2003; smuggling, drugs, firearms, financial crimes) and IRS Criminal Investigation (asks for an accounting background; tax evasion and money laundering). Each has its own career track, academy, field offices and squads; fugitive, counterfeit and tax cases are federal-only |
 | Homicide scenes | **Playable**: a homicide brings its own scenes, each once and when the file says it is time: telling the family (a real next of kin, kept on the file), the first night at the scene (moving things before they are recorded leaves a custody gap), the first forty-eight hours (naming a suspect early costs integrity), the press conference (an appeal may bring a lead), the vigil, the funeral (a promise of an arrest is heavy), a year unsolved, and the verdict |
+| Conviction review careers | **Playable**: a post at an innocence organization (an admitted lawyer, or an investigator with eight years) or a prosecutor's conviction integrity unit (a prosecutor). Real convictions with kept evidence that can be tested anew; review the trial record, rebuild the timeline, consult experts, request reanalysis (a unit agrees; an innocence lawyer asks the court, which may refuse), results on their date; new evidence goes to the appeal court, which decides; each matter goes into the lawyer's case history (`integrity.js`) |
+| Accountants and auditors | **Playable** for the accounting and audit tracks: engagements at real companies about a documented discrepancy (a bookkeeping error, a failed investment, or a fraud, fixed when it arose); review, verify, request what the engagement allows, seek expert review, conclude; calling a discrepancy fraud without verifying it is an unfounded referral; a verified fraud referral opens a police investigation of the same company; forensic accountants are engaged on real fraud cases and their findings go to the investigator (`books.js`) |
+| Hospitals and patient privacy | **Playable**: people hurt in robberies, family cases, homicides and collisions are taken to a real hospital of the city (the player's own, if they work at one there). Police get documented findings only with the patient's consent or a court order; an informal ask gets nothing. A player physician treats the patient and answers the police's request; handing over the whole chart is a privacy breach. No diagnosis is made here (`medical.js`) |
+| Pay and benefits | **Playable**: overtime for officers and deputy marshals from the casework done, at time and a half, capped, paid once per year; availability pay (25% of salary) for federal criminal investigators instead; pension service years (police and detectives 25, federal agents 20) on the existing retirement and pension rules (`pay.js`). Rates are simplified and unverified |
+| Journalism, the editor's desk | **Playable**: an editorial standards step (accounts attributed, protected people not named); a careful story about an open case may bring a reader forward with a lead (never a fact or an arrest); editors read reporters' drafts and send unverified accounts back, or run them and owe a correction; three verified stories at editor rank make an investigative editor |
 | Lawyers | **Playable**: a referred case in court is assigned to a player public defender or prosecutor, or offered to a private criminal defense lawyer (`investigations/legal.js`). It is the same court case, defendant and witnesses; the evidence is the investigation's, and what it found decides what can be challenged (pressure → excluded statement, custody gap, unlawful search). Cross-examination works only on an eyewitness's real limitation. What an incomplete report left out may be disclosed late, and then helps the defense. While a lawyer has the case the investigation's own court step waits; the verdict is written once on the court case and recorded in the file |
 | Family Archive | **Playable**: Family Archive → Law enforcement legacy shows each officer, detective, agent and investigator in the family (and the player), with the cases they led that reached a court |
 | Police unions | **Playable**: one union per department, with a real representative and a three-year contract (pay, training, whether disciplinary records are kept or removed); members pay dues, may stand for representative and bargain, and vote on working to rule when talks stall (cases get fewer hours). Police may not strike (a simplified rule, shown). Representation never changes a finding; a dismissal may be reduced at arbitration (`unions.js`) |
 | National police reform | **Playable**: four measures a legislature can pass (body cameras, a register of dismissed officers, independent investigation of complaints, a use-of-force standard), put forward by a player in the national legislature or leading the government, or passed in their own time after scandals. Each changes the engine: recorded interviews bring complaints for pressure, decertified officers cannot be rehired, complaints go to an independent body, de-escalation is trained (`reform.js`) |
 | Forensic psychology | **Playable** for a licensed psychologist (a doctorate in psychology): consultations on real open cases that describe behavior and never name anyone; risk assessments of real prisoners for the parole board, which decides; confidential care for officers after critical incidents, where telling a supervisor what was said brings a complaint (`forensicPsych.js`) |
+
+## Other careers that meet these cases
+
+The 3.0 prompt names careers to support in time, without building them all now. Where each stands:
+
+| Career | Status |
+|---|---|
+| Forensic scientist, laboratory supervisor | **Fully playable** (`forensicLab.js`; head of forensics is the top of the track) |
+| Forensic pathologist, medical examiner | **Fully playable** for physicians after the fellowship (`forensicMed.js`) |
+| Forensic psychiatrist | **Fully playable** for physicians after the fellowship (`forensicMed.js`) |
+| Forensic psychologist | **Fully playable** with a doctorate in psychology (`forensicPsych.js`) |
+| Forensic accountant, auditor, corporate accountant | **Fully playable** on the accounting and audit tracks (`books.js`) |
+| Investigative journalist, editor | **Fully playable** on the journalism track (`crossover.js`) |
+| Corporate and internal investigator | **Fully playable** on the private investigation track (`workplace.js`) |
+| Conviction integrity and innocence work | **Fully playable** as a post for lawyers and seasoned investigators (`integrity.js`) |
+| Digital forensic examiner | **Partially playable**: digital forensics is a laboratory discipline a forensic scientist can specialize in |
+| Insurance investigator | **Partially playable**: a private investigator's insurance service; insurers settle collision claims. No insurance-company career |
+| Criminal intelligence analyst, crime analyst | **Registry only**: the intelligence track exists; no casework for analysts |
+| Probation officer | **Registry only**: sentences carry supervision; there is no probation officer career |
+| Court reporter | **Registry only**: court reporters exist as people (the journalist's beat), not as a career |
+| Victim advocate | **Registry only**: advocates appear in family cases as people, not as a career |
+| Inspector general investigator, compliance investigator | **Not yet implemented** |
 
 ## Studying for the work
 
@@ -97,6 +124,6 @@ fetched from the build environment, so every rule is marked `verified: false` an
 
 ## Tests
 
-- `node tests/investigations.mjs`: the engine (24 sections, including the same two years at 12-, 6- and 3-month turns).
+- `node tests/investigations.mjs`: the engine (29 sections, including the same two years at 12-, 6- and 3-month turns).
 - `node tests/investigations-law.mjs`: a referred case worked by a player defender, prosecutor and private lawyer; a fatal collision's hospital, family claim and insurer.
 - `node tests/investigations-ui.mjs`: the screen in a real browser, at phone and desktop widths.

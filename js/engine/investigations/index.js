@@ -32,6 +32,11 @@ import { labYear, careerYear as labCareerYear } from './forensicLab.js';
 import { unionYear } from './unions.js';
 import { reformYear } from './reform.js';
 import { psychYear, psychCareerYear } from './forensicPsych.js';
+import { integrityYear } from './integrity.js';
+import { booksYear } from './books.js';
+import { hospitalYear } from './medical.js';
+import { payYear } from './pay.js';
+import { editorYear } from './crossover.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -75,6 +80,8 @@ export function tickInvestigations() {
   forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
+  // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
@@ -108,6 +115,7 @@ export function tickInvestigations() {
   for (const line of workplaceYear(p)) log(line, 'system', 'good');
   for (const line of unionYear(p)) log(line, 'system', 'neutral');
   for (const line of reformYear(p)) log(line, 'system', 'neutral');
+  for (const line of payYear(p)) log(line, 'system', 'good');
   peopleYear(p);
   dramaYear(p);
 }

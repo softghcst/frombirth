@@ -32,6 +32,7 @@ const DR = await import('../js/engine/investigations/drama.js');
 const IX = await import('../js/engine/investigations/index.js');
 const WP = await import('../js/engine/investigations/workplace.js');
 const biz = await import('../js/engine/business.js');
+const E2 = (await import('../js/engine/employers.js')).jobs;
 
 rng.seed(20261125);
 const problems = [];
@@ -1187,6 +1188,134 @@ section('forensic psychology: a doctorate and license, consultations that never 
   check(D.AGENCY_KINDS.gendarmerie.entry && D.AGENCY_KINDS.police_nationale.prosecutor && D.SOURCES.jp_police.verified === false, 'entry routes and the prosecuting authority are described; sources unverified');
 }
 section('police outside the US: the UK, Canada, Australia, France and Japan with their own forces, names, ranks and entry routes');
+
+// ---------- 25. Conviction review careers ----------
+{
+  const IG = await import('../js/engine/investigations/integrity.js');
+  const ls = await import('../js/engine/lawSchool.js');
+  const p = life('us', 34);
+  check(/admission|investigative/.test(IG.postBlock('innocence', p)) && /prosecutor/.test(IG.postBlock('ciu', p)), 'review work needs the post: a lawyer or seasoned investigator; a prosecutor for a unit');
+  ls.lawOf(p).bar.admitted = { year: store.state.year };
+  check(IG.takePost('innocence').ok, 'an admitted lawyer joins an innocence organization');
+  // A real conviction with kept evidence that can be tested anew (made by the courts' own work if needed).
+  const lines = IG.integrityYear(p);
+  const m = IG.openMatters(p)[0];
+  check(m && k.J().cases[m.caseId]?.stage === 'sentenced', `a matter is a real conviction (${lines[0]})`);
+  if (m) {
+    check(!IG.step(m.id, 'timeline').ok && IG.step(m.id, 'record').ok && IG.step(m.id, 'timeline').ok, 'the trial record comes first, then the timeline');
+    check(!IG.step(m.id, 'reanalysis').ok, 'no testing before experts say what could be tested');
+    IG.step(m.id, 'experts');
+    const rq = IG.step(m.id, 'reanalysis');
+    if (m.lab) {
+      check(!IG.step(m.id, 'refer').ok, 'the result comes on its date, not before');
+      store.state.year += 1;
+    }
+    const before = k.J().cases[m.caseId].stage;
+    const res = IG.step(m.id, 'refer');
+    const after = k.J().cases[m.caseId].stage;
+    check(res.ok && m.status === 'closed' && (m.outcome === 'exonerated' ? after === 'quashed' : after === before), `the court decides; nothing changes without it (${m.outcome}, ${rq.text.slice(0, 40)})`);
+    check(ls.lawOf(p).history.some((h) => h.kind === 'post-conviction'), 'the matter is in the lawyer\'s own case history');
+  }
+}
+section('conviction review: a post, not a promotion; real convictions; the record, the timeline, experts, testing on its date; the appeal court decides; the lawyer\'s record');
+
+// ---------- 26. Accountants and auditors ----------
+{
+  const BK = await import('../js/engine/investigations/books.js');
+  const p = life('us', 31, { degree: 'accounting' });
+  hire(CAREER_BY_ID.audit, 0, 60, 'test');
+  check(BK.bookRole(p) === 'audit', 'an auditor reviews books');
+  BK.booksYear(p);
+  const g = BK.engagements(p)[0];
+  check(g && E2().employers[g.employerId], 'an engagement at a real company');
+  BK.bookStep(g.id, 'discrepancy');
+  const perf = p.career.performance;
+  // Concluding fraud from a discrepancy alone is not a finding.
+  g.truth = 'error';
+  const res = BK.concludeBooks(g.id, 'fraud');
+  check(res.tone === 'bad' && p.books.unfounded === 1 && p.career.performance < perf, 'calling a discrepancy fraud without verifying it is an unfounded referral');
+  // A verified fraud, referred, opens a real police investigation of the same company.
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g2 = BK.engagements(p)[0];
+  g2.truth = 'fraud';
+  for (const s2 of Object.keys(BK.BOOK_STEPS)) BK.bookStep(g2.id, s2);
+  BK.concludeBooks(g2.id, 'fraud');
+  const inv = g2.referredInvId && k.J().investigations[g2.referredInvId];
+  check(inv && inv.file.template === 'fraud' && inv.file.employerId === g2.employerId && inv.file.leadId !== p.id, 'a verified fraud referral opens a police investigation of that company, worked by a detective');
+  store.state.year += 1;
+  BK.booksYear(p);
+  const g3 = BK.engagements(p)[0];
+  g3.truth = 'loss';
+  BK.bookStep(g3.id, 'verify');
+  check(BK.concludeBooks(g3.id, 'loss').tone === 'good', 'a failed investment found and reported as a loss, not a crime');
+}
+section('accountants and auditors: real companies, discrepancies that are not proof, verified findings, referrals that open real investigations');
+
+// ---------- 27. Hospitals and patient privacy ----------
+{
+  const MD = await import('../js/engine/investigations/medical.js');
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  r.caseIds.push(inv.id);
+  check(MD.patientOf(inv) === inv.file.reportingId, 'the person robbed is the patient');
+  const eth = r.rep.ethics;
+  MD.requestMedical(inv.id, 'informal');
+  check(!inv.file.medical && r.rep.ethics < eth, 'asking hospital staff informally gets nothing, and costs ethics');
+  let got = false;
+  for (const how of ['consent', 'order']) { MD.requestMedical(inv.id, how); if (inv.file.medical) { got = true; break; } }
+  check(!got || (inv.file.medical.how && inv.file.log.some((x) => /documented injuries/.test(x.text))), 'with consent or an order, only the documented findings are shared');
+  // A physician at the hospital: the patient, and the police's request.
+  const doc = life('us', 40);
+  doc.medicine = { job: { hospitalId: null } };
+  const inv2 = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
+  doc.medicine.job.hospitalId = MD.hospitalFor(inv2, doc);
+  const lines = MD.hospitalYear(doc);
+  const q = MD.myRequests(doc)[0];
+  check(q && lines.length, 'a patient from a real case arrives at the physician\'s hospital');
+  if (q) { const perf = doc.career.performance ?? 50; MD.answerRequest(q.id, 'chart'); check(doc.flags.privacyBreach === 1 && (doc.career.performance ?? 50) < perf, 'handing the police the whole chart is a privacy breach'); }
+}
+section('hospitals: the patient is treated by the medical side; police get findings only with consent or an order; a physician who hands over the chart breaches privacy');
+
+// ---------- 28. Overtime and availability pay ----------
+{
+  const PY = await import('../js/engine/investigations/pay.js');
+  const p = life('us', 30);
+  const a = makeOfficer();
+  const r = core.I();
+  p.career.salary = 60000;
+  store.state.year += 1; // a year that has not been paid yet
+  const cash = p.finance.cash;
+  const l1 = PY.payYear(p);
+  check(l1.some((x) => /Overtime/.test(x)) && p.finance.cash > cash && !PY.payYear(p).length, 'an officer is paid overtime once for each year');
+  const fed = life('us', 30, { degree: 'accounting' });
+  hire(CAREER_BY_ID.fbi_agent, 0, 60, 'test');
+  const rf = core.I();
+  rf.family = 'federal'; rf.stage = 'agent';
+  rf.job = { agencyKind: 'fbi', officeId: A.officeOf('fbi', A.federalCities()[0]).id, rank: 'agent', since: store.state.year - 2 };
+  fed.career.salary = 80000;
+  const c2 = fed.finance.cash;
+  PY.payYear(fed);
+  check(fed.finance.cash - c2 === 20000, 'a federal criminal investigator is paid availability pay (25%), not overtime');
+  check(CAREER_BY_ID.police.pensionAfter === 25 && CAREER_BY_ID.fbi_agent.pensionAfter === 20, 'police and federal pensions have their own service years');
+}
+section('pay: overtime from the work done, once a year; federal availability pay; pension service years');
+
+// ---------- 29. The editor's desk, standards, and a story that brings a lead ----------
+{
+  const p = life('us', 38, { degree: 'journalism' });
+  hire(CAREER_BY_ID.journalist, 3, 60, 'test');
+  X.npcCourtCase(p);
+  const lines = X.editorYear(p);
+  const d = X.myDrafts(p)[0];
+  check(d && lines.length, 'an editor has reporters\' drafts to read');
+  if (d) { d.unverified = true; d.wrong = true; check(X.editDraft(d.id, 'run').tone === 'bad' && d.correction, 'running an unverified account as fact brings a correction under the editor\'s name'); }
+  check(X.STORY_STEPS.standards, 'editorial standards are a step of every story');
+}
+section('journalism: an editor\'s desk, editorial standards, corrections');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
