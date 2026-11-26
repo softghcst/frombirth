@@ -503,10 +503,10 @@ export function postcardFront(art, title, hex, countryId = null) {
   const photo = [countryId, { 'the Seychelles': 'beach', 'the Maldives': 'beach' }[art] ?? art].find((k) => k && POSTCARD_PHOTOS.has(k));
   const draw = photo ? () => `<image href="./assets/postcards/${photo}.webp" width="300" height="200" preserveAspectRatio="xMidYMid slice"/>` : POSTCARDS[art] ?? POSTCARDS.city;
   const name = String(title).replace(/^the /, 'The ');
-  const big = name.length > 14 ? 24 : 32;
+  const big = name.length > 16 ? 22 : name.length > 11 ? 26 : 32;
   return `<svg viewBox="0 0 300 200" aria-hidden="true">${draw(id, hex)}
-    <text x="20" y="34" font-family="Georgia, serif" font-style="italic" font-size="15" fill="#FFFFFF" stroke="#23140f" stroke-width="3" paint-order="stroke">Greetings from</text>
-    <text x="18" y="${34 + big}" font-family="Georgia, serif" font-weight="700" font-size="${big}" fill="${hex}" stroke="#23140f" stroke-width="4" paint-order="stroke" letter-spacing=".5">${name.replace(/&/g, '&amp;')}</text>
+    <text x="20" y="36" font-family="'Great Vibes', cursive" font-size="22" fill="#FFFFFF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke">Greetings from</text>
+    <text x="16" y="${40 + big}" font-family="Pacifico, 'Great Vibes', cursive" font-size="${big}" fill="${hex}" stroke="#23140f" stroke-width="4.5" stroke-linejoin="round" paint-order="stroke">${name.replace(/&/g, '&amp;')}</text>
     <g transform="translate(256 10) rotate(6)"><rect width="34" height="40" fill="${hex}" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="3 2"/><rect width="34" height="40" fill="none" stroke="#23140f" stroke-width="1"/><path d="M17 27 c-9 -6 -10 -12 -6 -15 c3 -2 6 0 6 3 c0 -3 3 -5 6 -3 c4 3 3 9 -6 15z" fill="#FFFFFF"/></g>
     <g fill="none" stroke="#23140f" stroke-width="1" opacity=".35"><circle cx="246" cy="44" r="14"/><path d="M228 50 q8 -4 16 0 t16 0 t16 0 M228 56 q8 -4 16 0 t16 0 t16 0"/></g></svg>`;
 }
