@@ -1451,6 +1451,67 @@ section('family: a relative in the player\'s case means stepping aside; a relati
 }
 section('bigger homicide cases: a series across cities linked only by what is real, evidence shared between agencies; cases handed on');
 
+// ---------- 33. Informants and undercover work ----------
+{
+  const UC = await import('../js/engine/investigations/undercover.js');
+  const p = life('us', 36);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective'; r.rep.integrity = 70;
+  const inv = W.openCase('drugs', { ownerId: a.id, truth: 'supplier' });
+  r.caseIds.push(inv.id);
+  check(!UC.recruit(W.openCase('burglary', { ownerId: a.id }).id).ok, 'informants are for drug, firearms and organized-crime cases');
+  check(UC.recruit(inv.id, 'register').ok && store.state.npcs[inv.file.informantId].flags.informant.registered, 'an informant is a real person, registered with a supervisor');
+  const ev0 = inv.evidenceIds.length;
+  UC.meetInformant(inv.id);
+  check(inv.file.tip && inv.evidenceIds.length === ev0 && /not evidence/.test(inv.file.leads.at(-1).text), 'a tip is a lead, never evidence by itself');
+  check(/not a lawful basis/.test(UC.tipAsBasis(inv.id).text), 'an uncorroborated tip is not a basis for an order');
+  UC.corroborate(inv.id);
+  check(inv.file.tip.accurate ? inv.evidenceIds.length === ev0 + 1 : inv.evidenceIds.length === ev0, 'checked against independent evidence, a true tip yields evidence; a false one goes no further');
+  const inv2 = W.openCase('firearms', { ownerId: a.id, truth: 'straw' });
+  r.caseIds.push(inv2.id);
+  const n0 = Object.keys(core.W().complaints).length;
+  UC.recruit(inv2.id, 'off');
+  check(Object.keys(core.W().complaints).length === n0 + 1, 'an informant off the books is misconduct');
+  // Undercover: a year in a role; what is pushed for is entrapment, and does not stand.
+  check(UC.goUndercover(inv.id).ok && !UC.goUndercover(inv.id).ok, 'one undercover assignment at a time');
+  const s0 = r.wellbeing?.strain ?? 0;
+  UC.undercoverRound('push');
+  check((r.wellbeing?.strain ?? 0) > s0, 'undercover work weighs on the officer');
+  // A blown cover ends the operation early (a real risk); try again until an assignment runs its course.
+  for (let i = 0; i < 10 && r.undercover.status !== 'active'; i++) { r.undercover = null; store.state.year += 1; UC.goUndercover(inv.id); UC.undercoverRound('push'); }
+  check(r.undercover.status === 'active', 'an undercover assignment can run its course');
+  if (r.undercover.status === 'active') {
+    r.undercover.recordings = Math.max(1, r.undercover.recordings);
+    r.undercover.end = core.now();
+    UC.endUndercover();
+    const ev = inv.evidenceIds.map((x) => k.J().evidence[x]).find((e) => /undercover/i.test(e.summary));
+    check(ev && ev.tainted === 'entrapment', 'recordings made after pushing are entrapment, and will be ruled out');
+  }
+}
+section('informants and undercover work: real people, registered and protected; tips checked before they count; entrapment does not stand');
+
+// ---------- 34. Officer wellbeing ----------
+{
+  const WB = await import('../js/engine/investigations/wellbeing.js');
+  const p = life('us', 40);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('homicide', { ownerId: a.id, truth: 'known' }).id);
+  const s0 = WB.strainOf(p);
+  WB.wellbeingYear(p);
+  check(WB.strainOf(p) > s0, 'open homicides weigh on a detective, year by year');
+  const s1 = WB.strainOf(p);
+  check(WB.seekSupport('counseling').ok && WB.strainOf(p) < s1 && !WB.seekSupport('counseling').ok, 'confidential counseling eases it, once a year');
+  r.wellbeing.strain = 95;
+  const h = p.stats.health;
+  for (let i = 0; i < 3; i++) { WB.wellbeingYear(p); r.wellbeing.strain = 95; store.state.year += 1; }
+  check(p.stats.health < h && r.wellbeing.offered, 'years at breaking point cost health, and bring the offer of a medical retirement');
+  check(WB.medicalRetirement(p).ok && !r.job && p.career.retired, 'a medical retirement ends the career, with its pension');
+}
+section('officer wellbeing: strain from the work, confidential support, health costs, a medical retirement');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

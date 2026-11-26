@@ -50,6 +50,8 @@ import * as MD from '../engine/investigations/medical.js';
 import * as AL from '../engine/investigations/allied.js';
 import * as FA from '../engine/investigations/family.js';
 import * as SE from '../engine/investigations/serial.js';
+import * as UC from '../engine/investigations/undercover.js';
+import * as WB from '../engine/investigations/wellbeing.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -243,6 +245,10 @@ const VIEWS = {
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
+        + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
+      + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
+        + stack(btn('ucRound', 'Stay in the role, within the rules', { arg: 'role' }) + btn('ucRound', 'Push them toward the deal', { arg: 'push', cls: 'danger' }))) : '')
       + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
       + (r.family === 'federal' && r.job?.officeId && !r.retired ? card('Moves within the agency', kv([['Field office', A.office(r.job.officeId)?.name ?? '—'], ['Squad', WP.SQUADS[r.job.agencyKind]?.find(([id]) => id === r.job.squad)?.[1] ?? 'General'],
@@ -439,6 +445,12 @@ const CASE_VIEWS = {
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
     if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    if (['drugs', 'firearms', 'robbery', 'counterfeit'].includes(inv.file.template) && !inv.file.outcome && inv.file.leadId === player().id) {
+      const ci = inv.file.informantId;
+      if (!ci) b += btn('recruit', 'Recruit an informant, registered with your supervisor', { arg: `${inv.id}|register` }) + btn('recruit', 'Recruit an informant off the books', { arg: `${inv.id}|off`, cls: 'danger' });
+      else { b += btn('meetCI', 'Meet the informant', { arg: inv.id }); if (inv.file.tip && !inv.file.tip.corroborated) b += btn('corroborate', 'Check the tip against independent evidence', { arg: inv.id }); }
+      if (rec()?.undercover?.status !== 'active') b += btn('undercover', 'Volunteer to go undercover on this case', { arg: inv.id });
+    }
     if (['homicide', 'robbery'].includes(inv.file.template) && !inv.file.compared && !inv.file.outcome && inv.file.leadId === player().id) b += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
     if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
     if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
@@ -485,6 +497,10 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'testify') await say(W.testify(id, x));
     else if (act === 'medical') await say(MD.requestMedical(id, x));
     else if (act === 'compare') await say(SE.compareCases(id));
+    else if (act === 'recruit') await say(UC.recruit(id, x));
+    else if (act === 'meetCI') await say(UC.meetInformant(id));
+    else if (act === 'corroborate') await say(UC.corroborate(id));
+    else if (act === 'undercover') await say(UC.goUndercover(id));
     else if (act === 'recuse') await say(FA.recuse(id));
     else if (act === 'keepCase') await say(FA.keepCase(id));
     else if (act === 'oldPartner') await say(FA.askOldPartner(id));
@@ -511,6 +527,9 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  support2: (a, x) => x.say(WB.seekSupport(a)),
+  medRetire: (a, x) => x.say(WB.medicalRetirement()),
+  ucRound: (a, x) => x.say(UC.undercoverRound(a)),
   relative: (a, x) => { const [id, how] = a.split('|'); return x.say(FA.relativeChoice(id, how)); },
   alliedTake: (a, x) => x.say(AL.takeUp(a)),
   alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },

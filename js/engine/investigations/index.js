@@ -40,6 +40,8 @@ import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
 import { settleAncestor } from './family.js';
 import { seriesYear, inheritYear } from './serial.js';
+import { wellbeingYear } from './wellbeing.js';
+import { endUndercover } from './undercover.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -71,6 +73,7 @@ export function settle(p = player()) {
   settleProbation(p);
   out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
   for (const id of r.caseIds) { const line = settleAncestor(investigation(id), p); if (line) out.push(line); }
+  { const line = endUndercover(); if (line) out.push(line); }
   return out;
 }
 
@@ -121,6 +124,8 @@ export function tickInvestigations() {
   for (const line of unionYear(p)) log(line, 'system', 'neutral');
   for (const line of reformYear(p)) log(line, 'system', 'neutral');
   for (const line of payYear(p)) log(line, 'system', 'good');
+  for (const line of wellbeingYear(p)) log(line, 'system', 'bad');
+  { const line = endUndercover(); if (line) log(line, 'system', 'neutral'); }
   peopleYear(p);
   dramaYear(p);
 }
