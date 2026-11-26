@@ -695,7 +695,7 @@ export function openInvestigations(api, start = 'overview') {
     const list = sectionsFor(p, r);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
     root.innerHTML = `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${hint(st.section)}${VIEWS[st.section](p, r)}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
   };

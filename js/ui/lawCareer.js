@@ -396,8 +396,8 @@ export function openLawCareer(api, start = {}) {
     if (!ts.some(([id]) => id === tab)) tab = 'overview';
     const c = caseId ? lc.caseById(caseId) : null;
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
-      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2><button type="button" class="btn small" data-guide>How It Works</button>
-        <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
+      : `<div class="eyebrow">Every case tells a story.</div> <button type="button" class="btn small" data-guide>How It Works</button>
+        <div class="chips law-tabs page-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
         <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
   const changed = () => { api.changed?.(); draw(); };
