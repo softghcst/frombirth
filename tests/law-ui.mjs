@@ -60,6 +60,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     store.notify();
   });
   await page.click('.tab-btn[data-tab="work"]'); await page.waitForTimeout(200);
+  // My Legal Career is on the Work tab's Special Careers screen.
+  if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
   const rowBtn = page.locator('[data-act="law"]');
   check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
   await rowBtn.click(); await hub().waitFor();
