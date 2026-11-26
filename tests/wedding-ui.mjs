@@ -178,7 +178,7 @@ await page.evaluate(async (id) => {
   window.__pc = w.honeymoonPostcard({ changed() {} }, { type: 'honeymoon', mode: 'jet', destination: { countryId: 'fr', city: 'Paris' }, origin: { countryId: 'us', city: 'Chicago' }, travelers: [{ id }] });
 }, info.id);
 await page.waitForSelector('.wp-pc-front svg', { timeout: 5000 });
-check(/Greetings/.test(await page.locator('.wp-pc-front svg').innerHTML()) && /PARIS/.test(await page.locator('.wp-pc-front svg').innerHTML()), 'home again, a postcard from Paris');
+check(/greetings/i.test(await page.locator('.wp-pc-front svg').innerHTML()) && /paris/i.test(await page.locator('.wp-pc-front svg').innerHTML()), 'home again, a postcard from Paris');
 await page.click('.wq-postcard [data-done]');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();

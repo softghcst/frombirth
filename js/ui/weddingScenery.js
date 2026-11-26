@@ -498,29 +498,52 @@ export function postcardArt({ countryId, cruise = false, lat = 40, coastal = tru
  */
 export const POSTCARD_PHOTOS = new Set(['us', 'ca']);
 
+/**
+ * How each painted card is lettered, and in what color: picked to suit the painting (the red of Canada's canoe).
+ * Any other card takes a style by its name, so they are not all alike, in the couple's color.
+ */
+const PHOTO_LETTERING = { us: ['print', '#FFFFFF'], ca: ['retro', '#D2352C'] };
+const LETTERING = ['print', 'ribbon', 'script', 'retro'];
+
 export function postcardFront(art, title, hex, countryId = null) {
   const id = 'pc';
   const photo = [countryId, { 'the Seychelles': 'beach', 'the Maldives': 'beach' }[art] ?? art].find((k) => k && POSTCARD_PHOTOS.has(k));
   const draw = photo ? () => `<image href="./assets/postcards/${photo}.webp" width="300" height="200" preserveAspectRatio="xMidYMid slice"/>` : POSTCARDS[art] ?? POSTCARDS.city;
   const name = String(title).replace(/^the /, 'The ');
   const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  // The classic "large letter" postcard, in the top-left corner: "Greetings" in red edged in white, "from" in a fine
-  // hand beneath, and the place's name in block letters in the couple's color, lit from above, edged in cream on a
-  // dark extruded side.
-  const fit = Math.min(38, 236 / (name.length * 0.86));
-  const len = Math.min(236, name.length * fit * 0.86);
-  const x = 16; const y = 64 + fit * 0.82;
-  const word = (extra) => `<text x="${x}" y="${n1(y)}" font-family="'Alfa Slab One', 'Arial Black', sans-serif" font-size="${n1(fit)}" textLength="${n1(len)}" lengthAdjust="spacingAndGlyphs" ${extra}>${esc(name.toUpperCase())}</text>`;
-  const depth = Array.from({ length: 5 }, (_, i) => `<g transform="translate(${n1((i + 1) * 0.7)} ${n1((i + 1) * 0.7)})">${word('fill="#1E2A50"')}</g>`).join('');
-  return `<svg viewBox="0 0 300 200" aria-hidden="true">
-    <defs>
-      <linearGradient id="pc-fill" x1="0" y1="${n1(y - fit * 0.8)}" x2="0" y2="${n1(y)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".35" stop-color="${hex}"/><stop offset="1" stop-color="${hex}"/></linearGradient>
-      <filter id="pc-sh" x="-10%" y="-20%" width="130%" height="160%"><feDropShadow dx="1.2" dy="1.6" stdDeviation="1.2" flood-color="#14182E" flood-opacity=".55"/></filter></defs>
+  let hash = 0; for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const [style, accent] = PHOTO_LETTERING[photo] ?? [LETTERING[hash % LETTERING.length], hex];
+  // A name set in `size`, at most `max` wide: squeezed to fit only when it would run past it (`em` its width per letter).
+  const sized = (size, em, max) => { const w = name.length * size * em; return w > max ? { size: Math.max(size * 0.6, size * max / w), fit: max } : { size, fit: 0 }; };
+  const len = (f) => (f.fit ? ` textLength="${n1(f.fit)}" lengthAdjust="spacingAndGlyphs"` : '');
+  const caps = (y) => `<text x="20" y="${y}" font-family="Montserrat, 'Nunito Sans', sans-serif" font-weight="600" font-size="8" letter-spacing="3" fill="#FFFFFF">GREETINGS FROM</text>`;
+  let words;
+  if (style === 'ribbon') {
+    // A cream ribbon, notched at its end, edged in a dashed line of the accent.
+    const f = sized(20, 0.62, 200);
+    const w = n1(Math.max(150, Math.min(230, (f.fit || name.length * f.size * 0.62) + 40)));
+    const ribbon = `M10 20 h${w} l-10 22 l10 22 h-${w} z`;
+    words = `<g filter="url(#pc-sh)"><path d="${ribbon}" fill="#FFF8EC"/></g><path d="${ribbon}" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="22" y="37" font-family="'Great Vibes', cursive" font-size="16" fill="#8A5A7A">Greetings from</text>
+      <text x="22" y="58" font-family="'Abril Fatface', Georgia, serif" font-size="${n1(f.size)}" letter-spacing=".5" fill="#3B2A4A"${len(f)}>${esc(name)}</text>`;
+  } else if (style === 'script') {
+    // A flowing hand, in white, beneath small spaced capitals.
+    const f = sized(name.length > 8 ? 40 : 52, 0.5, 205);
+    words = `<g filter="url(#pc-sh)">${caps(32)}<text x="16" y="74" font-family="Sacramento, 'Great Vibes', cursive" font-size="${n1(f.size)}" fill="#FFFFFF"${len(f)}>${esc(name)}</text></g>`;
+  } else if (style === 'retro') {
+    // "Greetings from" in a bold script, the name in tall capitals of the accent, edged in white.
+    const f = sized(44, 0.45, 205);
+    words = `<g filter="url(#pc-sh)"><text x="20" y="34" font-family="Lobster, cursive" font-size="18" fill="#FFFFFF">Greetings from</text>
+      <text x="18" y="72" font-family="'Bebas Neue', Impact, sans-serif" font-size="${n1(f.size)}" letter-spacing="2" fill="${accent}" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"${len(f)}>${esc(name.toUpperCase())}</text></g>`;
+  } else {
+    // A travel print: small spaced capitals, and the name in a large italic serif.
+    const f = sized(38, 0.56, 205);
+    words = `<g filter="url(#pc-sh)">${caps(34)}<text x="18" y="70" font-family="'Playfair Display', Georgia, serif" font-style="italic" font-weight="600" font-size="${n1(f.size)}" fill="#FFFFFF"${len(f)}>${esc(name)}</text></g>`;
+  }
+  return `<svg viewBox="0 0 300 200" aria-hidden="true" data-lettering="${style}">
+    <defs><filter id="pc-sh" x="-10%" y="-20%" width="130%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1.4" flood-color="#000000" flood-opacity=".55"/></filter></defs>
     ${draw(id, hex)}
-    <g filter="url(#pc-sh)">
-      <text x="${x}" y="40" font-family="Lobster, Pacifico, cursive" font-size="31" fill="#E23B34" stroke="#FFFFFF" stroke-width="3.4" stroke-linejoin="round" paint-order="stroke">Greetings</text>
-      <text x="${x + 22}" y="59" font-family="'Great Vibes', cursive" font-size="19" fill="#FFFFFF" stroke="#1E2A50" stroke-width="2.2" stroke-linejoin="round" paint-order="stroke">from</text>
-      ${depth}${word('fill="url(#pc-fill)" stroke="#FFF6D6" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"')}${word('fill="none" stroke="#1E2A50" stroke-width=".5"')}</g>
+    ${words}
     <g transform="translate(256 10) rotate(6)"><rect width="34" height="40" fill="${hex}" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="3 2"/><rect width="34" height="40" fill="none" stroke="#23140f" stroke-width="1"/><path d="M17 27 c-9 -6 -10 -12 -6 -15 c3 -2 6 0 6 3 c0 -3 3 -5 6 -3 c4 3 3 9 -6 15z" fill="#FFFFFF"/></g>
     <g fill="none" stroke="#23140f" stroke-width="1" opacity=".35"><circle cx="246" cy="44" r="14"/><path d="M228 50 q8 -4 16 0 t16 0 t16 0 M228 56 q8 -4 16 0 t16 0 t16 0"/></g></svg>`;
 }
