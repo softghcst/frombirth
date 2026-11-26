@@ -95,7 +95,8 @@ export function tickInvestigations() {
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
   if (r.job && !(r.job.corporate && p.career.careerId === 'pi' && p.career.employerId === r.job.employerId) && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
-  settle(p);
+  // What the year decided (an application, a promotion, a complaint) waits to be read in My Investigations.
+  { const lines = settle(p); if (lines.length) r.unread = [...(r.unread ?? []), ...lines].slice(-12); }
   if (r.job && r.job.legacy && !r.job.agencyId && r.family === 'police') {
     // A legacy officer's department gets its agency record now (the employer stays what it was).
     const a = agencyOf(kindsIn(p.countryId)[0], p.countryId, p.city);

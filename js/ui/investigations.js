@@ -161,6 +161,10 @@ const VIEWS = {
     for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
       + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
     if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
+    const APP = { police: 'Police', detective: 'Detective seat', federal: 'Federal', license: 'License', promotion: 'Promotion' };
+    const apps = (r?.apps ?? []).slice(-4).reverse();
+    if (apps.length) out += card('Your applications', apps.map((a) => kv([[`${APP[a.kind] ?? 'Application'}: ${a.agency ? FEDERAL[a.agency]?.short : A.ownerName(a.ownerId)}`, a.status === 'pending' ? `Waiting: you hear by ${dateWords(a.decisionDue ?? a.due)}` : a.status === 'offer' ? 'Offered' : a.status === 'accepted' ? 'Accepted' : a.status === 'refused' ? `Not this time${a.why ? `: ${({ written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' })[a.why] ?? a.why}` : ''}` : a.status]])).join('')
+      + (apps.some((a) => a.status === 'refused' && a.kind === 'police') && !apps.some((a) => a.status === 'pending' || a.status === 'offer') ? muted('You can apply again: one application a year to each department. Preparing helps.') + stack(btn('goDepartments', 'Apply again from Departments')) : ''));
     return out;
   },
   agency(p, r) {
@@ -595,6 +599,7 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  goDepartments: (a, x) => { x.st.section = 'agency'; x.render(); },
   hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
   hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
   media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
@@ -777,7 +782,10 @@ function home(p, r, list) {
 
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
-  const lines = settle(player()); // anything whose date has come, made known before the page is drawn
+  const r0 = rec(player());
+  // Anything whose date has come, and what the year decided while the page was closed, made known before it is drawn.
+  const lines = [...(r0?.unread ?? []), ...settle(player())];
+  if (r0) r0.unread = [];
   const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');

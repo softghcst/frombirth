@@ -164,6 +164,8 @@ export function settleApplications(p = player()) {
     if (app.kind === 'federal') { const s = federalStage(app); if (s) out.push(s); continue; }
     app.status = app.outcome;
     const who = agency(app.ownerId)?.name ?? office(app.ownerId)?.name ?? 'The agency';
+    // Refused, with nothing else pending: no longer applying (the record of the application stays).
+    if (app.kind === 'police' && app.outcome !== 'offer' && r.stage === 'applying' && !r.apps.some((x) => x !== app && x.status === 'pending' && x.kind === 'police')) r.stage = 'none';
     if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. You can apply again next year.`);
     if (app.kind === 'detective') out.push(settleDetective(app));
     if (app.kind === 'license') out.push(settleLicense(app));
