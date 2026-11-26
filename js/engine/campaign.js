@@ -31,6 +31,9 @@ import { formCabinet } from './government.js';
 import { backers } from './edlegacy.js';
 import { claim as claimSpecial } from './specialCareer.js';
 
+/** How far a talent goes past the ordinary, 0 to 50: an actor's delivery lands a line, a writer's answer is clearer. */
+const gift = (p, id) => Math.max(0, (p.talents?.[id] ?? 0) - 50);
+
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
 const NEUTRAL = { tax: 0, services: 0, housing: 0, order: 0, green: 0, open: 0 };
@@ -116,7 +119,7 @@ export function seekNomination(approach) {
     p.finance.cash -= cost;
     p.hidden.karma = clamp(p.hidden.karma - 2);
     chance += 0.15;
-  } else chance += (p.stats.charm - 50) / 150;
+  } else chance += (p.stats.charm - 50) / 150 + gift(p, 'persuasion') / 250; // a gift for persuasion: the members come round
   if (p.flags.bolted) chance -= 0.15; // a party remembers who walked out on it
   if (rng.chance(clamp(chance, 0.08, 0.92))) {
     r.stage = 'plan';
@@ -388,12 +391,12 @@ export function answer(how) {
   let text = '';
   if (how === 'crowd') { gain = rng.int(2, 4); r.promises += 1; text = 'The room loves it. You have just promised something you will have to find a way to pay for.'; }
   else if (how === 'attack') {
-    if (rng.chance(clamp(0.45 + (p.stats.charm - 50) / 200 + (50 - (f?.t.integrity ?? 50)) / 150, 0.15, 0.85))) { gain = rng.int(3, 6); text = `It lands. ${f?.name ?? 'Your opponent'} is still explaining when the bell goes.`; }
+    if (rng.chance(clamp(0.45 + (p.stats.charm - 50) / 200 + Math.max(gift(p, 'acting'), gift(p, 'persuasion')) / 250 + (50 - (f?.t.integrity ?? 50)) / 150, 0.15, 0.85))) { gain = rng.int(3, 6); text = `It lands. ${f?.name ?? 'Your opponent'} is still explaining when the bell goes.`; }
     else { gain = -rng.int(2, 5); text = 'It comes out sounding sour, and the audience lets you know.'; }
   } else if (how === 'dodge') {
     d.dodges += 1;
     if (d.dodges >= 2) { gain = -3; text = '"With respect, that was not the question," says the moderator, and gets a round of applause.'; } else { gain = rng.int(0, 1); text = 'You answer a different question, smoothly, and nobody quite notices.'; }
-  } else { gain = (p.stats.intellect - 50) / 14 + rng.int(-1, 2); text = gain >= 2 ? 'A plain answer, with the figures to back it. People nod.' : gain <= 0 ? 'You answer honestly and lose the room somewhere around the second sub-clause.' : 'A plain answer. It does the job.'; }
+  } else { gain = (p.stats.intellect - 50) / 14 + Math.max(gift(p, 'writing'), gift(p, 'persuasion')) / 40 + rng.int(-1, 2); text = gain >= 2 ? 'A plain answer, with the figures to back it. People nod.' : gain <= 0 ? 'You answer honestly and lose the room somewhere around the second sub-clause.' : 'A plain answer. It does the job.'; }
   d.mine += gain;
   d.at += 1;
   if (d.at < d.qs.length) return result(gain > 0, text, gain > 0 ? 'good' : gain < 0 ? 'bad' : 'neutral', { more: true });

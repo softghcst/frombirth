@@ -64,7 +64,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 const K = 1000;
 export const STAT_NAMES = { 'stats.health': 'Health', 'stats.intellect': 'Intellect', 'stats.charm': 'Charm',
   'talents.acting': 'Acting', 'talents.singing': 'Singing', 'talents.dance': 'Dance', 'talents.sports': 'Sports',
-  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline', 'flags.riderAdvanced': 'Riding at an advanced level' };
+  'talents.music': 'Music', tripleThreat: 'Triple-threat score', modelLook: 'Your look', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline', 'flags.riderAdvanced': 'Riding at an advanced level' };
 
 /** Per-year action counters; reset when the age changes. */
 function acts() {
@@ -760,13 +760,15 @@ export function tickCareer() {
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
+  const gift = career.skill ? 0 : workEdge(career, p) * 4; // a gift for the work: science for a doctor, acting for a lawyer (engine/aptitudes.js)
   const mentor = livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 55) ? 2 : 0;
   const strain = c.stress > 75 ? -(c.stress - 75) / 4 : c.stress < 15 ? -1 : 0; // some pressure helps; too much does not
   const heart = (c.satisfaction - 55) / 20;
   const away = c.leave && c.leave.age === p.age - 1 ? -3 : 0;
   c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
-    + (p.hidden.discipline - 50) / 12 + craft + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
+    + (p.hidden.discipline - 50) / 12 + craft + gift + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
+  else if (career.skill === 'modelLook') p.talents.modeling = clamp((p.talents.modeling ?? 0) + 1);
   else if (career.skill?.startsWith('talents.')) { const k = career.skill.slice(8); p.talents[k] = clamp(p.talents[k] + 1); }
   // How the work wears on mood and health is worked out in worklife.js (stress, satisfaction, burnout).
 

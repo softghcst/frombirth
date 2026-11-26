@@ -58,7 +58,9 @@ export function publishers(countryId) {
 }
 
 /** How well the player writes: mind, practice, and the craft of writing. */
-export const craft = (p = player()) => Math.round(clamp(p.stats.intellect * 0.5 + levelOf('writing') * 0.4 + (p.hidden.discipline ?? 50) * 0.1));
+// A gift for writing shows on the page, before any practice: up to 10 points more.
+export const craft = (p = player()) => Math.round(clamp(p.stats.intellect * 0.5 + levelOf('writing') * 0.4 + (p.hidden.discipline ?? 50) * 0.1
+  + Math.max(0, (p.talents?.writing ?? 0) - 50) / 5));
 /** A title no book on record already has. */
 function titleFor() {
   const used = new Set(Object.values(B().books).map((b) => b.title));
