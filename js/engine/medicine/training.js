@@ -14,7 +14,7 @@ import { rng } from '../../rng.js';
 import { MAJOR_BY_ID } from '../../data/majors.js';
 import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
-import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
+import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, ROTATION_BEFORE, RESIDENT_TITLES, ERA, jurisdiction, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
@@ -142,7 +142,9 @@ function schoolYear(p, m, y) {
     // Clinical years: rotations, under supervision. A student examines and presents; they decide nothing alone.
     const list = dpm ? [{ id: 'podiatry', name: 'Podiatric medicine and surgery', specialty: 'podiatry', shows: 'foot and ankle clinics, and the operating room' }, ROTATIONS[0], ROTATIONS[1]]
       : y === 3 ? ROTATIONS.slice(0, 6) : [ROTATIONS[6], ROTATIONS[7], ROTATIONS.find((r) => r.id === m.school.elective) ?? ROTATIONS[8 + (m.school.startYear % 2)]];
-    const done = list.map((r) => rotate(p, m, r));
+    // A rotation in a specialty not yet founded goes by its name of the time (data/medicine.js ROTATION_BEFORE).
+    const inTime = (r) => (ROTATION_BEFORE[r.id] && (SPECIALTY_BY_ID[r.specialty]?.minYear ?? 0) > year() ? { ...r, ...ROTATION_BEFORE[r.id] } : r);
+    const done = list.map((r) => rotate(p, m, inTime(r)));
     const best = done.filter((d) => d.grade === 'Honors').map((d) => d.rot.name);
     log(`${year() < 1950 ? 'Clinical clerkships' : 'Clinical rotations'} this year: ${done.map((d) => `${d.rot.name} (${d.grade.toLowerCase()})`).join(', ')}.${best.length ? ` Honors in ${best.join(' and ')}.` : ''}`, 'system', 'neutral');
     store.state.pendingEvents.push({ id: 'med_rotation', cast: { words: { rotation: done[0].rot.name, shows: done[0].rot.shows } } });

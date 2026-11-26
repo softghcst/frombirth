@@ -351,6 +351,14 @@ export const ROTATIONS = [
   { id: 'ortho', name: 'Orthopedics (elective)', specialty: 'ortho', shows: 'bones, joints, sports injuries and rehabilitation' },
   { id: 'radiology', name: 'Radiology (elective)', specialty: 'radiology', shows: 'reading the images every other team asks about' },
 ];
+/**
+ * A rotation in the years before its specialty existed, by the name it went by then: an emergency rotation was
+ * the accident ward (emergency medicine from 1979), family medicine was general practice (from 1969).
+ */
+export const ROTATION_BEFORE = {
+  emergency: { name: 'Accident Ward', shows: 'injuries and emergencies as they come through the door, and deciding who is seen first' },
+  family: { name: 'General Practice', specialty: 'general', shows: 'home visits, the surgery, and patients known for years' },
+};
 
 /** The skills a physician builds (0-100). Reputation is built from them, never from survival counts. */
 export const SKILLS = {

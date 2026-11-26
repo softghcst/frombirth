@@ -10,7 +10,7 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { advanceTurn } from '../js/engine/turns.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare, JURISDICTIONS } from '../js/data/medicine.js';
+import { SPECIALTIES, SPECIALTY_BY_ID, PROCEDURE_BY_ID, TEST_BY_ID, DEPARTMENTS, PRACTICE_TYPES, PRIMARY, eraCare, JURISDICTIONS, ROTATIONS, ROTATION_BEFORE } from '../js/data/medicine.js';
 import { CASES, CASE_BY_ID } from '../js/data/medicineCases.js';
 import { EVENT_BY_ID } from '../js/data/events/index.js';
 import * as edu from '../js/engine/education.js';
@@ -655,6 +655,7 @@ section('the Story Director: one beat a year, each once, about the real life');
   check(practice.practiceOptions(gm, q).find((o) => o.id === 'family_clinic' && !o.block), 'a general practitioner can open a family practice');
   store.state.year = was;
 }
+check(ROTATIONS.filter((r) => (SPECIALTY_BY_ID[r.specialty]?.minYear ?? 0) > 1900).every((r) => ROTATION_BEFORE[r.id]), 'a rotation in a specialty founded later has a name for the years before it (no Emergency Medicine rotation in 1925)');
 section('before 1940: an internship, then general practice');
 {
   // Osteopathic graduates before full practice rights: fewer places, and in community or regional hospitals.
