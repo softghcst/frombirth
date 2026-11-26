@@ -505,6 +505,82 @@ function report(s) {
   section('a media company: more titles with real editors, research, bureaus, an investor, real costs');
 }
 
+// 15. Workload, a colleague's help, a lighter year; the world's news and the court record point at the article.
+{
+  const p = life(30);
+  hireMe(p);
+  const w = jn.workload(p);
+  check(['manageable', 'busy', 'too much'].includes(w.level) && w.open === jn.myStories(p).filter((x) => !['published', 'spiked', 'expired'].includes(x.status)).length, `workload counts open stories (${w.text})`);
+  const s = jn.myStories(p).find((x) => x.sources.some((y) => !y.hidden));
+  const left = jn.actionsLeft(p);
+  const help = jn.requestSupport(s.id);
+  check(jn.actionsLeft(p) === left, 'a colleague\'s interview does not take your time');
+  check(help.ok ? s.interviews.length === 1 : /nobody to spare/.test(help.text), `a colleague takes one interview (${help.text})`);
+  check(!jn.requestSupport(s.id).ok, 'once a year');
+  const n0 = 2 + Math.min(3, p.career.level ?? 0);
+  check(jn.askLighterYear().ok, 'a lighter year can be asked for');
+  store.state.year += 1; jn.J().assigned = null;
+  check(jn.assignYear(p).length === Math.max(1, n0 - 2), 'fewer assignments that year');
+  // A story that matters is in the world's news once, pointing at the article.
+  const econ = await import('../js/engine/economy.js');
+  const pubId = 'pub_news';
+  for (const t of jn.myStories(p).filter((x) => !['published', 'spiked', 'expired'].includes(x.status))) {
+    report(t);
+    if (t.status === 'approved' && !jn.isBroadcast(jn.outlet(t.outletId))) { jn.publish(t.id); break; }
+  }
+  const mine = jn.myPubs(p)[0];
+  if (mine) {
+    const lines = (store.state.world?.news ?? []).filter((x) => x.kind === 'press' && x.text.includes(mine.headline));
+    check(lines.length === (mine.inNews ? 1 : 0), `the world's news has it once if it mattered (${mine.quality}, ${lines.length})`);
+  }
+  void econ; void pubId;
+  // The court record lists the press coverage of a case, by reference.
+  const X = await import('../js/engine/investigations/crossover.js');
+  let pc = null;
+  for (let i = 0; i < 8 && !pc; i++) { X.npcCourtCase(p); pc = X.publicCases(p)[0]; }
+  if (pc) {
+    jn.S().pubs.pub_case = { id: 'pub_case', reporterId: p.id, links: { caseId: pc.caseId }, headline: 'The verdict, reported', outlet: 'Gazette', year: store.state.year, corrections: [] };
+    const again = X.publicCases(p).find((c) => c.caseId === pc.caseId);
+    check(again.press.length === 1 && again.press[0].pubId === 'pub_case' && !JSON.stringify(again).includes('truth'), 'the court record lists the article that covered it, by reference');
+  } else check(false, 'setup: a public court case');
+  section('workload, a colleague\'s help, a lighter year; the world\'s news has a story that mattered, once');
+}
+
+// 16. Wartime, only in a real war, and never forced; a business covered years ago comes back; sharing online.
+{
+  const p = life(30, 1942, 'uk');
+  hireMe(p);
+  p.career.level = 1;
+  check(/offered/.test(jn.beatWhy('war', p)), 'nobody picks the war beat: it is offered');
+  const opts = [];
+  for (let y = 0; y < 1; y++) { const j = jn.J(); j.scenes = {}; }
+  const { atWar } = await import('../js/engine/history.js');
+  check(atWar('uk', 1942) && !atWar('uk', 1950), 'setup: Britain at war in 1942, not in 1950');
+  check(/understands/.test(jn.journalismChoice('war:no')), 'saying no costs nothing');
+  const yes = jn.journalismChoice('war:yes');
+  const ws = jn.myStories(p).find((x) => x.beat === 'war');
+  check(ws && /in wartime/.test(ws.title) && ws.docs.some((d) => !d.public && /troops/.test(d.title)) && !jn.readDoc(ws.id, ws.docs.find((d) => !d.public).id).ok, `a home-front story; military movements are never published (${yes})`);
+  void opts;
+  const peace = life(30, 1950, 'uk');
+  hireMe(peace);
+  peace.career.level = 1;
+  jn.J().scenes = {};
+  check(!jn.journalismChoice('war:yes') || !jn.myStories(peace).some((x) => x.beat === 'war'), 'no war stories in peacetime');
+  // A business covered years ago comes back as the same business.
+  const q = life(30);
+  hireMe(q);
+  const e = (await import('../js/engine/employers.js')).cityEmployers(q.countryId, q.city).find((x) => x.family !== 'media');
+  jn.S().pubs.pub_old = { id: 'pub_old', reporterId: q.id, links: { employerId: e.id }, headline: `${e.name} opens`, outlet: 'Gazette', year: store.state.year - 5, at: 0, corrections: [], errors: [], claims: [], sources: [], readers: 1, beat: 'business' };
+  let back = null;
+  for (let y = 0; y < 12 && !back; y++) { jn.J().beat = 'business'; jn.J().assigned = null; store.state.year += 1; back = jn.assignYear(q).find((x) => x.links.callbackOf === 'pub_old'); }
+  check(back && back.links.employerId === e.id && /years after you first wrote/.test(back.title), 'a business covered years ago comes back, the same business');
+  // Sharing: an article is something the player can honestly post about.
+  const content = await import('../js/engine/digital/content.js');
+  jn.S().pubs.pub_share = { id: 'pub_share', reporterId: q.id, links: {}, headline: 'A story to share', outlet: 'Gazette', year: store.state.year, at: 0, corrections: [], errors: [], claims: [], sources: [], readers: 1, beat: 'local' };
+  check(content.sourceOptions().some((x) => x.type === 'article' && x.key === 'article:pub_share'), 'a published article can be shared from Digital Life');
+  section('wartime reporting only in a real war and never forced; old subjects return; articles can be shared');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');
