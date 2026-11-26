@@ -28,8 +28,10 @@ const life = (age = 23, year = 2024, country = 'us') => {
   p.stats.charm = 70; p.finance.cash = 5000;
   return p;
 };
+// Hiring is a roll: enough rounds that an unlucky run of them (the dice move whenever another part of the game adds a
+// roll to the year) does not leave a check without a reporter.
 const hireMe = (p) => {
-  for (let y = 0; y < 8 && !jn.isReporter(p); y++) {
+  for (let y = 0; y < 30 && !jn.isReporter(p); y++) {
     for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
