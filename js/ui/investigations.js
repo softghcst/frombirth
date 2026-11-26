@@ -91,6 +91,30 @@ function sectionsFor(p, r) {
   return out;
 }
 
+/**
+ * Fewer tabs: related sections share one page, stacked, each under its own heading. A page with one section keeps that
+ * section's own name. Roles that are someone's main work (the bench, death investigations...) keep a tab of their own.
+ */
+const TAB_GROUPS = [
+  ['agencies', 'Agencies', ['agency', 'federal', 'team']],
+  ['cases', 'Cases', ['cases', 'archive', 'cold', 'reviews']],
+  ['career', 'Career', ['career', 'legacy']],
+  ['other', 'Other Work', ['private', 'allied', 'integrity', 'hospital', 'policy']],
+];
+function tabsFor(sections) {
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of sections) {
+    if (used.has(id)) continue;
+    const g = TAB_GROUPS.find(([, , ids]) => ids.includes(id));
+    if (!g) { out.push({ id, label, members: [[id, label]] }); used.add(id); continue; }
+    const members = sections.filter(([x]) => g[2].includes(x));
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g[0], label: members.length === 1 ? members[0][1] : g[1], members });
+  }
+  return out;
+}
+
 const MAJOR_NAME = (id) => MAJOR_BY_ID[id]?.name ?? (id === 'law' ? 'Law' : id);
 /** The ways into the work, what each asks, and which of the player's studies count. */
 function waysIn(p) {
@@ -397,6 +421,21 @@ const TABS = [['overview', 'Overview'], ['notebook', 'Notebook'], ['people', 'Pe
 function caseTabs(v) {
   return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
 }
+/** The case file on fewer pages: people with their statements, items with the laboratory, the legal review with court. */
+const CASE_GROUPS = [['people', 'People & Statements', ['people', 'statements']], ['evidence', 'Evidence & Lab', ['evidence', 'lab']], ['legal', 'Legal & Court', ['legal', 'court']]];
+function casePages(v) {
+  const tabs = caseTabs(v);
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of tabs) {
+    if (used.has(id)) continue;
+    const g = CASE_GROUPS.find(([, , ids]) => ids.includes(id));
+    const members = g ? tabs.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  return out;
+}
 const CASE_VIEWS = {
   overview: (v) => card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]])),
   notebook: (v) => card('Known facts', v.facts.map((f) => `<p>• ${esc(f.text)}</p>`).join('') || muted('Only the report so far.'))
@@ -438,10 +477,13 @@ function openCaseFile(api, invId, refreshHub) {
     const inv = W.investigation(invId);
     const v = V.view(inv, 'investigator');
     if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
-    const tabs = caseTabs(v);
+    const tabs = casePages(v);
+    const tab = tabs.find((t) => t.id === st.tab) ?? tabs.find((t) => t.members.some(([x]) => x === st.tab)) ?? tabs[0];
+    st.tab = tab.id;
+    const page = tab.members.map(([x]) => CASE_VIEWS[x](v, inv)).join('');
     root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
-      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map((t) => `<button type="button" role="tab" class="world-group av-chip ${t.id === st.tab ? 'on' : ''}" aria-selected="${t.id === st.tab}" data-tab="${t.id}">${esc(t.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${page}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
   const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
   root.addEventListener('click', async (e) => {
@@ -625,11 +667,14 @@ export function openInvestigations(api, start = 'overview') {
   const render = () => {
     const p = player();
     const r = rec(p);
-    const list = sectionsFor(p, r);
-    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
+    const tabs = tabsFor(sectionsFor(p, r));
+    // A section asked for by name opens the page it is on.
+    const tab = tabs.find((t) => t.id === st.section) ?? tabs.find((t) => t.members.some(([x]) => x === st.section)) ?? tabs[0];
+    st.section = tab.id;
+    const page = tab.members.length === 1 ? VIEWS[tab.members[0][0]](p, r) : tab.members.map(([x, label]) => `<div class="section-label">${esc(label)}</div>${VIEWS[x](p, r)}`).join('');
     root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
+      <div class="world-groups" role="tablist" aria-label="Sections">${tabs.map((t) => `<button type="button" role="tab" class="world-group av-chip ${t.id === st.section ? 'on' : ''}" aria-selected="${t.id === st.section}" data-sec="${t.id}">${esc(t.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${page}</div>
       ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };

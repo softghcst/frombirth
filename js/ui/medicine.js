@@ -98,6 +98,26 @@ function tabsFor(p, m) {
   });
 }
 
+/** Fewer tabs: related sections on one page, each under its own heading. A page with one section keeps its own name. */
+const MED_GROUPS = [
+  ['training', 'Training', ['education', 'training', 'specialization']],
+  ['active', 'Patients', ['patients', 'active', 'decisions', 'procedures']],
+  ['hospital', 'Hospital & Clinic', ['hospital', 'clinic']],
+  ['history', 'Career', ['development', 'history']],
+];
+function pagesFor(sections) {
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of sections) {
+    if (used.has(id)) continue;
+    const g = MED_GROUPS.find(([, , ids]) => ids.includes(id));
+    const members = g ? sections.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  return out;
+}
+
 const HUB = [['department', 'My Department'], ['colleagues', 'My Colleagues'], ['residents', 'Residents & Fellows'], ['patients', 'Active Patients'], ['or', 'Operating Room'],
   ['training', 'Training'], ['stories', 'Hospital Stories'], ['relationships', 'Professional Relationships'], ['leadership', 'Leadership'], ['history', 'Career History'], ['jobs', 'Find a Post']];
 
@@ -265,11 +285,24 @@ const VIEWS = {
 function hubView(p, m, st) {
   const tabs = hubFor(p, m);
   if (!tabs.length) return card('My hospital', muted('No hospital yet.'));
-  if (!tabs.some(([id]) => id === st.hub)) st.hub = tabs[0][0];
+  // Fewer tabs here too: the department with its leadership, the people together, the stories with the history.
+  const pages = [];
+  const used = new Set();
+  const HG = [['department', 'Your Department', ['department', 'leadership']], ['colleagues', 'People', ['colleagues', 'residents', 'relationships']], ['stories', 'Stories & History', ['stories', 'history']]];
+  for (const [id, label] of tabs) {
+    if (used.has(id)) continue;
+    const g = HG.find(([, , ids]) => ids.includes(id));
+    const members = g ? tabs.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    pages.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  const pg = pages.find((x) => x.id === st.hub) ?? pages.find((x) => x.members.some(([y]) => y === st.hub)) ?? pages[0];
+  st.hub = pg.id;
   const at = m.training?.hospitalId ?? m.job?.hospitalId;
   const head = at ? `<p class="muted">${esc(hospitalName(at))} · ${esc(DEPARTMENTS[deptOf(currentSpecialty(m))] ?? 'Medicine')} · ${esc(p.career.title ?? '')}</p>` : '';
-  return `${head}<div class="world-groups" role="tablist" aria-label="Hospital life">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.hub ? 'on' : ''}" aria-selected="${id === st.hub}" data-hub="${id}">${esc(label)}</button>`).join('')}</div>
-    <div style="margin-top:10px">${HUB_VIEWS[st.hub](p, m, st, at)}</div>`;
+  const body = pg.members.length === 1 ? HUB_VIEWS[pg.members[0][0]](p, m, st, at) : pg.members.map(([y, label]) => `<div class="section-label">${esc(label)}</div>${HUB_VIEWS[y](p, m, st, at)}`).join('');
+  return `${head}<div class="world-groups" role="tablist" aria-label="Hospital life">${pages.map((x) => `<button type="button" role="tab" class="world-group av-chip ${x.id === st.hub ? 'on' : ''}" aria-selected="${x.id === st.hub}" data-hub="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+    <div style="margin-top:10px">${body}</div>`;
 }
 
 const roleOf = (m, n) => [n.id === m.people.mentorId && 'mentor', m.people.supervisorIds.includes(n.id) && 'supervisor', m.people.rivalIds.includes(n.id) && 'rival',
@@ -554,11 +587,14 @@ export function openMedicine(api, start = 'overview') {
   const render = () => {
     const p = player();
     const m = med(p);
-    const list = tabsFor(p, m);
-    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
+    const pages = pagesFor(tabsFor(p, m));
+    // A section asked for by name opens the page it is on.
+    const pg = pages.find((x) => x.id === st.section) ?? pages.find((x) => x.members.some(([y]) => y === st.section)) ?? pages[0];
+    st.section = pg.id;
+    const body = pg.members.length === 1 ? VIEWS[pg.members[0][0]](p, m, st) : pg.members.map(([y, label]) => `<div class="section-label">${esc(label)}</div>${VIEWS[y](p, m, st)}`).join('');
     root.innerHTML = `<h2 style="margin-top:0">My Medical Career</h2><p class="muted" style="margin-top:-6px">Every patient has a story.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>
+      <div class="world-groups" role="tablist" aria-label="Sections">${pages.map((x) => `<button type="button" role="tab" class="world-group av-chip ${x.id === st.section ? 'on' : ''}" aria-selected="${x.id === st.section}" data-sec="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${body}</div>
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
   const refresh = () => { api.changed(); render(); };

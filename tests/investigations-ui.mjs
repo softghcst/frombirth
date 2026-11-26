@@ -61,9 +61,11 @@ async function run(viewport) {
   });
   await openHub(page);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
-  check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
+  check(sections.some((s) => /Agencies|Departments/i.test(s)) && /Federal/i.test(await (async () => { await page.locator('[data-inv] [data-sec]', { hasText: /Agencies|Departments/ }).first().click(); return page.locator('[data-inv]').innerText(); })()) && !sections.some((s) => /^Cases$|Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
+  check(sections.length <= 7, `${w}px: a handful of tabs, not a dozen (${sections.join(', ')})`);
+  await page.locator('[data-inv] [data-sec]', { hasText: 'Overview' }).first().click();
   check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Departments' }).first().click();
+  await page.locator('[data-inv] [data-sec]', { hasText: /Agencies|Departments/ }).first().click();
   await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
   await dismissMessages(page);
   const app = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.investigator.apps[0]; });
@@ -99,7 +101,7 @@ async function run(viewport) {
   });
   await openHub(page);
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Active Cases' }).first().click();
+  await page.locator('[data-inv] [data-sec]', { hasText: /^Cases$|Active Cases/ }).first().click();
   check((await page.locator('[data-inv]').innerText()).includes('The Ashford Street Burglary'), `${w}px: the case is in Active Cases`);
   check(await page.locator('[data-inv] [data-act="support"]').count() >= 1, `${w}px: a case can ask for support from the caseload page`);
   await page.locator('[data-inv] [data-act="support"]').first().click();
@@ -148,7 +150,7 @@ async function run(viewport) {
   check(/Cause of death and manner of death are different findings/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a forensic pathologist sees their referrals, cause and manner kept apart`);
   await page.locator('[data-inv] [data-act="death"]').first().click();
   await dismissMessages(page);
-  await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
+  await page.locator('[data-inv] [data-sec]', { hasText: /Other Work|Public Safety/ }).first().click();
   check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
   check(await fits(page), `${w}px: the new pages fit the screen`);
   await closeHub(page);
