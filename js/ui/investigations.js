@@ -397,6 +397,18 @@ const VIEWS = {
         return card(`${nm(c.defendantId)}: ${inv.file.title}`, kv([['Done', m.steps.join(', ') || 'nothing yet'], ...(m.lab ? [['Laboratory result due', dateWords(m.lab.due)]] : [])])
           + stack(Object.entries(IG.STEPS).filter(([id]) => !m.steps.includes(id) || id === 'refer').map(([id, label]) => btn('integrityStep', label, { arg: `${m.id}|${id}` })).join(''))); }).join('') : muted('No matter open. Requests for review come as the year turns.'));
   },
+  more(p) {
+    const list = sectionsFor(p, rec(p));
+    const label = Object.fromEntries(list);
+    const why = {
+      federal: () => { const k2 = Object.keys(FEDERAL).find((x) => C.federalUnmet(x, p).length); return k2 ? C.federalUnmet(k2, p)[0] : ''; },
+      private: () => C.licenseUnmet(p)[0] ?? '',
+      integrity: () => IG.postBlock('innocence', p),
+      allied: () => AL.alliedBlock(Object.keys(AL.ALLIED)[0], p),
+    };
+    return muted('Other careers in this world, and what each asks first. You can read about each one now.')
+      + `<div class="nav-group">${laterPaths(p, list).map((id) => navRow({ attrs: `data-sec="${id}"`, label: label[id], sub: why[id]?.() || SECTION_INFO[id]?.[0] || '', ico: SECTION_INFO[id]?.[1] ?? 'sparkle' })).join('')}</div>`;
+  },
   allied(p) {
     const A = AL.alliedOf(p);
     const mine = A && p.career?.careerId === `ally_${A.id}`;
@@ -494,7 +506,9 @@ const CASE_VIEWS = {
   },
 };
 function openCaseFile(api, invId, refreshHub) {
-  const st = { tab: 'overview' };
+  // A case the player is working opens on its actions, where the work is done; a finished one on its overview.
+  const inv0 = W.investigation(invId);
+  const st = { tab: inv0?.file && !inv0.file.outcome && inv0.file.leadId === player().id ? 'actions' : 'overview' };
   const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: W.investigation(invId)?.file?.title ?? 'Case file' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-case]');
@@ -715,12 +729,28 @@ const SECTION_INFO = {
   integrity: ['Reviewing convictions for an innocence organization or a prosecutor', 'passport'], allied: ['Analysts, probation, advocates, court reporters and more', 'people'],
   policy: ['Budgets, oversight, sheriffs and national reform', 'globe'], legacy: ['Your family\'s investigative careers', 'family'],
 };
+/** The other paths that are not open to the player now (their reasons are on the More careers screen). */
+function laterPaths(p, list) {
+  const have = new Set(list.map(([id]) => id));
+  const r = rec(p);
+  const open = {
+    federal: () => r?.family === 'federal' || Object.keys(FEDERAL).some((k2) => !C.federalUnmet(k2, p).length),
+    private: () => C.licensed(p) || !C.licenseUnmet(p).length || (r?.inquiryIds?.length ?? 0) > 0,
+    integrity: () => !!IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p),
+    allied: () => !!AL.alliedOf(p) || Object.keys(AL.ALLIED).some((id) => !AL.alliedBlock(id, p)),
+  };
+  return Object.keys(open).filter((id) => have.has(id) && !open[id]());
+}
 /** The home screen: where the player stands, anything waiting on them, then every section as a row. */
 function home(p, r, list) {
   const have = new Set(list.map(([id]) => id));
-  const label = Object.fromEntries(list);
-  const groups = GROUPS.map(([name, ids]) => [name, ids.filter((id) => have.has(id))]).filter(([, ids]) => ids.length);
+  const label = { ...Object.fromEntries(list), more: 'More careers' };
+  const later = laterPaths(p, list);
+  const groups = GROUPS.map(([name, ids]) => [name, ids.filter((id) => have.has(id) && !later.includes(id))]).filter(([, ids]) => ids.length);
+  // Paths not open yet wait behind one row, so a new officer sees what they can do now.
+  if (later.length) { const g = groups.find(([n]) => n === 'Other paths'); if (g) g[1].push('more'); else groups.push(['Other paths', ['more']]); }
   const sub = (id) => {
+    if (id === 'more') return `${later.map((x) => label[x]).join(', ')}: not open to you yet`;
     if (id === 'cases' && r) { const open = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome); return open.length ? `${open.length} open case${open.length === 1 ? '' : 's'}` : SECTION_INFO.cases[0]; }
     return SECTION_INFO[id]?.[0] ?? '';
   };
@@ -737,9 +767,9 @@ export function openInvestigations(api, start = 'overview') {
     const p = player();
     const r = rec(p);
     const list = sectionsFor(p, r);
-    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
+    if (st.section !== 'more' && !list.some(([id]) => id === st.section)) st.section = 'overview';
     // The home screen lists every section; a section is a screen of its own, and Back (in the bar) returns home.
-    const name = Object.fromEntries(list)[st.section];
+    const name = { ...Object.fromEntries(list), more: 'More careers' }[st.section];
     root.innerHTML = st.section === 'overview'
       ? `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>${home(p, r, list)}`
       : `<button type="button" class="btn small" data-back>‹ My Investigations</button><h2 style="margin-top:0">${esc(name)}</h2>
