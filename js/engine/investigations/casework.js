@@ -334,7 +334,7 @@ export function steps(inv) {
     open('records', needs ? 'Request the protected records (needs a court order)' : 'Request the relevant records', needs ? 'Phone, bank or access records need a judge\'s authorization first.' : 'Records that need no special authority.', { needsAuth: needs });
   }
   if (rc?.needsAuth && !f.auths.some((a) => a.kind === 'records')) out.push({ id: 'auth:records', label: 'Ask a judge for a records order', sub: 'The judge needs a lawful basis from what the file already shows.' });
-  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
+  for (const it of f.items) if (!it.examined) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Send ${it.label.toLowerCase()} for ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months. Results are not always conclusive.`, lab: true });
   return out;
 }
 const found = (f) => f.clues.filter((c) => c.found);
@@ -1002,7 +1002,7 @@ export function reviewSteps(inv) {
   const f = inv.file;
   if (f?.review?.status !== 'open') return [];
   const out = [];
-  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase()}`, sub: `About ${LAB[d].months} months.`, lab: true });
+  for (const it of f.items) for (const d of it.disciplines) if (!f.labs.some((l) => l.itemId === it.id && l.discipline === d)) out.push({ id: `lab:${it.id}:${d}`, label: `Test ${it.label.toLowerCase()}: ${LAB[d].name.toLowerCase().replace(/\bdna\b/g, "DNA")}`, sub: `About ${LAB[d].months} months.`, lab: true });
   return out;
 }
 /**
