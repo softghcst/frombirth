@@ -14,6 +14,7 @@ import { rec, W, now, year, me, nextId, result, seeded, nameOfId } from './core.
 import { agencyOf, kindsIn, lab } from './agencies.js';
 import { openCase, investigation, incidentOf } from './casework.js';
 import { publicRecord } from './views.js';
+import { afterReport } from './forensicLab.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -116,6 +117,7 @@ export function benchReport(id, how = 'careful') {
   it.custody.push({ at: now(), by: me(), act: `examined: ${LAB_RESULTS[shown].toLowerCase()}` });
   f.log.push({ at: now(), text: `Laboratory report from ${p.firstName} ${p.lastName}: ${text}` });
   b.status = 'reported';
+  afterReport(b, how);
   return result(true, how === 'overstate' && outcome === 'inconclusive' ? 'You reported a result the work did not support. If it is tested in court, it will not hold, and neither will your credibility.' : `Reported to ${nm(b.detectiveId)}: ${text}`, how === 'overstate' && outcome === 'inconclusive' ? 'bad' : 'good');
 }
 

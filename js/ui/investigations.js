@@ -22,6 +22,9 @@ import * as FM from '../engine/investigations/forensicMed.js';
 import * as PO from '../engine/investigations/policing.js';
 import * as WP from '../engine/investigations/workplace.js';
 import * as LO from '../engine/investigations/local.js';
+import * as FL from '../engine/investigations/forensicLab.js';
+import { LAB } from '../data/investigations.js';
+const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
 
@@ -231,11 +234,22 @@ const VIEWS = {
     return out;
   },
   bench(p) {
-    const list = X.bench(p).filter((b) => b.status === 'open');
-    return list.length ? list.map((b) => { const inv = W.investigation(b.invId); const it = inv.file.items.find((x) => x.id === b.itemId);
-      return card(`${it.label} (${inv.file.title})`, kv([['Requested by', nm(b.detectiveId)], ['Done', b.steps.join(', ') || 'nothing yet']])
+    const L = FL.labRecord(p);
+    const list = FL.queue(p);
+    const tested = L?.proficiency.find((x) => x.year === store.state.year);
+    let head = L ? card('Your laboratory', kv([['Position', p.career.title], ['Discipline', L.discipline ? FL_LAB(L.discipline) : 'Not chosen yet'], ['Accreditation', L.accredited ? 'Accredited' : 'Under review'],
+      ['Waiting on your bench', String(list.length)], ['Overdue', String(list.filter((b) => b.overdue).length)], ['Reports written', String(L.reports)], ['Order of work', L.policy === 'serious' ? 'Serious cases first' : 'In the order they came']])
+      + stack((L.discipline ? '' : btn('specialize', 'Choose a discipline'))
+        + (tested ? '' : btn('proficiency', 'Sit this year\'s proficiency test'))
+        + btn('labPolicy', L.policy === 'serious' ? 'Work them in order instead' : 'Put serious cases first', { arg: L.policy === 'serious' ? 'age' : 'serious' }))) : '';
+    for (const { b, inv, c } of FL.courtDates(p)) {
+      const it = inv.file.items.find((x) => x.id === b.itemId);
+      head += card(`In court: ${inv.file.title}`, kv([['Your report', `${it?.label ?? 'an item'}: ${FL_LAB(b.discipline)}`], ['Defendant', nm(c.defendantId)]]) + muted('You explain what the laboratory found. The court decides what it means.') + stack(btn('labTestify', 'Take the stand', { arg: b.id })));
+    }
+    return head + (list.length ? list.map((b) => { const inv = W.investigation(b.invId); const it = inv.file.items.find((x) => x.id === b.itemId);
+      return card(`${it.label} (${inv.file.title})`, kv([['Requested by', nm(b.detectiveId)], ['Examination', FL_LAB(b.discipline)], ...(b.due ? [['Due', `${dateWords(b.due)}${b.overdue ? ' (overdue)' : ''}`]] : []), ['Done', b.steps.join(', ') || 'nothing yet']])
         + stack(Object.entries(X.BENCH_STEPS).map(([id, d]) => btn('bench', d.label, { arg: `${b.id}|${id}` })).join('') + btn('benchReport', 'Report the finding as it is', { arg: `${b.id}|careful` }) + btn('benchReport', 'Report it as stronger than it is', { arg: `${b.id}|overstate`, cls: 'danger' }))); }).join('')
-      : muted('Nothing on your bench. Requests arrive as the year turns.');
+      : muted('Nothing on your bench. Requests arrive as the year turns.'));
   },
   standards(p) {
     const mine = O.complaints().filter((c) => c.subjectId === p.id);
@@ -379,6 +393,27 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  specialize: async (a, x) => {
+    const id = await pickModal({ title: 'Choose a discipline', body: 'Most of your requests will be in it. You can still be sent others.', options: FL.disciplinesNow().map((d) => ({ value: d.id, label: d.name })) });
+    if (id) await x.say(FL.specialize(id));
+  },
+  proficiency: async (a, x) => {
+    const how = await pickModal({ title: 'The proficiency test', body: 'A blind sample. Nobody tells you the answer.', options: [
+      { value: 'careful', label: 'Work it like casework', sub: 'Every control, every note.' },
+      { value: 'quick', label: 'Get through it quickly', sub: 'There is a backlog.' },
+      { value: 'peek', label: 'Ask a colleague what the answer is', sub: 'It would be easy.' }] });
+    if (how) await x.say(FL.proficiency(how));
+  },
+  labPolicy: (a, x) => x.say(FL.setPolicy(a)),
+  labTestify: async (a, x) => {
+    const answers = {};
+    for (const q of FL.FORENSIC_CROSS) {
+      const v = await pickModal({ title: 'Cross-examination', body: `Defense counsel: ${q.q}`, options: q.options.map(([label, value]) => ({ value, label })) });
+      if (!v) return;
+      answers[q.id] = v;
+    }
+    await x.say(FL.testify(a, answers));
+  },
   corporate: (a, x) => x.say(WP.joinCorporate(a)),
   meeting: async (a, x) => {
     const how = await pickModal({ title: 'The community meeting', body: 'A church hall, folding chairs, a microphone that works some of the time.', options: [

@@ -987,6 +987,65 @@ section('corporate investigators: a real company, internal matters, no police po
 }
 section('a homicide from the first night to the verdict, scene by scene; the Marshals, the Secret Service, HSI and IRS Criminal Investigation');
 
+// ---------- 20. The forensic scientist's working life ----------
+{
+  const FL = await import('../js/engine/investigations/forensicLab.js');
+  const p = life('us', 27, { degree: 'chemistry' });
+  hire(CAREER_BY_ID.forensics, 0, 60, 'test');
+  const L = FL.labRecord(p);
+  check(L && FL.specialize('fingerprints').ok && !FL.specialize('dna').ok, 'a scientist chooses one discipline');
+  const lines = FL.labYear(p);
+  const q = FL.queue(p);
+  check(q.length >= 2 && q.every((b) => b.due > b.received && k.J().investigations[b.invId]?.file), `requests from real cases, with due dates (${lines.length})`);
+  check(q.filter((b) => b.discipline === 'fingerprints').length >= 1, 'most requests are in the scientist\'s discipline');
+  FL.setPolicy('serious');
+  const sq = FL.queue(p);
+  check(!sq.some((b, i) => !b.serious && sq.slice(i + 1).some((x) => x.serious)), 'serious cases first, when that is the policy');
+  // Proficiency: once a year; looking for the answer is a failure.
+  const pt = FL.proficiency('careful');
+  check(pt.ok && !FL.proficiency('careful').ok, 'one proficiency test a year');
+  store.state.year += 1;
+  FL.proficiency('peek');
+  check(!L.accredited && L.suspended === store.state.year && /off casework/i.test(FL.labYear(p)[0]), 'asking for the answer fails the test, and takes the scientist off casework');
+  store.state.year += 1;
+  FL.proficiency('careful');
+  if (L.proficiency.at(-1).passed) { FL.careerYear(p); check(L.accredited, 'a passed test restores accreditation'); }
+  // Reports: careful work counts; a case may go to court, and the scientist explains the report there.
+  let court = null;
+  for (let i = 0; i < 12 && !court; i++) {
+    if (!FL.queue(p).length) { L.suspended = null; FL.labYear(p); }
+    const b = FL.queue(p)[0];
+    if (!b) break;
+    for (const s2 of Object.keys(X.BENCH_STEPS)) X.benchStep(b.id, s2);
+    X.benchReport(b.id, 'careful');
+    court = FL.courtDates(p)[0] ?? null;
+  }
+  check(L.careful >= 1 && L.reports >= 1, 'careful reports are counted toward promotion');
+  if (court) {
+    const perf = p.career.performance;
+    const res = FL.testify(court.b.id, { method: 'honest', contamination: 'honest', bias: 'honest', certainty: 'honest' });
+    check(res.tone === 'good' && p.career.performance > perf && !FL.testify(court.b.id, {}).ok, 'explaining a report within its limits, once, keeps the scientist\'s word good');
+  }
+  // Overclaiming in court is found out, and the scientist's other cases are reviewed.
+  const b2 = (() => { L.suspended = null; FL.labYear(p); return FL.queue(p)[0]; })();
+  if (b2) {
+    for (const s2 of Object.keys(X.BENCH_STEPS)) X.benchStep(b2.id, s2);
+    X.benchReport(b2.id, 'careful');
+    const inv = W.investigation(b2.invId);
+    if (!inv.file.courtCaseId) { const c = k.openCaseFor(inv, inv.file.poi[0]); inv.file.courtCaseId = c.id; }
+    const n0 = L.reviews.length;
+    const res = FL.testify(b2.id, { method: 'claim', contamination: 'claim', bias: 'claim', certainty: 'claim' });
+    check(res.tone === 'bad' && L.reviews.length === n0 + 1 && L.exposed >= 1, 'claiming certainty the method cannot give is found out, and the cases are reviewed');
+  }
+  // Promotion needs years, passed tests, careful reports and nothing overstated.
+  L.since = store.state.year - 3; L.careful = Math.max(L.careful, 3); L.accredited = true; L.exposed = 0;
+  L.proficiency.push({ year: store.state.year - 1, passed: true }, { year: store.state.year, passed: true });
+  const lvl = p.career.level;
+  FL.careerYear(p);
+  check(p.career.level === lvl + 1 && p.career.title === FL.RANKS[lvl + 1], `promoted on the record (${p.career.title})`);
+}
+section('the forensic scientist: a discipline, a backlog from real cases, proficiency and accreditation, testimony within the science, promotion on the record');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');

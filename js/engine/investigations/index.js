@@ -28,6 +28,7 @@ import { benchYear, pressYear } from './crossover.js';
 import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
 import { settleWorkplace, workplaceYear } from './workplace.js';
+import { labYear, careerYear as labCareerYear } from './forensicLab.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -66,7 +67,8 @@ export function tickInvestigations() {
   const p = player();
   if (!p.alive) return;
   if (!rec(p) && INVESTIGATIVE.includes(p.career.careerId)) migrateInvestigations(store.state);
-  benchYear(p); // a forensic scientist or a journalist sees cases from their side (crossover.js)
+  // A forensic scientist's laboratory year: requests from real cases, the backlog, promotion (forensicLab.js).
+  if (p.career?.careerId === 'forensics') { for (const line of [...labYear(p), ...labCareerYear(p)]) log(line, 'system', 'neutral'); } else benchYear(p);
   forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   const r = rec(p);
