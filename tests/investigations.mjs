@@ -89,7 +89,7 @@ function makeOfficer(agencyKind = 'municipal') {
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
-  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && s.verified === false), 'every rule names its source, and none claims to be verified');
+  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && typeof s.verified === 'boolean') && Object.entries(D.SOURCES).filter(([, s]) => s.verified).map(([id]) => id).join() === 'usss', 'every rule names its source; only one read on its official page (the Secret Service) is marked verified');
   const o1 = A.officeOf('fbi', 'Chicago'); const o2 = A.officeOf('fbi', 'Chicago'); const o3 = A.officeOf('dea', 'Chicago');
   check(o1.id === o2.id && o1.id !== o3.id && o1.prosecutorIds.length && o1.name.includes('FBI'), 'federal field offices are made once each, per agency, with their own prosecutors');
 }
@@ -812,7 +812,8 @@ section('studying: new majors, degrees that count for each path, a head start on
   const me = fam.find((x) => x.you);
   check(me && me.history.length && me.cases.some((c) => c.title === 'The Elm Row Burglary' && c.outcome === 'in court'), 'the Family Archive keeps the player\'s career and the cases that reached a court');
   const text = JSON.stringify(fam);
-  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(store.state.npcs[id].lastName) || store.state.npcs[id].lastName === store.state.player.lastName), 'and never the witnesses of a case');
+  // By full name: a surname alone can belong to someone else in the archive too.
+  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(`${store.state.npcs[id].firstName} ${store.state.npcs[id].lastName}`)), 'and never the witnesses of a case');
 }
 section('the Family Archive: the public career and the court record, not the case file');
 
@@ -1015,7 +1016,7 @@ section('corporate investigators: a real company, internal matters, no police po
 }
 {
   // Four more federal agencies, each with its own rules and its own work.
-  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.verified === false, `${key}: an agency with its own career track, its source named and unverified`);
+  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.url, `${key}: an agency with its own career track, its source named`);
   let p = life('us', 27, { degree: 'criminology' });
   check(C.federalUnmet('irs').some((x) => /accounting/.test(x)) && !C.federalUnmet('usms').some((x) => /accounting/.test(x)), 'IRS Criminal Investigation asks for accounting; the Marshals do not');
   p = life('us', 27, { degree: 'accounting' });
@@ -1628,6 +1629,69 @@ section('police in Germany, India, Brazil, Mexico, South Korea, Italy and Spain,
   }
 }
 section('the academy ends on its own date: graduation and field training the same on quarterly and yearly turns');
+
+// ---------- 37. Playtest fixes ----------
+{
+  const p = life('us', 33);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  const inv = W.openCase('burglary', { ownerId: a.id, truth: 'insider' });
+  r.caseIds.push(inv.id);
+  const wid = Object.keys(inv.file.witnesses)[0];
+  for (const q of ['observed', 'timeline', 'uncertainty', 'more', 'inconsistency']) W.act(inv.id, `interview:${wid}`, { question: q });
+  check(!W.steps(inv).some((s) => s.id === `interview:${wid}`), 'once the proper questions are asked, the interview is done: pressing is never what is left to do');
+  check(!inv.evidenceIds.some((id) => k.J().evidence[id]?.tainted), 'and nothing was pressed out of anyone');
+  const used = new Set();
+  for (let i = 0; i < 4; i++) { const f = W.openCase('fraud', { ownerId: a.id, truth: 'insider' }); if (f.file.employerId) used.add(f.file.employerId); }
+  check(used.size >= 3, `fraud cases spread across the city's companies (${used.size} of 4)`);
+}
+{
+  life('us', 35);
+  const a = makeOfficer();
+  const r = core.I();
+  r.job.detective = true; r.job.rank = 'detective';
+  r.caseIds = [];
+  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('burglary', { ownerId: a.id, truth: 'insider' }).id);
+  months(48);
+  const idle = r.caseIds.map(W.investigation).filter((inv) => inv.stage === 'suspended').length;
+  check(idle >= 2 && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && inv.stage === 'active'), `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${r.caseIds.length} in all)`);
+}
+{
+  const WPm = await import('../js/engine/investigations/workplace.js');
+  life('us', 40);
+  makeOfficer();
+  const r = core.I();
+  r.stats.years = 6; r.job.rank = 'senior'; r.job.rankSince = store.state.year - 6;
+  Object.assign(r.rep, { integrity: 80, skill: 80, reports: 80, ethics: 80, reliability: 80, teamwork: 80, leadership: 80 });
+  check(/leadership/i.test(C.promotionOptions()[0]?.block ?? ''), 'sergeant asks for leadership');
+  for (let y = 0; y < 8; y++) { WPm.mentor(); store.state.year += 1; r.job.rankSince -= 0; }
+  check(!/leadership/i.test(C.promotionOptions()[0]?.block ?? '') && r.skills.leadership >= 35, `mentoring builds it, so the way to sergeant is open (${r.skills.leadership})`);
+}
+{
+  const p = life('us', 45);
+  makeOfficer();
+  const r = core.I();
+  for (let i = 0; i < 5; i++) r.history.push({ year: store.state.year, text: 'Referred a case to the prosecutor: someone filed charges.', kind: 'career' });
+  r.history.push({ year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' }, { year: store.state.year, text: 'Promoted to senior detective.', kind: 'career' });
+  const mine = IX.familyInvestigativeLegacy(p).find((x) => x.you);
+  check(!mine.history.some((h) => /Referred a case/.test(h.text)) && mine.history.filter((h) => /senior detective/.test(h.text)).length === 1, 'the Family Archive keeps a career\'s milestones, not every referral, and nothing twice');
+}
+section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank; the archive keeps milestones');
+
+{
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { workplaceOf } = await import('../js/engine/conditions.js');
+  const p = life('us', 40);
+  makeOfficer();
+  const det = workplaceOf(p);
+  const offered = (id) => EVENT_BY_ID[id].workplaces.includes(workplaceOf(p));
+  check(det === 'police' && !offered('fd_law_client') && !offered('headhunter') && !offered('big_presentation') && offered('burnout') && offered('fd_safety_call'),
+    'an officer is not offered a law firm\'s client, a rival firm\'s headhunter or a boardroom presentation, but burnout and a safety call still find them');
+  p.career = { careerId: 'lawyer', partTime: null };
+  check(offered('fd_law_client') && offered('headhunter') && !offered('fd_safety_call'), 'a lawyer at a firm meets the firm\'s client and the headhunter, not the emergency call');
+}
+section('workplaces: scenes set at work happen only in the workplaces they name');
 
 for (const line of ok) console.log(`ok   ${line}`);
 
