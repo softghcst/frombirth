@@ -23,7 +23,7 @@ says what was built, in which commit, how it was tested, and what is still missi
 | Unions and national reform | Done | `unions.js`, `reform.js` | Contracts, representation, working to rule; four national measures that change the engine | `4d467abd` |
 | Forensic psychology | Done | `forensicPsych.js` | Consultations, parole risk assessments, care for officers | `8e21811c` |
 | Police outside the US | Done | `js/data/investigations.js`, `agencies.js`, `careers.js` | The UK, Canada, Australia, France and Japan | `8ae36128` |
-| Careers around the cases | Done | `allied.js`, `js/data/occupations.js` | Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators; digital forensic examiners | COMMIT_ALLIED |
+| Careers around the cases | Done | `allied.js`, `js/data/occupations.js` | Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators; digital forensic examiners | `a061a070` |
 | Conviction review careers, accountants, hospitals, pay, the editor's desk | Done | `integrity.js`, `books.js`, `medical.js`, `pay.js`, `crossover.js` | The last items of the 3.0 addendum | `b42a2a35` |
 
 ## Tests
