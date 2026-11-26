@@ -79,11 +79,14 @@ back at `age − 1`, the year just lived.
 Work that is not a special career is found from Work → Find work (the hub's Find a job section,
 `js/engine/jobSearch.js`). The whole market is not shown at once; there are two ways in:
 
-- **This year's openings**: a short list drawn once a year from the openings in the player's city and remote ones in
-  the country, one per line of work. About eight in a steady year, ten in a boom, five in a recession. Most are
-  jobs the player can apply for; the rest are greyed with what they would need. The list stays the same all year
-  (`p.flags.jobList`, keyed to the year of age); openings someone else takes stay on it, marked closed. A new
-  list comes with the next year.
+- **This year's openings**: a list of about a dozen drawn once a year from the openings in the player's city and
+  remote ones in the country, one per line of work. About twelve in a steady year, fourteen in a boom, nine in a
+  recession. Most are jobs the player can apply for; the rest are greyed with what they would need. The list stays
+  the same all year (`p.flags.jobList`, keyed to the year of age), and most of it is new the next year.
+  Prominent openings (`prominent()`: a large or major employer, or a senior post) stay: once listed they are held
+  open for `PROMINENT_YEARS` (3) years, nobody else takes them and they do not lapse (`post.featuredUntil`, which
+  the employer tick respects), and the list shows when they were first listed. Other openings someone takes during
+  the year stay on that year's list, marked closed.
 - **The job recruiter**: brings one opening the player qualifies for, mostly in their city, never one already on
   the list. Not keen? Ask for another, twice more: three looks a year (`RECRUITER_LOOKS`), then nothing until
   next year (`p.flags.jobRecruiter`). The last pitch can still be looked at again. A recruiter's opening gets a

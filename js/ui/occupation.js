@@ -181,8 +181,9 @@ const VIEWS = {
       ${t.former.length ? `<div class="section-label">People you used to work with (${t.former.length})</div>${t.former.slice(0, 8).map((n) => person(n, n.flags.workedWith ? esc(n.flags.workedWith) : '')).join('')}` : ''}`;
   },
 
-  // Ordinary work: a recruiter who brings one opening at a time, and this year's short list (engine/jobSearch.js).
+  // Ordinary work: a recruiter who brings one opening at a time, and this year's list (engine/jobSearch.js).
   find(p) {
+    const since = (post) => (post.listed < store.state.year ? ` · listed since ${post.listed}` : '');
     const r = search.recruiter();
     const list = search.yearList();
     const open = list.filter((v) => v.eligible).length;
@@ -192,7 +193,7 @@ const VIEWS = {
       const cty = COUNTRIES[v.post.countryId];
       const where = [v.employer.name, v.post.remote === 'remote' ? 'remote' : v.post.city !== p.city ? v.post.city : '', v.post.partTime ? `${v.post.hours} h/week` : ''].filter(Boolean).join(' · ');
       return navRow({ attrs: `data-act="posting" data-arg="${esc(v.post.id)}"`, label: v.post.title, ico: 'briefcase', disabled: !v.eligible, why: v.reasons[0], sub: where,
-        extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}</small>` });
+        extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}${since(v.post)}</small>` });
     });
     return `<div class="card"><h3>Job recruiter</h3>
         <p class="muted" style="margin:0 0 8px">Brings you one opening you qualify for. Not for you? Ask for another: ${search.RECRUITER_LOOKS} looks a year.${status ? ` <strong>${esc(status)}</strong>` : ''}</p>
@@ -200,7 +201,7 @@ const VIEWS = {
         <div class="btn-stack">${btn('recruiter', r.view && !r.done ? 'See the recruiter again' : r.view ? 'See the last opening again' : 'See a recruiter', { cls: 'primary', disabled: r.done && !r.view?.eligible })}</div></div>
       <div class="section-label">Openings this year · ${esc(p.city)}</div>
       ${rows.length ? `<div class="nav-group">${rows.join('')}</div>` : '<p class="empty">Nothing is advertised right now.</p>'}
-      <p class="muted" style="margin:8px 2px">${rows.length ? `${open} of ${rows.length} open to you. ` : ''}A new list comes with the new year.</p>`;
+      <p class="muted" style="margin:8px 2px">${rows.length ? `${open} of ${rows.length} open to you. ` : ''}Most of the list is new each year; the big openings stay for a while.</p>`;
   },
 
   offers() {

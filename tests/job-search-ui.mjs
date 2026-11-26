@@ -52,7 +52,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(/Job recruiter/i.test(text) && /Openings this year/i.test(text), `${label}: Find work shows the recruiter and this year's openings`);
   check(await modal.locator('[data-act="filter"], [data-act="family"]').count() === 0, `${label}: no filter chips`);
   const rows = await modal.locator('.nav-row[data-act="posting"]').count();
-  check(rows >= 4 && rows <= 11, `${label}: a short list (${rows})`);
+  check(rows >= 6 && rows <= 16, `${label}: about a dozen openings (${rows})`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/job-search-${label}.png` });
 
   // The recruiter: three looks, then no more.
