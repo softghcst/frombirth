@@ -514,7 +514,60 @@ export function mustRecuse(judgeId, p = player()) {
 export function firmView(p = player()) {
   const b = ownFirm(p);
   if (!b) return null;
-  return { id: b.id, name: b.name, founded: b.founded, reputation: b.reputation, staff: b.staff?.length ?? 0, cash: b.cash };
+  const L = lawOf(p);
+  return { id: b.id, name: b.name, founded: b.founded, reputation: b.reputation, staff: b.staff?.length ?? 0, cash: b.cash,
+    associates: (L.associates ?? []).filter((a) => store.state.npcs[a.id]?.alive).map((a) => ({ ...a, name: `${store.state.npcs[a.id].firstName} ${store.state.npcs[a.id].lastName}`, canPartner: !a.partner && store.state.year - a.since >= 5 })) };
+}
+
+// ---------- Growing your own firm: associates and partners ----------
+
+export const MAX_ASSOCIATES = 6;
+const associateSalary = () => localCost(70000, country());
+/** Hires an associate: a lawyer who carries cases for the firm and brings in fees, for a salary. */
+export function hireAssociate(p = player()) {
+  const b = ownFirm(p);
+  if (!b) return result(false, 'You need a practice of your own.', 'neutral');
+  const L = lawOf(p);
+  const team = (L.associates ??= []).filter((a) => store.state.npcs[a.id]?.alive);
+  if (team.length >= MAX_ASSOCIATES) return result(false, 'The firm has as many associates as it can manage.', 'neutral');
+  if (b.cash < associateSalary()) return result(false, `The firm needs ${fmtMoney(associateSalary(), country())} in hand for a first year's salary.`, 'neutral');
+  const n = keepPerson(p, `associate${L.associates.length}`, 'colleague', 'Associate at your firm', rng.int(26, 34));
+  n.flags.firmOf = p.id;
+  L.associates.push({ id: n.id, since: store.state.year, skill: rng.int(40, 70), partner: false });
+  return result(true, `${n.firstName} ${n.lastName} joins the firm as an associate.`, 'good');
+}
+/** Makes an associate of five years or more a partner: they share in the profits, and stay. */
+export function makePartner(id, p = player()) {
+  const L = lawOf(p);
+  const a = (L.associates ?? []).find((x) => x.id === id);
+  const n = store.state.npcs[id];
+  if (!a || !n?.alive) return result(false, 'They are not with the firm.', 'neutral');
+  if (a.partner) return result(false, 'Already a partner.', 'neutral');
+  if (store.state.year - a.since < 5) return result(false, 'Partnership usually comes after five years or more.', 'neutral');
+  a.partner = true; a.partnerSince = store.state.year;
+  n.flags.title = 'Partner at your firm';
+  n.meters.relationship = clamp(n.meters.relationship + 15);
+  canon(`law:partnerMade:${id}`, `Made ${n.firstName} ${n.lastName} a partner`, `Brought ${n.firstName} ${n.lastName} into the partnership of the firm.`, { privacy: 'public', sig: 2, milestone: false });
+  return result(true, `${n.firstName} ${n.lastName} is a partner now. They will share in the profits, and the firm is theirs too.`, 'good');
+}
+/** A year of the firm's people: fees and salaries, growing skill, and an associate passed over too long who leaves. */
+function associatesYear(p, b) {
+  const L = lawOf(p);
+  const lines = [];
+  for (const a of (L.associates ?? []).filter((x) => store.state.npcs[x.id]?.alive)) {
+    const n = store.state.npcs[a.id];
+    const fees = Math.round(localCost(110000, country()) * (0.6 + a.skill / 150) * (a.partner ? 1.3 : 1));
+    b.cash += fees - (a.partner ? Math.round(fees * 0.35) : associateSalary());
+    a.skill = Math.min(95, a.skill + 3);
+    if (!a.partner && store.state.year - a.since >= 7 && rng.chance(0.3)) {
+      // Passed over: they leave to open a practice of their own, and may be on the other side one day.
+      L.associates = L.associates.filter((x) => x !== a);
+      n.flags.title = 'Lawyer, own practice'; n.flags.rivalOf = p.id; n.flags.justice ??= { kind: 'lawyer', caseIds: [] };
+      n.meters.relationship = clamp(n.meters.relationship - 15);
+      lines.push(`${n.firstName} ${n.lastName} left the firm after ${store.state.year - a.since} years without being made partner, to start a practice of their own.`);
+    }
+  }
+  for (const t of lines) log(t, 'system', 'bad');
 }
 
 // ---------- Time ----------
@@ -1115,6 +1168,7 @@ function firmYear(p) {
   if (!b || L.firmYear === store.state.year) return;
   L.firmYear = store.state.year;
   if (L.malpractice) b.cash -= localCost(3000, country());
+  associatesYear(p, b);
   for (const c of L.caseIds.map(cases.caseById).filter((x) => x?.done && x.track === 'own' && !x.claimChecked)) {
     c.claimChecked = true;
     if (!(c.outcome?.favorable < 0 && c.deadlines.some((d) => d.met === false))) continue;

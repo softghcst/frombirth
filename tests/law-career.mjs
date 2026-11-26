@@ -97,6 +97,25 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   playCase(c);
   turn();
   check(c.fee.model !== 'salary' && c.fee.paid && lp.ownFirm().cash !== cash, `the fee goes into the firm, once (${c.fee.amount})`);
+  // Associates and partners.
+  lp.ownFirm().cash = 5e6;
+  const cap1 = lc.capacity();
+  check(lp.hireAssociate().ok && lp.hireAssociate().ok && lp.firmView().associates.length === 2, 'the firm hires associates');
+  check(lc.capacity() === cap1 + 4, 'and they carry part of the work');
+  const first = lp.firmView().associates[0];
+  check(!lp.makePartner(first.id).ok, 'nobody is made partner in their first year');
+  const cash2 = lp.ownFirm().cash;
+  store.state.settings = { ...(store.state.settings ?? {}), step: 12 };
+  for (let y = 0; y < 5; y++) turn();
+  for (const x of ls.lawOf().associates) x.since = Math.min(x.since, store.state.year - 5); // five years in, whatever the dates
+  check(lp.ownFirm().cash !== cash2, 'their fees and salaries go through the firm\'s books');
+  const r2 = lp.makePartner(first.id);
+  check(r2.ok && lp.firmView().associates.find((x) => x.id === first.id).partner, `after five years, a partner (${r2.text})`);
+  // Pass someone over long enough and they may leave.
+  ls.lawOf().associates.forEach((x) => { if (!x.partner) x.since -= 10; });
+  let left = false;
+  for (let y = 0; y < 12 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
+  check(left, 'an associate passed over for years leaves to open a practice of their own');
 }
 
 // 10. Government offices assign cases; a public defender is on a salary with a heavy caseload.

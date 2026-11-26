@@ -1010,7 +1010,8 @@ export function capacity(p = player()) {
   const staff = firm ? (firm.staff ?? []).filter((s) => store.state.npcs[s.id]?.alive).length + (firm.others ?? 0) : 0;
   const team = LEGAL_CAREERS.includes(p.career?.careerId) ? (p.career.level ?? 0) * 1.5 : 0;
   const support = (L.support?.until ?? 0) > nowM() ? 3 : 0; // a supervisor's help, for a while
-  return 6 + Math.min(6, L.history.length / 8) + staff * 3 + team + support;
+  const associates = firm ? (L.associates ?? []).filter((a) => store.state.npcs[a.id]?.alive).length : 0; // your firm's lawyers share the work
+  return 6 + Math.min(6, L.history.length / 8) + staff * 3 + associates * 2 + team + support;
 }
 /** Open complexity points against capacity. */
 export function workload(p = player()) {

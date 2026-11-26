@@ -176,7 +176,9 @@ function office() {
     return card(f.name, `${kv('Founded', String(f.founded))}${kv('Staff', String(f.staff))}${kv('Firm cash', fmtMoney(f.cash, country()))}
       ${kv('Fees', lp.FEE_STRATEGIES[L.fees ?? 'standard'].name)}${kv('Malpractice cover', L.malpractice ? 'Insured' : 'None')}
       <div class="btn-row">${btn('Advertise', 'data-firm="ads"')}${btn('Set Fees', 'data-firm="fees"')}${btn(L.malpractice ? 'Drop Malpractice Cover' : 'Insure Against Malpractice', 'data-firm="insure"')}</div>
-      <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`);
+      <p class="muted">Hiring staff and the books are run from the business, in Holdings.</p>`)
+      + card('Your Lawyers', `${f.associates.length ? f.associates.map((a) => row(`data-partner="${a.id}" ${a.canPartner ? '' : 'disabled'}`, a.name, a.partner ? `Partner since ${a.partnerSince}` : a.canPartner ? `Associate since ${a.since} · Make Partner` : `Associate since ${a.since}`)).join('') : '<p class="empty">Just you, for now.</p>'}
+        <div class="btn-row">${btn('Hire an Associate', 'data-firm="hire"')}</div><p class="muted">Associates carry cases and bring in fees. Pass someone over for too long, and they may leave.</p>`);
   }
   const duties = lp.leaderDuties(p);
   const lead = duties.length ? card('Your duties this half-year', duties.map((d) => row(`data-duty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')) : '';
@@ -453,6 +455,8 @@ export function openLawCareer(api, start = {}) {
       if (a) await say(lp.advertise(a));
       return changed();
     }
+    if (t.dataset.firm === 'hire') { await say(lp.hireAssociate()); return changed(); }
+    if (t.dataset.partner) { if (await confirmModal({ title: 'Make them a partner?', body: 'They will share in the firm\'s profits from now on.', yes: 'Make Partner', no: 'Not Yet' })) await say(lp.makePartner(t.dataset.partner)); return changed(); }
     if (t.dataset.firm === 'insure') { await say(lp.setMalpractice(!player().law?.malpractice)); return changed(); }
     if (t.dataset.load) { await say(t.dataset.load === 'support' ? lp.askSupport() : lp.takeLeave()); return changed(); }
     if (t.dataset.sact) { await schoolAct(t.dataset.sact); return changed(); }
