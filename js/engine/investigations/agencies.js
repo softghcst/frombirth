@@ -48,7 +48,9 @@ const alive = (id) => { const n = store.state.npcs[id]; return !!n?.alive && !n.
 
 /** The kinds of agency that recruit in a country. */
 export function kindsIn(countryId) {
-  return Object.entries(AGENCY_KINDS).filter(([, a]) => (a.countries ? a.countries.includes(countryId) : coverageOf(countryId) !== 'full')).map(([id]) => id);
+  // A country with its own police structure modeled uses it; the rest have one simplified national service.
+  const own = Object.entries(AGENCY_KINDS).filter(([, a]) => a.countries?.includes(countryId)).map(([id]) => id);
+  return own.length ? own : Object.entries(AGENCY_KINDS).filter(([, a]) => !a.countries).map(([id]) => id);
 }
 
 /** An agency of a kind in a city, made the first time it is asked for. */
@@ -65,7 +67,7 @@ export function agencyOf(kind, countryId, city) {
   e.culture = 'supportive';
   const size = kind === 'state' ? 1 : deptSize(countryId, city);
   const a = { id: nextId('agency'), key, kind, name, countryId, city, employerId: e.id, size, units: {}, chiefId: null, ftoIds: [], officerIds: [],
-    labId: null, vacancies: [], history: [], reputation: 55, simplified: !!def.simplified || coverageOf(countryId) !== 'full', founded: e.founded };
+    labId: null, vacancies: [], history: [], reputation: 55, simplified: !!def.simplified || coverageOf(countryId) === 'simplified', founded: e.founded };
   w.agencies[a.id] = a;
   // Investigative units: a small department has one general unit; a large one has dedicated divisions.
   for (const [id, s] of Object.entries(SPECIALTIES)) {
@@ -84,7 +86,7 @@ export function agencyOf(kind, countryId, city) {
 /** Fills the seats a department needs with people: a chief, field training officers, officers, detectives, analysts. */
 function refresh(a) {
   const c = a.countryId;
-  if (!alive(a.chiefId)) a.chiefId = staffer(c, 'officer', 'Chief of police', { agencyId: a.id, rank: 'chief', age: rng.int(48, 62), skill: rng.int(60, 82) }).id;
+  if (!alive(a.chiefId)) a.chiefId = staffer(c, 'officer', AGENCY_KINDS[a.kind]?.chief?.(a.city) ?? 'Chief of police', { agencyId: a.id, rank: 'chief', age: rng.int(48, 62), skill: rng.int(60, 82) }).id;
   a.ftoIds = a.ftoIds.filter(alive);
   while (a.ftoIds.length < 2) a.ftoIds.push(staffer(c, 'officer', 'Field training officer', { agencyId: a.id, rank: 'senior', role: 'fto', age: rng.int(32, 52), skill: rng.int(55, 80) }).id);
   a.officerIds = a.officerIds.filter(alive);

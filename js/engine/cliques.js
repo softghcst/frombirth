@@ -13,7 +13,7 @@ import { clamp } from '../util.js';
 import { store, player, npcsByRole, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { CLIQUES, CLIQUE_BY_ID } from '../data/schools.js';
-import { cureCondition } from './health.js';
+import { cureCondition, ailmentsOf } from './health/ailments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const ed = () => player().education;
@@ -136,7 +136,7 @@ export function nurse() {
   if (!ed().enrolled || p.age > 18) return result(false, 'You are not at school.', 'neutral');
   if (day().nurse) return result(false, 'You have already been to see the nurse this year.', 'neutral');
   day().nurse = true;
-  const minor = (p.conditions ?? []).find((c) => ['flu', 'ear_infection', 'acne', 'cold'].includes(c.id ?? c));
+  const minor = ailmentsOf(p).find((c) => ['flu', 'ear_infection', 'acne', 'cold'].includes(c.id));
   let text;
   if (minor) { cureCondition(minor.id ?? minor); p.stats.health = clamp(p.stats.health + 3); text = 'The nurse takes a look, gives you something for it, and sends a note home. You feel better within the week.'; }
   else if (p.stats.health < 50) { p.stats.health = clamp(p.stats.health + 4); text = 'The nurse checks you over, tells you to drink more water and get some sleep, and calls home.'; }

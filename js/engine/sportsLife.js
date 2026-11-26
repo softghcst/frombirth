@@ -13,7 +13,7 @@ import { SPORTS_LIST, sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES, WORLD_GAM
 import { gain, regard } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { book } from './ledger.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition, hasAilment } from './health/ailments.js';
 import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog, uniOf } from './university.js';
@@ -35,6 +35,7 @@ import { tradeYear, TRADE_ANSWERS } from './trades.js';
 import { seasonLine, baseballYear, hallYear, BASEBALL_ANSWERS } from './baseball.js';
 import { contractHook, qualifying, market, freeAgentYear, CONTRACT_ANSWERS } from './baseballContracts.js';
 import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
 
 // Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
 const nextId = (...a) => sp.internals.nextId(...a);
@@ -211,6 +212,7 @@ const ANSWERS = {
   },
   turnPro(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
+    { const sc = claimSpecial('sports', state.player, state, { replacesJob: true }); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
     const lock = sp.proLock(d.sportId, state);
     if (lock) return { ...result(false, lock, 'neutral'), close: true };
     const e = sp.entryOf(d.sportId, state.player.id, state);
@@ -327,6 +329,7 @@ function signPro(state, d, o = {}) {
   if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
     return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
   }
+  { const sc = claimSpecial('sports', p, state, { replacesJob: true }); if (sc) return { ...result(false, sc, 'neutral'), close: true }; }
   const lock = sp.proLock(d.sportId, state);
   if (lock) return { ...result(false, lock, 'neutral'), close: true };
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.
@@ -461,7 +464,7 @@ function healYear(state, a) {
     if (inj.year === state.year) continue; // it happened this year: healing starts next
     const plan = REHAB[inj.rehab ?? 'rest'];
     // Treated elsewhere (a doctor) — the record follows the health record.
-    const has = p.conditions.some((c) => c.id === injuryCondition(inj.type));
+    const has = hasAilment(injuryCondition(inj.type), p);
     const r = seeded(`heal/${inj.id}/${state.year}`);
     if (has && r.chance(plan.setback)) {
       inj.setbacks += 1; inj.left = Math.max(inj.left, 0.4);
@@ -785,6 +788,7 @@ export function retire(sportId, state = store.state) {
   if (!e || e.status !== 'active') return result(false, 'You do not play that.', 'neutral');
   const k = S.contracts[e.contractId];
   if (k) endContract(state, k, 'retired from play');
+  if (!Object.values(a.sports).some((x) => x !== e && x.status === 'active' && ['pro', 'elite', 'college'].includes(x.level))) releaseSpecial('sports', p, state);
   leaveOrg(e, state, 'retired');
   e.status = 'retired'; e.retiredYear = state.year; e.plan.hours = 0;
   const seasons = e.seasonsPlayed + (e.legacySeasons ?? 0);
@@ -1169,7 +1173,7 @@ export function audit(state = store.state) {
       }
     }
     if (Object.values(S.contracts).filter((k) => k.kind === 'pro' && k.status === 'active' && k.personId === a.id).length > 1) bad.push(`${a.name}: two professional contracts at once`);
-    if (a.id === state.player.id) for (const inj of a.injuries.filter((x) => x.status === 'out')) if (!state.player.conditions.some((c) => c.id === `sport_${inj.type}`)) bad.push(`${a.name}: an open injury missing from the health record`);
+    if (a.id === state.player.id) for (const inj of a.injuries.filter((x) => x.status === 'out')) if (!hasAilment(`sport_${inj.type}`, state.player)) bad.push(`${a.name}: an open injury missing from the health record`);
   }
   for (const [key, x] of Object.entries(S.paid)) if (!Number.isFinite(x.amount)) bad.push(`payment ${key} has no amount`);
   const open = {};

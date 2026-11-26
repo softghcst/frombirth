@@ -12,6 +12,8 @@ import { openMedicine, medicineOpen } from '../medicine.js';
 import { openInvestigations, investigationsOpen } from '../investigations.js';
 import { openFame } from '../fame.js';
 import { openIdol } from '../kpop.js';
+import { openJournalism } from '../journalism.js';
+import { openAthletics } from '../sports.js';
 import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
 import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklife.js';
@@ -82,9 +84,7 @@ export function careerButtons() {
   }
   if (k.partTime) list.push(['cover', 'Cover an extra shift']);
   if (career.canGig()) list.push(['gigs', 'Quick one-off gigs']);
-  // My Fame: for anyone with a performer's skills, credits, or a name people know.
-  if (p.age >= 5 && (Math.max(p.talents.acting, p.talents.singing, p.talents.dance) >= 25 || workOf(p).credits.length || career.fame() >= 5)) list.push(['myfame', 'My Fame']);
-  if (p.age >= 12 && (store.state.kpop || (store.state.year >= 1996 && Math.max(p.talents.singing, p.talents.dance) >= 30))) list.push(['myidol', 'K-pop Idol']);
+  // The special careers (acting, music, sport and the rest) are a list of their own on the Work tab.
   if (career.canUseFame()) list.push(['fame', 'Use your fame']);
   if (career.canRetire()) list.push(['retire', 'Retire']);
   if (cur) list.push(['quitcareer', 'Quit your job']);
@@ -212,6 +212,15 @@ export const careerHandlers = (api) => ({
   investigations: () => openInvestigations(api),
   myfame: () => openFame(api),
   myidol: () => openIdol(api),
+  'sc:acting': () => openFame(api, null, { career: 'acting' }),
+  'sc:music': () => openFame(api, null, { career: 'music' }),
+  'sc:dance': () => openFame(api, null, { career: 'dance' }),
+  'sc:modeling': () => openFame(api, null, { career: 'modeling' }),
+  'sc:writing': () => openFame(api, null, { career: 'writing' }),
+  'sc:sports': () => openAthletics(api),
+  'sc:kpop': () => openIdol(api),
+  'sc:journalism': () => openJournalism(api),
+  'sc:politics': () => document.getElementById('politics-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),

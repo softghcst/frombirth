@@ -124,6 +124,13 @@ export const ORGS = [
   { id: 'politics', name: 'Party student branch', leader: 'Chair', factor: 'stats.charm', polExp: 2, needsParty: true, blurb: 'Leaflets, canvassing, and meeting the people who will one day select candidates.' },
   { id: 'volunteers', name: 'Volunteering society', leader: 'Coordinator', factor: 'hidden.karma', yearly: { hidden: { karma: 3 } }, blurb: 'Tutoring, food banks, and a minibus that mostly starts.' },
   { id: 'music', name: 'Orchestra and choir', leader: 'Leader', factor: 'talents.music', yearly: { talents: { music: 2, singing: 1 } }, blurb: 'Rehearsals on Tuesdays, a concert every term.' },
+  { id: 'hackathon', name: 'Hackathon club', leader: 'President', factor: 'skills.coding', yearly: { skills: { coding: 4, math: 1 } },
+    contest: { name: 'hackathon', paths: { 'skills.coding': 0.6, 'stats.intellect': 0.4 } }, blurb: 'Twenty-four hours, a lot of pizza, and an app that almost works by the demo.' },
+  { id: 'engineering_team', name: 'Engineering team', leader: 'Team lead', factor: 'skills.robotics', yearly: { skills: { robotics: 4, math: 2, coding: 1 } },
+    contest: { name: 'intercollegiate engineering challenge', paths: { 'skills.robotics': 0.5, 'skills.math': 0.25, 'stats.intellect': 0.25 } }, blurb: 'A solar car, a rover, or a race car, built from nothing in a year.' },
+  { id: 'moot_court', name: 'Moot court', leader: 'Captain', factor: 'skills.public_speaking', yearly: { skills: { public_speaking: 4, writing: 2 } },
+    contest: { name: 'moot court competition', paths: { 'skills.public_speaking': 0.5, 'skills.writing': 0.25, 'stats.intellect': 0.25 } }, blurb: 'Argue an appeal in front of real judges, and take their questions.' },
+  { id: 'prelaw', name: 'Pre-law society', leader: 'President', factor: 'stats.intellect', yearly: { skills: { writing: 2, public_speaking: 1 } }, blurb: 'LSAT study groups, alumni lawyers, and a trip to the state supreme court.' },
   { id: 'greek', name: 'Fraternity or sorority', leader: 'President', factor: 'stats.charm', mark: -0.08, dues: 1200, only: ['us', 'ca', 'ph'], yearly: { stats: { charm: 2, mood: 2 } }, blurb: 'A house, a set of letters, and friends who will answer the phone in thirty years. Dues every year.' },
 ];
 export const ORG_BY_ID = Object.fromEntries(ORGS.map((o) => [o.id, o]));

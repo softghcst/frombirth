@@ -61,7 +61,7 @@ export const posting = (id) => (id ? jobs().postings[id] ?? null : null);
 export const sizeOf = (e) => SIZES[e.size];
 export const cultureOf = (e) => CULTURES[e.culture];
 /** Tracks belonging to a family. */
-const tracksIn = (family) => CAREERS.filter((c) => c.family === family && c.type !== 'military' && !c.agesOut);
+const tracksIn = (family) => CAREERS.filter((c) => c.family === family && c.type !== 'military' && !c.agesOut && !c.agencyHire); // an agency's own track is staffed by the agency (engine/investigations)
 
 function makeName(r, family, countryId, city) {
   const names = COUNTRIES[countryId].names.last;

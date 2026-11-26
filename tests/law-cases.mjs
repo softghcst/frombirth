@@ -81,6 +81,7 @@ const npc = (id) => store.state.npcs[id];
     for (let t = 0; t < 12 && !c.awaiting; t++) turn();
     lc.argue(c, good ? { jury: 'fair', opening: 'theory', objection: 'hearsay', cross: 'lighting', direct: 'open', closing: 'burden' }
       : { jury: 'improper', opening: 'overpromise', objection: 'relevance', cross: 'improper', direct: 'leading', closing: 'improper' });
+    if (!c.outcome) { check(c.mistrials === 1, 'a trial without a verdict is a hung jury: a mistrial, retried later'); continue; } // neither a win nor a loss
     if (c.outcome.kind === 'acquitted') { if (good) runs.good++; else runs.poor++; }
     if (good && c.evidence.find((e) => e.id === 'drill').status === 'excluded') runs.goodSupp++;
   }
@@ -188,7 +189,7 @@ const npc = (id) => store.state.npcs[id];
   const r = lc.argue(pc, { objection2: 'hearsay' });
   check(pp.valid === 'none' && /question was proper/.test((r.lines ?? []).join(' ') + r.text), 'objecting to a proper question is overruled, and the jury notices');
   let mis = null; let partial = null; let cut = false;
-  for (let i = 0; i < 240 && (!mis || !partial || !cut); i++) {
+  for (let i = 0; i < 240 && (!mis || !partial || !cut); i++) { // a hung jury needs proof within a hair of the bar: rare, so look long enough
     lawyer('lawyer');
     const t = lc.createCase(i % 2 ? 'contract_dispute' : 'burglary_hale', { role: i % 2 ? undefined : 'defense' });
     t.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() };

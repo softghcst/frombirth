@@ -14,6 +14,22 @@ export const SOURCES = {
     note: 'Special agent hiring and training, as simplified for the game.' },
   atf: { org: 'Bureau of Alcohol, Tobacco, Firearms and Explosives', url: 'https://www.atf.gov/careers/special-agents', jurisdiction: 'us', verified: false, checked: '2026-11-25',
     note: 'Special agent hiring and training, and the bureau\'s areas of responsibility, as simplified for the game.' },
+  usms: { org: 'United States Marshals Service', url: 'https://www.usmarshals.gov/careers', jurisdiction: 'us', verified: false, checked: '2026-11-25',
+    note: 'Deputy US marshal hiring and training, and the service\'s fugitive and court work, as simplified for the game.' },
+  usss: { org: 'United States Secret Service', url: 'https://www.secretservice.gov/careers', jurisdiction: 'us', verified: false, checked: '2026-11-25',
+    note: 'Special agent hiring and training, and the service\'s financial investigations, as simplified for the game.' },
+  hsi: { org: 'Homeland Security Investigations', url: 'https://www.ice.gov/careers/hsi', jurisdiction: 'us', verified: false, checked: '2026-11-25',
+    note: 'Special agent hiring and the agency\'s cross-border investigations, as simplified for the game.' },
+  irs: { org: 'IRS Criminal Investigation', url: 'https://www.irs.gov/compliance/criminal-investigation', jurisdiction: 'us', verified: false, checked: '2026-11-25',
+    note: 'Special agent hiring (accounting coursework) and tax and financial investigations, as simplified for the game.' },
+  uk_police: { org: 'UK College of Policing', url: 'https://www.college.police.uk/career-learning/joining-the-police', jurisdiction: 'uk', verified: false, checked: '2026-11-26',
+    note: 'Entry routes for police constables, the two-year probation and the rank structure, as simplified for the game.' },
+  ca_police: { org: 'Ontario Police College and municipal services', url: 'https://www.ontario.ca/page/police-officer-recruitment', jurisdiction: 'ca', verified: false, checked: '2026-11-26', note: 'Municipal police recruitment and ranks in Canada, as simplified for the game.' },
+  ca_rcmp: { org: 'Royal Canadian Mounted Police', url: 'https://www.rcmp-grc.gc.ca/en/careers', jurisdiction: 'ca', verified: false, checked: '2026-11-26', note: 'Cadet training at Depot and RCMP ranks, as simplified for the game.' },
+  au_police: { org: 'Australian state police services', url: 'https://www.police.nsw.gov.au/recruitment', jurisdiction: 'au', verified: false, checked: '2026-11-26', note: 'State police recruitment, probation and ranks, as simplified for the game.' },
+  fr_police: { org: 'Police nationale', url: 'https://www.devenirpolicier.fr', jurisdiction: 'fr', verified: false, checked: '2026-11-26', note: 'The concours, police school and the corps of the Police nationale, as simplified for the game.' },
+  fr_gendarmerie: { org: 'Gendarmerie nationale', url: 'https://www.lagendarmerierecrute.fr', jurisdiction: 'fr', verified: false, checked: '2026-11-26', note: 'Gendarmerie recruitment and ranks, as simplified for the game.' },
+  jp_police: { org: 'National Police Agency of Japan', url: 'https://www.npa.go.jp/english/', jurisdiction: 'jp', verified: false, checked: '2026-11-26', note: 'Prefectural police recruitment, the kōban system and police ranks, as simplified for the game.' },
   bls_police: { org: 'US Bureau of Labor Statistics', url: 'https://www.bls.gov/ooh/protective-service/police-and-detectives.htm', jurisdiction: 'us', verified: false, checked: '2026-11-25',
     note: 'How officers are trained and how detectives are usually chosen from experienced officers.' },
   bls_pi: { org: 'US Bureau of Labor Statistics', url: 'https://www.bls.gov/ooh/protective-service/private-detectives-and-investigators.htm', jurisdiction: 'us', verified: false, checked: '2026-11-25',
@@ -27,6 +43,8 @@ export const SOURCES = {
 /** Where the game's jurisdiction support is deep, simplified, or absent. */
 export const COVERAGE = {
   us: 'full', // municipal, county and state agencies; FBI, DEA and ATF; private licensing
+  // Countries whose own police structure is modeled (AGENCY_KINDS below): their forces, ranks and training, simplified.
+  uk: 'regional', ca: 'regional', au: 'regional', fr: 'regional', jp: 'regional',
   default: 'simplified', // one national or regional police service; no federal careers; simplified private licensing
 };
 export const coverageOf = (countryId) => COVERAGE[countryId] ?? COVERAGE.default;
@@ -73,6 +91,51 @@ export const AGENCY_KINDS = {
   state: { name: 'State police', career: 'police', powers: 'police', countries: ['us'],
     name_: (city, state) => `${state ?? 'State'} State Police`, academyMonths: 7, fieldMonths: 3, probationMonths: 12, minAge: 21, maxAge: 39,
     education: 'high', source: 'bls_police', titles: ['Trooper cadet', 'Probationary trooper', 'Trooper', 'Senior trooper'] },
+  // ---------- Police outside the US (simplified gameplay rules, sources named and unverified) ----------
+  territorial: { name: 'Territorial police force', career: 'police', powers: 'police', countries: ['uk'], source: 'uk_police',
+    name_: (city) => (city === 'London' ? 'Metropolitan Police Service' : city === 'Glasgow' ? 'Police Scotland' : `${city} Police`), academyMonths: 5, fieldMonths: 10, probationMonths: 24, minAge: 18, maxAge: null,
+    education: 'high', entry: 'Through a police constable degree apprenticeship, or a degree-holder entry program: training and study together over the two years of probation.',
+    titles: ['Student officer', 'Probationary constable', 'Police constable', 'Police constable'], chief: (city) => (city === 'London' ? 'Commissioner' : 'Chief constable'),
+    rankNames: { officer: 'Police constable', senior: 'Police constable', sergeant: 'Sergeant', lieutenant: 'Inspector', captain: 'Chief inspector', deputy_chief: 'Superintendent', chief: 'Chief constable' },
+    detectiveNames: { detective: 'Detective constable', senior_detective: 'Detective constable', detective_sergeant: 'Detective sergeant', detective_lieutenant: 'Detective inspector' },
+    prosecutor: 'the Crown Prosecution Service' },
+  city_service: { name: 'Municipal police service', career: 'police', powers: 'police', countries: ['ca'], source: 'ca_police',
+    name_: (city) => `${city} Police Service`, academyMonths: 4, fieldMonths: 6, probationMonths: 12, minAge: 18, maxAge: null, education: 'high',
+    titles: ['Recruit', 'Probationary constable', 'Constable', 'First-class constable'], chief: () => 'Chief of police',
+    rankNames: { officer: 'Constable', senior: 'First-class constable', sergeant: 'Sergeant', lieutenant: 'Staff sergeant', captain: 'Inspector', deputy_chief: 'Superintendent', chief: 'Chief of police' },
+    detectiveNames: { detective: 'Detective constable', senior_detective: 'Detective constable', detective_sergeant: 'Detective sergeant', detective_lieutenant: 'Detective inspector' } },
+  rcmp: { name: 'Royal Canadian Mounted Police', career: 'police', powers: 'police', countries: ['ca'], source: 'ca_rcmp',
+    name_: (city) => `RCMP, ${city} detachment`, academyMonths: 6, fieldMonths: 6, probationMonths: 24, minAge: 19, maxAge: null, education: 'high',
+    entry: 'Cadet training at Depot, in Regina; a posting may be anywhere in the country.',
+    titles: ['Cadet', 'Probationary constable', 'Constable', 'Constable'], chief: () => 'Commanding officer',
+    rankNames: { officer: 'Constable', senior: 'Constable', sergeant: 'Corporal', lieutenant: 'Sergeant', captain: 'Staff sergeant', deputy_chief: 'Inspector', chief: 'Superintendent' },
+    detectiveNames: { detective: 'Constable, investigations', senior_detective: 'Constable, investigations', detective_sergeant: 'Corporal, investigations', detective_lieutenant: 'Sergeant, investigations' } },
+  state_au: { name: 'State police', career: 'police', powers: 'police', countries: ['au'], source: 'au_police',
+    name_: (city, state) => `${state ?? 'State'} Police`, academyMonths: 7, fieldMonths: 12, probationMonths: 24, minAge: 18, maxAge: null, education: 'high',
+    titles: ['Recruit', 'Probationary constable', 'Constable', 'Senior constable'], chief: () => 'Commissioner',
+    rankNames: { officer: 'Constable', senior: 'Senior constable', sergeant: 'Sergeant', lieutenant: 'Senior sergeant', captain: 'Inspector', deputy_chief: 'Superintendent', chief: 'Commissioner' },
+    detectiveNames: { detective: 'Detective senior constable', senior_detective: 'Detective senior constable', detective_sergeant: 'Detective sergeant', detective_lieutenant: 'Detective inspector' } },
+  police_nationale: { name: 'Police nationale', career: 'police', powers: 'police', countries: ['fr'], source: 'fr_police',
+    name_: (city) => `Police nationale, ${city}`, academyMonths: 12, fieldMonths: 6, probationMonths: 12, minAge: 18, maxAge: 34, education: 'high',
+    entry: 'A national competitive examination (the concours), then a year at a police school.',
+    titles: ['Élève gardien de la paix', 'Gardien de la paix stagiaire', 'Gardien de la paix', 'Gardien de la paix'], chief: () => 'Directeur départemental',
+    rankNames: { officer: 'Gardien de la paix', senior: 'Gardien de la paix', sergeant: 'Brigadier', lieutenant: 'Brigadier-chef', captain: 'Capitaine', deputy_chief: 'Commandant', chief: 'Commissaire' },
+    detectiveNames: { detective: 'Officier de police judiciaire', senior_detective: 'Officier de police judiciaire', detective_sergeant: 'Brigadier, police judiciaire', detective_lieutenant: 'Capitaine, police judiciaire' },
+    prosecutor: 'the procureur de la République' },
+  gendarmerie: { name: 'Gendarmerie nationale', career: 'police', powers: 'police', countries: ['fr'], source: 'fr_gendarmerie',
+    name_: (city) => `Gendarmerie nationale, ${city} area`, academyMonths: 8, fieldMonths: 6, probationMonths: 12, minAge: 18, maxAge: 35, education: 'high',
+    entry: 'A military force with police duties, mostly outside the cities: gendarmes live in barracks with their families.',
+    titles: ['Élève gendarme', 'Gendarme stagiaire', 'Gendarme', 'Gendarme'], chief: () => 'Commandant de groupement',
+    rankNames: { officer: 'Gendarme', senior: 'Gendarme', sergeant: 'Maréchal des logis-chef', lieutenant: 'Adjudant', captain: 'Lieutenant', deputy_chief: 'Capitaine', chief: 'Colonel' },
+    detectiveNames: { detective: 'Gendarme, brigade de recherches', senior_detective: 'Gendarme, brigade de recherches', detective_sergeant: 'Maréchal des logis-chef, recherches', detective_lieutenant: 'Adjudant, recherches' },
+    prosecutor: 'the procureur de la République' },
+  prefectural: { name: 'Prefectural police', career: 'police', powers: 'police', countries: ['jp'], source: 'jp_police',
+    name_: (city, state) => (city === 'Tokyo' ? 'Tokyo Metropolitan Police Department' : `${state ?? city} Prefectural Police`), academyMonths: 10, fieldMonths: 8, probationMonths: 12, minAge: 18, maxAge: 35, education: 'high',
+    entry: 'An examination by the prefecture, then police school; new officers usually begin at a kōban, a neighborhood police box.',
+    titles: ['Police school student', 'Junsa (probationary)', 'Junsa', 'Junsa-chō'], chief: (city) => (city === 'Tokyo' ? 'Superintendent general' : 'Chief of the prefectural police'),
+    rankNames: { officer: 'Junsa', senior: 'Junsa-chō', sergeant: 'Junsa-buchō', lieutenant: 'Keibu-ho', captain: 'Keibu', deputy_chief: 'Keishi', chief: 'Keishi-chō' },
+    detectiveNames: { detective: 'Detective (keiji), junsa-buchō', senior_detective: 'Detective (keiji), junsa-buchō', detective_sergeant: 'Detective (keiji), keibu-ho', detective_lieutenant: 'Detective (keiji), keibu' },
+    prosecutor: 'the public prosecutors office' },
   national: { name: 'National police', career: 'police', powers: 'police', countries: null,
     name_: (city, _s, country) => `${country} National Police (${city})`, academyMonths: 9, fieldMonths: 6, probationMonths: 12, minAge: 18, maxAge: null,
     education: 'high', simplified: true },
@@ -140,6 +203,22 @@ export const FEDERAL = {
     office: (city) => `ATF ${city} Field Division`, academy: 'the Federal Law Enforcement Training Centers, Glynco', academyMonths: 6,
     eligibility: { citizen: 'us', minAge: 21, maxAge: 36, degree: 'university', experienceYears: 0, cleanRecord: true, fitness: 55 },
     jurisdiction: ['firearms', 'explosives', 'arson'], stages: ['eligibility', 'application', 'assessment', 'interview', 'background', 'fitness', 'decision'] },
+  usms: { name: 'United States Marshals Service', short: 'US Marshals', career: 'usms_deputy', source: 'usms', since: 1789, title: 'Deputy US marshal',
+    office: (city) => `US Marshals Service, ${city}`, academy: 'the Federal Law Enforcement Training Centers, Glynco', academyMonths: 6,
+    eligibility: { citizen: 'us', minAge: 21, maxAge: 36, degree: 'university', experienceYears: 0, cleanRecord: true, fitness: 60 },
+    jurisdiction: ['fugitives', 'court security', 'witness security'], stages: ['eligibility', 'application', 'assessment', 'interview', 'background', 'fitness', 'decision'] },
+  usss: { name: 'United States Secret Service', short: 'Secret Service', career: 'usss_agent', source: 'usss', since: 1865,
+    office: (city) => `Secret Service ${city} Field Office`, academy: 'the James J. Rowley Training Center', academyMonths: 7,
+    eligibility: { citizen: 'us', minAge: 21, maxAge: 37, degree: 'university', experienceYears: 0, cleanRecord: true, fitness: 60 },
+    jurisdiction: ['counterfeiting', 'financial', 'cyber', 'protection'], stages: ['eligibility', 'application', 'assessment', 'interview', 'background', 'fitness', 'decision'] },
+  hsi: { name: 'Homeland Security Investigations', short: 'HSI', career: 'hsi_agent', source: 'hsi', since: 2003,
+    office: (city) => `HSI ${city}`, academy: 'the Federal Law Enforcement Training Centers, Glynco', academyMonths: 6,
+    eligibility: { citizen: 'us', minAge: 21, maxAge: 37, degree: 'university', experienceYears: 0, cleanRecord: true, fitness: 55 },
+    jurisdiction: ['smuggling', 'drugs', 'firearms', 'financial', 'cyber'], stages: ['eligibility', 'application', 'assessment', 'interview', 'background', 'fitness', 'decision'] },
+  irs: { name: 'IRS Criminal Investigation', short: 'IRS-CI', career: 'irs_agent', source: 'irs', since: 1919,
+    office: (city) => `IRS Criminal Investigation, ${city}`, academy: 'the Federal Law Enforcement Training Centers, Glynco', academyMonths: 6,
+    eligibility: { citizen: 'us', minAge: 21, maxAge: 37, degree: 'university', background: 'accounting', experienceYears: 0, cleanRecord: true, fitness: 50 },
+    jurisdiction: ['tax', 'financial', 'money laundering'], stages: ['eligibility', 'application', 'assessment', 'interview', 'background', 'fitness', 'decision'] },
 };
 /** Federal ranks, each mapped to a level of the agency's career track. No police titles here. */
 export const FEDERAL_RANKS = {
@@ -157,6 +236,24 @@ export const FEDERAL_BACKGROUNDS = {
   law: ['law'],
   languages: ['languages', 'linguistics'],
   science: ['chemistry', 'biology', 'forensic_science', 'physics'],
+  justice: ['criminal_justice', 'criminology', 'psychology', 'political_science'],
+};
+
+/**
+ * Studying for the work. Police agencies here hire from high school and train at their academy, so a degree is not
+ * required to start; it helps, and senior posts ask for one. Federal agencies require one. These are the majors
+ * that count as relevant to each path, and the ranks that ask for a degree (simplified gameplay rules).
+ */
+export const STUDY = {
+  police: ['criminal_justice', 'criminology', 'psychology', 'political_science', 'forensic_science', 'communications'],
+  detective: ['criminal_justice', 'criminology', 'forensic_science', 'psychology', 'accounting', 'finance', 'cybersecurity', 'computer_science'],
+  unit: { fraud: ['accounting', 'finance'], cyber: ['cybersecurity', 'computer_science'], corruption: ['accounting', 'political_science'], homicide: ['forensic_science', 'criminology'],
+    special_victims: ['psychology'], family: ['psychology'], juvenile: ['psychology', 'education'], arson: ['chemistry', 'forensic_science'] },
+  pi: ['criminal_justice', 'criminology', 'psychology', 'journalism', 'accounting'],
+  degreeRanks: ['captain', 'deputy_chief', 'chief', 'detective_lieutenant', 'asac', 'sac'],
+  skills: { criminal_justice: ['law', 'ethics', 'writing'], criminology: ['reasoning', 'law'], forensic_science: ['evidence', 'forensic'], psychology: ['interviewing'], accounting: ['financial'],
+    finance: ['financial'], cybersecurity: ['digital'], computer_science: ['digital'], political_science: ['law', 'writing'], communications: ['interviewing', 'writing'], journalism: ['writing', 'interviewing'],
+    chemistry: ['forensic'], law: ['law'] },
 };
 
 // ---------- Private investigation ----------
@@ -167,7 +264,7 @@ export const PI_LICENSE = {
   default: { name: 'private investigation license', fee: 250, experienceYears: 2, minAge: 21, exam: true, simplified: true },
 };
 /** Experience that counts toward a license: years in these careers. */
-export const PI_EXPERIENCE = ['police', 'detective', 'pi', 'fbi_agent', 'dea_agent', 'atf_agent', 'intelligence', 'lawyer', 'prosecutor', 'defender', 'corrections', 'insurance_adjuster'];
+export const PI_EXPERIENCE = ['police', 'detective', 'pi', 'fbi_agent', 'dea_agent', 'atf_agent', 'usms_deputy', 'usss_agent', 'hsi_agent', 'irs_agent', 'intelligence', 'lawyer', 'prosecutor', 'defender', 'corrections', 'insurance_adjuster'];
 /** What a private agency offers, what a client pays, and the hours it takes. */
 export const PI_SERVICES = {
   missing: { name: 'Missing person inquiries', fee: 2500, months: 3 },
@@ -175,6 +272,7 @@ export const PI_SERVICES = {
   litigation: { name: 'Civil litigation support', fee: 3500, months: 4 },
   insurance: { name: 'Insurance investigations', fee: 2000, months: 2 },
   business: { name: 'Business inquiries', fee: 3000, months: 3 },
+  internal: { name: 'Internal inquiry', fee: 0, months: 3, corporate: true },
 };
 
 // ---------- Laboratories ----------
@@ -257,6 +355,69 @@ export const PACKS = {
     poi: { text: '{insider}, the owner\'s business partner, says they were out of town that night and that the business was doing well.', accurate: ['set', 'accident'] },
     witness: { saw: { set: 'saw someone in a dark jacket in the alley just before the smoke', accident: 'saw the shop dark and quiet until the smoke', insurance: 'saw a car like {insider}\'s outside the shop late that evening' },
       supports: { set: ['set'], accident: ['accident'], insurance: ['insurance'] }, pointsTo: { insurance: 'insider' } } },
+  // A fatal collision: one incident that several careers meet (the hospital where the person died, the insurer, the
+  // family's civil claim after the investigation: engine/investigations/local.js).
+  collision: { hyp: { careless: 'The driver was driving carelessly or too fast.', impaired: 'The driver was impaired by drink or drugs.', accident: 'It was an accident nobody could have avoided.' },
+    name: 'Fatal collision', offenseId: 'manslaughter', specialty: 'major', complexity: 2, place: 'street', months: 9, title: (p) => `The collision on ${p}`,
+    scene: 'A car struck a pedestrian at night. The pedestrian died at the hospital. The driver stopped and called for help.', truth: { careless: 0.4, impaired: 0.2, accident: 0.4 }, insider: 'Driver', perp: { careless: 'insider', impaired: 'insider' },
+    hypotheses: ['careless', 'impaired', 'accident'], shared: 'collision',
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner}, the pedestrian\'s sister, says they were walking home from work, as every night.', source: 'owner', confidence: 0.9 },
+      { via: 'scene', kind: 'fact', by: { careless: 'Tire marks begin late: the car braked only at the last moment.', impaired: 'The car crossed the center line before the point of impact.', accident: 'The street light at the crossing was out, and the pedestrian crossed between parked vans.' },
+        supports: { careless: ['careless'], impaired: ['impaired', 'careless'], accident: ['accident'] }, against: { accident: ['careless', 'impaired'] } },
+      { via: 'specialist', kind: 'fact', by: { careless: 'The collision reconstruction puts the car well above the speed limit.', impaired: 'The collision reconstruction finds no braking at all before impact.', accident: 'The collision reconstruction puts the car at the speed limit; the pedestrian could not be seen in time.' },
+        supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, against: { careless: ['accident'], impaired: ['accident'], accident: ['careless', 'impaired'] }, decisive: { accident: true } },
+      { via: 'records', kind: 'fact', needsAuth: { careless: true, impaired: true }, by: { careless: 'The car\'s data recorder shows {insider} at nearly twice the limit.', impaired: 'The hospital blood test taken from {insider} that night is over the legal limit.', accident: 'The car\'s data recorder shows {insider} at the speed limit, braking hard.' },
+        supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, against: { careless: ['accident'], impaired: ['accident'], accident: ['careless', 'impaired'] }, pointsTo: { careless: 'insider', impaired: 'insider' }, evKind: { careless: 'digital', impaired: 'forensic' } },
+    ],
+    items: [{ label: 'Paint transfer from the pedestrian\'s coat', kind: 'physical', disciplines: ['trace'], pointsTo: 'insider' }],
+    poi: { text: '{insider}, the driver, says they never saw anyone until the last second, and that they were not drinking.', accurate: ['accident'] },
+    witness: { saw: { careless: 'heard an engine racing, then brakes, too late', impaired: 'saw the car drifting across the road before it hit', accident: 'saw someone step out between the vans, and the car brake hard' },
+      supports: { careless: ['careless'], impaired: ['impaired'], accident: ['accident'] }, pointsTo: { careless: 'insider', impaired: 'insider' } } },
+  // Federal-only cases (never assigned to a police unit): the Marshals' fugitives, the Secret Service's counterfeit
+  // currency, IRS Criminal Investigation's tax cases.
+  fugitive: { federalOnly: true, hyp: { family: 'They are staying with family.', moved: 'They have moved to another city under another name.', returned: 'They mean to give themselves up.' },
+    name: 'Fugitive inquiry', offenseId: 'escape', specialty: 'major', complexity: 2, place: 'street', months: 6, title: (p) => `The warrant from ${p}`,
+    scene: 'A person charged with a serious crime did not come to court. A judge issued a warrant for their arrest.', truth: { family: 0.45, moved: 0.4, returned: 0.15 }, insider: 'Person sought on a warrant', perp: { family: 'insider', moved: 'insider', returned: 'insider' },
+    hypotheses: ['family', 'moved', 'returned'],
+    clues: [
+      { via: 'report', kind: 'fact', text: 'The court\'s warrant names {insider}, who missed a hearing.' },
+      { via: 'scene', kind: 'fact', by: { family: 'The apartment {insider} rented is empty; the post is being collected by a relative.', moved: 'The apartment is empty, and a forwarding address was never left.', returned: 'The apartment is still lived in; the rent is paid.' },
+        supports: { family: ['family'], moved: ['moved'], returned: ['returned'] } },
+      { via: 'records', kind: 'fact', needsAuth: { family: true, moved: true }, by: { family: 'A phone registered to a relative calls {insider}\'s old employer weekly.', moved: 'A new lease in another city is signed with {insider}\'s birth date and a different name.', returned: '{insider} has called a lawyer about surrendering.' },
+        supports: { family: ['family'], moved: ['moved'], returned: ['returned'] }, against: { family: ['moved'], moved: ['family'], returned: ['moved', 'family'] }, pointsTo: { family: 'insider', moved: 'insider', returned: 'insider' }, evKind: { family: 'documents', moved: 'documents', returned: 'documents' }, decisive: { returned: true } },
+    ],
+    items: [],
+    poi: { text: '{owner}, a relative, says they have not heard from {insider} in months, and asks what will happen to them.', accurate: ['moved', 'returned'] },
+    witness: { saw: { family: 'saw {insider} carrying shopping into a relative\'s house', moved: 'saw {insider} load a car with boxes one night', returned: 'saw {insider} at the courthouse steps, looking for the entrance' }, supports: { family: ['family'], moved: ['moved'], returned: ['returned'] }, pointsTo: { family: 'insider' } } },
+  counterfeit: { federalOnly: true, hyp: { maker: 'Someone local is printing the notes.', passer: 'Someone is passing notes printed elsewhere.', innocent: 'The person who passed them did not know they were false.' },
+    name: 'Counterfeit currency', offenseId: 'fraud', specialty: 'fraud', complexity: 2, place: 'business', months: 9, title: (p) => `False notes at ${p}`,
+    scene: 'Several shops report counterfeit banknotes taken over two weeks. The notes share a printing flaw.', truth: { maker: 0.35, passer: 0.4, innocent: 0.25 }, insider: 'Customer', perp: { maker: 'stranger', passer: 'insider' },
+    hypotheses: ['maker', 'passer', 'innocent'],
+    clues: [
+      { via: 'report', kind: 'claim', text: '{owner} says a regular customer paid with one of the notes.', source: 'owner', confidence: 0.7 },
+      { via: 'specialist', kind: 'fact', by: { maker: 'The notes were printed on an office inkjet printer: the same flaw on every one.', passer: 'The notes match a batch seized in another state.', innocent: 'The notes match a batch seized in another state, passed through many hands.' },
+        supports: { maker: ['maker'], passer: ['passer', 'innocent'], innocent: ['innocent', 'passer'] }, against: { maker: ['innocent'] } },
+      { via: 'records', kind: 'fact', needsAuth: { maker: true, passer: true }, by: { maker: 'A print shop sold specialty paper in bulk to one buyer, paid in cash.', passer: 'Bank records show {insider} withdrawing nothing, yet spending cash freely.', innocent: '{insider} withdrew the cash from a bank machine the day before; the bank has the record.' },
+        supports: { maker: ['maker'], passer: ['passer'], innocent: ['innocent'] }, against: { innocent: ['passer'], passer: ['innocent'] }, pointsTo: { maker: 'perp', passer: 'insider' }, evKind: { maker: 'documents', passer: 'financial' }, decisive: { innocent: true } },
+    ],
+    items: [{ label: 'The counterfeit notes', kind: 'physical', disciplines: ['documents', 'fingerprints'], pointsTo: 'perp' }],
+    poi: { text: '{insider}, the customer, says they had no idea the notes were false, and wants to know where their money went.', accurate: ['innocent', 'maker'] },
+    witness: { saw: { maker: 'saw someone buy reams of heavy paper at the print shop', passer: 'saw {insider} pay with large notes at three shops in an hour', innocent: 'saw {insider} take cash from the bank machine' }, supports: { maker: ['maker'], passer: ['passer'], innocent: ['innocent'] }, pointsTo: { passer: 'insider' } } },
+  tax: { federalOnly: true, hyp: { evasion: 'Income was hidden on purpose.', error: 'The return was wrong by mistake.', preparer: 'The tax preparer falsified the return.' },
+    name: 'Tax evasion', offenseId: 'tax_evasion', specialty: 'fraud', complexity: 3, place: 'business', months: 12, title: (p) => `The returns of ${p}`,
+    scene: 'An audit found income far beyond what a business declared. The civil side referred it for a criminal investigation.', truth: { evasion: 0.45, error: 0.3, preparer: 0.25 }, insider: 'Business owner', perp: { evasion: 'insider', preparer: 'stranger' },
+    hypotheses: ['evasion', 'error', 'preparer'],
+    clues: [
+      { via: 'report', kind: 'fact', text: 'The audit found deposits much larger than the income {insider} declared.' },
+      { via: 'specialist', kind: 'fact', by: { evasion: 'A forensic accountant finds a second set of books.', error: 'A forensic accountant finds the deposits include loans, wrongly counted as income on one side and left off on the other.', preparer: 'A forensic accountant finds the return does not match the figures {insider} gave the preparer.' },
+        supports: { evasion: ['evasion'], error: ['error'], preparer: ['preparer'] }, against: { evasion: ['error'], error: ['evasion', 'preparer'], preparer: ['evasion'] } },
+      { via: 'records', kind: 'fact', needsAuth: { evasion: true, preparer: true }, by: { evasion: 'Bank records show accounts in a relative\'s name receiving the business\'s takings.', error: 'The loan agreements are genuine and were signed before the deposits.', preparer: 'The preparer filed dozens of returns with the same invented deductions.' },
+        supports: { evasion: ['evasion'], error: ['error'], preparer: ['preparer'] }, against: { evasion: ['error'], error: ['evasion'], preparer: ['evasion'] }, pointsTo: { evasion: 'insider', preparer: 'perp' }, evKind: { evasion: 'financial', preparer: 'documents' }, decisive: { error: true } },
+    ],
+    items: [{ label: 'Ledgers taken under a search warrant', kind: 'physical', disciplines: ['documents', 'financial'], pointsTo: 'insider' }],
+    poi: { text: '{insider} says the deposits were loans, and that they trusted their preparer.', accurate: ['error', 'preparer'] },
+    witness: { saw: { evasion: 'saw {insider} counting cash into envelopes after closing', error: 'saw {insider} sign loan papers at the bank', preparer: 'saw the preparer refuse to show {insider} the finished return' }, supports: { evasion: ['evasion'], error: ['error'], preparer: ['preparer'] }, pointsTo: { evasion: 'insider' } } },
   corruption: { places: ['the City Council', 'the Port Authority', 'the Water Board', 'the Transit Agency'], name: 'Public corruption', offenseId: 'bribery', specialty: 'corruption', complexity: 3, place: 'office', months: 12, title: (p) => `Contracts at ${p}`,
     scene: 'A council contract went to a company whose bid was not the lowest. A clerk reported concerns.', truth: { bribe: 0.45, lawful: 0.55 }, insider: 'Council official', perp: { bribe: 'insider' },
     hypotheses: ['bribe', 'lawful'],

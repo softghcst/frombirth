@@ -11,6 +11,7 @@ import { agency, office, officeOf, staffer, federalCities } from './agencies.js'
 import { acceptAcademy, declineOffer, meet } from './careers.js';
 import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings, reviewCandidates, openReview } from './casework.js';
 import * as k from '../cases.js';
+import { storyBeat } from '../storyDirector.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : 'someone');
@@ -23,7 +24,7 @@ function queue(r, id, words, key = id) {
   if (st.pendingEvents.filter((x) => x.id.startsWith('inv_')).length >= 2) return false;
   if (st.pendingEvents.some((x) => x.id === id)) return false;
   r.scenes[key] = year();
-  st.pendingEvents.push({ id, cast: { words } });
+  storyBeat(id, { words }, { source: 'investigations' });
   return true;
 }
 
@@ -50,6 +51,7 @@ export function dramaYear(p = player()) {
   for (const inv of cases) {
     const f = inv.file;
     const w = { case: f.title };
+    if (f.template === 'homicide' && homicideScene(r, inv)) continue;
     const lab = f.labs.find((l) => l.status === 'reported' && l.reported >= now() - 12 && !r.scenes[`lab:${l.id}`]);
     if (lab && queue(r, 'inv_lab_arrives', { ...w, result: LAB_RESULTS[lab.result].toLowerCase() }, `lab:${lab.id}`)) continue;
     if (f.referral?.decision === 'more' && queue(r, 'inv_prosecutor_more', { ...w, prosecutor: nm(f.referral.prosecutorId) }, `more:${inv.id}`)) continue;
@@ -143,6 +145,77 @@ export function dramaYear(p = player()) {
   if (complaint) queue(r, 'inv_complaint', {}, `complaint:${complaint.id}`);
   if (!j && r.stats.years >= 8 && !r.license) queue(r, 'inv_job_offer', {}, 'pioffer');
 }
+/**
+ * A homicide, scene by scene, each once and only when the file says it is time: telling the family, the first night,
+ * the first forty-eight hours, the press, the vigil, the funeral, a year unsolved, the verdict. The victim and their
+ * next of kin are the case's real people; the kin is made once and kept on the file.
+ */
+function homicideScene(r, inv) {
+  const f = inv.file;
+  const v = npc(f.victimId);
+  if (!v) return false;
+  if (!f.kinId || !npc(f.kinId)) {
+    const kin = k.civilian(v.countryId ?? player().countryId, { age: Math.max(20, (v.age ?? 40) + seeded(`${inv.id}/kin`).int(-25, 5)), kind: 'civilian' });
+    kin.lastName = v.lastName; kin.flags.kinOf = v.id;
+    f.kinId = kin.id;
+    f.people.push({ id: kin.id, role: 'family' });
+  }
+  const w = { case: f.title, victim: nm(v.id), kin: nm(f.kinId), invId: inv.id, supervisor: r.people.supervisorId ? nm(r.people.supervisorId) : 'Your lieutenant' };
+  const opened = Math.floor(f.opened / 12);
+  const c = f.courtCaseId && k.J().cases[f.courtCaseId];
+  const id = inv.id;
+  if (year() === opened || now() - f.opened < 12) {
+    if (queue(r, 'inv_hom_notify', w, `hom:notify:${id}`)) return true;
+    if (queue(r, 'inv_hom_night', w, `hom:night:${id}`)) return true;
+    if (!f.referral && queue(r, 'inv_hom_48', w, `hom:48:${id}`)) return true;
+    if (queue(r, 'inv_hom_funeral', w, `hom:funeral:${id}`)) return true;
+    if (seeded(`${id}/vigil`).chance(0.7) && queue(r, 'inv_hom_vigil', w, `hom:vigil:${id}`)) return true;
+    if (f.poi.length && !c && queue(r, 'inv_hom_press', w, `hom:press:${id}`)) return true;
+  }
+  if (!f.outcome && now() - f.opened >= 12 && queue(r, 'inv_hom_anniversary', w, `hom:anniv:${id}`)) return true;
+  if (c && ['sentenced', 'acquitted'].includes(c.stage) && queue(r, 'inv_hom_verdict', { ...w, verdict: c.stage === 'sentenced' ? `${nm(c.defendantId)} was convicted` : `${nm(c.defendantId)} was acquitted` }, `hom:verdict:${id}`)) return true;
+  return false;
+}
+/** What a choice in a homicide scene does: to the investigator, the family, and sometimes the case file. */
+function homicideChoice(how, w) {
+  const r = I();
+  const inv = investigation(w.invId);
+  const f = inv?.file;
+  const kin = f && npc(f.kinId);
+  const warm = (n) => { if (kin) kin.meters.relationship = clamp(kin.meters.relationship + n); };
+  switch (how) {
+    case 'notify-gentle': grow('interviewing', 3); warm(15); return null;
+    case 'notify-brief': warm(-8); return null;
+    case 'night-secure': grow('evidence', 3); regard('skill', 2); return null;
+    case 'night-rush': {
+      // What was moved before it was recorded: the custody log for it starts late.
+      const it = f?.items.find((x) => x.integrity === 'ok');
+      if (it) { it.integrity = 'gap'; f.log.push({ at: now(), text: `${it.label} was moved before it was documented.` }); }
+      regard('skill', -2); return null;
+    }
+    case '48-evidence': regard('integrity', 3); grow('reasoning', 2); return null;
+    case '48-name': regard('integrity', -5); if (f?.poi[0]) f.log.push({ at: now(), text: `${nm(f.poi[0])} was named at a briefing as the likely suspect, before the evidence was in.` }); return null;
+    case 'press-appeal': {
+      grow('teamwork', 1);
+      if (f && seeded(`${w.invId}/appeal`).chance(0.5)) f.leads.push({ id: `appeal_${w.invId}`, text: 'A caller after the press conference heard raised voices on the street that night.', why: 'A public appeal', status: 'open', at: now() });
+      return null;
+    }
+    case 'press-promise': regard('reliability', -3); return null;
+    case 'vigil-go': {
+      regard('teamwork', 1);
+      if (f) f.leads.push({ id: `vigil_${w.invId}`, text: 'At the vigil, a neighbor mentioned a car that had been parked on the street for days before.', why: 'Said at the vigil', status: 'open', at: now() });
+      return null;
+    }
+    case 'vigil-stay': return null;
+    case 'funeral-honest': regard('ethics', 2); warm(6); return null;
+    case 'funeral-promise': regard('ethics', -2); warm(10); if (f) f.promised = year(); return null;
+    case 'anniv-call': warm(8); grow('interviewing', 1); return null;
+    case 'anniv-avoid': warm(-12); return null;
+    case 'verdict-speak': warm(10); return null;
+    case 'verdict-leave': warm(-4); return null;
+    default: return null;
+  }
+}
 function reporterFor(inv) {
   const w = W();
   w.reporters ??= {};
@@ -215,6 +288,7 @@ export function invChoice(value, cast = {}) {
     case 'board': regard('reliability', how === 'attend' ? 2 : 0); return null;
     case 'review': if (how === 'open' && w.invId) return openReview(w.invId).text; return null;
     case 'familiar': return null;
+    case 'hom': return homicideChoice(how, w);
     case 'ancestor': { if (how === 'reopen' && w.invId) { const inv = investigation(w.invId); return inv?.file?.coldSince ? reopen(w.invId).text : openReview(w.invId).text; } grow('reasoning', 2); return null; }
     case 'romance': {
       const pt = npc(w.partnerId);

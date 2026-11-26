@@ -32,7 +32,7 @@ await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 const adopted = await page.evaluate(async () => {
   document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
   const { store } = await import('/js/state.js'); const zoo = await import('/js/engine/animals.js'); const care = await import('/js/engine/animalCare.js');
-  const p = store.state.player; p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.age = 30; p.birthYear = store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = 900000; p.finance.loans = [];
+  const p = store.state.player; p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.age = 30; p.birthYear = store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = 1e10; p.finance.loans = []; // enough in any currency (900,000 dong does not adopt a dog)
   zoo.reconcile(); const l = care.rentalPolicy(); if (l) l.kind = 'any';
   for (const a of care.shelterAnimals()) { if (care.adoptionCheck(a.id).ok && care.adopt(a.id).ok) return a.name; }
   return null;
@@ -43,7 +43,8 @@ const holdings = await page.evaluate(() => document.body.innerText);
 check(!/Household animals/.test(holdings) && !(await page.locator('[data-go="chronicle"]').count()), 'Holdings has no second animals card');
 await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(300);
 check(await page.locator('[data-top="animals"]').count() === 1, 'People has Pets & Animals');
-await page.evaluate(() => document.querySelector('[data-top="animals"]').click()); await page.waitForTimeout(500);
+await page.evaluate(() => document.querySelector('[data-top="animals"]').click());
+await page.waitForSelector('#modal-root [data-chronicle]', { timeout: 15000 }).catch(() => {}); // the hub, however busy the machine
 const hub = await page.evaluate(() => document.querySelector('#modal-root .modal')?.innerText ?? '');
 check(/Pets & Animals/.test(hub) && /My animals/.test(hub), 'it opens the animal hub');
 check(/House chronicle/.test(hub), 'which holds the house chronicle');

@@ -17,19 +17,30 @@ import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations } from './core.js';
+import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations, legacies } from './core.js';
+import { J } from '../cases.js';
 import { agencyOf, kindsIn } from './agencies.js';
-import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed } from './careers.js';
+import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit } from './careers.js';
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
 import { settleComplaints, intake } from './oversight.js';
 import { dramaYear, peopleYear, formTaskForce } from './drama.js';
 import { benchYear, pressYear } from './crossover.js';
 import { forensicYear, examinerNow, evaluatorNow } from './forensicMed.js';
 import { promote } from '../career.js';
+import { settleWorkplace, workplaceYear } from './workplace.js';
+import { labYear, careerYear as labCareerYear } from './forensicLab.js';
+import { unionYear } from './unions.js';
+import { reformYear } from './reform.js';
+import { psychYear, psychCareerYear } from './forensicPsych.js';
+import { integrityYear } from './integrity.js';
+import { booksYear } from './books.js';
+import { hospitalYear } from './medical.js';
+import { payYear } from './pay.js';
+import { editorYear } from './crossover.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
-export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent'];
+export const INVESTIGATIVE = ['police', 'detective', 'fbi_agent', 'dea_agent', 'atf_agent', 'usms_deputy', 'usss_agent', 'hsi_agent', 'irs_agent'];
 
 /** Whether this engine reviews the player's job this year. */
 export function investigationRuns(careerId, p = player()) {
@@ -55,7 +66,7 @@ export function settle(p = player()) {
   const ac = settleAcademy(p);
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
-  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints());
+  out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
   return out;
 }
 
@@ -64,13 +75,17 @@ export function tickInvestigations() {
   const p = player();
   if (!p.alive) return;
   if (!rec(p) && INVESTIGATIVE.includes(p.career.careerId)) migrateInvestigations(store.state);
-  benchYear(p); // a forensic scientist or a journalist sees cases from their side (crossover.js)
+  // A forensic scientist's laboratory year: requests from real cases, the backlog, promotion (forensicLab.js).
+  if (p.career?.careerId === 'forensics') { for (const line of [...labYear(p), ...labCareerYear(p)]) log(line, 'system', 'neutral'); } else benchYear(p);
   forensicYear(p); // a forensic pathologist or psychiatrist gets real referrals (forensicMed.js)
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
+  for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
+  // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
-  if (r.job && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
+  if (r.job && !(r.job.corporate && p.career.careerId === 'pi' && p.career.employerId === r.job.employerId) && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
   settle(p);
   if (r.job && r.job.legacy && !r.job.agencyId && r.family === 'police') {
     // A legacy officer's department gets its agency record now (the employer stays what it was).
@@ -78,6 +93,7 @@ export function tickInvestigations() {
     r.job.agencyId = a.id;
     if (r.job.detective) { const u = a.units[r.job.specialty] ?? a.units.general ?? Object.values(a.units)[0]; r.job.specialty = u.specialty; if (!u.memberIds.includes(me())) u.memberIds.push(me()); r.people.supervisorId ??= u.headId; }
   }
+  studyCredit(p, r); // a degree finished while serving (part-time) counts from now on
   if (r.job && !['academy', 'federal_training'].includes(r.stage)) {
     r.stats.years += 1;
     // A year on the job: the skills its work uses grow a little. Performance follows how the work is done.
@@ -96,6 +112,10 @@ export function tickInvestigations() {
   }
   // A licensed assistant investigator takes the full title (the 'pi' track's second rung).
   if (p.career.careerId === 'pi' && p.career.level === 0 && licensed(p)) { promote(); p.career.title = 'Private investigator'; }
+  for (const line of workplaceYear(p)) log(line, 'system', 'good');
+  for (const line of unionYear(p)) log(line, 'system', 'neutral');
+  for (const line of reformYear(p)) log(line, 'system', 'neutral');
+  for (const line of payYear(p)) log(line, 'system', 'good');
   peopleYear(p);
   dramaYear(p);
 }
@@ -149,3 +169,19 @@ export function legacySummary(p) {
   };
 }
 export { workLeft, caseStatus };
+
+/**
+ * Every investigative career in the family, for the Family Archive: the public career of each ancestor and of the
+ * player, and the cases they led that went to court (a court record is public; case files and statements are not).
+ */
+export function familyInvestigativeLegacy(p = player()) {
+  const OUT = { sentenced: 'convicted', acquitted: 'acquitted', dismissed: 'dismissed', quashed: 'conviction set aside' };
+  const courtCases = (id) => Object.values(J().investigations ?? {}).filter((inv) => inv.file?.leadId === id && inv.file.courtCaseId && J().cases[inv.file.courtCaseId])
+    .map((inv) => { const c = J().cases[inv.file.courtCaseId]; return { title: inv.file.title, year: c.year, outcome: OUT[c.stage] ?? 'in court' }; })
+    .sort((a, b) => a.year - b.year);
+  const list = legacies().map((x) => ({ id: x.id, name: x.name, died: x.died ?? null, years: x.years ?? null, units: x.units ?? [], license: x.license ?? null, retired: x.retired ?? null,
+    history: x.history ?? [], cases: courtCases(x.id) }));
+  const mine = legacySummary(p);
+  if (mine) list.push({ id: p.id, name: mine.name, you: true, years: mine.years, units: mine.units ?? [], license: mine.license, retired: mine.retired, history: mine.history, cases: courtCases(p.id) });
+  return list;
+}

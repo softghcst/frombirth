@@ -59,7 +59,7 @@ import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
-import { tickHealth } from './health.js';
+import { tickHealth } from './health/ailments.js';
 import { finishCareYear, healthYear } from './health/index.js';
 import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';
@@ -78,8 +78,10 @@ import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
 import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
+import { tickJournalism } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
+import { directYear, yearSteps } from './storyDirector.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -112,7 +114,8 @@ export const YEARLY = [
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
   ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)
-  ['investigations', () => booked('salary', 'Investigations: training, ranks and cases', tickInvestigations)], // police, detectives, federal agents, private investigators (engine/investigations)
+  ['investigations', () => booked('salary', 'Investigations: training, ranks and cases', tickInvestigations)],
+  ['journalism', () => { for (const line of tickJournalism(player())) log(line, 'system', 'neutral'); }], // the newsroom's year: complaints, promotions, prizes, assignments (engine/journalism.js) // police, detectives, federal agents, private investigators (engine/investigations)
   ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
@@ -171,6 +174,7 @@ export const YEARLY = [
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
+  ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];
@@ -183,12 +187,15 @@ const DEADLY = new Set(['career', 'vehicles']);
  */
 export function runYearSteps(state = store.state) {
   const marks = (state.yearMarks ??= {});
-  for (const [id, step] of YEARLY) {
-    if (marks[id] === state.year) continue;
-    marks[id] = state.year;
-    const death = step();
-    if (DEADLY.has(id) && death) return death;
-  }
+  yearSteps.on = true;
+  try {
+    for (const [id, step] of YEARLY) {
+      if (marks[id] === state.year) continue;
+      marks[id] = state.year;
+      const death = step();
+      if (DEADLY.has(id) && death) return death;
+    }
+  } finally { yearSteps.on = false; }
   return null;
 }
 

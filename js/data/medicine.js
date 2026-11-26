@@ -46,10 +46,12 @@ export const SPECIALTIES = [
   S('anesthesiology', 'Anesthesiology', 'anesthesiologist', { years: 4, play: 'periop', dept: 'anesthesiology', compete: 0.5, procedures: ['anes_care'], minYear: 1940 }),
   S('radiology', 'Diagnostic Radiology', 'radiologist', { years: 5, play: 'reading', dept: 'radiology', compete: 0.6, procedures: ['image_guided'] }),
   S('pathology', 'Pathology', 'pathologist', { years: 4, play: 'reading', dept: 'pathology', compete: 0.3 }),
-  S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'office_minor'], practice: 'eye_clinic' }),
+  S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'oph_laser', 'office_minor'], practice: 'eye_clinic' }),
   S('ent', 'Otolaryngology (ENT)', 'ENT surgeon', { years: 5, play: 'or', dept: 'ent', surgical: true, compete: 0.75, procedures: ['ent_surgery', 'office_minor'] }),
   S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor'] }),
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
+  // General practice: a hospital internship, then practice (before residency was the usual route; see ERA.gpEra).
+  S('general', 'General Practice', 'general practitioner', { kind: 'gp', years: 1, play: 'panel', dept: 'family', compete: 0, procedures: ['office_minor', 'ob_delivery'], practice: 'family_clinic', minYear: 1800, maxYear: 1968 }),
   // Integrated surgical residencies (entered straight from medical school, in the US)
   S('ct_integrated', 'Integrated Thoracic Surgery', 'cardiothoracic surgeon', { years: 6, play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.9, grants: 'ctsurg',
     procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta', 'gs_hernia'], minYear: 2008 }),
@@ -152,6 +154,7 @@ export const PROCEDURES = [
   P('ob_cesarean', 'Cesarean delivery', 1940, 0.08),
   P('gyn_surgery', 'Gynecologic operation', 1920, 0.08),
   P('oph_cataract', 'Cataract operation', 1970, 0.03),
+  P('oph_laser', 'Eye laser treatment', 1975, 0.02, { major: false }),
   P('ent_surgery', 'Ear, nose and throat operation', 1920, 0.07),
   P('uro_surgery', 'Urologic operation', 1930, 0.08),
   P('pod_minor', 'Minor foot procedure', 1960, 0.02, { major: false }),
@@ -183,6 +186,7 @@ export const TESTS = [
   T('endoscopy', 'Endoscopy', 1970, 'scope'),
   T('screening_tool', 'Structured screening questionnaire', 1960, 'talk'),
   T('developmental', 'Developmental assessment', 1950, 'exam'),
+  T('dexa', 'Bone density scan', 1988, 'imaging'),
   T('vascular_doppler', 'Vascular Doppler study', 1975, 'imaging'),
   T('gait', 'Gait and biomechanical assessment', 1950, 'exam'),
 ];
@@ -223,6 +227,9 @@ export const RANKS = {
   chief_resident: { title: 'Chief resident', level: 0 },
   fellow: { title: 'Fellow', level: 0 },
   attending: { title: 'Attending physician', level: 1 },
+  experienced: { title: 'Experienced attending', level: 1 },
+  vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
+  ceo: { title: 'Hospital chief executive', level: 3, leader: true },
   senior: { title: 'Senior attending', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
@@ -236,7 +243,7 @@ export const RESIDENT_TITLES = ['Intern', 'Junior resident', 'Resident', 'Senior
 // What a physician-owner can open, and who may open it. `needs`: specialties (any) the owner must be
 // qualified in. Figures are game economics (local money is scaled by engine/business.js).
 export const PRACTICE_TYPES = {
-  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal'], demand: 1, equipment: 40000 },
+  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal', 'general'], demand: 1, equipment: 40000 },
   internal_clinic: { name: 'Internal medicine practice', needs: ['internal'], demand: 0.95, equipment: 40000 },
   pediatric_clinic: { name: 'Pediatric clinic', needs: ['pediatrics'], demand: 1, equipment: 35000 },
   dermatology_clinic: { name: 'Dermatology clinic', needs: ['dermatology'], demand: 1.15, equipment: 70000 },
@@ -246,6 +253,8 @@ export const PRACTICE_TYPES = {
   cardiology_clinic: { name: 'Cardiology practice', needs: ['cardiology'], demand: 1.1, equipment: 110000 },
   eye_clinic: { name: 'Eye clinic', needs: ['ophthalmology'], demand: 1.05, equipment: 130000 },
   obgyn_clinic: { name: "Women's health practice", needs: ['obgyn', 'mfm'], demand: 1, equipment: 60000 },
+  // A group of physicians in different specialties under one roof: any qualified physician may found one.
+  specialty_group: { name: 'Specialty group practice', needs: 'any', demand: 1.05, equipment: 90000 },
   plastic_clinic: { name: 'Plastic and reconstructive surgery practice', needs: ['plastic', 'plastic_integrated'], demand: 1.1, equipment: 120000 },
 };
 
@@ -256,8 +265,14 @@ export const ERA = {
   residencyMatch: 1952, // a national match for residency places (US); before it, places were offered and accepted directly
   boards: 1930, // specialty board certification becomes usual
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
+  doFullRights: 1973, // by about here every US state licensed osteopathic physicians to practice fully; before, they trained largely in their own (community) hospitals
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
+  womenWidelyAdmitted: 1920,
+  // Before about 1940 most doctors (in the US, and in the game everywhere) did a hospital internship and went into
+  // general practice; residency was for the minority who specialized. General practice as its own route lasts until
+  // family medicine replaces it (1969, the year Family Medicine's residency begins in data/medicine.js).
+  gpEra: 1940, gpUntil: 1969, // by about here most medical schools take women, if often in small numbers
 };
 
 /**

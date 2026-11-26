@@ -591,6 +591,18 @@ export const CASE_TEMPLATES = {
     cross: { witness: 'clerk', text: 'The clerk says the floor was checked often.', options: [['Show the two-hour gap in the log', 'log_gap'], ['Ask about the weather', 'repeat'], ['Ask about the clerk\'s pay', 'improper'], ['Ask them to repeat it', 'repeat']] },
     settle: true,
   },
+  // The family's claim after a fatal collision (engine/investigations/local.js): offered only from a real investigation.
+  collision_claim: {
+    kind: 'civil', level: 3, title: '{client} v. {other}', jury: true, forum: 'trial', otherTitle: 'Driver',
+    summary: '{client}\'s sibling was struck and killed by a car driven by {other}. The family claims for the loss.',
+    stages: [['intake', 0], ['demand', 1], ['pleadings', 2], ['discovery', 3], ['negotiation', 2], ['trial', 3], ['judgment', 0]],
+    evidence: [E('death', 'medical_record', 'The hospital record of the injuries and the death', 'client', 3, 95), E('recon', 'document', 'The police collision reconstruction', 'client', 4, 85), E('light', 'photograph', 'A photograph of the broken street light at the crossing', 'other', 2, 80)],
+    witnesses: [W('driver', 'The driver', 'other', 55, 'speed')],
+    research: q('What must the family usually show?', ['That the driver did not take the care a reasonable driver would, and that this caused the death', 'That a death happened, nothing more', 'That the driver was convicted of a crime', 'That the driver is insured'], 0, 'A civil claim turns on negligence and causation, proved on the balance of probabilities, not on a criminal conviction.'),
+    motion: { name: 'Complaint for wrongful death', target: null, options: [['Claim damages on the reconstruction and the record', 'strong'], ['Claim a vast sum to punish the driver', 'weak'], ['Drop it', 'concede'], ['Delay', 'delay']] },
+    cross: { witness: 'driver', text: 'The driver says they were driving with care.', options: [['Ask about the speed the reconstruction found', 'speed'], ['Ask about the weather', 'repeat'], ['Ask about their family', 'improper'], ['Ask them to repeat it', 'repeat']] },
+    settle: true,
+  },
   dismissal: {
     kind: 'civil', level: 2, title: '{client} v. {otherOrg}', jury: false, forum: 'tribunal',
     summary: '{client} was dismissed from {otherOrg} a week after reporting a safety problem.',

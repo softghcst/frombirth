@@ -25,6 +25,7 @@ import { hiringClimate } from './economy.js';
 import { stageTierOf, stageTraining, proCredits, workOf, districtOf } from './entertainment.js';
 import { STAGE_BAR } from '../data/fame.js';
 import { danceTraining } from './dance.js';
+import { jobBlock as jobBlockSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const yrs = (n) => `${n} ${n === 1 ? 'year' : 'years'}`;
@@ -287,6 +288,7 @@ export function accept(offerId) {
   const car = CAREER_BY_ID[offer.careerId];
   const p = player();
   if (post && post.countryId !== p.countryId) return result(false, 'This job is in another country: you would have to move there first.', 'neutral');
+  { const sc = jobBlockSpecial(offer.careerId, p, undefined, { partTime: !!offer.partTime }); if (sc) return result(false, sc, 'neutral'); }
   const fit = offer.partTime ? canFit(offer.hours, { kind: 'parttime' }) : canFit(offer.hours, { kind: 'job', replacesMain: !!c.careerId });
   if (!fit.ok) return fit;
   c.offers = c.offers.filter((o) => o.id !== offerId);

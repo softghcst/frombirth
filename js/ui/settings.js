@@ -13,6 +13,7 @@ import * as kit from '../engine/teamIdentity.js';
 import { jerseySvg, inkOn } from './jersey.js';
 import { JERSEY_COLORS } from '../data/sports.js';
 import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
+import { weddingScenesOn, setWeddingScenes } from './weddingPlanner.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -63,10 +64,11 @@ export async function openSettings(hooks = {}) {
       options: [
         { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
         { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
+        { value: 'weddings', label: 'Interactive weddings', sub: weddingScenesOn() ? 'On: plan your wedding with a planner, then live the day.' : 'Off: plan it on one page, then a "Just married!" card.' },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
         // Only while a life is being played: how much of what could happen in love and family is told.
-        ...(store.state?.player?.alive ? [{ value: 'drama', label: 'Relationship drama', sub: `${{ low: 'Low', balanced: 'Balanced', high: 'High' }[store.state.settings?.drama ?? 'balanced']}: how often the stories that are true of your relationships get told. It never invents one.` },
+        ...(store.state?.player?.alive ? [{ value: 'drama', label: 'Story drama', sub: `${{ low: 'Low', balanced: 'Balanced', high: 'High' }[store.state.settings?.drama ?? 'balanced']}: how many of the stories that are true of your life are told each year (love, family, friends, work, medicine, sport, life abroad). It never invents one, and consequences always play.` },
           { value: 'sensitive', label: 'Sensitive family storylines', sub: store.state.settings?.sensitiveFamily === true ? 'On: a teenage pregnancy may be part of a life, told without detail.' : 'Off. Turn on to allow a teenage pregnancy storyline, told without detail.' }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
         { value: 'transfer', label: 'Transfer saves', sub: 'To another device' },
@@ -87,6 +89,7 @@ export async function openSettings(hooks = {}) {
     }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
     if (pick === 'haptics') { setHaptics(!hapticsOn()); continue; }
+    if (pick === 'weddings') { setWeddingScenes(!weddingScenesOn()); continue; }
     if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();

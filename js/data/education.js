@@ -58,18 +58,18 @@ export const LEAVING_AGE = 18;
  */
 export const SUBJECTS = [
   { id: 'reading', name: 'Reading and writing', until: 'elementary', from: 'elementary', apt: { 'stats.intellect': 1 } },
-  { id: 'math', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess'] },
-  { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['science_club', 'environment'] },
+  { id: 'math', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess', 'math_club', 'science_olympiad'] },
+  { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['science_club', 'environment', 'science_olympiad', 'engineering'] },
   { id: 'literature', name: 'Literature', from: 'middle', apt: { 'stats.intellect': 0.8, 'stats.charm': 0.2 }, club: ['paper', 'debate'] },
-  { id: 'history', name: 'History', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['debate'] },
+  { id: 'history', name: 'History', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['debate', 'mock_trial', 'model_un'] },
   { id: 'languages', name: 'Languages', from: 'middle', apt: { 'stats.intellect': 0.7, 'stats.charm': 0.3 } },
-  { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['coding'] },
+  { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['coding', 'robotics', 'engineering'] },
   { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 }, club: ['art_club'] },
   { id: 'music', name: 'Music', from: 'elementary', apt: { 'talents.music': 0.7, 'talents.singing': 0.3 }, club: ['choir', 'band'] },
   { id: 'theater', name: 'Theater', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theater', 'musical_theater'] },
   { id: 'pe', name: 'Physical education', from: 'elementary', apt: { 'talents.sports': 0.7, 'stats.health': 0.3 }, club: ['sports_team', 'dance_class'] },
   { id: 'economics', name: 'Economics', from: 'high', apt: { 'stats.intellect': 1 } },
-  { id: 'government', name: 'Government', from: 'high', apt: { 'stats.intellect': 0.6, 'stats.charm': 0.4 }, club: ['council', 'debate'] },
+  { id: 'government', name: 'Government', from: 'high', apt: { 'stats.intellect': 0.6, 'stats.charm': 0.4 }, club: ['council', 'debate', 'mock_trial', 'model_un'] },
 ];
 export const SUBJECT_BY_ID = Object.fromEntries(SUBJECTS.map((s) => [s.id, s]));
 const ORDER = ['elementary', 'middle', 'high'];
@@ -80,7 +80,7 @@ export const subjectsAt = (stage) => SUBJECTS.filter((s) => ORDER.indexOf(s.from
  * Kinds of school. fee: base money a year, paid by the family. teach: what
  * the teaching adds to a year's marks. needs: what gets a child in.
  *   wealth  the least a family must be: 'middle' or 'rich'
- *   entry   a test of the child: { path, min }
+ *   entry   a test of the child: { path, min, test }; test: an entrance test or assessment (else an audition or trial)
  * yearly: what a year there does to a child, beyond the lessons.
  * suffix: how such schools are named; {stage} is the country's word for the stage.
  */
@@ -91,6 +91,18 @@ export const SCHOOL_KINDS = [
     blurb: 'Small fees, assemblies, and firm ideas about behavior.' },
   { id: 'selective', name: 'Selective school', fee: 0, teach: 0.18, class: 6, from: 'middle', needs: { entry: { path: 'stats.intellect', min: 62 } }, yearly: { stats: { mood: -1 } }, suffix: ['{place} Grammar School', '{place} Academy'],
     blurb: 'Free, but there is an entrance test, and the work never lets up.' },
+  { id: 'stem', name: 'STEM magnet school', fee: 0, teach: 0.12, class: 6, from: 'middle', needs: { entry: { path: 'stats.intellect|talents.tech|talents.science|skills.coding|skills.robotics', min: 60, test: true } },
+    favors: ['technology', 'math', 'science'], yearly: { skills: { coding: 3, robotics: 2, math: 2, science: 2 } },
+    suffix: ['{place} Science and Technology High', '{place} STEM Academy', '{place} Polytechnic Academy'],
+    blurb: 'Labs, a robotics bay, and a coding lab that stays open late. Free, with an entrance test in math and science.' },
+  { id: 'gifted', name: 'School for gifted children', fee: 9000, aid: 'need', teach: 0.22, class: 5, needs: { entry: { path: 'stats.intellect', min: 75, test: true } },
+    favors: ['math', 'science', 'literature', 'technology'], yearly: { stats: { intellect: 1 }, skills: { math: 2, writing: 1, chess: 1 } },
+    suffix: ['The {place} School for the Gifted', '{place} Academy for Gifted Learners'],
+    blurb: "For children far ahead of their year. Lessons move at their pace, not the class's. Entry by assessment; the brightest go free, and families who cannot pay are helped." },
+  { id: 'law', name: 'Law and public service academy', fee: 0, teach: 0.1, class: 6, from: 'middle', needs: { entry: { path: 'stats.intellect|skills.public_speaking', min: 55, test: true } },
+    favors: ['history', 'literature'], yearly: { stats: { charm: 1 }, skills: { public_speaking: 3, writing: 2 } },
+    suffix: ['{place} Academy of Law and Public Service', '{place} Law Magnet High'],
+    blurb: 'Mock trials, debate, civics, and a courtroom in the basement. Free, with an entrance test and an interview.' },
   { id: 'private', name: 'Private school', fee: 11000, teach: 0.15, class: 5, needs: { wealth: 'rich' }, yearly: { stats: { charm: 1 } }, suffix: ['{place} Hall', 'The {place} School'],
     blurb: 'Small classes, good facilities, and fees to match.' },
   { id: 'boarding', name: 'Boarding school', fee: 24000, teach: 0.2, class: 6, from: 'middle', away: true, needs: { wealth: 'rich' }, yearly: { hidden: { willpower: 2 }, stats: { charm: 1 } }, suffix: ['St {saint}\'s College', '{place} College'],
@@ -163,10 +175,12 @@ export const CIRCLES = [
 ];
 /** What each club does with its year, which decides how it is played: a season, a production, a competition, an election. */
 export const CLUB_KIND = { math_club: 'compete', book_club: 'compete', astronomy: 'compete', animal_rights: 'compete', gaming_club: 'compete', sports_team: 'sport', drama: 'stage', youth_theater: 'stage', musical_theater: 'stage', dance_class: 'compete', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
-  science_club: 'compete', coding: 'compete', art_club: 'compete', environment: 'compete', volunteers: 'compete' };
+  science_club: 'compete', coding: 'compete', art_club: 'compete', environment: 'compete', volunteers: 'compete',
+  robotics: 'compete', engineering: 'compete', science_olympiad: 'compete', mock_trial: 'compete', model_un: 'compete' };
 /** The interest a club belongs to: classmates who share it are the ones found there. */
 export const CLUB_INTEREST = { math_club: 'math', book_club: 'writing', astronomy: 'science', animal_rights: 'service', gaming_club: 'games', sports_team: 'sport', drama: 'theater', youth_theater: 'theater', musical_theater: 'theater', council: 'politics', paper: 'writing', debate: 'politics', chess: 'games', band: 'music', choir: 'music',
-  science_club: 'science', coding: 'technology', art_club: 'art', environment: 'service', volunteers: 'service', dance_class: 'theater' };
+  science_club: 'science', coding: 'technology', art_club: 'art', environment: 'service', volunteers: 'service', dance_class: 'theater',
+  robotics: 'technology', engineering: 'technology', science_olympiad: 'science', mock_trial: 'politics', model_un: 'politics' };
 /** The sports schools play, by country. */
 export const SPORTS = {
   default: ['football', 'basketball', 'volleyball', 'athletics', 'swimming', 'tennis'],

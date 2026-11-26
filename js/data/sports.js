@@ -284,7 +284,7 @@ export const LEVELS = ['recreational', 'club', 'school', 'academy', 'college', '
 export const LEVEL_NAMES = { recreational: 'Recreational', club: 'Club', school: 'School', academy: 'Academy', college: 'University', pro: 'Professional' };
 
 /**
- * Sports injuries. They go into the health record (data/illnesses.js has a matching entry for each), and heal
+ * Sports injuries. They go into the health record (data/health/ailments.js has a matching entry for each), and heal
  * on a rehabilitation plan, not by chance. `seasons` is how much of a year (or years) is missed.
  */
 export const INJURIES = {

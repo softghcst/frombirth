@@ -110,6 +110,33 @@ function sportHours(p) {
   return Object.values(a.sports).filter((e) => e.status === 'active' && !e.contractId).reduce((s, e) => s + (e.plan?.hours ?? 0), 0);
 }
 
+/** How much homework a kind of school sets, in hours a week beyond lessons: the demanding ones set a lot. */
+export const HOMEWORK = { gifted: 9, selective: 8, stem: 7, law: 6, boarding: 5, private: 4, arts: 3, sports: 2 };
+/** How a school's pressure is felt, on top of its hours (stress points). */
+export const SCHOOL_PRESSURE = { gifted: 8, selective: 8, stem: 6, law: 5, boarding: 4, private: 3 };
+const kindOfSchool = (p) => store.state.schools?.[p.education?.place?.schoolId]?.kind ?? null;
+
+/**
+ * What a young person or a student takes on beyond the timetable, in hours a week during a year of age: homework (more at a
+ * demanding school, more again for one who puts in the effort), school clubs, clubs and classes near home, lessons, and
+ * martial arts courses. It all takes time, and it all counts toward how stretched they are.
+ */
+function extracurricular(p, age, study) {
+  const out = [];
+  const e = p.education ?? {};
+  if (study && p.age < 19) {
+    const hw = Math.max(1, Math.round((HOMEWORK[kindOfSchool(p)] ?? 3) + ((e.effort ?? 50) - 50) / 12));
+    out.push({ label: 'Homework', hours: hw, kind: 'study' });
+  }
+  const clubs = (e.clubs ?? []).length * 3 + Object.keys(p.clubs?.now ?? {}).length * 2;
+  if (clubs) out.push({ label: 'Clubs', hours: clubs, kind: 'activity' });
+  const lessons = p.flags?.lessons?.year?.age === age ? p.flags.lessons.year.ids.length * 2 : 0;
+  if (lessons) out.push({ label: 'Lessons', hours: lessons, kind: 'activity' });
+  const martial = p.flags?.martialActs?.age === age ? p.flags.martialActs.n * 2 : 0;
+  if (martial) out.push({ label: 'Martial arts', hours: martial, kind: 'activity' });
+  return out;
+}
+
 export function weeklyLoad(p = player(), age = p.age) {
   const c = ensureCareer(p.career);
   const rows = [];
@@ -140,6 +167,7 @@ export function weeklyLoad(p = player(), age = p.age) {
   const reduced = age < 18 && study >= STUDY_HOURS.school && rows.some((r) => r.perform);
   if (reduced) study = STUDY_HOURS.reduced;
   if (study) rows.push({ label: reduced ? 'School (reduced timetable)' : p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
+  for (const r of extracurricular(p, age, study)) rows.push(r);
   const train = sportHours(p);
   if (train) rows.push({ label: 'Training', hours: train, kind: 'sport' });
   const travel = commute(c, p);
@@ -171,7 +199,8 @@ export function canFit(hours, o = {}) {
   // Performers are the exception to the minimum working age, as child labor laws make them: a child may act, sing or
   // dance for pay under an entertainment work permit, with a parent's consent (engine/entertainment.js asks for it)
   // and their earnings held in trust. The hours a minor may work still apply.
-  if (p.age < law.workAge && !o.performer) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
+  // Under the working age, only odd jobs (babysitting, dog walking: freelance) and performing, and only a little.
+  if (p.age < law.workAge && !o.performer && o.kind !== 'freelance') return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
   if (p.age < 18 && o.performing) {
     // A young performer's whole week: training, rehearsal and work together are capped, and school bends around it.
     // Training and a group's schedule shrink to fit what else they are in, but not below ten hours.
@@ -186,7 +215,9 @@ export function canFit(hours, o = {}) {
     const school = load.rows.find((r) => r.kind === 'study')?.hours ?? 0;
     const after = total - perfNow - school + performAfter + Math.min(school, STUDY_HOURS.reduced);
     if (after > LOAD.crushing) return result(false, `With school and everything else that would be ${after} hours a week, which is more than anyone should be asked to do at ${p.age}.`);
-  } else if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
+  } else if (p.age < law.workAge && paid + hours > CHILD_ODD_JOBS) return result(false, `At ${p.age}, a few hours a week of babysitting, dog walking and odd jobs is all anyone will let you do: ${CHILD_ODD_JOBS} at most.`);
+  else if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
+  if (p.age < 18 && !o.performing && total + hours > MINOR_WEEK) return result(false, `With school, homework, clubs and everything else that would be ${total + hours} hours a week. That is too much at ${p.age}: something would have to give first.`);
   if (total + hours > LOAD.impossible) return result(false, `That would make ${total + hours} hours a week with everything else. There are not enough hours in the week.`);
   if (o.kind !== 'job' && !o.replacesMain) {
     const main = c.careerId ? CAREER_BY_ID[c.careerId] : null;
@@ -195,6 +226,39 @@ export function canFit(hours, o = {}) {
   }
   return result(true, total + hours >= LOAD.heavy ? `That would make ${total + hours} hours a week. It can be done, but it will cost you.` : '');
 }
+
+/**
+ * What gives when a young person has taken on too much (the 'overloaded' scene): a club dropped, a job given up,
+ * someone talked to, or nothing, and pushing on. @returns {string} a line for the journal, or ''
+ */
+export function unload(what) {
+  const p = player();
+  const c = career();
+  const e = p.education ?? {};
+  if (what === 'club') {
+    const near = Object.keys(p.clubs?.now ?? {});
+    if (e.clubs?.length) e.clubs.pop();
+    else if (near.length) delete p.clubs.now[near.at(-1)];
+    else if (p.flags?.lessons?.year?.ids?.length) p.flags.lessons.year.ids.pop();
+    c.stress = Math.round(clamp(c.stress - 14));
+    return '';
+  }
+  if (what === 'job') {
+    if (c.partTime) { c.history.push({ careerId: c.partTime.jobId, title: c.partTime.title, from: c.partTime.since, to: p.age, exit: 'quit', kind: 'parttime', employer: c.partTime.place }); c.partTime = null; }
+    else if (c.sides.length) c.sides.pop();
+    if (c.freelance) c.freelance.hoursOffered = 0;
+    c.stress = Math.round(clamp(c.stress - 16));
+    return '';
+  }
+  if (what === 'talk') { c.stress = Math.round(clamp(c.stress - 9)); p.stats.mood = clamp(p.stats.mood + 4); return ''; }
+  p.stats.health = clamp(p.stats.health - 4); p.stats.mood = clamp(p.stats.mood - 3); c.stress = Math.round(clamp(c.stress + 4));
+  return '';
+}
+
+/** Hours a week of odd jobs a child under the working age may do (babysitting, dog walking). */
+export const CHILD_ODD_JOBS = 6;
+/** The most a minor's whole week may hold, school and homework included, before taking on more paid work. */
+export const MINOR_WEEK = 60;
 
 // ---------- How work feels ----------
 
@@ -236,7 +300,14 @@ export function tickWorkLife() {
   let stressTarget = 12 + Math.max(0, load.total - 35) * 1.1 + (car ? car.stress * 9 : 0) + (cult?.stress ?? 0)
     + (boss && boss.meters.relationship < 35 ? 8 : 0) + (broke ? 10 : 0) + (kids && load.total > 50 ? kids * 3 : 0)
     + (c.remote !== 'none' ? -3 : 0) - (away ? 25 : 0) - (warmth - 55) / 6;
-  if (!car && !load.paid) stressTarget = broke ? 45 : 20;
+  // Someone without a job (a child, a student, someone between jobs): stress from everything they take on, school's own
+  // pressure, and money worries. The more they take on, the greater the stress.
+  if (!car) {
+    const young = p.age < 19;
+    const pressure = load.rows.some((r) => r.kind === 'study') ? (SCHOOL_PRESSURE[kindOfSchool(p)] ?? 0) : 0;
+    stressTarget = (young ? 10 : 14) + Math.max(0, load.total - (young ? 34 : 35)) * (young ? 2.2 : 1.3) + pressure
+      + (load.paid ? 4 : 0) + (broke ? (young ? 4 : 18) : 0) - (warmth - 55) / 8;
+  }
   c.stress = Math.round(clamp(c.stress + (clamp(stressTarget) - c.stress) * 0.5));
 
   if (car) {
@@ -247,6 +318,16 @@ export function tickWorkLife() {
     c.satisfaction = Math.round(clamp(c.satisfaction + (clamp(sat) - c.satisfaction) * 0.4));
   }
 
+  // A young person or a student who has taken on too much is asked what gives (data/events/health.js 'overloaded').
+  if (!car && c.stress >= 72 && p.age >= 8 && p.age <= 30 && (p.flags.overloadAge ?? -9) < p.age - 1) {
+    const what = load.rows.filter((r) => ['activity', 'parttime', 'freelance', 'sport'].includes(r.kind)).map((r) => r.label.toLowerCase());
+    if (what.length) {
+      p.flags.overloadAge = p.age;
+      store.state.pendingEvents.push({ id: 'overloaded', cast: { words: { load: `${what.slice(0, -1).join(', ')}${what.length > 1 ? ' and ' : ''}${what.at(-1)}` } } });
+    }
+  }
+  // Health pays for a year near the top.
+  if (c.stress >= 70) p.stats.health = clamp(p.stats.health - Math.round((c.stress - 65) / 8));
   // Mood follows both.
   p.stats.mood = clamp(p.stats.mood - Math.max(0, c.stress - 45) / 8 + (car && c.satisfaction >= 72 ? 2 : car && c.satisfaction < 35 ? -3 : 0));
 
@@ -268,7 +349,8 @@ export function tickWorkLife() {
     p.stats.mood = clamp(p.stats.mood - 10);
     p.stats.health = clamp(p.stats.health - 3);
     if (c.careerId) c.performance = clamp(c.performance - 10);
-    lines.push('You are burned out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.');
+    lines.push(c.careerId ? 'You are burned out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.'
+      : 'You are burned out. You are tired all the time, and nothing you used to enjoy feels like fun. Taking on less would help.');
   } else if (p.flags.burnedOut && c.strain === 0) {
     delete p.flags.burnedOut;
     lines.push('The worst of the burnout has passed. You feel like yourself again.');

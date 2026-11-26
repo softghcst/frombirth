@@ -1,6 +1,8 @@
-// Conditions the yearly health roll can hand out. `chance` is per year within
-// the age window; `yearly` is applied every year the condition persists;
-// `recover` is the yearly chance it clears up untreated. Phase 8 adds doctors.
+// Ailments: the short-lived and injury-type conditions of the Health Engine (engine/health/ailments.js), kept beside
+// the long-term conditions in data/health/conditions.js. Each person's ailments are in their health record
+// (health.ailments). `chance` is per year within the age window; `yearly` is applied every year the ailment persists;
+// `recover` is the yearly chance it clears up untreated. Ids in LEGACY_IDS (data/health/conditions.js) are long-term
+// conditions now, begun by the Health Engine's own course; they stay listed here only so old events still find them.
 export const ILLNESSES = [
   { id: 'flu', name: 'a nasty flu', ages: [0, 120], chance: 0.05, severity: 15,
     yearly: { health: -4, mood: -3 }, recover: 0.95 },
@@ -43,3 +45,6 @@ for (const [id, name, severity, health] of [['strain', 'a muscle strain', 12, -1
 ILLNESSES.push({ id: 'exhaustion', name: 'exhaustion from overwork', ages: [12, 120], chance: 0, severity: 25, yearly: { health: -2, mood: -5 }, recover: 0.5, idol: true });
 ILLNESSES.push({ id: 'dance_injury', name: 'a dance injury', ages: [10, 120], chance: 0, severity: 20, yearly: { health: -2, mood: -2 }, recover: 0.4, idol: true });
 export const ILLNESS_BY_ID = Object.fromEntries(ILLNESSES.map((i) => [i.id, i]));
+/** The same lists by the Health Engine's word for them. */
+export const AILMENTS = ILLNESSES;
+export const AILMENT_BY_ID = ILLNESS_BY_ID;

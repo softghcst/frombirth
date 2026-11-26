@@ -122,4 +122,9 @@ export function applyMods(person, def) {
       person[group][k] = clamp(person[group][k] + v);
     }
   }
+  // Skills (data/skills.js): what a school or a club teaches, coding, robotics, public speaking. They grow toward 100.
+  for (const [k, v] of Object.entries(def.skills ?? {})) {
+    person.skills ??= {};
+    person.skills[k] = Math.min(100, Math.max(0, (person.skills[k] ?? 0) + v));
+  }
 }

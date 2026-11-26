@@ -1,4 +1,4 @@
-// Forty-eight places added by the Living World engine, in one compact table
+// The places added by the Living World engine, in one compact table
 // so that a new place is one row. countries.js, living.js and politics.js
 // read their share of each row; nothing else needs to know this file exists.
 //
@@ -181,4 +181,21 @@ export const NEW_PLACES = {
   ws: ['Samoa', '🇼🇸', ['WST', 'WS$', 2.7], [0.15, 0, 0], ['Apia', 'Salelologa', 'Mulifanua'],
     ['Sione Tavita Ioane Pita Mikaele Fa\'afetai Lemalu Tui', 'Sina Mele Lagi Ana Tala Losa Fetu Sefina', 'Tuilagi Leota Faleolo Tuala Masoe Seiuli Lauina Toleafoa Aiono Salave\'a'],
     [0.09, 0.45, 74, 50, 58, 78, 44, 'low', ['typhoon', 'earthquake', 'volcano'], [N, 'hostile', N, N, N]], [N, N], ['M', 'Prime Minister', MP, null]],
+  fj: ['Fiji', '🇫🇯', ['FJD', 'FJ$', 2.25], [0.2, 0, 0.005], ['Suva', 'Nadi', 'Lautoka', 'Labasa', 'Nausori', 'Sigatoka'],
+    ['Josefa Samuela Viliame Sakiusa Joeli Semi Rajesh Vinod', 'Litia Mere Salote Seini Ana Vika Priya Sunita', 'Naidu Prasad Waqa Vosa Ravai Raduva Tikoduadua Kumar Singh Tuilagi'],
+    [0.2, 0.6, 60, 60, 58, 60, 45, 'low', ['hurricane', 'flood'], [N, 'limited', Y, N, N]], [Y, N], ['M', 'Prime Minister', MP, null]],
+  pf: ['French Polynesia', '🇵🇫', ['XPF', '₣', 110], [0, 0, 0.003], ['Papeete', 'Faaa', 'Punaauia', 'Bora Bora', 'Moorea', 'Uturoa'],
+    ['Teva Manoa Tehei Hiro Teiki Raiarii Maui Tamatoa', 'Hinano Moana Vaimiti Tiare Heiata Poerava Maeva Teura', 'Teriitahi Tetuanui Temaru Tauotaha Faatau Tehaamoana Maiau Tavaearii Mai Wong'],
+    [0.55, 1.1, 78, 74, 70, 76, 30, 'low', ['hurricane', 'flood'], [Y, 'equal', Y, N, N]], [Y, N], ['P', 'President', 'Representative to the Assembly', null]],
+
+  // ---------- The Indian Ocean ----------
+  mv: ['Maldives', '🇲🇻', ['MVR', 'Rf', 15.4], [0.15, 0, 0], ['Malé', 'Hulhumalé', 'Addu City', 'Fuvahmulah', 'Kulhudhuffushi'],
+    ['Ahmed Mohamed Ibrahim Hassan Ali Hussain Abdulla Ismail', 'Aishath Fathimath Mariyam Hawwa Aminath Khadheeja Shifa Zeena', 'Ahmed Mohamed Ibrahim Hassan Rasheed Shareef Naseem Didi Manik Waheed'],
+    [0.3, 0.75, 70, 66, 62, 62, 52, 'low', ['flood', 'heat'], [N, 'hostile', N, N, N]], [Y, Y], ['P', 'President', 'Member of the People\'s Majlis', null]],
+  mu: ['Mauritius', '🇲🇺', ['MUR', 'Rs', 45], [0.15, 0, 0], ['Port Louis', 'Curepipe', 'Quatre Bornes', 'Vacoas', 'Rose Hill', 'Mahébourg'],
+    ['Rajesh Vikash Yash Kevin Jean Ashwin Ravi Shakeel', 'Priya Anjali Marie Sabrina Nadia Kavita Sandhya Emilie', 'Ramgoolam Ramdin Seebaluck Boodhoo Li Pillay Dookun Lallmahomed Bhujun Rose'],
+    [0.35, 0.6, 72, 70, 72, 78, 40, 'low', ['hurricane', 'flood'], [N, 'limited', Y, N, N]], [Y, Y], ['M', 'Prime Minister', MP, null]],
+  sc: ['Seychelles', '🇸🇨', ['SCR', 'SR', 14], [0.15, 0, 0], ['Victoria', 'Beau Vallon', 'Anse Boileau', 'Praslin', 'La Digue'],
+    ['Jean Marc Patrick Ralph Wavel Danny Terry Bernard', 'Marie Linda Sylvette Cindy Jessica Anne Sharon Natasha', 'Michel Hoareau Pillay Labrosse Morel Payet Esparon Savy Barbe Laporte'],
+    [0.45, 0.95, 74, 72, 70, 76, 36, 'low', ['flood', 'heat'], [N, 'limited', Y, N, N]], [Y, N], ['P', 'President', 'Member of the National Assembly', null]],
 };

@@ -355,11 +355,11 @@ section('medication: eligible prescribers, clinician proposals, gradual benefit,
   check(rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'a pediatrician may prescribe for a child old enough');
   const gpDoc = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'primary'), 'gp');
   check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: gpDoc }).ok, 'a primary care doctor does not start ADHD medicine');
-  p.conditions.push({ id: 'heart_disease', name: 'heart disease' });
+  R.startCondition('heart_disease', { onsetAge: p.age }, p);
   check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'a heart condition needs a specialist opinion first');
   // History: no escitalopram before it existed.
   store.state.year = 1995;
-  p = store.state.player; p.conditions = [];
+  p = store.state.player; p.health.conditions = p.health.conditions.filter((c) => c.conditionId !== 'heart_disease');
   check(!rules.canPrescribe({ medId: 'lisdexamfetamine', conditionId: 'adhd', prescriber: paed }).ok && rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'in 1995 there is methylphenidate, not lisdexamfetamine');
   check(!rules.medAvailable(MED_BY_ID.escitalopram, 1995) && rules.medAvailable(MED_BY_ID.escitalopram, 2005), 'escitalopram arrives in its own time');
   check(!rules.medAvailable(MED_BY_ID.lamotrigine, 2000, 'uk', 'bipolar_1') && rules.medAvailable(MED_BY_ID.lamotrigine, 2000, 'uk', 'epilepsy'), 'a medicine can be available for one use before another');
@@ -518,7 +518,7 @@ section('history: services, therapies, medicines and diagnoses only in their own
 {
   const p = adult(45);
   delete p.health;
-  p.conditions = [{ id: 'depression', name: 'depression', severity: 35, chronic: false, sinceAge: 40, treated: false }, { id: 'asthma', name: 'asthma', severity: 30, chronic: true, sinceAge: 5, treated: true }];
+  p.conditions = [{ id: 'depression', name: 'depression', severity: 35, chronic: false, sinceAge: 40, treated: false }, { id: 'asthma', name: 'asthma', severity: 30, chronic: true, sinceAge: 5, treated: true }, { id: 'flu', name: 'the flu', severity: 20, chronic: false, sinceAge: 45, treated: false }];
   p.birth = ['dyslexia'];
   const iq = p.stats.intellect;
   saveGame(store.state);
@@ -532,8 +532,9 @@ section('history: services, therapies, medicines and diagnoses only in their own
   check(h.diagnoses.length === 2 && h.diagnoses.every((d) => d.migrated && !d.providerId), 'its diagnosis is marked as carried over, with no invented clinician');
   check(!h.therapies.length && !h.trials.length && !h.assessments.length, 'no therapy, medication or assessment history is invented');
   const asthma = h.conditions.find((c) => c.conditionId === 'asthma');
-  check(asthma && asthma.legacyManaged && !back.player.conditions.some((c) => ['asthma', 'depression'].includes(c.id)), 'long-term physical conditions move into the health record, keeping the benefit of treatment they had');
+  check(asthma && asthma.legacyManaged && !back.player.conditions && !(back.player.health.ailments ?? []).some((c) => ['asthma', 'depression'].includes(c.id)), 'long-term physical conditions move into the health record, keeping the benefit of treatment they had');
   check(!h.trials.length, 'without inventing a prescription for it');
+  check(h.ailments?.some((c) => c.id === 'flu') && !('conditions' in back.player), 'a passing ailment moves into the same health record, and the older list is gone');
   check(back.player.stats.intellect === Math.min(100, iq + 6), 'dyslexia no longer costs intellect; what it took is given back once');
   const again = loadGame(store.state.slotId);
   check(again.player.health.conditions.length === h.conditions.length, 'migrating twice adds nothing');
@@ -624,13 +625,36 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
 {
   const hosp = await import('../js/engine/health/hospital.js');
   const ins = await import('../js/engine/health/insurance.js');
-  const { addCondition } = await import('../js/engine/health.js');
-  const { checkUp } = await import('../js/engine/medical.js');
+  const { addCondition } = await import('../js/engine/health/ailments.js');
+  const { checkUp, therapy } = await import('../js/engine/health/visits.js');
+  {
+    // A doctor's visit for an ailment is an appointment in the record: a real clinician, a bill, a claim.
+    const q = adult(34); q.finance.cash = 1e6;
+    const { seeDoctor } = await import('../js/engine/health/visits.js');
+    addCondition('flu', q);
+    const cash = q.finance.cash;
+    seeDoctor('flu');
+    const v = R.healthOf(q).appointments.find((x) => x.kind === 'visit' && x.status === 'attended');
+    const gpNpc = v && store.state.npcs[v.providerId];
+    check(v && gpNpc?.flags.clinician.profession === 'gp' && R.healthOf(q).ledger.some((x) => x.ref === `appt:${v.id}`) && q.finance.cash === cash - v.paid, 'seeing the doctor about the flu is an appointment with the family doctor, in the bills');
+    check(q.health.insurance.claims.some((x) => x.ref === `appt:${v.id}`), 'and it is claimed against cover like any other bill');
+    addCondition('broken_arm', q);
+    seeDoctor('broken_arm');
+    const bone = R.healthOf(q).appointments.find((x) => x.kind === 'visit' && /broken arm/i.test(x.what ?? ''));
+    check(bone && store.state.npcs[bone.providerId]?.flags.clinician.profession === 'doctor', 'a broken arm is seen by a hospital doctor');
+    const c2 = checkUp();
+    check(c2.ok && R.healthOf(q).appointments.some((x) => x.kind === 'checkup' && x.status === 'attended' && x.outcome), `a check-up is an appointment too (${c2.text})`);
+  }
+  {
+    const q = adult(30); q.finance.cash = 1e6;
+    const r = therapy();
+    check(r.ok && R.healthOf(q).appointments.some((x) => x.kind === 'assessment' && x.concern === 'mental'), 'therapy from the doctor screen books a Health Engine assessment, not a separate mood boost');
+  }
   const sys = await import('../js/engine/systems.js');
   // A scene that finds high blood pressure: recorded by a primary care doctor, in the health record, not the old list.
   let p = adult(52);
   addCondition('high_bp');
-  check(R.isDiagnosed('hypertension') && !p.conditions.some((c) => c.id === 'high_bp'), 'high blood pressure from a scene is diagnosed by a primary care doctor, in the health record');
+  check(R.isDiagnosed('hypertension') && !p.health.ailments?.some((c) => c.id === 'high_bp'), 'high blood pressure from a scene is diagnosed by a primary care doctor, in the health record');
   const gp = store.state.npcs[R.activeDiagnoses()[0].providerId];
   check(gp?.flags.clinician.profession === 'gp' && rules.canPrescribe({ medId: 'amlodipine', conditionId: 'hypertension', prescriber: gp }).ok, 'and the primary care doctor can prescribe for it');
   check(care.prescriberFor('hypertension')?.id === gp.id, 'the primary care doctor who found it is the one who prescribes');
@@ -669,11 +693,11 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   // A broken hip heals for good once rehabilitation goals are met.
   p = adult(75);
   addCondition('broken_hip');
-  check(p.conditions.some((c) => c.id === 'broken_hip') && hosp.inHospital(p), 'a broken hip is a hospital stay');
+  check(p.health.ailments.some((c) => c.id === 'broken_hip') && hosp.inHospital(p), 'a broken hip is a hospital stay');
   until(() => R.healthOf().proposals.some((x) => x.kind === 'rehab' && x.status === 'open'));
   const hip = meds.decide(R.healthOf().proposals.find((x) => x.kind === 'rehab').id, 'rehab');
   until(() => hip.course.rehabGoals.every((g) => g.metWk) || hip.course.status !== 'active', 80);
-  check(!hip.course.rehabGoals.every((g) => g.metWk) || !p.conditions.some((c) => c.id === 'broken_hip'), 'once every goal is met, the hip has healed');
+  check(!hip.course.rehabGoals.every((g) => g.metWk) || !p.health.ailments.some((c) => c.id === 'broken_hip'), 'once every goal is met, the hip has healed');
   // Cancer: grows until treated, is staged when found, treated by an oncologist after a referral, with surgery first.
   p = adult(58);
   const cancer = living('cancer', 30, 40);
@@ -820,7 +844,7 @@ section("family members' care: their own clinicians, sessions attended, medicine
 
 // ---------- A child's doctor ----------
 {
-  const med = await import('../js/engine/medical.js');
+  const med = await import('../js/engine/health/visits.js');
   do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = 3; p.finance.cash = 0;

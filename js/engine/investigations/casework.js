@@ -28,6 +28,10 @@ import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seede
 import { agency, office, lab, prosecutorFor, staffer, ownerName } from './agencies.js';
 import { meet } from './careers.js';
 import { labMonths, hoursBonus } from './policing.js';
+import { lawyerOnIt, lawCaseFor } from './legal.js';
+import { realBusiness, neighborWitness, placeCase } from './local.js';
+import { workingToRule } from './unions.js';
+import { inForce } from './reform.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => nameOfId(id);
@@ -55,6 +59,7 @@ export function templatesFor(specialty, p = player()) {
   const r = rec(p);
   return Object.entries(TEMPLATES).filter(([, t]) => {
     if (t.tech && !techAvailable(t.tech, year(), p.countryId)) return false;
+    if (t.federalOnly) return false; // a federal agency's own cases, never a police unit's
     if (t.minRank === 'senior_detective' && !['senior_detective', 'detective_sergeant', 'detective_lieutenant', 'agent', 'senior_agent', 'supervisory'].includes(r?.job?.rank) && (r?.stats.completed ?? 0) < 3) return false;
     if (specialty === 'general' || specialty === 'major') return !t.inquiry || specialty === 'general';
     return t.specialty === specialty || (specialty === 'property' && t.offenseId === 'burglary') || (specialty === 'special_victims' && t.specialty === 'family') || (specialty === 'major' && ['robbery', 'homicide', 'arson'].includes(t.specialty));
@@ -79,9 +84,12 @@ export function openCase(tid, o = {}) {
   const reporting = civ({ age: r.int(30, 66), occupation: t.place === 'business' ? 'Business owner' : undefined });
   const insider = t.pack ? civ({ age: t.insiderAge ? r.int(...t.insiderAge) : r.int(22, 58), occupation: t.insider }) : ['burglary', 'fraud', 'cyber'].includes(tid) ? civ({ age: r.int(22, 55), occupation: tid === 'fraud' ? 'Bookkeeper' : 'Employee' })
     : ['robbery', 'homicide'].includes(tid) ? civ({ age: r.int(20, 60) }) : null;
-  const witnesses = [civ(), ...(r.chance(0.6) ? [civ()] : [])];
+  // A witness may be a real resident of one of the city's neighborhoods: the same person the player could meet (local.js).
+  const key = `${countryId}/${city}/${tid}/${k.J().seq}`;
+  const neighbor = o.neighbors !== false && seeded(`${key}/nb`).chance(0.5) ? neighborWitness(countryId, city, key, [reporting.id, insider?.id].filter(Boolean)) : null;
+  const witnesses = [neighbor ?? civ(), ...(r.chance(0.6) ? [civ()] : [])];
   const missingPerson = tid === 'missing' ? civ({ age: r.int(19, 70) }) : null;
-  const victim = tid === 'homicide' || tid === 'family' ? civ({ age: r.int(22, 75) }) : tid === 'robbery' ? reporting : null;
+  const victim = tid === 'homicide' || tid === 'family' || t.shared === 'collision' ? civ({ age: r.int(22, 75) }) : tid === 'robbery' ? reporting : null;
   // Who did it, if anyone did.
   let perp = null;
   if (t.pack) perp = t.perp[truth] === 'insider' ? insider : t.perp[truth] === 'stranger' ? civ({ age: r.int(18, 55) }) : null;
@@ -101,7 +109,9 @@ export function openCase(tid, o = {}) {
   k.J().investigations[inv.id] = inv;
   inc.reported = true;
   inc.investigationId = inv.id;
-  const place = o.place ?? (t.places ? r.pick(t.places) : t.place === 'business' ? r.pick(SHOPS) : r.pick(STREETS));
+  // A business case happens at a real employer of the city, when there is one that fits (local.js).
+  const employer = !o.place && !o.title && !t.places ? realBusiness(tid, countryId, city, key) : null;
+  const place = o.place ?? employer?.name ?? (t.places ? r.pick(t.places) : t.place === 'business' ? r.pick(SHOPS) : r.pick(STREETS));
   const title = o.title ?? (tid === 'missing' ? t.title(place, nm(missingPerson.id)) : t.title(place));
   const partnerId = lead === me() ? rec(p)?.people.partnerId ?? null : null;
   const file = {
@@ -121,6 +131,7 @@ export function openCase(tid, o = {}) {
   else buildClues(inc, inv, file, t, truth, { reporting, insider, witnesses, perp, victim, missingPerson, r });
   if (t.sensitive) file.sensitive = true;
   file.log.push({ at: now(), text: `Case opened: ${title}. ${t.scene}` });
+  placeCase(inv, { employer });
   inv.events.push({ year: year(), text: `Reported. ${lead === me() ? 'The file is yours.' : `${nm(lead)} is assigned.`}` });
   // Facts known from the moment the report is taken.
   reveal(inv, 'report');
@@ -329,7 +340,11 @@ export function workLeft(inv) {
   const f = inv.file;
   const used = f.work[year()] ?? 0;
   const cap = Math.max(3, 6 + Math.round(skillAvg(['management', 'planning']) / 25) + hoursBonus(inv.agencyId));
-  return Math.max(0, cap - used);
+  // Extra hours this year: support approved, a partner's routine work, a task force; and this year's priority (workplace.js).
+  const r = rec();
+  const pri = r?.priority?.year === year() && r.caseIds.includes(inv.id) ? (r.priority.invId === inv.id ? 2 : -1) : 0;
+  const rule = workingToRule(inv.agencyId) ? -2 : 0; // the union is working to rule (unions.js)
+  return Math.max(0, cap + (f.extra?.[year()] ?? 0) + pri + rule - used);
 }
 const spend = (f) => { f.work[year()] = (f.work[year()] ?? 0) + 1; };
 
@@ -471,6 +486,8 @@ export function interview(inv, wid, q) {
     if (named) {
       const ev = k.addEvidence(incidentOf(inv), 'witness', named, { sourceId: wid, reliability: 0.2, summary: `${nm(wid)}, pressed hard, gave ${nm(named)}'s name.` });
       ev.tainted = 'leading';
+      // Where body cameras are the law, the interview is recorded: the pressure is on camera, and a complaint follows (reform.js).
+      if (inForce(incidentOf(inv).countryId, 'bodycams') && !f.recorded) { f.recorded = true; ev.recorded = true; complain(inv, 'conduct', 'A recorded interview shows a witness pressed until their account changed.'); }
       inv.evidenceIds.push(ev.id);
     }
     f.log.push({ at: now(), text: `Pressed ${nm(wid)} hard. ${named ? 'They gave a name, but it was the one you suggested.' : 'They shut down.'}` });
@@ -701,11 +718,65 @@ export function testify(invId, how) {
   return result(true, how === 'limits' ? 'You will explain what the evidence shows, and what it does not: the inconclusive results too.' : 'You will go through the investigation as it is recorded in the file.');
 }
 
+/**
+ * Cross-examination of the investigator, on the stand. The defense asks what the file can answer: the custody of the
+ * evidence, how witnesses were questioned, what the laboratory could not say, whether anyone else was looked at.
+ * The file is the record: an answer it contradicts is found out, and the court weighs the investigator's evidence
+ * with that in mind. An honest answer about a weakness costs less than a denial.
+ */
+export function crossQuestions(inv) {
+  const f = inv.file;
+  const ev = (k.J().cases[f.courtCaseId]?.evidenceIds ?? []).map((id) => k.J().evidence[id]).filter(Boolean);
+  return [
+    { id: 'custody', q: '"Was every transfer of the evidence signed for?"', weak: f.items.some((it) => it.integrity === 'gap'),
+      options: [['Say what the log shows, gap included', 'honest'], ['Say the chain of custody was complete', 'deny']] },
+    { id: 'pressure', q: '"Did you put pressure on any witness?"', weak: ev.some((e) => e.tainted),
+      options: [['Answer it straight', 'honest'], ['Say no, never', 'deny']] },
+    { id: 'lab', q: '"Did the laboratory ever fail to reach a conclusion in this case?"', weak: f.labs.some((l) => l.status === 'reported' && l.result !== 'consistent' && l.result !== 'excluded'),
+      options: [['Say which results were inconclusive', 'honest'], ['Say the science was clear throughout', 'deny']] },
+    { id: 'others', q: '"Did you look seriously at anyone other than my client?"', weak: f.poi.filter((x) => x !== k.J().cases[f.courtCaseId]?.defendantId).length === 0 && !f.cleared.length,
+      options: [['Say who else was looked at, and why they were cleared, or that nobody was', 'honest'], ['Say everyone was considered', 'deny']] },
+  ];
+}
+export function crossExamination(invId, answers = {}) {
+  const inv = investigation(invId);
+  const f = inv?.file;
+  const c = f && k.J().cases[f.courtCaseId];
+  if (!c || TERMINAL.includes(c.stage)) return result(false, 'There is no trial to give evidence at.', 'neutral');
+  if (f.cross) return result(false, 'You have given your evidence.', 'neutral');
+  const lines = [];
+  let caught = 0;
+  let owned = 0;
+  for (const x of crossQuestions(inv)) {
+    const a = answers[x.id] ?? 'honest';
+    if (a === 'deny' && x.weak) { caught += 1; lines.push(`${x.q} You deny it. Defense counsel reads from your own file. The jury watches you.`); }
+    else if (x.weak) { owned += 1; lines.push(`${x.q} You say what happened. It is not good for the case, and it is true.`); }
+    else lines.push(`${x.q} The file answers for you, and you say so.`);
+  }
+  f.cross = { at: now(), caught, owned, answers };
+  I().stats.court += 1;
+  grow('law', 2);
+  if (caught) {
+    // The investigator's word is worth less now: the court weighs their evidence that way (settleCourt reads testimony).
+    f.testimony = { ...(f.testimony ?? {}), at: now(), how: 'overstate' };
+    regard('integrity', -5 * caught); regard('reliability', -4 * caught);
+    if (caught >= 2 && seeded(`${inv.id}/perjury`).chance(0.5)) complain(inv, 'testimony', 'Testimony at trial contradicted the investigator\'s own case file.');
+    return result(true, lines.join(' '), 'bad', { lines });
+  }
+  regard('reliability', 2 + owned); regard('integrity', owned);
+  return result(true, lines.join(' '), 'good', { lines });
+}
+
 /** A court date that has come: the court decides (engine/cases.js), with testimony and disclosure as they happened. */
 export function settleCourt(inv) {
   const f = inv.file;
   const c = f?.courtCaseId && k.J().cases[f.courtCaseId];
-  if (!c || TERMINAL.includes(c.stage) || (c.trialDue ?? 0) > now()) return null;
+  if (!c) return null;
+  // A lawyer working the case (engine/investigations/legal.js) takes it through court; the court waits for them.
+  if (lawyerOnIt(c.id)) return null;
+  // A lawyer has finished it: the court's decision is on the case, and the investigation records it once.
+  if (TERMINAL.includes(c.stage)) return f.outcome || !lawCaseFor(c.id) ? null : courtOutcome(inv, c);
+  if ((c.trialDue ?? 0) > now()) return null;
   const r = rec();
   // Disclosure: what the report left out reaches the defense one way or another; when it does, the case cannot go on.
   if (f.report?.omitted.length && seeded(`${inv.id}/disclosure`).chance(0.65)) {
@@ -716,7 +787,7 @@ export function settleCourt(inv) {
     f.log.push({ at: now(), text: 'The court dismissed the case: the defense was not told of statements in the investigation that did not fit.' });
     return 'dismissed';
   }
-  if (f.testimony?.how === 'overstate' && seeded(`${inv.id}/cross`).chance(0.6)) {
+  if (f.cross?.caught || f.testimony?.how === 'overstate' && !f.cross && seeded(`${inv.id}/cross`).chance(0.6)) {
     for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e && e.pointsTo === c.defendantId) e.reliability = Math.round(e.reliability * 0.7 * 100) / 100; }
     if (r) regard('reliability', -6);
     f.log.push({ at: now(), text: 'Under cross-examination, the investigator\'s account went beyond the file. The court weighed the evidence with that in mind.' });
@@ -724,6 +795,12 @@ export function settleCourt(inv) {
   // Statements taken by pressure are challenged, and the court decides whether to hear them.
   for (const id of c.evidenceIds) { const e = k.J().evidence[id]; if (e?.tainted) { e.admissible = false; c.rulings.push({ evidenceId: id, challenged: true, admitted: false, year: year() }); } }
   for (let i = 0; i < 8 && !TERMINAL.includes(c.stage); i++) k.runToEnd(c);
+  return courtOutcome(inv, c);
+}
+/** Records the court's decision in the case file, and in the lead investigator's record. */
+function courtOutcome(inv, c) {
+  const f = inv.file;
+  const r = rec();
   const convicted = c.stage === 'sentenced';
   f.outcome = { kind: convicted ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage, at: now() };
   const inc = incidentOf(inv);
@@ -843,7 +920,7 @@ export function assignCase(p = player()) {
   const unit = r.job.specialty ?? 'general';
   const fed = r.family === 'federal';
   // Each federal agency works its own jurisdiction: the FBI fraud, cybercrime, corruption, violent crime; the DEA drugs; the ATF firearms and arson.
-  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'] };
+  const FED_POOL = { fbi: ['fraud', 'cyber', 'robbery', 'corruption', 'homicide'], dea: ['drugs'], atf: ['firearms', 'arson'], usms: ['fugitive'], usss: ['counterfeit', 'fraud', 'cyber'], hsi: ['drugs', 'firearms', 'fraud'], irs: ['tax', 'fraud'] };
   const pool = fed ? (FED_POOL[r.job.agencyKind] ?? FED_POOL.fbi).filter((t) => !TEMPLATES[t].tech || techAvailable(TEMPLATES[t].tech, year(), p.countryId)) : templatesFor(unit);
   if (!pool.length) return null;
   const roll = seeded(`${me(p)}/assign/${year()}/${r.caseIds.length}`);

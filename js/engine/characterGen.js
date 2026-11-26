@@ -16,7 +16,6 @@ import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from '.
 import { uid, theCountry } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
-import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { generateFamily } from './familyGen.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, rollBirthConditions,
   applyMods, unknownParent } from './genetics.js';
@@ -147,7 +146,7 @@ function createOnce(opts = {}) {
     id: uid('pc'), firstName, lastName, gender, age: 0, birthYear: year,
     countryId: c.id, city, birthCountryId: c.id,
     stats, hidden, talents: withAGift(inheritTalents(mother, genes, opts.talent)),
-    traits, traitSources: sources, birth: born.map((b) => b.id), conditions: [],
+    traits, traitSources: sources, birth: born.map((b) => b.id),
     appearance,
     education: { stage: 'none', enrolled: false, yearInStage: 0, gpa: 0, effort: 50, absences: 0,
       clique: null, clubs: [], majorId: null, funding: null, housing: 'home', roommateId: null, housingAid: false,
@@ -188,12 +187,7 @@ function createOnce(opts = {}) {
   const before = { ...player.talents };
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {
-    applyMods(player, b);
-    if (b.illness) {
-      const ill = ILLNESS_BY_ID[b.illness];
-      player.conditions.push({ id: ill.id, name: ill.name, severity: ill.severity,
-        chronic: !!ill.chronic, sinceAge: 0, treated: false });
-    }
+    applyMods(player, b); // an illness from birth (weak lungs) goes into the health record (healthAtBirth)
   }
 
   if (opts.birthday) player.birthday = { m: opts.birthday.m, d: opts.birthday.d }; // chosen (a test, or the creator)

@@ -2,7 +2,8 @@
 // randomness that belongs to one person and never changes on reload.
 import { uid } from '../../util.js';
 import { store, player, country } from '../../state.js';
-import { careCost } from '../medical.js';
+import { careCost, parentsPayCare } from './visits.js';
+import { parentsSpend } from '../conditions.js';
 import { claim } from './insurance.js';
 
 export const WEEKS = 52;
@@ -85,7 +86,9 @@ export function charge(ref, base, opts = {}) {
   const amount = base <= 0 ? 0 : claim(ref, base, share, opts);
   h.ledger.push({ ref, wk: now(), amount, what: opts.what ?? ref });
   if (h.ledger.length > 600) h.ledger.splice(0, h.ledger.length - 600);
-  p.finance.cash -= amount;
+  // A child living at home has their care paid by their parents, as at the doctor's (engine/health/visits.js).
+  if (amount && parentsPayCare(p)) parentsSpend(amount, p);
+  else p.finance.cash -= amount;
   return amount;
 }
 

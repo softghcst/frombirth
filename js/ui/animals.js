@@ -107,6 +107,8 @@ function archive() {
       <div class="main"><strong>Family tree</strong><small>Every relative, living or dead.</small></div></button>
     <button class="row" data-go="law"><div class="avatar glyph">⚖️</div>
       <div class="main"><strong>Professional legacy</strong><small>Legal careers in the family: schools, the bar, offices held, public cases.</small></div></button>
+    <button class="row" data-go="investigations"><div class="avatar glyph">🛡️</div>
+      <div class="main"><strong>Law enforcement legacy</strong><small>Officers, detectives, agents and investigators in the family: ranks, units, cases that went to court.</small></div></button>
     <button class="row" data-go="digital"><div class="avatar glyph">📜</div>
       <div class="main"><strong>Life stories and records</strong><small>The people the family came from, and what they left behind.</small></div></button>
     <button class="row" data-go="story"><div class="avatar glyph">🌍</div>
@@ -395,6 +397,7 @@ async function onClick(e) {
     if (el.dataset.go === 'album') { note(); nav.open('album'); return show(); }
     if (el.dataset.go === 'story') return openGlobalStory(api);
     if (el.dataset.go === 'law') return import('./lawCareer.js').then((m) => m.openLegalLegacy());
+    if (el.dataset.go === 'investigations') return import('./investigations.js').then((m) => m.openInvestigativeLegacy());
     if (el.dataset.go === 'digital') return import('./digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
     if (el.dataset.go === 'athletics') { note(); shut(); return hooks.openAthletics?.(api, 'legacy', () => show()); }
     note(); shut();

@@ -37,6 +37,10 @@ import { seeded } from './sportsPlay.js';
 import { CHOREOGRAPHER } from '../data/dance.js';
 import { choreoRecord } from './dance.js';
 import { canFit } from './worklife.js';
+import { claim as claimSpecial } from './specialCareer.js';
+
+/** Which special career a part belongs to: dance ensemble parts and choreography are a dancer's work, the rest an actor's. */
+const careerOfRole = (r) => (['dance_ensemble', 'choreographer'].includes(r?.kind) ? 'dance' : 'acting');
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
@@ -455,6 +459,7 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   if (f.applied[key]) return result(false, 'You have already auditioned for this part.', 'neutral');
   const why = whyNot(prod, r, p);
   if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial(careerOfRole(r)); if (sc) return result(false, sc, 'neutral'); }
   const cost = prep === 'coach' ? K(600) : 0;
   if (p.finance.cash < cost) return result(false, `A coach would cost ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;
@@ -558,6 +563,7 @@ export function sign(contractId) {
   const prod = production(c.productionId);
   const r = prod.cast[c.idx];
   if (r.who || prod.status !== 'casting') { c.status = 'withdrawn'; return result(false, 'The part has gone to someone else.', 'neutral'); }
+  { const sc = claimSpecial(careerOfRole(r)); if (sc) return result(false, sc, 'neutral'); }
   const clash = scheduleClash(prod, p);
   if (clash) return result(false, clash, 'neutral');
   // The contract's own hours (a child's are shorter); a performer may work below the usual working age, and a young

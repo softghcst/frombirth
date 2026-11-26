@@ -25,7 +25,11 @@ import { levelOf } from './skills.js';
 import { gain, regard, fameOf } from './fame.js';
 import { hasRecord } from './records.js';
 import { rightToLive } from './citizenship.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition } from './health/ailments.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
+import { ailmentsOf, conditionIdsOf } from './health/ailments.js';
+/** What idol life wears down: exhaustion and a dance injury (ailments), and depression or anxiety (the health record). */
+const idolStrain = (p) => conditionIdsOf(p).filter((id) => ['exhaustion', 'dance_injury', 'mdd', 'gad'].includes(id)).map((id) => ({ id }));
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -222,6 +226,7 @@ export function apply(auditionId, category) {
   if (!au) return result(false, 'No such audition.', 'neutral');
   const why = whyNotApply(au, p);
   if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial('kpop'); if (sc) return result(false, sc, 'neutral'); }
   if (!au.categories.includes(category)) return result(false, 'That is not a category this audition takes.', 'neutral');
   const i = idolOf(p);
   i.acts.apps += 1;
@@ -406,6 +411,7 @@ export function leaveTraining() {
   t.contract.ended = { year: year(), by: 'trainee', how: 'notice' };
   endTraineeLife(p, t.agency, 'left');
   note(`Left the trainee program at ${t.agency.name}.`);
+  if (!p.idol?.groupId) releaseSpecial('kpop');
   return result(true, `You give notice and leave ${t.agency.name}. The friends come with you; the schedule does not.`, 'neutral');
 }
 function endTraineeLife(p, a, how) {
@@ -1775,11 +1781,11 @@ function yearExtras(p, lived, lines) {
 function healthRecord(kind) {
   const p = player();
   const i = idolOf(p);
-  const idolConds = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id));
+  const idolConds = idolStrain(p);
   if (kind !== 'health') return;
   if (!idolConds.length && p.stats.health < 60) addCondition('exhaustion');
-  i.hiatus.conditions = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id)).map((c) => c.id);
-  for (const c of p.conditions ?? []) if (i.hiatus.conditions.includes(c.id)) c.treated = true; // care while on the break
+  i.hiatus.conditions = idolStrain(p).map((c) => c.id);
+  for (const c of ailmentsOf(p)) if (i.hiatus.conditions.includes(c.id)) c.treated = true; // care while on the break
 }
 function healthReturn() {
   const p = player();

@@ -161,7 +161,7 @@ section('interest: monthly, compounding, exact, and paid once a year');
 disk.clear();
 p = life('us', { age: 16, cash: 400 });                                   // 1. a real character
 p.flags.firstPay = false;
-p.flags.longevity = 18; p.stats.health = 100; p.conditions = []; // followed from 16 into work: the life should not end by chance partway (it did, once, and death closes every account)
+p.flags.longevity = 18; p.stats.health = 100; (p.health ??= {}).ailments = []; // followed from 16 into work: the life should not end by chance partway (it did, once, and death closes every account)
 let o = bank.overview();                                                    // 2-3. My Money shows what they have
 check(o.cash === 400 && o.netWorth === netWorth(store.state), 'the overview shows the character\'s actual money');
 const g = Object.values(store.state.npcs).find((n) => n.role === 'parent');

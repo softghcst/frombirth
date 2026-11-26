@@ -31,10 +31,10 @@ async function openHub(page) {
   await page.click('.tab-btn[data-tab="work"]');
   // The entry is a row on the Work tab, inside whichever section holds the job's own actions: open it if it is folded.
   const entry = page.locator('[data-act="investigations"]').first();
-  for (const t of await page.locator('.sec-row').all()) {
-    if (await entry.isVisible()) break;
-    await t.click(); await page.waitForTimeout(80);
-    if (!(await entry.isVisible()) && await page.locator('[data-panel-close]').count()) { await page.locator('[data-panel-close]').first().click(); await page.waitForTimeout(80); }
+  // It lives in the Work tab's Special careers section.
+  if (!(await entry.isVisible())) {
+    const special = page.locator('.sec-row', { hasText: /Special careers/i }).first();
+    if (await special.count()) { await special.click(); await page.waitForTimeout(120); }
   }
   await entry.click();
   await page.waitForSelector('[data-inv]');
@@ -62,6 +62,7 @@ async function run(viewport) {
   await openHub(page);
   const sections = await page.locator('[data-inv] [data-sec]').allInnerTexts();
   check(sections.some((s) => /Departments/i.test(s)) && sections.some((s) => /Federal/i.test(s)) && !sections.some((s) => /Active Cases/i.test(s)), `${w}px: a newcomer sees departments and federal agencies, no caseload`);
+  check(/Ways in/i.test(await page.locator('[data-inv]').innerText()) && /Senior ranks/i.test(await page.locator('[data-inv]').innerText()), `${w}px: a newcomer sees the ways in, and that senior ranks ask for a degree`);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Departments' }).first().click();
   await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
   await dismissMessages(page);
@@ -100,6 +101,9 @@ async function run(viewport) {
   await dismissMessages(page);
   await page.locator('[data-inv] [data-sec]', { hasText: 'Active Cases' }).first().click();
   check((await page.locator('[data-inv]').innerText()).includes('The Ashford Street Burglary'), `${w}px: the case is in Active Cases`);
+  check(await page.locator('[data-inv] [data-act="support"]').count() >= 1, `${w}px: a case can ask for support from the caseload page`);
+  await page.locator('[data-inv] [data-act="support"]').first().click();
+  await dismissMessages(page);
   await page.locator('[data-inv] [data-act="openCase"]').first().click();
   await page.waitForSelector('[data-case]');
   const tabs = await page.locator('[data-case] [data-tab]').allInnerTexts();
@@ -147,6 +151,18 @@ async function run(viewport) {
   await page.locator('[data-inv] [data-sec]', { hasText: 'Public Safety' }).first().click();
   check(/Budget this year/i.test(await page.locator('[data-inv]').innerText()), `${w}px: the Public Safety page shows the department's budget and oversight`);
   check(await fits(page), `${w}px: the new pages fit the screen`);
+  await closeHub(page);
+  // The row has its own icon, and the Family Archive keeps the career.
+  await dismissMessages(page);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(200);
+  const rowText = await page.evaluate(() => document.querySelector('[data-act="investigations"]')?.textContent ?? '');
+  check(rowText.includes('🕵️'), `${w}px: Law Enforcement & Investigations has its icon`);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
+  await page.evaluate(() => document.querySelector('[data-top="archive"]').click()); await page.waitForTimeout(250);
+  await page.locator('#modal-root [data-go="investigations"]').click(); await page.waitForTimeout(200);
+  const legacy = await page.locator('#modal-root .modal').last().innerText();
+  check(/Law enforcement in the family/i.test(legacy) && /you/i.test(legacy) && /Years of service/i.test(legacy), `${w}px: Family Archive → Law enforcement legacy shows the career`);
+  check(await fits(page), `${w}px: the archive page fits the screen`);
   await closeHub(page);
   await page.close();
 }

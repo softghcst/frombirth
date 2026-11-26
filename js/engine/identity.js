@@ -16,9 +16,9 @@ import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
-import { careCost } from './medical.js';
+import { careCost } from './health/visits.js';
 import { roleLabel } from './relationships.js';
-import { addCondition } from './health.js';
+import { addCondition } from './health/ailments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 

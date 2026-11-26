@@ -58,6 +58,12 @@ if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-bo
 check(/The Plan/.test(before) && /Museum/i.test(before) && !/What you did/i.test(before), 'before leaving it shows the plan, not "What you did"');
 check(/Cancel This Trip/.test(before) && /Your Share/.test(before), 'buttons and labels are capitalized');
 await go.click();
+// The way there first: the journey on a map, home to Chicago (js/ui/journey.js); a tap skips it.
+await page.waitForSelector('.journey-screen', { timeout: 8000 }).catch(() => {});
+check(/Chicago/.test(await page.locator('.journey-head').innerText().catch(() => '')) && await page.locator('.journey-map animateMotion').count() === 1, 'leaving shows the journey there on a map');
+if (process.env.SHOT) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT}/trip-journey.png` }); }
+await page.locator('.journey-screen').click().catch(() => {});
+await page.waitForSelector('.journey-screen', { state: 'detached', timeout: 5000 }).catch(() => {});
 // The trip's moments come first, one card at a time: each a scene with choices; answering moves on.
 let moments = 0;
 for (; moments < 5; moments++) {

@@ -1,6 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
 import { openBirthTag, openAdoptionCard } from '../birthTag.js';
+import { canTagOlder, olderBirthInfo } from '../../engine/birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -15,6 +16,7 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openWedding, planHoneymoon } from '../weddingPlanner.js';
 import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
@@ -139,8 +141,6 @@ async function proposeTo(api, npc) {
 }
 
 async function planWedding(api, npc) {
-  const c = country();
-  const cash = player().finance.cash;
   if (npc.flags.royal) {
     // A royal match is not planned by the couple: the palace decides whether it happens at all.
     const ask = await confirmModal({ title: 'Ask the palace for consent?',
@@ -165,30 +165,14 @@ async function planWedding(api, npc) {
     const go = await confirmModal({ title: 'Leave the royal family?', body: `By the law of your house, a princess who marries outside it gives up her title and her place in the family. If you marry ${npc.firstName}, you will be a private citizen.`, yes: 'I understand', no: 'Not yet' });
     if (!go) return;
   }
-  const wedding = await pickModal({
-    title: 'Plan the wedding',
-    options: love.WEDDINGS.map((w) => {
-      const cost = localMoney(w.cost, c);
-      return { value: w.id, label: w.name, sub: fmtMoney(cost, c), disabled: cash < cost };
-    }),
-  });
-  if (!wedding) return;
-  let prenup = await confirmModal({
-    title: 'Ask for a prenup?',
-    body: `Without one, a divorce splits everything down the middle. Asking will sting ${npc.firstName} a little, and they may refuse.`,
-    yes: 'Ask for a prenup', no: 'No prenup',
-  });
-  if (prenup) {
-    const answer = love.askForPrenup(npc.id);
-    api.changed();
-    await messageModal({ body: answer.text, tone: answer.tone });
-    prenup = answer.ok;
-    if (!prenup) {
-      const goOn = await confirmModal({ title: 'Marry without a prenup?', body: `${npc.firstName} will not sign. You can marry anyway, or put the wedding on hold.`, yes: 'Marry anyway', no: 'Put it on hold' });
-      if (!goOn) return;
-    }
-  }
-  await report(api, love.marry(npc.id, wedding, prenup));
+  // The wedding is planned with a wedding planner, piece by piece, and then it happens; or, with those scenes turned off
+  // in Settings, on one page with a "Just married!" card (js/ui/weddingPlanner.js).
+  const r = await openWedding(api, npc);
+  api.changed();
+  // Off on the honeymoon booked with the wedding: the journey, the trip, the postcard (js/ui/globalLife.js goOnTrip).
+  if (r?.honeymoonTrip) { const { goOnTrip } = await import('../globalLife.js'); await goOnTrip(api, r.honeymoonTrip); api.changed(); }
+  // With the scenes turned off, the honeymoon is planned after, in the trip planner.
+  else if (r?.married && r.honeymoon) await planHoneymoon(api, npc, { cruise: r.honeymoon === 'cruise' });
 }
 
 async function fileForDivorce(api, npc) {
@@ -393,7 +377,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love' }] : []),
-    ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    ...(npc.birthInfo || canTagOlder(npc) ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
     ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
@@ -438,7 +422,7 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
-      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      birthTag: () => olderBirthInfo(npc) && openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
       adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),

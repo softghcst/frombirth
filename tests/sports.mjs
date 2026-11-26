@@ -21,7 +21,7 @@ const { weeklyLoad } = await import('../js/engine/worklife.js');
 const { aid } = await import('../js/engine/admissions.js');
 const { profile: applicant, catalog } = await import('../js/engine/university.js');
 const { SPORTS_LIST, SPORTS, PLANS, INJURIES } = await import('../js/data/sports.js');
-const { ILLNESS_BY_ID } = await import('../js/data/illnesses.js');
+const { ILLNESS_BY_ID } = await import('../js/data/health/ailments.js');
 const { CATEGORIES } = await import('../js/data/money.js');
 const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
@@ -254,15 +254,15 @@ let soccerLife;
   for (let i = 0; i < 60 && !inj && p.alive; i++) { if (e.status !== 'active') e.status = 'active'; e.fatigue = 95; e.plan.hours = 18; advanceYear(); quiet(); inj = a.injuries.find((x) => x.status === 'out'); }
   check(!p.alive || !!inj, 'a worn-out player gets hurt sooner or later');
   if (inj) {
-    check(p.conditions.some((c) => c.id === `sport_${inj.type}`), 'the injury is in the health record');
+    check(p.health.ailments.some((c) => c.id === `sport_${inj.type}`), 'the injury is in the health record');
     const d = life.openDecisions().find((x) => x.kind === 'rehab' && x.injuryId === inj.id);
     check(!!d, 'a rehab plan is asked for');
     p.finance.cash = 1e7;
     if (d) life.answer(d.id, 'physio');
-    check(inj.status === 'out' && p.conditions.some((c) => c.id === `sport_${inj.type}`), 'choosing a plan heals nothing by itself');
+    check(inj.status === 'out' && p.health.ailments.some((c) => c.id === `sport_${inj.type}`), 'choosing a plan heals nothing by itself');
     for (let i = 0; i < 6 && inj.status === 'out'; i++) { advanceYear(); quiet(); answerAll(); }
     const again = sp.myAthlete().injuries.some((x) => x.status === 'out' && x.type === inj.type);
-    check(inj.status === 'healed' && p.conditions.some((c) => c.id === `sport_${inj.type}`) === again, 'it heals over time, and leaves the health record when it does (unless the same injury has come back)');
+    check(inj.status === 'healed' && p.health.ailments.some((c) => c.id === `sport_${inj.type}`) === again, 'it heals over time, and leaves the health record when it does (unless the same injury has come back)');
     check(life.audit().every((x) => !/injury/.test(x)), 'the injury record and the health record agree');
   }
   section('injuries: in the health record, rehab over time, nothing instant');

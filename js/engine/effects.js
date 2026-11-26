@@ -1,5 +1,6 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { unload } from './worklife.js';
 import { funeral } from './passing.js';
 import { militaryChoice } from './military.js';
 import { lawChoice } from './lawPractice.js';
@@ -7,7 +8,7 @@ import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { feelingChoice } from './identity.js';
-import { ailmentChoice } from './health.js';
+import { ailmentChoice } from './health/ailments.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
@@ -27,7 +28,7 @@ import { invChoice } from './investigations/drama.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition } from './health/ailments.js';
 import { healthEffect } from './health/story.js';
 import { remember, parentsPay, parentsSpend } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
@@ -53,6 +54,8 @@ import { sportArcChoice } from './sportsArcs.js';
 import { disasterChoice } from './disasters.js';
 import { hoodChoice } from './neighborhoodLife.js';
 import { medicineChoice } from './medicine/drama.js';
+import { musicChoice } from './music.js';
+import { journalismChoice } from './journalism.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -203,12 +206,15 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'scandal': ctx.note = scandalChoice(e.value); break;
       case 'justice': ctx.note = justiceScene(e.value, ctx.cast); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
+      case 'music': ctx.note = musicChoice(e.value, ctx.cast); break;
+      case 'journalism': ctx.note = journalismChoice(e.value, ctx.cast); break;
       case 'medicine': { const said = medicineChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
       case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
+      case 'unload': ctx.note = unload(e.value); break;
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;

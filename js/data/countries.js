@@ -2,12 +2,13 @@
 // incomeTax is an effective rate on annual income. The second number after it (once a flat estate tax) is no
 // longer used: estate and inheritance tax is in data/inheritance.js.
 import { NAMES } from './names.js';
+import { MORE_NAMES } from './namesMore.js';
 import { LIVING } from './living.js';
 import { NEW_PLACES } from './worldNew.js';
 import { PLACES } from './world.js';
 
 /** A name list: the short one here plus the long one in names.js, without repeats. */
-const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
+const pool = (short, long = '', more = '') => [...new Set(`${short} ${long} ${more}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
 
 /**
  * The traditional names most people in English-speaking countries still have. They are listed three times over in
@@ -28,7 +29,7 @@ const weighted = (id, key, list) => (CLASSIC[id] ? [...Array(3).fill(CLASSIC[id]
 
 const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m = '', f = '', s = '') => ({
   id, name, flag, currency: { code, symbol, scale }, incomeTax, cities,
-  names: { male: weighted(id, 'male', pool(m, NAMES[id]?.male)), female: weighted(id, 'female', pool(f, NAMES[id]?.female)), last: weighted(id, 'last', pool(s, NAMES[id]?.last)) },
+  names: { male: weighted(id, 'male', pool(m, NAMES[id]?.male, MORE_NAMES[id]?.male)), female: weighted(id, 'female', pool(f, NAMES[id]?.female, MORE_NAMES[id]?.female)), last: weighted(id, 'last', pool(s, NAMES[id]?.last, MORE_NAMES[id]?.last)) },
 });
 
 const LIST = [

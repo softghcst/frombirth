@@ -24,6 +24,7 @@ import { book } from './ledger.js';
 import { missedAnniversary } from './together.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
 import { techAvailable } from './digital/tech.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const YOU = 'you';
@@ -445,7 +446,7 @@ export function finishYear() {
   }
   // A host who is growing old may want someone to take it on (engine/eventEngine.js scene).
   const tired = traditions().find((t) => t.status === 'active' && t.hostId !== YOU && npc(t.hostId)?.age >= 78 && !t.askedHandover && t.participants.includes(YOU) && p.age >= 18);
-  if (tired) { tired.askedHandover = year; state.pendingEvents.push({ id: 'tradition_handover', cast: { host: tired.hostId } }); }
+  if (tired) { tired.askedHandover = year; storyBeat('tradition_handover', { host: tired.hostId }, { source: 'family' }, state); }
 }
 
 /** The new year: a fresh record and this year's invitations. Called by Age Up once the year has moved on. */

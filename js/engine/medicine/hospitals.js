@@ -9,7 +9,7 @@
 // "{City} General Hospital" is put on the map the first time anyone needs it, and stays.
 import { store, player } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
-import { HOSPITAL_KINDS, DEPARTMENTS, SPECIALTY_BY_ID, RANKS } from '../../data/medicine.js';
+import { HOSPITAL_KINDS, DEPARTMENTS, SPECIALTY_BY_ID, SPECIALTIES, RANKS } from '../../data/medicine.js';
 import { cityOf } from '../cities.js';
 import { cityEmployers, employer, registerEmployer, chronicle } from '../employers.js';
 import { staffOf } from '../workplace.js';
@@ -65,6 +65,7 @@ export function hospitalsIn(countryId = player().countryId, city = player().city
     add(`${city} Public Health Service`, 'public_health', 'medium');
     if (kind === 'capital') add(`${city} Government Hospital`, 'government', 'large');
     if (kind === 'capital' || kind === 'largest') { add(`${city} Heart Institute`, 'heart', 'large'); add(`${city} Orthopedic Hospital`, 'bone', 'medium'); }
+    else add(`${city} Rural Health Center`, 'rural', 'small'); // the country around a smaller city is served by a rural facility
   }
   return list.map((e) => ({ e, h: hospital(e) }));
 }
@@ -121,6 +122,7 @@ export function deptHead(h, dept) {
   const head = makeNpc({ role: 'colleague', countryId: e.countryId, age: 48 + seeded(`${h.id}/${dept}/${store.state.year}`).int(0, 14), relationship: 45 });
   head.flags.title = `Chief of ${DEPARTMENTS[dept] ?? 'Medicine'}`;
   head.flags.medRank = 'chief';
+  head.flags.medSpecialty = SPECIALTIES.find((s) => s.dept === dept && s.kind !== 'fellowship')?.id ?? SPECIALTIES.find((s) => s.dept === dept)?.id ?? 'internal';
   head.flags.workedWith = e.name;
   head.occupation = head.flags.title.toLowerCase();
   head.life ??= { edu: { stage: 'done', gpa: 3.5, majorId: 'biology', trade: null, degrees: [], yearsLeft: 0 }, job: null, savings: 0, aspiration: null,

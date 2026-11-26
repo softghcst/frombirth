@@ -26,7 +26,7 @@ import * as lawSchool from './lawSchool.js';
 import * as adult from './adulted.js';
 import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
-import { jurisdiction } from '../data/medicine.js';
+import { jurisdiction, ERA } from '../data/medicine.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
@@ -327,6 +327,59 @@ export function finishLawSchool() {
   if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.termsFor(p)) graduate();
 }
 
+// ---------- Gifted children: a grade skipped, college early ----------
+
+/** How far ahead a child may be put: two grades at most. */
+export const MAX_AHEAD = 2;
+/** Whether a child could skip a grade now: '' if so, else why not. Far ahead of their class, and young enough for it to help. */
+export function skipBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage === 'high') return 'Only before high school.';
+  if (p.age < 6) return 'Not this young.';
+  if ((e.ahead ?? 0) >= MAX_AHEAD) return `You are already ${MAX_AHEAD} grades ahead.`;
+  if (p.flags.skipAskedAge === p.age) return 'You asked this year already.';
+  if (p.stats.intellect < 78 || (e.gpa && e.gpa < 3.4)) return 'Only for a child far ahead of their class.';
+  return '';
+}
+/**
+ * Skips a grade: the school agrees when the child is far ahead, and the child moves up a year. Being the youngest in
+ * the class is its own pressure: more stress, and the friends they had are a year behind now.
+ */
+export function skipGrade() {
+  const p = player();
+  const e = p.education;
+  const why = skipBlock(p);
+  if (why) return result(false, why, 'neutral');
+  p.flags.skipAskedAge = p.age;
+  const yes = rng.chance(Math.min(0.9, 0.35 + (p.stats.intellect - 78) / 30 + ((e.gpa || 3.4) - 3.4) / 2));
+  if (!yes) return result(false, 'The school tests you, and says you are ahead, but not by enough to move up. Try again next year.', 'neutral');
+  e.ahead = (e.ahead ?? 0) + 1;
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 8));
+  milestone('Skipped a grade.', 'education');
+  const text = `You skipped a grade. You are the youngest in your new class, and the work is finally interesting.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+/** Whether a teenager could finish school now and start college early: '' if so, else why not. */
+export function earlyCollegeBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage !== 'high') return 'Only from high school.';
+  if (p.age < 14) return 'Not this young.';
+  if (p.age + (e.ahead ?? 0) >= SCHOOL_LEAVING_AGE - 1) return 'You finish school soon anyway.';
+  if (p.stats.intellect < 84 || (e.gpa || 0) < 3.6) return 'Only for a student well ahead of their year, with top marks.';
+  return '';
+}
+/** Finishes high school early: a diploma now, and university applications open (Plan what comes next). */
+export function startCollegeEarly() {
+  const p = player();
+  const why = earlyCollegeBlock(p);
+  if (why) return result(false, why, 'neutral');
+  milestone(`Finished school early, at ${p.age}, to start college.`, 'education');
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 6));
+  graduate();
+  return result(true, `You finish high school at ${p.age}, years ahead of your friends. Now: which college? (Plan what comes next.)`);
+}
+
 function graduate() {
   const p = player();
   const e = p.education;
@@ -448,7 +501,9 @@ export function tickEducation() {
   for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
 
   // School starts, and moves from stage to stage, at the ages this country sets. Only ever forward.
-  const due = sch.stageDue(p.age);
+  // A child who has skipped a grade is a year (or two) ahead: they move up, and finish, as if they were that much older.
+  const ahead = e.ahead ?? 0;
+  const due = sch.stageDue(p.age + ahead);
   const at = SCHOOL.indexOf(e.stage);
   const finished = e.degrees.some((d) => d.type === 'high');
   if (due && !isHigher(e.stage) && !finished && !e.expelled && !e.droppedOut && SCHOOL.indexOf(due.id) > at && (e.enrolled || e.stage === 'none')) { enterStage(due); return; }
@@ -488,7 +543,7 @@ export function tickEducation() {
   e.effort = Math.round(clamp(e.effort * 0.5 + (30 + p.hidden.discipline * 0.4) * 0.5));
 
   // Finishing, failing or carrying on
-  if (e.stage === 'high' && p.age >= SCHOOL_LEAVING_AGE) return graduate();
+  if (e.stage === 'high' && p.age + ahead >= SCHOOL_LEAVING_AGE) return graduate();
   if (!isHigher(e.stage)) return;
   // A doctorate is finished when the thesis is, however long that takes.
   if (e.stage === 'doctorate' && e.thesis) {
@@ -642,8 +697,9 @@ export function clubOptions() {
     joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1, bars: c.tryout ? checkBars(c.tryout) : null }));
 }
 /** Children can take classes before they start school; adults need to be enrolled. */
-export const canJoinClubs = () =>
-  (player().education.enrolled || player().age < 18) && clubOptions().length > 0;
+/** School clubs are joined at school, from School › Activities: not at university (campus life has its own), and not
+ *  out of school (Pursuits has the clubs and classes near home). */
+export const canJoinClubs = () => sch.atSchool(player()) && clubOptions().length > 0;
 
 export function joinClub(id) {
   const p = player();
@@ -762,6 +818,8 @@ export function programOptions() {
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
     else if (prog.minYear && store.state.year < prog.minYear) reason = `There is no such school in ${store.state.year}.`;
     else if (prog.id === 'podiatric' && !jurisdiction(p.countryId).dpm) reason = 'The game models the podiatric (DPM) route in the United States only.';
+    // Historical Eras: before about 1870 almost no medical school took women (data/medicine.js ERA).
+    else if (['medical', 'podiatric'].includes(prog.id) && (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenInMedicine) reason = `Almost no medical school admits women in ${store.state.year}.`;
     else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
     else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
     else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
@@ -816,7 +874,9 @@ export function admissionChance(progId, subjectId) {
   const pm = p.medicine?.premed;
   const calling = p.flags.medCalling && ['medical', 'podiatric'].includes(progId) ? 0.04 : 0;
   const premed = calling + (pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0);
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
+  // Until about 1920 many schools took few women, or none (data/medicine.js ERA): fewer places, not less ability.
+  const barrier = (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenWidelyAdmitted ? 0.55 : 1;
+  if (progId === 'medical') return clamp((0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed) * barrier, 0.03, 0.95);
   if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
   if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMS[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);

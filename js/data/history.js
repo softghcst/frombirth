@@ -261,7 +261,7 @@ export const PARENT_OCCUPATIONS = [
 export const MODERN_OCCUPATIONS = { 'software engineer': 1960, 'investment banker': 1920, 'hair stylist': 1950, 'company director': 1900, 'warehouse picker': 1960, 'electrician': 1890, 'bus driver': 1910, 'line cook': 1950, 'dentist': 1850, 'surgeon': 1850, 'civil engineer': 1850, 'police officer': 1829, 'florist': 1850 };
 
 /** [estimate] University subjects that did not exist as degrees before these years. */
-export const MAJOR_FROM = { computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theater: 1940, musical_theater_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
+export const MAJOR_FROM = { criminology: 1950, forensic_science: 1975, cybersecurity: 2000, accounting: 1900, computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theater: 1940, musical_theater_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
 
 // ---------- Schooling ----------
 

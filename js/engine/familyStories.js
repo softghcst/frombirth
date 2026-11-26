@@ -8,6 +8,7 @@ import { book } from './ledger.js';
 import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { FAMILY } from '../data/familyStories.js';
+import { storyBeat } from './storyDirector.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -133,7 +134,7 @@ export function tickFamilyStories(d) {
     if (told()[`fam_${c.s.id}`] === year()) continue; // never the same story twice in a year, about two people
     told()[c.key] = year();
     told()[`fam_${c.s.id}`] = year();
-    store.state.pendingEvents.push({ id: `fam_${c.s.id}`, cast: { ...(c.x.them ? { them: c.x.them } : {}), ...(c.x.words ? { words: c.x.words } : {}) } });
+    storyBeat(`fam_${c.s.id}`, { ...(c.x.them ? { them: c.x.them } : {}), ...(c.x.words ? { words: c.x.words } : {}) }, { source: 'family' });
     n++;
   }
   return n;
