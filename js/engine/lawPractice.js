@@ -175,14 +175,14 @@ function openWindow(p, w) {
       const role = t === 'prosecutor' ? 'prosecution' : 'defense';
       for (const inv of pendingBriefs(role, p.countryId).slice(0, n)) {
         if (cases.workload(p).open >= 14) break;
-        if (openCase(p, null, { invId: inv.id, role, assigned: true })) i++;
+        if (openCase(p, null, { invId: inv.id, role, assigned: true, at: w * WINDOW })) i++;
       }
     }
     for (; i < n && cases.workload(p).open < 14; i++) {
       const second = rng.chance(0.25) && cap < 5;
       const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
       if (!tid) break;
-      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, second: CASE_TEMPLATES[tid].level > cap });
+      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, at: w * WINDOW, second: CASE_TEMPLATES[tid].level > cap });
     }
     return;
   }
@@ -258,7 +258,7 @@ function openCase(p, templateId, o = {}) {
   const sup = o.second ? supervisor(p) : null;
   // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
   if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
-  const opts = { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
+  const opts = { role: o.role, assigned: o.assigned, at: o.at, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
   const c = o.invId ? takeBrief(o.invId, o.role ?? 'defense', opts) : o.claimId ? takeClaim(o.claimId, opts) : cases.createCase(templateId, opts);
   if (!c) return null;
   c.second = !!o.second;
@@ -626,6 +626,8 @@ export function tickLaw(o = {}) {
     if (office?.public) p.career.employerId = office.id;
   }
   if (trackOf(p)) refreshOpportunities(p);
+  // Cases a long turn assigned in its earlier half-year move on to the present too, as they would have turn by turn.
+  cases.progressCases(p);
   storyBeats(p);
   firmYear(p);
   tickAcademy(p);
