@@ -10,6 +10,7 @@ import * as ls from '../engine/lawSchool.js';
 import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
 import * as camp from '../engine/lawCampaign.js';
+import * as acad from '../engine/lawAcademy.js';
 import { openCampaign } from './lawCampaignScreen.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
@@ -97,6 +98,17 @@ function education() {
   if (!parts.length) parts.push(`<p class="muted">${esc(p.education.degrees.some((d) => d.type === 'university') ? 'Apply to law school from Plan What Comes Next.' : 'Law school comes after a first degree.')}</p>`);
   const note = prof.depth === 'full' ? '' : `<p class="muted">${esc(prof.name)}: ${esc(prof.note ?? 'a simplified model of how lawyers qualify here.')}</p>`;
   const era = eraNotes(p.countryId);
+  // After law school: a clerkship with a judge, or the academy.
+  if (ls.admitted(p)) {
+    const cw = acad.clerkshipWhy(p); const pw = acad.professorWhy(p);
+    const C = L.clerkship;
+    const duties = acad.professorDuties(p);
+    parts.push(card('Beyond Practice', `${C ? kv('Clerkship', C.done ? 'Done' : `Clerking for Judge ${store.state.npcs[C.judgeId]?.lastName ?? ''}`) : ''}
+      ${L.professor ? kv('Law faculty', `${p.career?.careerId === 'academic' ? p.career.title : 'Former professor'} · ${L.professor.articles} article${L.professor.articles === 1 ? '' : 's'}${L.professor.tenure ? ` · tenure ${L.professor.tenure}` : ''}`) : ''}
+      ${row(`data-acad="clerk" ${cw ? 'disabled' : ''}`, 'Apply for a Judicial Clerkship', cw || 'A year working for a judge: research, drafting, and how courts decide.')}
+      ${row(`data-acad="professor" ${pw ? 'disabled' : ''}`, 'Apply to Teach Law', pw || 'A faculty vote after a job talk. Then teaching, writing, and tenure in year six.')}
+      ${duties.length ? `<div class="section-label">This term</div>${duties.map((d) => row(`data-profduty="${d.id}" ${d.done ? 'disabled' : ''}`, d.name, d.done ? 'Done' : '')).join('')}` : ''}`));
+  }
   return parts.join('') + note + (era.length ? card(`The law in ${store.state.year}`, era.map((x) => `<p class="muted">${esc(x)}</p>`).join('')) : '');
 }
 
@@ -453,6 +465,13 @@ export function openLawCareer(api, start = {}) {
     if (t.dataset.firm === 'ads') {
       const a = await pickModal({ title: 'Advertise', body: 'What will the ads say?', options: [{ value: 'honest', label: 'Plain words about what you do and what you charge' }, { value: 'promises', label: '"We win your case, guaranteed"' }] });
       if (a) await say(lp.advertise(a));
+      return changed();
+    }
+    if (t.dataset.acad) { await say(t.dataset.acad === 'clerk' ? acad.applyClerkship() : acad.applyProfessor()); return changed(); }
+    if (t.dataset.profduty) {
+      const d = acad.professorDuties().find((x) => x.id === t.dataset.profduty);
+      const a = await pickModal({ title: d.name, body: d.text, options: d.options.map(([l, v]) => ({ value: v, label: l })) });
+      if (a) await say(acad.professorDuty(d.id, a));
       return changed();
     }
     if (t.dataset.firm === 'hire') { await say(lp.hireAssociate()); return changed(); }

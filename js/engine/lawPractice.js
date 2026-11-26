@@ -25,6 +25,7 @@ import * as world from './polity.js';
 import { VOTERS } from '../data/parties.js';
 import * as realLawMod from './realLaw.js';
 import { discipline } from './lawCases.js';
+import { tickAcademy, clerking } from './lawAcademy.js';
 
 /**
  * An election for a legal office, counted with the politics engine's own arithmetic (engine/elections.js) against a
@@ -156,7 +157,7 @@ export function refreshOpportunities(p = player()) {
 function openWindow(p, w) {
   const L = lawOf(p);
   const t = trackOf(p);
-  if (!t || mayPractice(p) || t === 'attorney_general') return;
+  if (!t || mayPractice(p) || t === 'attorney_general' || clerking(p)) return; // a law clerk works for the judge, not on cases
   fitSpecialty(p);
   const cap = leadCap(p);
   if (['prosecutor', 'defender', 'gov_counsel'].includes(t)) {
@@ -397,7 +398,7 @@ export function opportunities(p = player()) {
 export function standing(p) {
   const L = lawOf(p);
   const s = stats(p);
-  return (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
+  return (L.formerClerk ? 0.05 : 0) + (L.rep.integrity - 50) / 200 + (L.rep.recognition - 20) / 160 + (L.rep.clients - 50) / 300 + (L.rep.advocacy - 40) / 300 + Math.min(0.08, s.completed / 400) + ((p.career?.performance ?? 50) - 60) / 300;
 }
 /**
  * Seeks a post by its own process: a partnership vote, an election or an appointment. It may fail; trying again waits.
@@ -586,6 +587,7 @@ export function tickLaw(o = {}) {
   if (trackOf(p)) refreshOpportunities(p);
   storyBeats(p);
   firmYear(p);
+  tickAcademy(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
