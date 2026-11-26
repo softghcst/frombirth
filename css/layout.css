@@ -27,6 +27,13 @@
   margin-bottom: 10px;
 }
 .grave-glyph { background: var(--card) !important; filter: grayscale(0.2); }
+/* The notice before the first life */
+.notice { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.notice .title-hero { padding-bottom: 4px; }
+.notice .title-hero h1 { font-size: 2rem; }
+.notice-card p { margin: 0 0 10px; line-height: 1.5; }
+.notice-card p:last-child { margin-bottom: 0; }
+.notice-foot { text-align: center; font-size: 0.85rem; }
 
 /* ---------- Game screen ---------- */
 .game { flex: 1; min-height: 0; display: flex; flex-direction: column; }

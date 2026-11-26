@@ -5,6 +5,7 @@ import { renderTitle } from './ui/screens/title.js';
 import { renderCreator } from './ui/screens/creator.js';
 import { createLife } from './engine/characterGen.js';
 import { renderObituary } from './ui/screens/obituary.js';
+import { noticeDue, renderNotice } from './ui/screens/notice.js';
 import { mountGame } from './ui/shell.js';
 import { heirs, continueAs } from './engine/legacy.js';
 import { roleLabel } from './engine/relationships.js';
@@ -91,7 +92,8 @@ function showTitle() {
 // Cloud saves: a link from an email (confirming an account, resetting a
 // password) lands here signed in; then saves sync in the background.
 const arrived = cloud.takeRedirect();
-showTitle();
+// The first time on a device: a short notice (it is all fiction; nothing in it is advice), then the title screen.
+if (noticeDue()) renderNotice(app, showTitle); else showTitle();
 // Dialogs sit above the page, so the list of lives can be redrawn underneath one.
 cloud.onPulled(() => { if (onTitle) showTitle(); });
 cloud.onStatus((s) => { const line = document.querySelector('[data-sync-line]'); if (line) line.textContent = cloudLine(s); });
