@@ -241,9 +241,21 @@ export function setBeat(beat) {
   if (!working(p)) return result(false, 'You are not working as a reporter.', 'neutral');
   const b = BEATS[beat];
   if (!b) return result(false, 'There is no such beat.', 'neutral');
-  if ((b.minLevel ?? 0) > (isReporter(p) ? p.career.level : myPubs(p).length >= 6 ? 9 : 0)) return result(false, 'Investigations are for senior reporters.', 'neutral');
+  const why = beatWhy(beat, p);
+  if (why) return result(false, why, 'neutral');
   J(p).beat = beat;
   return result(true, `You move to the ${b.name.toLowerCase()} beat. New assignments come with the year.`, 'neutral');
+}
+
+/** Why a beat is not open to this reporter now, or ''. */
+export function beatWhy(beat, p = player()) {
+  const b = BEATS[beat];
+  if (!b) return 'There is no such beat.';
+  if ((b.minLevel ?? 0) > (isReporter(p) ? p.career.level : myPubs(p).length >= 6 ? 9 : 0)) return 'Investigations are for senior reporters.';
+  if (b.era && year() < b.era) return `Not in ${year()}: the figures are not published yet.`;
+  if (beat === 'technology' && !exists('digital')) return `Not in ${year()}: there is no tech industry yet.`;
+  if (beat === 'kpop' && p.countryId !== 'kr' && !store.state.kpop) return 'There is no K-pop scene to cover from here.';
+  return '';
 }
 
 // ---------- Stories: made from what really happened ----------
@@ -422,7 +434,7 @@ export function assignYear(p = player()) {
     const abroad = !!j.posting && j.posting.countryId !== p.countryId;
     const b = abroad && ['court', 'sports', 'entertainment'].includes(beat) ? 'local' : beat;
     const gen = { local: localStory, court: (pp, oo, rr, ww) => courtStory(pp, oo, rr, cases, ww), sports: sportsStory, entertainment: musicStory, politics: politicsStory, investigative: investigativeStory,
-      business: businessStory, science: scienceStory, kpop: kpopStory }[b] ?? localStory;
+      business: businessStory, science: scienceStory, kpop: kpopStory, education: educationStory, environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory }[b] ?? localStory;
     const s = gen(p, o, r, where) ?? localStory(p, o, r, where); // nothing on the beat this year: a local story instead
     made.push(s);
   }
@@ -730,8 +742,9 @@ export function tickJournalism(p = player()) {
   for (const s of myStories(p)) if (open(s, p) && s.deadline && now() > s.deadline) s.status = 'expired';
   const own = ownedOutlet(p);
   if (own) lines.push(...ownedYear(own, p));
+  for (const id of J(p).sisters ?? []) { const o = S().outlets[id]; if (o && !o.closed && o.ownerId === p.id) lines.push(...ownedYear(o, p)); }
   keepLegacy(p);
-  if (!isReporter(p)) { if (working(p)) { const made = assignYear(p); if (made.length) lines.push(`${made.length} new leads ${j.freelance ? 'to report and sell' : `for ${own?.name}`}.`); } return lines; }
+  if (!isReporter(p)) { if (ownedOutlet(p)) newsroomScene(p); if (working(p)) { const made = assignYear(p); if (made.length) lines.push(`${made.length} new leads ${j.freelance ? 'to report and sell' : `for ${own?.name}`}.`); } return lines; }
   const lived = year() - 1;
   const pubs = myPubs(p).filter((x) => x.year === lived);
   // The ordinary run of the work: briefs and updates the newsroom runs without a decision from you.
@@ -938,6 +951,7 @@ function moveTo(o, p = player()) {
 // is about real people (the editor, the senior reporter, a friend, a source quoted years ago) and real work.
 
 function sceneOptions(p) {
+  if (!isReporter(p)) return ownerScenes(p);
   const j = J(p);
   const o = outlet(j.outletId);
   const ed = npc(o.editorId);
@@ -968,7 +982,36 @@ function sceneOptions(p) {
   add('jn_award_night', { words: { prize: j.awards.at(-1)?.name ?? '' } }, j.awards.some((a) => year() - a.year <= 1));
   add('jn_deadline', { words: { title: myStories(p).find((s) => open(s, p) && s.deadline && s.deadline - now() <= 3)?.title ?? '' } }, myStories(p).some((s) => open(s, p) && s.deadline && s.deadline - now() <= 3));
   add('jn_viral', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && (j.guests ?? []).some((g) => !g.declined && g.approach === 'fair' && g.delivery >= 60));
+  const segs = pubs.filter((x) => x.segment);
+  const firstPub = pubs.length === 1 ? pubs[0] : null;
+  add('jn_first_byline', { words: { headline: firstPub?.headline ?? '', outlet: o.name } }, !!firstPub);
+  const disputed = myStories(p).find((s) => open(s, p) && s.claims.some((c) => statusOf(s, c) === 'disputed'));
+  add('jn_two_sources', { words: { title: disputed?.title ?? '' } }, !!disputed);
+  const silent = myStories(p).find((s) => open(s, p) && s.needsComment && !s.comment && s.interviews.length >= 2);
+  add('jn_no_comment', { words: { subject: silent?.subject ?? '' } }, !!silent);
+  add('jn_headline_debate', { words: { editor: ed?.firstName ?? 'Your editor' } }, pubs.length >= 3);
+  const fixed = pubs.find((x) => x.corrections.length);
+  add('jn_correction', { words: { headline: fixed?.headline ?? '' } }, !!fixed);
+  add('jn_one_editor_job', { words: { first: senior?.firstName ?? '', outlet: o.name } }, (p.career.level ?? 0) === 2 && !!senior?.alive);
+  add('jn_divided', { words: { outlet: o.name } }, pubs.length >= 4);
+  add('jn_new_generation', { words: {} }, (p.career.level ?? 0) >= 3 && p.age >= 40);
+  add('jn_first_live', { words: { headline: segs[0]?.headline ?? '' } }, segs.length === 1);
+  add('jn_breaking', { words: { outlet: o.name } }, isBroadcast(o) && segs.length >= 2);
+  add('jn_national_offer', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && year() - j.anchor.since >= 3 && !j.anchor.national);
   add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
+  return out;
+}
+/** An owner's moments: an investor, a growing company, the first hire. */
+function ownerScenes(p) {
+  const j = J(p);
+  const o = ownedOutlet(p);
+  const seen = (j.scenes ??= {});
+  const out = [];
+  const add = (id, cast, when = true) => { if (when && !seen[id]) out.push({ id, cast }); };
+  const offer = investorOffer(p);
+  add('jn_investor', { words: { outlet: o.name, amount: offer ? fmtMoney(offer.amount, country()) : '' } }, !!offer && year() - o.founded >= 2);
+  add('jn_first_hire', { words: { outlet: o.name, first: npc(o.staff[0]?.npcId)?.firstName ?? '' } }, o.staff.length === 1 && o.staff[0].role === 'reporter');
+  add('jn_expands', { words: { outlet: o.name } }, ownedTitles(p).length >= 2 || o.staff.length >= 3);
   return out;
 }
 /** Picks this year's newsroom scene, if any. */
@@ -1017,6 +1060,51 @@ export function journalismChoice(value) {
     case 'retire:yes': return leaveSpecial().text;
     case 'spark:ask': { const n = npc(j.sceneCast?.npcId); return n ? askOut(n.id).text : ''; }
     case 'spark:friends': rel(senior, 6); return '';
+    case 'byline:frame': p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'byline:work': grow('reporting', 1); return '';
+    case 'disagree:dig': grow('verification', 3); return '';
+    case 'disagree:pick': return 'A disputed claim stays disputed, whoever sounds surer.';
+    case 'nocomment:note': j.rep.trust = clamp(j.rep.trust + 1); return '';
+    case 'nocomment:chase': grow('interviewing', 1); return '';
+    case 'headline:straight': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'headline:punchy': j.rep.recognition = clamp(j.rep.recognition + 2); j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'correction:own': j.rep.accuracy = clamp(j.rep.accuracy + 2); rel(ed, 3); return '';
+    case 'correction:quiet': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'editorjob:go': rel(senior, -3); j.applyEditor = year(); return '';
+    case 'editorjob:back': rel(senior, 8); return '';
+    case 'divided:speak': rel(ed, -2); j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'divided:out': return '';
+    case 'mentor:yes': {
+      const n = makeNpc({ role: 'colleague', countryId: p.countryId, age: 23, relationship: 60 });
+      n.occupation = 'Junior reporter'; n.flags.title = `A junior reporter you mentor at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Junior reporter' };
+      store.state.npcs[n.id] = n; meet(n, n.flags.title, p); (o.staff ??= []).push({ npcId: n.id, role: 'reporter', since: year() });
+      j.history.push({ year: year(), text: `Began mentoring ${nameOf(n)}.` });
+      return `${nameOf(n)} is now someone you know.`;
+    }
+    case 'mentor:no': return '';
+    case 'live:steady': grow('broadcast', 2); return '';
+    case 'live:shaky': grow('broadcast', 1); return '';
+    case 'breaking:confirmed': j.rep.trust = clamp(j.rep.trust + 3); return '';
+    case 'breaking:guess': j.rep.recognition = clamp(j.rep.recognition + 2); j.rep.trust = clamp(j.rep.trust - 5); return '';
+    case 'national:take': j.anchor.national = year(); j.rep.recognition = clamp(j.rep.recognition + 8); j.history.push({ year: year(), text: 'Began anchoring a national broadcast.' }); milestone('Began anchoring a national news broadcast.', 'career'); return '';
+    case 'national:stay': rel(ed, 6); j.anchor.national = -1; return '';
+    case 'investor:take':
+    case 'investor:take_push': {
+      const own = ownedOutlet(p);
+      const off = investorOffer(p);
+      if (!own || !off) return '';
+      const push = value === 'investor:take_push';
+      const amount = push ? Math.round(off.amount * 1.4) : off.amount;
+      p.finance.cash += amount;
+      own.investor = { since: year(), share: push ? 0.35 : off.share, pushy: push, amount };
+      own.history.push({ year: year(), text: `Took ${fmtMoney(amount, country())} from an investor for ${Math.round(own.investor.share * 100)}% of its profits.` });
+      return `${fmtMoney(amount, country())} arrives. ${Math.round(own.investor.share * 100)}% of every profit now goes to them${push ? ', and they want sharper headlines' : ''}.`;
+    }
+    case 'investor:no': { const own = ownedOutlet(p); if (own) own.history.push({ year: year(), text: 'Turned down an investor.' }); return ''; }
+    case 'hire:welcome': { const own = ownedOutlet(p); rel(npc(own?.staff[0]?.npcId), 8); return ''; }
+    case 'hire:brief': return '';
+    case 'expand:celebrate': p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'expand:careful': return '';
     case 'first:ask': rel(ed, 5); grow('reporting', 2); return '';
     case 'first:alone': grow('reporting', 1); return '';
     case 'refused:respect': j.rep.trust = clamp(j.rep.trust + 2); return '';
@@ -1188,11 +1276,17 @@ function ownedYear(o, p) {
   const good = pubs.filter((x) => !x.errors.length).reduce((n, x) => n + x.quality, 0);
   const bad = pubs.filter((x) => x.errors.length && !x.corrections.length).length;
   // Readers come for the work, and drift away without it.
-  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
+  const research = o.research ?? 0;
+  const bureaus = (o.bureaus ?? []).length;
+  const pushy = o.investor?.pushy ? 0.04 : 0; // sensational coverage: readers now, trust later
+  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) + research * 0.025 + bureaus * 0.05 + pushy - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
   o.audience = Math.max(30, Math.round(o.audience * growth + good * 3));
   const revenue = Math.round(localWage(k.perReader * o.audience, c));
-  const costs = Math.round(localWage(k.upkeep, c)) + o.staff.reduce((n, x) => n + x.salary, 0);
-  const net = revenue - costs;
+  const costs = Math.round(localWage(k.upkeep * (1 + research * 0.35 + bureaus * 0.4), c)) + o.staff.reduce((n, x) => n + x.salary, 0);
+  let net = revenue - costs;
+  if (o.investor && net > 0) { const cut = Math.round(net * o.investor.share); net -= cut; o.investor.paid = (o.investor.paid ?? 0) + cut; }
+  if (pushy) o.reputation = Math.round(clamp(o.reputation - 4));
+  o.reputation = Math.round(clamp(o.reputation + research));
   p.finance.cash += net;
   if (net > 0) p.finance.lifetimeEarned = (p.finance.lifetimeEarned ?? 0) + net;
   o.reputation = Math.round(clamp(o.reputation + good / 200 - bad * 5));
@@ -1208,7 +1302,7 @@ export function closePublication() {
   o.staff = [];
   o.closed = year();
   o.history.push({ year: year(), text: 'Closed.' });
-  J(p).owned = null;
+  J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Closed ${o.name}.` });
   return result(true, `${o.name} publishes its last edition. The archive stays up.`, 'neutral');
 }
@@ -1225,9 +1319,128 @@ export function sellPublication() {
   o.soldTo = 'a buyer';
   o.sold = year();
   o.history.push({ year: year(), text: `Sold for ${fmtMoney(price, country())}.` });
-  J(p).owned = null;
+  J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Sold ${o.name}.` });
   return result(true, `You sell ${o.name} for ${fmtMoney(price, country())}. It carries on under its new owner.`);
+}
+
+// ---------- More beats: education, environment, technology, arts, data ----------
+
+const person = (w, r, job, age = [28, 62]) => { const n = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(age[0], age[1]) }); n.occupation = job; store.state.npcs[n.id] = n; return n; };
+const employersOf = (w, families) => cityEmployers(w.countryId, w.city).filter((x) => families.includes(x.family));
+
+/** An education story: a real school in the city (or a college that employs people there), its published inspection. */
+function educationStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const schools = Object.values(store.state.schools ?? {}).filter((x) => x.countryId === w.countryId && x.city === w.city && x.kind !== 'home');
+  const sc = schools.length ? r.pick(schools) : employersOf(w, ['education'])[0];
+  if (!sc) return null;
+  const name = sc.name;
+  const better = r.chance(0.55);
+  const s = newStory(p, o, 'education', better ? `Results improve at ${name}` : `${name} under pressure`, { subject: name, links: sc.stage ? { schoolId: sc.id } : { employerId: sc.id }, needsComment: !better });
+  const c1 = addClaim(s, { text: `${name} was inspected this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: better ? 'Its results rose this year' : 'Its results fell this year', truth: r.chance(0.7) });
+  const c3 = addClaim(s, { text: 'Classes are bigger than they were', truth: r.chance(0.5) });
+  const c4 = addClaim(s, { text: 'Parents are happy with the school', kind: 'opinion', truth: true });
+  addDoc(s, { title: `The published inspection of ${name}`, settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: 'Pupils\' records', public: false, why: 'Children\'s school records are private. The inspection reports on the school, not the pupils.' });
+  const head = person(w, r, `Head of ${name}`, [40, 62]);
+  const teacher = person(w, r, `Teacher at ${name}`, [24, 60]);
+  const parent = person(w, r, `Parent at ${name}`, [30, 50]);
+  const t2 = s.claims[1].truth; const t3 = s.claims[2].truth;
+  addSource(s, { npcId: head.id, name: nameOf(head), role: 'The head of the school', type: 'official', willing: 0.7, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: better }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: teacher.id, name: nameOf(teacher), role: 'A teacher', type: 'citizen', willing: 0.5, wantsConfidential: true, knows: [{ claimId: c3.id, says: t3 }, { claimId: c2.id, says: r.chance(0.8) ? t2 : !t2 }] });
+  addSource(s, { npcId: parent.id, name: nameOf(parent), role: 'A parent', type: 'community', willing: 0.8, knows: [{ claimId: c4.id, says: true }, { claimId: c3.id, says: r.chance(0.7) ? t3 : !t3 }] });
+  return s;
+}
+
+/** An environment story: a real employer in the city and the public monitoring of the river or air nearby. */
+function environmentStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const list = employersOf(w, ['trades', 'transport', 'land', 'science']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const what = r.pick(['the river', 'the air near the site', 'the groundwater']);
+  const s = newStory(p, o, 'environment', `What is in ${what}? Questions near ${e.name}`, { subject: e.name, links: { employerId: e.id }, needsComment: true });
+  const c1 = addClaim(s, { text: `Monitoring of ${what} near ${e.name} was published this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `Readings near ${e.name} were above the permitted limit`, truth: r.chance(0.4) });
+  const c3 = addClaim(s, { text: `${e.name} is to blame for it`, kind: 'allegation', truth: s.claims[1].truth && r.chance(0.5) });
+  const c4 = addClaim(s, { text: 'People nearby are worried', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The environment agency\'s published monitoring', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: `${e.name}'s internal emails`, public: false, why: 'A company\'s private correspondence is not available. Its permits and the monitoring are.' });
+  const sci = person(w, r, 'Environmental scientist', [30, 64]);
+  const resident = person(w, r, `Lives near ${e.name}`, [25, 80]);
+  const t2 = s.claims[1].truth; const t3 = s.claims[2].truth;
+  addSource(s, { institution: true, name: e.name, role: 'The company\'s press office', type: 'company', willing: 0.5, knows: [{ claimId: c2.id, says: false }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: sci.id, name: nameOf(sci), role: 'An independent environmental scientist', type: 'expert', willing: 0.75, knows: [{ claimId: c2.id, says: r.chance(0.85) ? t2 : !t2 }, { claimId: c3.id, says: r.chance(0.6) ? t3 : !t3 }] });
+  addSource(s, { npcId: resident.id, name: nameOf(resident), role: 'A neighbor of the site', type: 'community', willing: 0.85, knows: [{ claimId: c4.id, says: true }, { claimId: c3.id, says: true }] });
+  return s;
+}
+
+/** A technology story: a real tech company in the city, a product launch, and what users say. Never users' data. */
+function technologyStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  if (!exists('digital')) return null;
+  const list = employersOf(w, ['tech']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const thing = r.pick(['app', 'payment service', 'booking system', 'learning platform']);
+  const s = newStory(p, o, 'technology', `${e.name} launches a new ${thing}`, { subject: e.name, links: { employerId: e.id }, needsComment: true });
+  const users = r.int(5, 90) * 1000;
+  const inflated = r.chance(0.45);
+  const c1 = addClaim(s, { text: `${e.name} launched its ${thing} this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `It has ${(inflated ? users * 3 : users).toLocaleString('en-US')} users`, truth: !inflated });
+  const c3 = addClaim(s, { text: `The ${thing} leaked users' details`, kind: 'allegation', truth: r.chance(0.2) });
+  const c4 = addClaim(s, { text: 'Users like it', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${e.name}'s published company filing`, settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'The data regulator\'s public register of reported breaches', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The users\' accounts', public: false, why: 'People\'s accounts and data are private. No story needs them.' });
+  const eng = person(w, r, `Engineer at ${e.name}`, [23, 50]);
+  const user = person(w, r, `Uses the ${thing}`, [18, 70]);
+  addSource(s, { institution: true, name: e.name, role: 'The company\'s press office', type: 'company', willing: 0.7, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: eng.id, name: nameOf(eng), role: 'An engineer at the company', type: 'citizen', willing: 0.45, wantsConfidential: true, knows: [{ claimId: c2.id, says: !inflated }, { claimId: c3.id, says: s.claims[2].truth }] });
+  addSource(s, { npcId: user.id, name: nameOf(user), role: 'Someone who uses it', type: 'community', willing: 0.85, knows: [{ claimId: c4.id, says: true }, { claimId: c1.id, says: true }] });
+  return s;
+}
+
+/** An arts story: a real theater, orchestra or studio in the city opens its season. What critics think is opinion. */
+function artsStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const list = employersOf(w, ['arts']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const work = r.pick(['a new play', 'a season of new music', 'a revival of an old favorite', 'an exhibition of local artists']);
+  const s = newStory(p, o, 'arts', `${e.name} opens ${work}`, { subject: e.name, links: { employerId: e.id } });
+  const sold = r.chance(0.5);
+  const c1 = addClaim(s, { text: `${e.name} opened ${work} this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: 'The opening night sold out', truth: sold });
+  const c3 = addClaim(s, { text: `${e.name} lost its public funding`, truth: r.chance(0.3) });
+  const c4 = addClaim(s, { text: 'It is the best thing in the city this year', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${e.name}'s published season program`, settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'The arts council\'s published grants', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The performers\' contracts', public: false, why: 'What performers are paid under contract is private. Public grants are not.' });
+  const dir = person(w, r, `Director at ${e.name}`, [32, 70]);
+  const critic = person(w, r, 'Critic', [28, 70]);
+  const t3 = s.claims[2].truth;
+  addSource(s, { npcId: dir.id, name: nameOf(dir), role: 'The director', type: 'official', willing: 0.85, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c3.id, says: t3 }] });
+  addSource(s, { npcId: critic.id, name: nameOf(critic), role: 'A critic who was there', type: 'expert', willing: 0.8, knows: [{ claimId: c4.id, says: r.chance(0.6) }, { claimId: c2.id, says: sold }] });
+  addSource(s, { institution: true, name: `${e.name} box office`, role: 'The box office', type: 'company', willing: 0.6, knows: [{ claimId: c2.id, says: sold }] });
+  return s;
+}
+
+/** A data story: the country's real economy this year (engine/economy.js), from the published statistics. */
+function dataStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  if (year() < 1950) return null;
+  const ph = store.state.world?.places?.[w.countryId]?.phase ?? 'steady';
+  const cn = COUNTRIES[w.countryId]?.name ?? 'the country';
+  const s = newStory(p, o, 'data', `What the figures say about ${cn} this year`, { subject: `${cn}'s statistics office`, links: { phase: ph } });
+  const c1 = addClaim(s, { text: 'Unemployment rose this year', truth: ph === 'slump', important: true });
+  const c2 = addClaim(s, { text: 'House prices rose this year', truth: ph === 'boom' });
+  const c3 = addClaim(s, { text: `${w.city} is doing worse than the rest of ${cn}`, truth: r.chance(0.4) });
+  const c4 = addClaim(s, { text: 'The government\'s policies are working', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${cn}'s published labor and housing figures`, settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: 'The figures broken down by city', settles: [{ claimId: c3.id }], cost: 2 });
+  addDoc(s, { title: 'Individual tax returns', public: false, why: 'Nobody\'s tax return is a statistic. The published figures are.' });
+  const eco = person(w, r, 'Economist', [32, 66]);
+  addSource(s, { npcId: eco.id, name: nameOf(eco), role: 'An economist', type: 'expert', willing: 0.8, knows: [{ claimId: c1.id, says: ph === 'slump' }, { claimId: c3.id, says: r.chance(0.7) ? s.claims[2].truth : !s.claims[2].truth }] });
+  addSource(s, { institution: true, name: 'The government', role: 'A government spokesperson', type: 'official', willing: 0.7, knows: [{ claimId: c1.id, says: false }, { claimId: c4.id, says: true }, { claimId: c2.id, says: ph !== 'slump' }] });
+  return s;
 }
 
 // ---------- More beats: business, science, K-pop ----------
@@ -1399,6 +1612,13 @@ export function handOverNewsroom(old, next, heir) {
     J(heir).owned = owned.id;
     J(heir).history.push({ year: old.year, text: `Inherited ${owned.name}.` });
   }
+  const sisters = (op.journalism?.sisters ?? []).map((id) => N.outlets[id]).filter((o) => o && !o.closed && o.ownerId === op.id);
+  for (const o of sisters) {
+    o.ownerId = heir.id;
+    o.history.push({ year: old.year, text: `Passed to ${heir.firstName} ${heir.lastName}.` });
+    (J(heir).sisters ??= []).push(o.id);
+    if (!J(heir).owned) { J(heir).owned = o.id; J(heir).sisters = J(heir).sisters.filter((x) => x !== o.id); }
+  }
 }
 
 // ---------- The editor's desk ----------
@@ -1522,4 +1742,160 @@ export function takeLeave() {
   j.leave = year() + 1;
   j.lastLeave = year() + 1;
   return result(true, 'Your editor signs off a year\'s leave from next year. The desk will be there when you get back.', 'neutral');
+}
+
+// ---------- Your own leads, and following up ----------
+//
+// A staff reporter can bring their editor a lead of their own on any beat open to them, twice a year; whether the
+// editor takes it depends on the reporter's record and how the two get on. A story that ran can be followed up: what
+// has happened since, checked the same way. A follow-up may find nothing has changed, and that can be the story.
+
+export function pitchLeadWhy(beat, p = player()) {
+  if (!isReporter(p)) return 'Leads are pitched to your editor, on staff.';
+  if (J(p).leave === year()) return 'You are on leave.';
+  if ((J(p).leads?.[year()] ?? 0) >= 2) return 'You have pitched two this year.';
+  return beatWhy(beat, p);
+}
+export function pitchLead(beat) {
+  const p = player();
+  const why = pitchLeadWhy(beat, p);
+  if (why) return result(false, why, 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const j = J(p);
+  (j.leads ??= {})[year()] = (j.leads[year()] ?? 0) + 1;
+  const o = outlet(j.outletId);
+  const ed = npc(o.editorId);
+  const r = seeded(`${p.id}/lead/${year()}/${j.leads[year()]}`);
+  const yes = r.chance(clamp(0.35 + (j.rep.accuracy - 50) / 150 + ((ed?.meters.relationship ?? 50) - 50) / 200 + myPubs(p).filter((x) => !x.errors.length).length * 0.02, 0.15, 0.9));
+  if (!yes) return result(false, `${nameOf(ed) || 'Your editor'} hears you out, and says no: "Not this year. Bring me something firmer."`, 'neutral');
+  const w = j.posting ? { countryId: j.posting.countryId, city: j.posting.city } : { countryId: p.countryId, city: p.city };
+  const gens = { local: localStory, politics: politicsStory, investigative: investigativeStory, business: businessStory, science: scienceStory, education: educationStory,
+    environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, sports: sportsStory, entertainment: musicStory, kpop: kpopStory };
+  const s = (gens[beat] ?? localStory)(p, o, r, w) ?? localStory(p, o, r, w);
+  s.pitched = { own: true };
+  grow('reporting', 1);
+  return result(true, `${nameOf(ed) || 'Your editor'} takes it: "${s.title}" is yours. Go and find out whether it stands up.`);
+}
+
+export function followStoryWhy(pubId, p = player()) {
+  const x = S().pubs[pubId];
+  if (!x || x.reporterId !== p.id) return 'Not your story.';
+  if (!working(p)) return 'You need to be working as a reporter.';
+  if (x.year >= year()) return 'Give it a year: nothing has happened since yet.';
+  if (Object.values(S().stories).some((s) => s.links.followOf === pubId)) return 'You have followed it up.';
+  return '';
+}
+/** A follow-up of a published story: what has happened since, with a returning source where there was one. */
+export function followStory(pubId) {
+  const p = player();
+  const why = followStoryWhy(pubId, p);
+  if (why) return result(false, why, 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const x = S().pubs[pubId];
+  const j = J(p);
+  const o = isReporter(p) ? outlet(j.outletId) : ownedOutlet(p);
+  const r = seeded(`${pubId}/follow`);
+  const w = { countryId: p.countryId, city: p.city };
+  const changed = r.chance(0.55);
+  const s = newStory(p, o, x.beat, `Follow-up: ${x.headline}`, { subject: x.headline, links: { ...x.links, followOf: pubId } });
+  const c1 = addClaim(s, { text: `Things have changed since "${x.headline}" ran`, truth: changed, important: true });
+  const c2 = addClaim(s, { text: 'The people in charge did what they promised', truth: changed && r.chance(0.6) });
+  const c3 = addClaim(s, { text: 'People who were affected say it made a difference', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The public record since the story ran', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  const back = x.sources.find((y) => y.npcId && npc(y.npcId)?.alive);
+  const t2 = s.claims[1].truth;
+  if (back) addSource(s, { npcId: back.npcId, name: back.name, role: 'Quoted in the original story', type: 'community', willing: 0.9, knows: [{ claimId: c1.id, says: changed }, { claimId: c3.id, says: true }, { claimId: c2.id, says: r.chance(0.75) ? t2 : !t2 }] });
+  const n = person(w, r, `Lives in ${w.city}`, [22, 75]);
+  addSource(s, { npcId: n.id, name: nameOf(n), role: 'Someone affected', type: 'community', willing: 0.75, knows: [{ claimId: c3.id, says: true }, { claimId: c1.id, says: r.chance(0.8) ? changed : !changed }] });
+  return result(true, `"${s.title}" is in your assignments. Maybe something has changed; maybe nothing has, and that is news too.`, 'neutral');
+}
+
+// ---------- A media company ----------
+//
+// A publication that has lasted can grow: a second title (with an editor hired to run it), a bigger research budget,
+// a bureau in another city, outside money. Every one of them costs money every year; none is sure to pay. The owner
+// runs the business: what the staff think, and how they live, is their own.
+
+/** Every title the player owns: the first, and any launched since. */
+export const ownedTitles = (p = player()) => [ownedOutlet(p), ...(J(p).sisters ?? []).map((id) => S().outlets[id])].filter((o) => o && !o.closed && o.ownerId === p.id);
+export function expandWhy(kind, p = player()) {
+  const o = ownedOutlet(p);
+  if (!o) return 'You need a publication of your own first.';
+  if (year() - o.founded < 2) return 'Give the first one two years.';
+  if (ownedTitles(p).length >= 4) return 'Four titles is as many as you can run.';
+  const k = OWN_KINDS[kind];
+  if (!k) return 'No such kind.';
+  if (k.needs && !exists(k.needs)) return `Not in ${year()}.`;
+  if (year() < k.from) return `Not in ${year()}.`;
+  const cost = startCost(kind) + Math.round(localWage(STAFF_PAY.editor, country()));
+  if (p.finance.cash < cost) return `It costs ${fmtMoney(cost, country())} to launch, with an editor's first year.`;
+  return '';
+}
+/** Launches another title, with an editor hired to run it. */
+export function launchTitle(kind, name) {
+  const p = player();
+  const why = expandWhy(kind, p);
+  if (why) return result(false, why, 'neutral');
+  const first = ownedOutlet(p);
+  const k = OWN_KINDS[kind];
+  p.finance.cash -= startCost(kind);
+  const r = seeded(`${p.id}/title/${year()}/${kind}`);
+  const id = nextId('outlet');
+  const title = (name ?? '').trim().slice(0, 40) || `${first.name} ${kind === 'podcast' ? 'Podcast' : kind === 'newsletter' ? 'Letter' : 'Online'}`;
+  const o = { id, kind: `own_${kind}`, ownKind: kind, name: title, medium: k.medium, countryId: p.countryId, city: p.city, founded: year(), ownerId: p.id, editorId: null, seniorId: null,
+    standards: first.standards, policy: first.policy, reputation: Math.round((first.reputation + 40) / 2), audience: Math.round(k.start * (0.8 + r.next() * 0.4) + first.audience * 0.05), staff: [], finances: [],
+    history: [{ year: year(), text: `Launched by ${p.firstName} ${p.lastName}, alongside ${first.name}.` }] };
+  S().outlets[id] = o;
+  (J(p).sisters ??= []).push(id);
+  const ed = makeNpc({ role: 'colleague', countryId: p.countryId, age: 42, relationship: 55 });
+  ed.occupation = 'Editor';
+  ed.flags.title = `Editor of ${title}, which you own`;
+  ed.flags.newsroom = { outletId: id, role: 'editor' };
+  store.state.npcs[ed.id] = ed;
+  meet(ed, ed.flags.title, p);
+  o.staff.push({ npcId: ed.id, role: 'editor', salary: Math.round(localWage(STAFF_PAY.editor, country())), since: year() });
+  o.editorId = ed.id;
+  J(p).history.push({ year: year(), text: `Launched ${title}.` });
+  milestone(`Launched ${title}: your media company has ${ownedTitles(p).length} titles.`, 'career');
+  return result(true, `${title} launches, edited by ${nameOf(ed)}. ${ownedTitles(p).length} titles now.`);
+}
+/** The research budget of a title: 0 (none), 1 (a fact-checker), 2 (a research desk). Costs more every year. */
+export function setResearch(outletId, level) {
+  const o = ownedTitles().find((x) => x.id === outletId);
+  if (!o) return result(false, 'Not yours.', 'neutral');
+  if (![0, 1, 2].includes(level)) return result(false, 'None, a fact-checker, or a research desk.', 'neutral');
+  o.research = level;
+  o.history.push({ year: year(), text: ['Research budget cut.', 'Hired a fact-checker.', 'Set up a research desk.'][level] });
+  return result(true, ['The research budget goes. It saves money.', 'A fact-checker reads everything before it runs. It costs more each year.', 'A research desk: records, data, checking. It costs a good deal each year.'][level], 'neutral');
+}
+export function bureauWhy(outletId, city, p = player()) {
+  const o = ownedTitles(p).find((x) => x.id === outletId);
+  if (!o) return 'Not yours.';
+  if (!COUNTRIES[p.countryId].cities.includes(city) || city === o.city) return 'Pick another city in the country.';
+  if ((o.bureaus ?? []).includes(city)) return 'There is a bureau there.';
+  if ((o.bureaus ?? []).length >= 3) return 'Three bureaus is enough.';
+  const cost = Math.round(localWage(OWN_KINDS[o.ownKind].upkeep, country()));
+  if (p.finance.cash < cost) return `It costs ${fmtMoney(cost, country())} to set up.`;
+  return '';
+}
+/** A bureau in another city: more to cover, more readers, more costs. */
+export function openBureau(outletId, city) {
+  const p = player();
+  const why = bureauWhy(outletId, city, p);
+  if (why) return result(false, why, 'neutral');
+  const o = S().outlets[outletId];
+  const cost = Math.round(localWage(OWN_KINDS[o.ownKind].upkeep, country()));
+  p.finance.cash -= cost;
+  (o.bureaus ??= []).push(city);
+  o.history.push({ year: year(), text: `Opened a bureau in ${city}.` });
+  return result(true, `${o.name} opens a bureau in ${city}, for ${fmtMoney(cost, country())}. It will cost more every year.`, 'neutral');
+}
+/** An investor's offer for a share of the first title (scene 'jn_investor'): money now, a share of every profit after. */
+export function investorOffer(p = player()) {
+  const o = ownedOutlet(p);
+  if (!o || o.investor) return null;
+  const last = o.finances.at(-1);
+  if (!last) return null;
+  const amount = Math.round(Math.max(localWage(OWN_KINDS[o.ownKind].cost, country()), last.revenue * 0.6));
+  return { amount, share: 0.25 };
 }

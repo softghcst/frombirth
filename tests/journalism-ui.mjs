@@ -82,6 +82,28 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-desk-${label}.png`, fullPage: true });
   await page.locator('#modal-root [data-tab="career"]').click(); await page.waitForTimeout(200);
   check(await page.locator('#modal-root [data-act="takeleave"]').count() === 1, `${label}: leave can be taken from the Career tab`);
+  await page.locator('#modal-root [data-tab="assignments"]').click(); await page.waitForTimeout(200);
+  check(await page.locator('#modal-root [data-act="lead"]').count() === 1, `${label}: a lead of one's own can be pitched`);
+  // An owner's media company.
+  await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const jn = await import('/js/engine/journalism.js');
+    const special = await import('/js/engine/specialCareer.js');
+    const career = await import('/js/engine/career.js');
+    const p = store.state.player;
+    career.endJob('quit'); special.leave?.();
+    p.finance.cash = 50_000_000;
+    const k = ['website', 'newsletter', 'paper'].find((x) => !jn.startWhy(x, p));
+    jn.startPublication(k, 'The Test Ledger', 'careful');
+    store.state.year += 2;
+    jn.launchTitle(k, 'The Test Weekly');
+  });
+  await page.locator('#modal-root [data-tab="overview"]').click(); await page.waitForTimeout(200);
+  const own = await page.locator('#modal-root .modal').last().innerText();
+  check(/Your media company/i.test(own) && /The Test Weekly/i.test(own) && await page.locator('#modal-root [data-act="research"]').count() === 2, `${label}: the media company lists both titles`);
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: the company page fits`);
+  await page.evaluate(() => [...document.querySelectorAll("#modal-root .section-label")].find((x) => /media company/i.test(x.textContent))?.scrollIntoView());
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-company-${label}.png`, fullPage: true });
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }
