@@ -132,6 +132,9 @@ const MORTARBOARD = { seats: { seat: 178, top: 66 }, svg: `<g transform="rotate(
   <path d="M256 116 372 136v58" stroke="#f2c14e" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="256" cy="116" r="8" fill="#f2c14e"/>
   <path d="M362 190h20l6 40h-32Z" fill="#f2c14e"/></g>` };
+/** Top buns and tall updos, and how each is worn under a graduation cap instead. */
+const CAP_HAIR = { messy_top_bun: 'elder_low_bun', elder_beehive: 'elder_low_bun', man_bun: 'swept_back_waves', hair_boy_updo_01_manbun: 'swept_back_waves',
+  hair_boy_updo_10_surfer_bun: 'rocker_waves', hair_boy_updo_05_loc_bun: 'shoulder_length_locs', locs_top_knot: 'shoulder_length_locs' };
 /** Make-up and lipstick are worn from this age (the editor offers them from it too). */
 export const MAKEUP_AGE = 16;
 const STAGE_HEAD = { baby: 'head_00_toddler', toddler: 'head_00_toddler', kid: 'head_00_kid' };
@@ -419,6 +422,8 @@ function crownAt(d, stage, fitted, hf, frame, seats = CROWN_SEATS[d.crown]) {
  * @param {{size?:number|string, className?:string, viewBox?:string}} [opts]  viewBox zooms in on part of the 512 frame
  */
 export function characterAvatarSvg(look, ctx = {}, opts = {}) {
+  // Under a graduation cap a bun on top of the head would be squashed flat: it is worn lower, or let down, that day.
+  if (ctx.mortarboard && CAP_HAIR[look.hair]) look = { ...look, hair: CAP_HAIR[look.hair] };
   const d = dressFor(look, ctx);
   const n = ++serial;
   const hatOn = !!d.hat;
