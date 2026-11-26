@@ -70,12 +70,13 @@ function settleProBono(p) {
 function familyStrain(p) {
   const L = lawOf(p);
   const w = Math.floor(nowM() / 6);
-  if ((L.strainWindow ?? -9) >= w - 1) return; // not more than once a year
+  if ((L.strainWindow ?? -99) >= w - 9) return; // rare: at most once in five years
   const load = cases.workload(p);
   const trials = L.caseIds.map(cases.caseById).filter((c) => c && !c.done && c.awaiting).length;
   const close = p.npcIds.map(npc).find((n) => n?.alive && ['spouse', 'partner'].includes(n.role));
-  if (!close || (load.points <= load.capacity && trials < 2)) return;
-  if (!rng.chance(0.5)) return;
+  // Only a truly overwhelming stretch: far more on the desk than it can hold, or three trials at once.
+  if (!close || (load.points <= load.capacity * 1.3 && trials < 3)) return;
+  if (!rng.chance(0.25)) return;
   L.strainWindow = w;
   L.strainWith = close.id;
   store.state.pendingEvents.push({ id: 'law_family_strain', cast: { words: { name: close.firstName, trials: String(Math.max(trials, 1)) } } });

@@ -24,7 +24,7 @@ check(/A judge/.test((() => { lawyer('judiciary'); return life.proBonoWhy(); })(
 
 // The family: a heavy stretch strains a marriage, now and then.
 let seen = false;
-for (let i = 0; i < 12 && !seen; i++) {
+for (let i = 0; i < 40 && !seen; i++) {
   lawyer('lawyer');
   const sp = makeNpc({ role: 'spouse', countryId: p().countryId, age: 30, relationship: 70 });
   store.state.npcs[sp.id] = sp; p().npcIds.push(sp.id);
@@ -39,6 +39,16 @@ for (let i = 0; i < 12 && !seen; i++) {
   }
 }
 check(seen && EVENT_BY_ID.law_family_strain, 'a full desk and trials waiting bring a scene at home');
+// And it is rare: never twice within five years, however busy.
+{
+  lawyer('lawyer');
+  const sp = makeNpc({ role: 'spouse', countryId: p().countryId, age: 30, relationship: 70 });
+  store.state.npcs[sp.id] = sp; p().npcIds.push(sp.id);
+  for (const id of ['burglary', 'fraud', 'assault', 'homicide']) { const x = lc.createCase(id); x.awaiting = { what: 'trial', since: ls.nowM(), turn: ls.nowM() }; }
+  let n = 0;
+  for (let half = 0; half < 10; half++) { store.state.pendingEvents = []; life.tickLawLife(); if (store.state.pendingEvents.some((e) => e.id === 'law_family_strain')) n++; store.state.month = (store.state.month ?? 0) + 6; if (store.state.month >= 12) { store.state.month -= 12; store.state.year += 1; } }
+  check(n <= 1, `at most once in five busy years (${n})`);
+}
 
 // Pride and shame.
 lawyer('lawyer');
