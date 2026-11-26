@@ -26,6 +26,9 @@ import * as FL from '../engine/investigations/forensicLab.js';
 import * as UN from '../engine/investigations/unions.js';
 import * as RF from '../engine/investigations/reform.js';
 import * as FP from '../engine/investigations/forensicPsych.js';
+import * as IG from '../engine/investigations/integrity.js';
+import * as BK from '../engine/investigations/books.js';
+import * as MD from '../engine/investigations/medical.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -55,6 +58,9 @@ function sectionsFor(p, r) {
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
+  if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Conviction Review']);
+  if (BK.bookRole(p)) out.push(['books', 'Financial Review']);
+  if (p.medicine?.job?.hospitalId || MD.myRequests(p).length) out.push(['hospital', 'Hospital & Police']);
   if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);
   if (r?.job?.specialty === 'professional_standards' || O.complaints().some((c) => c.subjectId === p.id || c.assignedTo === p.id)) out.push(['standards', 'Professional Standards']);
   if (p.career?.careerId === 'journalist') out.push(['press', 'Courtroom Connections'], ['stories', 'My Stories']);
@@ -213,6 +219,7 @@ const VIEWS = {
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', Object.entries(SKILLS).map(([k, s]) => meterHtml(s.name, Math.round(r.skills[k]), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
       + (r.family === 'federal' && r.job?.officeId && !r.retired ? card('Moves within the agency', kv([['Field office', A.office(r.job.officeId)?.name ?? '—'], ['Squad', WP.SQUADS[r.job.agencyKind]?.find(([id]) => id === r.job.squad)?.[1] ?? 'General'],
         ...(r.move ? [['Last request', `${r.move.kind === 'office' ? `Transfer to ${r.move.target}` : 'A squad place'}: ${r.move.status === 'pending' ? `answer by ${dateWords(r.move.due)}` : r.move.status}`]] : [])])
@@ -323,7 +330,34 @@ const VIEWS = {
   },
   press(p) {
     const list = X.publicCases(p);
-    return list.length ? card('Cases in the public record', list.map((c) => kv([[c.title, `${c.defendant}: ${c.outcome}`]])).join('') + muted('Only what happened in open court. Case files, witness statements and sealed records are not public.')) : muted('No cases in court here yet.');
+    const drafts = X.myDrafts(p).map((d) => card(`A draft: ${d.title}`, kv([['Reporter', d.reporterId ? nm(d.reporterId) : 'A reporter'], ['Sourcing', d.unverified ? 'One account is reported as fact, with one source' : 'Every claim has two sources']])
+      + stack(btn('draft', 'Send it back for verification', { arg: `${d.id}|back` }) + btn('draft', 'Run it as written', { arg: `${d.id}|run` })))).join('');
+    return drafts + (list.length ? card('Cases in the public record', list.map((c) => kv([[c.title, `${c.defendant}: ${c.outcome}`]])).join('') + muted('Only what happened in open court. Case files, witness statements and sealed records are not public.')) : muted('No cases in court here yet.'));
+  },
+  integrity(p) {
+    const I = IG.integrityOf(p);
+    if (!I) return card('Reviewing convictions', muted('Innocence organizations and prosecutors\' conviction integrity units review real convictions, one at a time, when kept evidence can be tested anew. The courts decide.')
+      + Object.entries(IG.ORGS).map(([id, o]) => kv([[o.post, IG.postBlock(id, p) || `Open to ${o.who}`]]) + (IG.postBlock(id, p) ? '' : stack(btn('integrityJoin', `Join ${o.name}`, { arg: id })))).join(''));
+    const open = IG.openMatters(p);
+    return card(IG.ORGS[I.org].post, kv([['Since', String(I.since)], ['Convictions set aside', String(I.exonerations)], ['Reviews where the conviction stood', String(I.upheld)]]) + muted('A review is not a retrial. The conviction stands unless a court sets it aside, and the first verdict stays on the record.'))
+      + (open.length ? open.map((m) => { const inv = W.investigation(m.invId); const c = store.state.justice.cases[m.caseId];
+        return card(`${nm(c.defendantId)}: ${inv.file.title}`, kv([['Done', m.steps.join(', ') || 'nothing yet'], ...(m.lab ? [['Laboratory result due', dateWords(m.lab.due)]] : [])])
+          + stack(Object.entries(IG.STEPS).filter(([id]) => !m.steps.includes(id) || id === 'refer').map(([id, label]) => btn('integrityStep', label, { arg: `${m.id}|${id}` })).join(''))); }).join('') : muted('No matter open. Requests for review come as the year turns.'));
+  },
+  books(p) {
+    const list = BK.engagements(p);
+    const b = p.books;
+    return card('Financial review', kv([['Your role', { corporate: 'Corporate accountant', audit: 'External auditor', forensic: 'Forensic accountant' }[BK.bookRole(p)]], ['Findings referred', String(b?.findings ?? 0)], ['Unfounded referrals', String(b?.unfounded ?? 0)]])
+      + muted('A discrepancy is not proof of intent; a failed investment is not fraud. Records come only through your engagement, or a case.') + (b?.forensic ? '' : stack(btn('forensicAcct', 'Qualify in forensic accounting'))))
+      + (list.length ? list.map((g) => card(`${g.company}: ${g.what}`, kv([['Done', g.steps.join(', ') || 'nothing yet']])
+        + stack(Object.entries(BK.BOOK_STEPS).filter(([id]) => !g.steps.includes(id)).map(([id, label]) => btn('bookStep', label, { arg: `${g.id}|${id}` })).join('')
+          + Object.entries(BK.CONCLUSIONS).map(([id, label]) => btn('bookEnd', `Findings: ${label.toLowerCase()}`, { arg: `${g.id}|${id}` })).join('')))).join('') : muted('No engagement open. Work comes as the year turns.'));
+  },
+  hospital(p) {
+    const list = MD.myRequests(p);
+    return card('Patients, and the police', muted('You treat the patient. Their records are theirs: findings go to the police only with the patient\'s consent or a court order.'))
+      + (list.length ? list.map((q) => card(`${nm(q.patientId)}, brought in`, kv([['Asking', q.detectiveId ? nm(q.detectiveId) : 'A detective']])
+        + stack(Object.entries(MD.ANSWER).map(([how, label]) => btn('medAnswer', label, { arg: `${q.id}|${how}`, cls: how === 'chart' ? 'danger' : '' })).join('')))).join('') : muted('No patient from a police case is waiting on you.'));
   },
 };
 
@@ -357,6 +391,7 @@ const CASE_VIEWS = {
       b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
     }
     if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
     if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
     if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
     return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
@@ -398,6 +433,7 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'medical') await say(MD.requestMedical(id, x));
     else if (act === 'crossExam') {
       const inv = W.investigation(id);
       const answers = {};
@@ -421,6 +457,13 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  integrityJoin: (a, x) => x.say(IG.takePost(a)),
+  integrityStep: (a, x) => { const [id, s] = a.split('|'); return x.say(IG.step(id, s)); },
+  forensicAcct: (a, x) => x.say(BK.qualifyForensic()),
+  bookStep: (a, x) => { const [id, s] = a.split('|'); return x.say(BK.bookStep(id, s)); },
+  bookEnd: (a, x) => { const [id, s] = a.split('|'); return x.say(BK.concludeBooks(id, s)); },
+  medAnswer: (a, x) => { const [id, s] = a.split('|'); return x.say(MD.answerRequest(id, s)); },
+  draft: (a, x) => { const [id, s] = a.split('|'); return x.say(X.editDraft(id, s)); },
   psychStart: (a, x) => x.say(FP.startPractice()),
   psychWork: (a, x) => { const [id, v] = a.split('|'); return x.say(FP.doWork(id, v)); },
   reform: (a, x) => x.say(RF.propose(a)),
