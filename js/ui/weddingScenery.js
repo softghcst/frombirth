@@ -496,7 +496,7 @@ export function postcardArt({ countryId, cruise = false, lat = 40, coastal = tru
  * a country's code, or a general card (city, beach, mountains, cruise). Listed here as each arrives; any other place
  * keeps its drawn card.
  */
-export const POSTCARD_PHOTOS = new Set([]);
+export const POSTCARD_PHOTOS = new Set(['us', 'ca']);
 
 export function postcardFront(art, title, hex, countryId = null) {
   const id = 'pc';

@@ -9,7 +9,7 @@ import * as love from '../engine/romance.js';
 import * as travel from '../engine/travel.js';
 import { COUNTRIES } from '../data/countries.js';
 import { MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
-import { venueScene, cakeArt, bandArt, postcardFront, postcardArt } from './weddingScenery.js';
+import { venueScene, cakeArt, bandArt, postcardFront, postcardArt, POSTCARD_PHOTOS } from './weddingScenery.js';
 import { player, country, store } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
@@ -475,7 +475,11 @@ export async function honeymoonPostcard(api, trip) {
   const geo = await import('../engine/geo.js');
   const spouse = (trip.travelers ?? []).map((x) => store.state.npcs[x.id]).find((n) => n?.role === 'spouse');
   const dest = trip.destination ?? trip.origin;
-  const where = trip.type === 'cruise' || trip.mode === 'cruise_ship' ? 'the Sea' : dest.city ?? geo.placeName(dest.countryId, null, store.state.year);
+  // A painted card shows the country's best-known sight (a single place for the whole country), so it carries the
+  // country's name; a drawn one, the city's.
+  const cruise = trip.type === 'cruise' || trip.mode === 'cruise_ship';
+  const painted = !cruise && POSTCARD_PHOTOS.has(dest.countryId);
+  const where = cruise ? 'the Sea' : painted ? COUNTRIES[dest.countryId].name : dest.city ?? geo.placeName(dest.countryId, null, store.state.year);
   const at = geo.coords(dest.countryId, dest.city);
   const art = postcardArt({ countryId: dest.countryId, cruise: trip.mode === 'cruise_ship', lat: at?.lat ?? 40, coastal: geo.coastal(dest.countryId), alpine: ['ch', 'at', 'np', 'bt', 'li', 'ad'].includes(dest.countryId) });
   const hex = love.WEDDING_PLAN.theme.find((t) => t.id === spouse?.flags?.wedding?.theme)?.hex ?? '#F6B8C8';
