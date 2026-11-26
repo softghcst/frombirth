@@ -94,7 +94,7 @@ export const AGENCY_KINDS = {
   // ---------- Police outside the US (simplified gameplay rules, sources named and unverified) ----------
   territorial: { name: 'Territorial police force', career: 'police', powers: 'police', countries: ['uk'], source: 'uk_police',
     name_: (city) => (city === 'London' ? 'Metropolitan Police Service' : city === 'Glasgow' ? 'Police Scotland' : `${city} Police`), academyMonths: 5, fieldMonths: 10, probationMonths: 24, minAge: 18, maxAge: null,
-    education: 'high', entry: 'Through a police constable degree apprenticeship, or a degree-holder entry programme: training and study together over the two years of probation.',
+    education: 'high', entry: 'Through a police constable degree apprenticeship, or a degree-holder entry program: training and study together over the two years of probation.',
     titles: ['Student officer', 'Probationary constable', 'Police constable', 'Police constable'], chief: (city) => (city === 'London' ? 'Commissioner' : 'Chief constable'),
     rankNames: { officer: 'Police constable', senior: 'Police constable', sergeant: 'Sergeant', lieutenant: 'Inspector', captain: 'Chief inspector', deputy_chief: 'Superintendent', chief: 'Chief constable' },
     detectiveNames: { detective: 'Detective constable', senior_detective: 'Detective constable', detective_sergeant: 'Detective sergeant', detective_lieutenant: 'Detective inspector' },
