@@ -15,7 +15,7 @@ import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
-import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } from './career.js';
+import { currentCareer, hire, promote, adjustPerformance, addPromotionGate, nextStep as nextStepOf } from './career.js';
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
@@ -189,7 +189,8 @@ function openWindow(p, w) {
     return;
   }
   // A junior lawyer at a firm is handed work by the partners as well as offered it: one matter each half-year.
-  if (t === 'lawyer' && (p.career?.level ?? 0) <= 1 && cases.workload(p).open < 8) {
+  if (t === 'lawyer' && (p.career?.level ?? 0) <= 1 && cases.workload(p).open < 8 && L.assignedWindow !== w) {
+    L.assignedWindow = w;
     const tid = pickTemplate(L.specialty, cap);
     if (tid) openCase(p, tid, { assigned: true, second: inTraining(p) || CASE_TEMPLATES[tid].level > cap, role: CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined });
   }
@@ -535,6 +536,21 @@ export function seek(id, p = player(), o2 = {}) {
   }
   return result(false, 'Nothing happened.', 'neutral');
 }
+/** Once a year: if the only thing between the player and the next rank is a selection that is not an election, it is held. */
+function autoConsider(p) {
+  const L = lawOf(p);
+  if (!p.career?.careerId || L.consideredYear === store.state.year) return;
+  L.consideredYear = store.state.year;
+  const next = nextStepOf();
+  if (!next || next.yearsLeft || next.missing.length !== 1) return;
+  const id = Object.entries(GATE_TEXT).find(([, text]) => text === next.missing[0])?.[0];
+  if (!['partnership', 'managing', 'chief_defender', 'general_counsel', 'elevation'].includes(id)) return;
+  if ((p.career.performance ?? 0) < 60) return;
+  const o = opportunities(p).find((x) => x.id === id);
+  if (!o || o.why) return;
+  const r = seek(id, p);
+  log(r.ok ? r.text : `You were considered for ${GATE_TEXT[id]}. Not this year.`, 'system', r.ok ? 'good' : 'neutral');
+}
 /** Becomes a judge: the old cases go to colleagues, because a judge cannot be counsel in any of them. */
 function becomeJudge(p, elected = false) {
   withdrawAll(p, 'You left practice for the bench.');
@@ -627,6 +643,9 @@ export function tickLaw(o = {}) {
   const admittedNow = progressBar(p); // practical training ends, and admission follows (engine/lawSchool.js)
   if (admittedNow) log(admittedNow.text, 'system', 'good');
   cases.progressCases(p);
+  // Selections that are not elections come to someone who has earned them, without asking: once a year the partners,
+  // the office or the court consider them (a partnership vote, heading the office, the higher court).
+  autoConsider(p);
   // A public lawyer works for the public office (older saves had some at private firms).
   if (['prosecutor', 'defender', 'gov_counsel', 'judiciary'].includes(p.career?.careerId) && !employerOf(p.career.employerId)?.public) {
     const office = placeAt(p.career.careerId, p.countryId, p.city);

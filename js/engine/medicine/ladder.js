@@ -232,6 +232,8 @@ export function postYear() {
   teach(p, m);
   const h = hospital(m.job.hospitalId);
   m.experience.years += 1;
+  // A raise for a year of solid work, larger for strong work: pay grows between promotions and after the last one.
+  if ((p.career.performance ?? 50) >= 50 && p.career.salary) p.career.salary = Math.round(p.career.salary * ((p.career.performance ?? 50) >= 75 ? 1.03 : 1.02));
   grow('management', 1, m); grow('reasoning', 0.8, m);
   if (RANKS[m.job.rank]?.leader) { grow('leadership', 1.5, m); grow('management', 1, m); }
   m.reputation = reputationOf(m);
@@ -250,7 +252,8 @@ export function postYear() {
     }
   }
   // A leadership offer stands for the year; the player answers it from My Medical Career.
-  if (m.offer && m.offer.year < year()) m.offer = null;
+  // A leadership offer stands for the year; one left unanswered is taken as accepted, as most people would.
+  if (m.offer && m.offer.year < year()) { const o = m.offer; m.offer = null; if (RANKS[o.rank] && o.hospitalId === m.job.hospitalId) { takeRank(p, m, o.rank); log(`You took up the post of ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; } }
   const years = year() - (m.job.rankSince ?? m.job.since);
   for (const step of nextRank(m.job, h)) {
     if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead || m.skills.management < (step.mgmt ?? 0)) continue;

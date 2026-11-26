@@ -185,7 +185,9 @@ export function doorBonus(career) {
 
 export const payBand = (level) => level.pay.map((k) => Math.round(localWage(k * K, country()) * payK())); // what the work pays in this city
 /** The most a level will ever pay at this employer, however many raises you collect: a little over the top of its band. */
-const payCeiling = (level) => Math.round((currentLevel() === level && player().career.bandHi ? player().career.bandHi : payBand(level)[1]) * 1.1);
+const atTop = (level) => { const car = currentCareer(); return !!car && car.levels[car.levels.length - 1] === level; };
+// At the top rank there is nowhere to be promoted to: raises for good work carry on, well past the band (seniority).
+const payCeiling = (level) => Math.round((currentLevel() === level && player().career.bandHi ? player().career.bandHi : payBand(level)[1]) * (atTop(level) ? 1.6 : 1.1));
 const capSalary = () => {
   const c = player().career;
   const level = currentLevel();
@@ -806,9 +808,16 @@ export function tickCareer() {
   if (career.type !== 'freelance') log(`Your annual review as ${an(c.title.toLowerCase())}: ${rating}.`, 'system', rating === 'poor' ? 'bad' : 'neutral');
 
   if (career.type !== 'freelance' && c.performance < 25 && rng.chance(0.5)) { fire(c.military ? 'discharged' : 'fired'); return null; }
-  // Layoffs follow the economy and how the employer is doing; good performers are kept longer.
+  // A poor year is a formal warning; a second poor year in a row can cost the job. A good year clears the warning.
+  if (career.type !== 'freelance') {
+    if (c.performance < 40) {
+      if (c.warned) { if (rng.chance(0.6)) { fire(c.military ? 'discharged' : 'fired'); return null; } }
+      else { c.warned = store.state.year; log('Your manager gave you a formal warning: another year like this one, and you may be let go.', 'system', 'bad'); }
+    } else if (c.performance >= 50) c.warned = null;
+  }
+  // Layoffs follow the economy and how the employer is doing; good performers are kept longer. Judges hold office.
   const cutting = e && e.health < 30 ? 2.5 : 1;
-  if (career.type === 'fulltime' && rng.chance(layoffChance() * cutting * (c.performance >= 75 ? 0.5 : 1))) { fire('laid off'); return null; }
+  if (career.type === 'fulltime' && !['judiciary'].includes(career.id) && !e?.public && rng.chance(layoffChance() * cutting * (c.performance >= 75 ? 0.5 : 1))) { fire('laid off'); return null; }
 
   // Moving up
   const next = career.levels[c.level + 1];
@@ -816,9 +825,12 @@ export function tickCareer() {
   const missing = missingFor(next);
   // There are few seats at the very top: it takes an outstanding record, and luck.
   const toTop = next && c.level + 1 === career.levels.length - 1;
-  const bar = toTop ? 80 : 62;
+  // Solid work is enough to move up in time; strong work does it sooner. The top takes more.
+  const bar = toTop ? 72 : 50;
+  // Each year past the usual time in the role, with a good record, makes the next step likelier: seniority counts.
+  const seniority = Math.min(0.3, Math.max(0, c.yearsInRole - level.years) * 0.05);
   // A promotion needs a seat to be free: big, healthy employers have more of them.
-  const odds = clamp((0.2 + (c.performance - bar) / 110 + mentor * 0.03) * leadFactor(), 0, 0.9) * (toTop ? 0.22 : 1) * vacancyOdds(c);
+  const odds = clamp((0.25 + (c.performance - bar) / 100 + mentor * 0.03 + seniority) * leadFactor(), 0, 0.9) * (toTop ? 0.35 : 1) * vacancyOdds(c);
   if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {
@@ -834,7 +846,7 @@ export function tickCareer() {
         log(`The ${next.title.toLowerCase()} post went to ${rival.firstName} ${rival.lastName}. Your turn may come.`, 'system', 'neutral');
       }
     }
-    const pct = { excellent: 6, good: 3, adequate: 1, poor: 0 }[rating];
+    const pct = { excellent: 6, good: 3, adequate: 1, poor: 0 }[rating] + (!next && rating !== 'poor' ? 1 : 0); // at the top, a raise is the reward
     if (pct && career.type !== 'freelance' && c.salary < payCeiling(level)) {
       c.salary = Math.min(payCeiling(level), Math.round(c.salary * (1 + pct / 100)));
       log(`You were given a ${pct}% raise, to ${fmtMoney(c.salary, cty)}.`);

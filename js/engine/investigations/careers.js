@@ -158,7 +158,8 @@ export function settleApplications(p = player()) {
   const r = rec(p);
   if (!r) return [];
   const out = [];
-  for (const app of r.apps.filter((x) => x.status === 'pending' && x.due <= now())) {
+  // Promotions are settled by settlePromotions, which applies the new rank; closing them here first lost it.
+  for (const app of r.apps.filter((x) => x.status === 'pending' && x.due <= now() && x.kind !== 'promotion')) {
     if (app.kind === 'federal') { const s = federalStage(app); if (s) out.push(s); continue; }
     app.status = app.outcome;
     const who = agency(app.ownerId)?.name ?? office(app.ownerId)?.name ?? 'The agency';
