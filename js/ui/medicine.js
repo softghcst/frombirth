@@ -560,7 +560,7 @@ export function openMedicine(api, start = 'overview') {
     const list = tabsFor(p, m);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
     root.innerHTML = `<p class="muted" style="margin:0 0 4px">Every patient has a story.</p>
-      <div class="world-groups med-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>`;
   };
   const refresh = () => { api.changed(); render(); };

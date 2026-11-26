@@ -69,7 +69,7 @@ function sectionsFor(p) {
  */
 export function openOccupation(api, start = 'now') {
   const st = { section: start, scope: 'here', family: null, kind: 'all', eligibleOnly: true };
-  const modal = openModal('<div data-occ></div>', { dismissable: true });
+  const modal = openModal('<div data-occ></div>', { dismissable: true, full: true, title: 'Work' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-occ]');
 
@@ -78,8 +78,7 @@ export function openOccupation(api, start = 'now') {
     const list = sectionsFor(p);
     if (!list.some(([id]) => id === st.section)) st.section = 'now';
     root.innerHTML = `
-      <h2 style="margin-top:0">Work</h2>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
       <div style="margin-top:10px">${VIEWS[st.section](p, st)}</div>
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };

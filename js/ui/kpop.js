@@ -48,7 +48,7 @@ function tabsFor(p) {
 export function openIdol(api, start = 'overview') {
   kp.world();
   const st = { stack: [{ view: start, arg: null }] };
-  const modal = openModal('<div data-idol></div>', { dismissable: true });
+  const modal = openModal('<div data-idol></div>', { dismissable: true, full: true, title: 'My Idol Life' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-idol]');
   const top = () => st.stack[st.stack.length - 1];
@@ -57,8 +57,8 @@ export function openIdol(api, start = 'overview') {
     const t = top();
     const deep = st.stack.length > 1;
     const tabs = tabsFor(p);
-    root.innerHTML = `<h2 style="margin:0">My Idol Life</h2><p class="muted" style="margin:0 0 6px">From trainee to the spotlight.</p>
-      ${deep ? '<button type="button" class="btn small" data-back>← Back</button>' : `<div class="world-groups" role="tablist">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === t.view ? 'on' : ''}" aria-selected="${id === t.view}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>`}
+    root.innerHTML = `<p class="muted" style="margin:0 0 6px">From trainee to the spotlight.</p>
+      ${deep ? '<button type="button" class="btn small" data-back>← Back</button>' : `<div class="world-groups page-tabs" role="tablist">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === t.view ? 'on' : ''}" aria-selected="${id === t.view}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>`}
       <div style="margin-top:10px">${(VIEWS[t.view] ?? VIEWS.overview)(p, t.arg)}</div>
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
