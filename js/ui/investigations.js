@@ -115,7 +115,7 @@ function waysIn(p) {
 
 // First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
 const HINTS = {
-  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  overview: 'This is your investigative life at a glance. Each row below opens a part of it; new ones appear as your career opens them.',
   agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
   federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
   cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
@@ -134,7 +134,7 @@ const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses 
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
-    let out = card('Follow the evidence. Find the truth.', kv([
+    let out = card('Where you stand', kv([
       ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
