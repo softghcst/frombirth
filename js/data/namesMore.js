@@ -2,6 +2,31 @@
 // country's own mix of languages and communities. Added to the lists in countries.js and names.js (same format: names
 // separated by spaces, an underscore for a space inside one name).
 export const MORE_NAMES = {
+  fj: {
+    male: "Apisalome Sitiveni Ratu Inoke Isikeli Jone Josaia Kaliova Laisenia Manasa Mosese Naibuka Peceli Ratu_Epeli Semesa Setareki Tevita Timoci Vilikesa Waisale Akuila Alipate Eroni Iliesa Jiuta Lepani Livai Maika Netani Osea Pita Ropate Saimoni Simione Taniela Uraia Vatimi Rakesh Sanjay Pradeep Ravinesh Shiva Anil Ashwin Kamal Mohammed Salim Imran",
+    female: "Adi Akosita Alesi Asenaca Elenoa Kalesi Kelera Litiana Luisa Makereta Mereani Nanise Ofa Paulini Raijieli Salanieta Seruwaia Silika Siteri Sisilia Talei Torika Unaisi Vani Varanisese Vasiti Viniana Losana Miliakere Ateca Naomi Mele Reshmi Anita Kajal Shalini Roshni Nirmala Savita Rajni Nazia Farzana Shabnam Kavita Shirley",
+    last: "Bainimarama Rabuka Nailatikau Qarase Mara Cakobau Tora Seruvakula Volavola Nawalu Matanitobua Ratuvou Lesavua Bulikiobo Koroi Naivalu Tuinamata Vakatawa Waqanivalu Domoni Raikadroka Turaga Nadolo Baleilevuka Rokotuiloma Chaudhry Reddy Sharma Nand Lal Chand Ali Khan Hussein Deo Chandra Narayan Pillay Goundar Ram",
+  },
+  pf: {
+    male: "Teiva Tahiri Heimanu Mana Rahiti Tehau Tavita Vaitea Heirani Raihau Tematai Tuarii Moana Kahaia Taaroa Turia Tehina Teva_Mana Hotu Taimana Matahi Poema Herenui Tamatea Ariitai Tihoni Jean-Claude Pierre Jacques Michel Gaston Édouard Gilles Patrick Thierry Lucas Hugo Nathan Enzo Mathis Théo Kevin Ludovic Christophe Yves",
+    female: "Vaiana Hinatea Tumata Raimana Manuia Tehani Mahina Hinarii Ranihei Vaite Heilani Teura_Mana Tiare_Moe Mareva Hinanui Puarii Teanuanua Titaua Vaihere Nohea Hereiti Poehere Rautini Tahia Matarii Marie Sylvie Isabelle Nathalie Christine Josiane Sandrine Céline Laura Emma Chloé Léa Manon Inès Camille Jade Lina Valérie Sophie",
+    last: "Teriierooiterai Teihotaata Tetauira Teriipaia Tauraa Tefaatau Haumani Tetuanui Pambrun Tetuanui_a_Hiti Tehei Tematahotoa Tapu Tuheiava Atger Bambridge Brander Salmon Peu Taputu Teai Raoulx Lehartel Chang Chin Lai Wong Mou Tang Tchong Bonno Dauphin Leboucher Garnier Martin Bernard Dubois Moreau Lefèvre Picard Roux",
+  },
+  mv: {
+    male: "Abdul Adam Ahusan Ameen Anwar Asif Azim Fayaz Hamid Haroon Ilham Imad Ismail_Shafeeu Jaufar Khaleel Latheef Mauroof Mujthaba Musthafa Nasheed Nazim Riyaz Rilwan Saeed Shafeeu Shareef Shiyam Solih Thoriq Umar Yameen Zaki Zubair Ziyad Ihusan Ihsaan Aiman Ashraf Faisal Hussain_Ali Jameel Moosa Naeem Shuaib Waheed",
+    female: "Aisha Asma Azeema Dheena Eva Fareesha Fazna Hana Haleema Hidhaya Isha Jeehan Lamya Leena Liusha Maisha Mariyam_Shifa Nadha Nashwa Nasreena Raufa Raya Reesha Sana Shaheen Shazna Shiuna Sofoora Thasneem Thuhfa Wafa Yumna Zahira Zuhana Aminath_Leena Ruqiyya Haneefa Fazeela Saudha Nashida Ibthihal Shiyama Zaha Imna Aishath_Reesha",
+    last: "Nasheed Gayoom Solih Muizzu Yameen Shahid Hameed Saleem Waheed_Deen Didi Manik Kaleyfaanu Faiz Saeed Riyaz Latheef Zahir Rasheed Khalid Shafeeq Ibrahim_Didi Fulhu Jameel Majeed Naseer Mauroof Nazim Rilwan Thaufeeq Haleem Ahmed_Didi Mausoom Moosa Shareef Umar Zubair Fikry Adam Hilmy Shakoor",
+  },
+  mu: {
+    male: "Navin Anerood Pravind Seewoosagur Ramesh Dev Sanjeev Vishal Arvind Prakash Rajiv Nitish Ashok Vinod Kailash Jean-Claude Jean-Marie Louis Pierre Patrick Christophe Sébastien Gaëtan Olivier Fabrice Mathieu Ludovic Yannick Didier Cédric Ahmad Faizal Irfan Riaz Shafiq Yusuf Kwan Wing Liang Chong Kevin Jordan Ryan Nathan Ethan",
+    female: "Sunita Anjalie Leela Shalini Vidya Poonam Kavitha Rekha Deepa Shanti Nisha Pooja Sheela Usha Divya Marie-Claire Josiane Nathalie Isabelle Christelle Valérie Vanessa Mélanie Laetitia Stéphanie Cindy Jessica Fatima Nazia Shabana Rehana Ayesha Mei Ling Yan Lily Grace Sophie Chloé Emma Léa Zoé Ananya Priyanka",
+    last: "Jugnauth Ramgoolam Bérenger Duval Gungadin Bhadain Collendavelloo Uteem Jeetah Gayan Soodhun Seeruttun Sooroojebally Mohamed Ruhee Ah-Chuen Ah-Kong Lam_Po_Tang Leung Wong Chan Low Kow Rault Lagesse Espitalier-Noël De_Chazal Koenig Lenoir Laval Hossen Joomun Bholah Ramjaun Beegun Gopee Purmessur Baichoo Ramphul Callikan",
+  },
+  sc: {
+    male: "France-Albert James Wavel Danny Jean-Paul Joachim Philippe Ronny Roger Antoine Gerard Marcel Joseph Paul Henri Bernard_Marc Dereck Allen Sylvestre Guy Claude Raymond Robert Vincent Martin Andy Kevin Rodney Jude Darrel Glenny Dylan Ethan Liam Noah Luca Mathis Jordan Ryan Brandon Larry Terence Neddy Jeffrey",
+    female: "Anne Marie-Antoinette Sylvette Linda Brigitte Jacqueline Jeanne Rose Juliette Simone Mireille Josianne Nathalie Myriam Angelique Jessica Shania Kelly Natacha Melissa Sabrina Vanessa Laura Emma Chloé Léa Sophia Mia Zara Lucie Amelie Jade Ella Noemie Celine Charlotte Isabelle Christine Patricia Monique Gisele Danielle Marguerite Elisa Rita",
+    last: "Rene Mancham Michel Faure Ramkalawan Adam Belmont Pierre Hoareau Bonnelame Labrosse Morel Payet Esparon Savy Barbe Laporte Larue Ernesta Dogley Uranie Rose Nicette Lablache Pillay Mondon Marie Albert Simeon Dubel Agathine Jumeau Loustau-Lalanne Ferrari Delorie Camille Ah-Time Chang-Him Hoarau Monthy",
+  },
   aw: {
     male: "Jandino Rignald Glenbert Ryan Mike Eric Richard Evelino Mervin Ronald Edward Sherwin Jurgen Rudy Ricardo Raymond Gregory Jeffrey Erwin Roberto Hubert Francisco Lionel Frederick Gilbert Glenn Rendell Jeroen Sven Ruud Bas Daan Luuk Thijs Liam Noah Mateo Dylan Jayden Xavier Ethan Lucas Sebastian Adrian Damian Dennis Rudolph Benito Wilfred Henny Shurendy Andrew Anthony Elvis Nelson Michiel Hendrik Eddy Rafael Miguel",
     female: "Evelyn Daphne Sharon Tamara Glenda Jacqueline Gisela Mariela Rosalia Melissa Natasha Chantal Ingrid Linda Monique Carolina Esther Wendy Yvette Suzanne Anouk Lotte Sanne Fleur Femke Isabella Sofia Emma Mia Zoë Luna Naomi Jayla Aaliyah Nicole Stephanie Angelique Desiree Jennifer Cindy Priscilla Clarissa Gracita Rosita Juana Elvira Hilda Ana Lucia Isabel Margarita Thelma Lorraine Ellen Doreen Myrna Yolanda Kimberly Kayla Ashley",
