@@ -377,7 +377,7 @@ const HUB_VIEWS = {
     const scope = st.jobScope ?? 'city';
     const posts = jobs.postings(scope, p, m);
     out += card('Hospital jobs', `${btn('scope', scope === 'city' ? 'Show the whole country' : `Show ${p.city} only`, { arg: scope === 'city' ? 'country' : 'city' })}
-      ${posts.map((o) => `<div class="row" style="gap:6px;flex-wrap:wrap">${btn('post', `${o.name}${o.away ? ` (${o.city})` : ''}`, { arg: o.id, disabled: !!o.block, sub: o.block || `${o.kind} · ${o.open} opening${o.open === 1 ? '' : 's'}` })}${btn('review', 'Review', { arg: o.id })}</div>`).join('') || muted('No posts in your specialty.')}`);
+      ${posts.map((o) => `<div class="row" style="gap:6px;flex-wrap:wrap">${btn('post', `${o.name}${o.away ? ` (${o.city})` : ''}`, { arg: o.id, disabled: !!o.block, sub: o.block || `${o.kind} · ${o.open} opening${o.open === 1 ? '' : 's'} · chance of an interview: ${jobs.interviewOdds()}` })}${btn('review', 'Review', { arg: o.id })}</div>`).join('') || muted('No posts in your specialty.')}`);
     return out;
   },
 };

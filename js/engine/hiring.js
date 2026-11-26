@@ -26,6 +26,7 @@ import { stageTierOf, stageTraining, proCredits, workOf, districtOf } from './en
 import { STAGE_BAR } from '../data/fame.js';
 import { danceTraining } from './dance.js';
 import { jobBlock as jobBlockSpecial } from './specialCareer.js';
+import { oddsWords, rollRead, afterWords } from './odds.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const yrs = (n) => `${n} ${n === 1 ? 'year' : 'years'}`;
@@ -110,8 +111,46 @@ export function postingView(id) {
   if (stretch > 3 || (post.level >= 2 && own < want * 0.6)) reasons.push(`They want about ${yrs(want)} of experience${post.level >= 2 ? ` as ${car.levels[post.level - 1].title.toLowerCase()} or similar` : ''}. You have ${post.level >= 2 ? own : have}.`);
   const hours = post.partTime ? canFit(post.hours, { kind: 'parttime' }) : canFit(post.hours + 0, { kind: 'job', replacesMain: !!p.career.careerId });
   if (!hours.ok) reasons.push(hours.text);
-  return { post, employer: e, career: car, eligible: !reasons.length, reasons, stretch, have, want, culture: cultureOf(e),
+  const view = { post, employer: e, career: car, eligible: !reasons.length, reasons, stretch, have, want, culture: cultureOf(e),
     note: stretch > 0 ? `A stretch: wants ${yrs(want)} of experience.` : '' };
+  if (view.eligible) view.odds = oddsOf(view);
+  return view;
+}
+
+/**
+ * The chance of an offer before applying, in plain words, and what would help most: the same reckoning as decide(),
+ * for a decent interview (or a middling audition), without its luck.
+ */
+function oddsOf(view) {
+  const p = player();
+  const { post, career: car } = view;
+  const { bonus, stretch, crowd } = factors(view);
+  let chance;
+  if (car.hire === 'audition') chance = clamp(0.3 + ((Number(resolve(car.skill)) || 0) - (car.req.stats?.[car.skill] ?? 50)) / 45 + bonus - stretch - crowd, 0.03, 0.95);
+  else if (car.hire === 'portfolio') chance = clamp(0.35 + clamp((Number(resolve(car.skill)) || 50) / 100, 0, 1) * 0.5 + bonus - stretch, 0.05, 0.95);
+  else {
+    const manner = car.hire === 'military' ? (p.stats.health - 50) / 200 + (p.hidden.discipline - 50) / 250 : (p.stats.charm - 50) / 250;
+    const grades = Math.max(0, ...p.education.degrees.filter((d) => d.type !== 'apprenticeship').map((d) => d.gpa));
+    chance = clamp(0.18 + 0.6 * 0.55 + manner + (grades ? (grades - 3) * 0.08 : 0) + bonus - stretch - crowd, 0.04, 0.95);
+  }
+  // The one thing that would help most.
+  const help = view.stretch > 0 ? 'More experience in this line of work would help most.'
+    : crowd > 0.08 ? 'Many people apply for these: a good interview matters most.'
+      : car.hire === 'audition' || car.hire === 'portfolio' ? 'More practice in the skill would help most.'
+        : p.stats.charm < 45 ? 'Coming across well in interviews (charm) would help most.'
+          : 'A good interview matters most.';
+  return { chance, words: oddsWords(chance), help };
+}
+
+/** What every application weighs besides the interview: an open door, a degree, the stretch, the crowd. */
+function factors(view) {
+  const p = player();
+  const { post, career: car } = view;
+  const bonus0 = doorBonus(car) + (p.flags.veteran && ['safety', 'government', 'transport'].includes(car.family) ? 0.1 : 0);
+  const graduate = p.education.degrees.some((d) => ['university', 'graduate', 'doctorate', 'business', 'law', 'medical'].includes(d.type));
+  const deskWork = ['corporate', 'tech', 'government', 'science', 'media', 'law', 'education', 'health'].includes(car.family);
+  const degreeEdge = deskWork && !car.req?.degree && !car.req?.program ? (graduate ? 0.04 + post.level * 0.03 : -post.level * 0.05) : 0;
+  return { bonus: bonus0 + degreeEdge, stretch: view.stretch * 0.07, crowd: (post.level === 0 ? 0.04 : 0) + post.level * 0.06 + Math.max(0, -hiringClimate()) * 0.5 };
 }
 
 /** Questions for an opening: one from its own field, the rest general. */
@@ -191,7 +230,8 @@ export function decide(id, answers = [], o = {}) {
     chance = clamp(0.18 + score * 0.55 + manner + (grades ? (grades - 3) * 0.08 : 0) + bonus - stretch - crowd + rng.around(0, 0.06), 0.04, 0.95);
     how = score >= 0.8 ? 'The interview went very well.' : score >= 0.5 ? 'A solid interview.' : 'Not your best interview.';
   }
-  if (!rng.chance(chance)) {
+  const read = rollRead(rng, chance);
+  if (!read.ok) {
     // Why, as the employer would put it.
     const why = view.stretch > 1 ? 'another candidate had more relevant experience'
       : score < 0.45 ? 'some of your answers did not convince them'
@@ -199,12 +239,12 @@ export function decide(id, answers = [], o = {}) {
           : rng.pick(['they went with an internal candidate', 'another candidate was a slightly closer fit', 'they decided not to fill the role after all']);
     if (/not to fill/.test(why)) post.status = 'withdrawn';
     p.stats.mood = clamp(p.stats.mood - 3);
-    const text = `${how} ${e.name} turned you down for the ${post.title.toLowerCase()} job: ${why}.`;
+    const text = `${how} ${e.name} turned you down for the ${post.title.toLowerCase()} job: ${why}.${afterWords(read)}`;
     log(text, 'system', 'bad');
     return result(false, text);
   }
   const offer = makeOffer(post, score, o.via);
-  const text = `${how} ${e.name} has offered you the job: ${an(post.title.toLowerCase())}, ${fmtMoney(offer.salary, COUNTRIES[post.countryId])} a year${post.partTime ? ` for ${post.hours} hours a week` : ''}.${offer.low ? ' It is a little lower than the top of what they advertised.' : ''}`;
+  const text = `${how} ${e.name} has offered you the job: ${an(post.title.toLowerCase())}, ${fmtMoney(offer.salary, COUNTRIES[post.countryId])} a year${post.partTime ? ` for ${post.hours} hours a week` : ''}.${offer.low ? ' It is a little lower than the top of what they advertised.' : ''}${afterWords(read)}`;
   log(text, 'system', 'good');
   return { ...result(true, text), offer };
 }

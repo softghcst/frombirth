@@ -11,6 +11,7 @@
 //   flags.mentor     someone who has taken the player under their wing; it lasts
 //
 //   p.career.mentees [{ id, since, promoted }]  juniors the player has helped
+import { oddsWords, rollRead, afterWords } from './odds.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
@@ -355,11 +356,9 @@ export function applyForPromotion() {
   const level = car.levels[c.level];
   if (c.yearsInRole < Math.ceil(level.years * 0.6)) return result(false, `They want to see more time in your current role first: about ${Math.ceil(level.years * 0.6) - c.yearsInRole} more ${Math.ceil(level.years * 0.6) - c.yearsInRole === 1 ? 'year' : 'years'}.`, 'neutral');
   if (!rng.chance(vacancyOdds(c))) return result(false, `There is no ${next.title.toLowerCase()} post open at ${employer(c.employerId)?.name ?? 'your employer'} this year.`, 'neutral');
-  const rival = npcsByRole('coworker').find((n) => !n.flags.report && n.life?.job?.level === c.level && n.meters.intellect > 60);
-  const b = npcsByRole('tag:boss')[0];
-  const mentor = livingNpcs().some((n) => n.flags.mentor) ? 0.08 : 0;
-  const odds = clamp(0.15 + (c.performance - 60) / 70 + ((b?.meters.relationship ?? 50) - 50) / 200 + mentor - (rival ? 0.1 : 0), 0.03, 0.85);
-  if (rng.chance(odds)) { promote(); return result(true, `You put yourself forward, and got it. You are now ${an(c.title.toLowerCase())}.`); }
+  const { odds, rival, b } = promotionChance(c);
+  const read = rollRead(rng, odds);
+  if (read.ok) { promote(); return result(true, `You put yourself forward, and got it. You are now ${an(c.title.toLowerCase())}.${afterWords(read)}`); }
   if (rival && rng.chance(0.5) && rival.life?.job) {
     rival.life.job.level += 1;
     rival.life.job.title = car.levels[rival.life.job.level]?.title ?? rival.life.job.title;
@@ -367,7 +366,26 @@ export function applyForPromotion() {
     rival.meters.relationship = clamp(rival.meters.relationship - 4);
     return result(false, `The ${next.title.toLowerCase()} job went to ${rival.firstName} ${rival.lastName}. You were told it was close.`);
   }
-  return result(false, `Not this time. ${b?.firstName ?? 'Your boss'} says to keep doing what you are doing.`);
+  // What held them back, as the boss would put it.
+  const why = c.performance < 65 ? 'they want to see stronger work from you first'
+    : (b?.meters.relationship ?? 50) < 45 ? `${b?.firstName ?? 'your boss'} is not yet in your corner`
+      : 'someone else was a little further along';
+  return result(false, `Not this time: ${why}.${afterWords(read)} ${b?.firstName ?? 'Your boss'} says to keep doing what you are doing.`);
+}
+
+/** The chance a promotion goes your way if a post is open: your work, your boss, a mentor, a rival. */
+function promotionChance(c = careerState()) {
+  const rival = npcsByRole('coworker').find((n) => !n.flags.report && n.life?.job?.level === c.level && n.meters.intellect > 60);
+  const b = npcsByRole('tag:boss')[0];
+  const mentor = livingNpcs().some((n) => n.flags.mentor) ? 0.08 : 0;
+  const odds = clamp(0.15 + (c.performance - 60) / 70 + ((b?.meters.relationship ?? 50) - 50) / 200 + mentor - (rival ? 0.1 : 0), 0.03, 0.85);
+  return { odds, rival, b };
+}
+/** The chance of a promotion, in plain words, counting the chance a post is open at all. */
+export function promotionOdds() {
+  const c = careerState();
+  if (!c?.careerId) return '';
+  return oddsWords(vacancyOdds(c) * promotionChance(c).odds);
 }
 
 /** For the hub: the people at work right now. */

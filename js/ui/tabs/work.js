@@ -233,7 +233,7 @@ async function applyFlow(api) {
     options: edu.programOptions().map((o) => ({
       value: o.id, label: o.label, disabled: !o.eligible,
       sub: o.eligible
-        ? `${o.blurb} ${years(o.years)}, ${o.stipend ? `pays ${fmtMoney(o.stipend, c)} a year` : o.tuition ? `from ${fmtMoney(o.tuition, c)} a year` : 'no tuition'}.`
+        ? `${o.blurb} ${years(o.years)}, ${o.stipend ? `pays ${fmtMoney(o.stipend, c)} a year` : o.tuition ? `from ${fmtMoney(o.tuition, c)} a year` : 'no tuition'}.${o.odds ? ` Your chances: ${o.odds}.` : ''}`
         : o.reason,
     })),
   });
