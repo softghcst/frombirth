@@ -1271,6 +1271,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .law-tabs { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
 .law-tabs .av-chip { flex: none; }
 .law-row { width: 100%; }
+.camp-steps { margin: 6px 0 12px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+.camp-steps .av-chip { flex: none; cursor: default; }
+.camp-steps .av-chip.done { opacity: 0.55; }
 .law-ev { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
 .law-ev:last-child { border-bottom: 0; }
 .law-ev small { color: var(--muted); }
@@ -1521,3 +1524,5 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .wp-hm .chip.on { background: var(--accent); color: #FFFFFF; }
 .wp-hm-note { margin: 0; color: var(--bad, #B23A48); font-size: .9rem; }
 .wp-hm-total { margin: 0; display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.more-talents { margin-top: 4px; }
+.more-talents summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }

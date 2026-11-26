@@ -70,7 +70,12 @@ export default {
         ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
-        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
+        ${(() => {
+          // Five at a time: the ones you are best at now, with the rest one tap away.
+          const all = TALENTS.filter((t) => !t.hidden).map((t) => ({ t, v: p.talents[t.id] ?? 0 })).sort((a, b) => b.v - a.v);
+          const bar = ({ t, v }) => meterHtml(t.name, v, true);
+          return all.slice(0, 5).map(bar).join('') + (all.length > 5 ? `<details class="more-talents"><summary>All talents</summary>${all.slice(5).map(bar).join('')}</details>` : '');
+        })()}
         <p class="muted" style="margin-top:6px">${p.age < 3 ? 'Everyone starts somewhere. What you are good at grows with the years, and with practice.' : 'How good you are now: the years bring it on, and practice takes it further.'}</p>
         ${(() => { const seen = noticed(p); return `<div class="section-label">What you have noticed about yourself</div>${seen.length ? seen.map((x) => `<div class="kv"><span>${esc(x.name)}</span><span>${esc(x.text)}</span></div>`).join('') : '<p class="muted">Nothing yet. Try things: a gift shows itself sooner when you do.</p>'}`; })()}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}

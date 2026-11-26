@@ -15,11 +15,33 @@ import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { SPECIALTY_BY_ID, SKILLS, RANKS, DEPARTMENTS, PROCEDURE_BY_ID, PRACTICE_TYPES, jurisdiction } from '../data/medicine.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
+// Five skills to follow on screen, not nine: each is the average of the finer ones the engine keeps.
+const SKILL_GROUPS = [
+  ['Clinical Judgment', ['reasoning', 'research']],
+  ['Hands-On Skill', ['technical']],
+  ['Bedside Manner', ['communication']],
+  ['Teamwork & Leadership', ['teamwork', 'management', 'leadership']],
+  ['Professionalism', ['professionalism', 'integrity']],
+];
+/** The same five, named for the specialty: a surgeon's hands-on skill is surgery; a psychiatrist's bedside manner is the therapeutic relationship. */
+const SURGICAL = /surg|ortho|neurosurg|ctsurg|vascular|transplant|colorectal|plastic|hand|spine|foot_ankle|urology|ent|ophthalmology|obgyn|trauma|podiatry/;
+function skillNames(spec) {
+  const n = SKILL_GROUPS.map(([name]) => name);
+  if (!spec) return n;
+  if (SURGICAL.test(spec)) n[1] = 'Surgical Skill';
+  if (spec === 'emergency' || spec === 'critical_care' || spec === 'pulm_cc' || spec === 'anesthesiology') n[1] = 'Resuscitation & Procedures';
+  if (spec === 'radiology' || spec === 'pathology' || spec === 'forensic_path') { n[1] = 'Reading the Images & Slides'; n[2] = 'Explaining Findings'; }
+  if (spec === 'psychiatry' || spec === 'forensic_psych') { n[1] = 'Assessment'; n[2] = 'Therapeutic Relationship'; }
+  if (/peds|pediatrics|neonatology/.test(spec)) n[2] = 'With Children & Parents';
+  if (spec === 'family' || spec === 'internal' || spec === 'general') n[2] = 'Knowing Your Patients';
+  return n;
+}
 import { openModal, messageModal, pickModal, inputModal } from './modals.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import { med, M, W, currentSpecialty, specialtyName, qualified, reputationOf } from '../engine/medicine/core.js';
 import * as train from '../engine/medicine/training.js';
+import * as routine from '../engine/medicine/routine.js';
 import * as cases from '../engine/medicine/cases.js';
 import * as ladder from '../engine/medicine/ladder.js';
 import * as jobs from '../engine/medicine/jobs.js';
@@ -136,7 +158,7 @@ const VIEWS = {
       ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Training license: practices under supervision' : 'None yet'],
       ['Reputation', `${reputationOf(m)} (from how you practice, never from survival counts)`],
       ['Jurisdiction', `${p.countryId === 'us' ? 'United States, modeled in detail' : 'Simplified profile: the broad shape, not the rules'}`],
-    ])) + card('Skills', Object.entries(SKILLS).map(([k, label]) => meterHtml(label, m.skills[k], true)).join(''));
+    ])) + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(currentSpecialty(m))[i], Math.round(ids.reduce((t, k) => t + (m.skills[k] ?? 0), 0) / ids.length), true)).join(''));
   },
   education(p, m) {
     let out = '';
@@ -386,7 +408,7 @@ async function openCase(id, api) {
       <div class="section-label">Review the history</div><p>${esc(v.history)}</p>
       <div class="section-label">Review the examination</div><p>${esc(v.exam)}</p>
       ${v.triage ? `<div class="section-label">Who first?</div><p>${esc(v.triage.text)}</p>${v.triage.options.map((o) => btn('triage', o.label, { arg: o.id })).join('')}` : ''}
-      <div class="section-label">Tests and imaging</div>${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
+      <div class="section-label">Tests and imaging</div>${open && routine.workupTests(id).length ? btn('workup', 'Order the Standard Workup', { cls: 'primary', sub: 'The tests this presentation calls for, in one go' }) : ''}${v.tests.map((t) => t.done ? `<p><strong>${esc(t.name)}:</strong> ${esc(t.result)}</p>` : btn('test', t.name, { arg: t.id, disabled: !open })).join('')}
       <div class="section-label">Discuss the assessment</div>${v.differential.map((d) => btn('dx', d.label, { arg: d.id, disabled: !open, cls: v.dx === d.id ? 'primary' : '' })).join('')}
       ${open ? `<div class="section-label">Consider the treatment options</div>${v.plans.map((x) => btn('plan', x.label, { arg: x.id, disabled: !!x.block || !v.dx || !!v.triage, sub: x.block || (x.refer ? `Refers to ${x.refer}` : x.procedure ? `${x.procedure}: the operating room` : '') })).join('')}` : ''}
       ${v.or ? `<div class="card"><h3>Operating room: ${esc(v.or.procedure)}</h3>${kv([['Team', v.or.team], ['Setting', v.or.resources], ['Risk for this patient', v.or.risk]])}
@@ -397,7 +419,7 @@ async function openCase(id, api) {
       ${last && !v.outcome ? `<p class="muted">${esc(last)}</p>` : ''}
       <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
   };
-  const acts = { or: cases.orStep, test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage, follow: (cid) => cases.arrangeFollowUp(cid) };
+  const acts = { or: cases.orStep, test: cases.orderTest, dx: cases.setDiagnosis, plan: cases.choosePlan, decide: cases.decide, triage: cases.triage, follow: (cid) => cases.arrangeFollowUp(cid), workup: (cid) => routine.standardWorkup(cid) };
   root.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return; }
     const b = e.target.closest('[data-act]');
