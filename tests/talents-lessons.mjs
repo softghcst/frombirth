@@ -42,9 +42,9 @@ const lessonsFresh = () => { const l = store.state.player.flags.lessons; if (l) 
 // ---------- More talents ----------
 {
   const p = life(10);
-  check(ADDED_TALENTS.length === 5 && ADDED_TALENTS.every((id) => Number.isInteger(p.talents[id]) && p.talents[id] >= 0 && p.talents[id] <= 100), `a new life has art, writing, technology, math and science, and persuasion (${JSON.stringify(p.talents)})`);
+  check(ADDED_TALENTS.length === 6 && ADDED_TALENTS.every((id) => Number.isInteger(p.talents[id]) && p.talents[id] >= 0 && p.talents[id] <= 100), `a new life has art, writing, technology, math and science, persuasion and modeling (${JSON.stringify(p.talents)})`);
   const shown = TALENTS.filter((t) => !t.hidden).map((t) => t.name);
-  check(shown.length === 10 && shown.includes('Persuasion') && shown.includes('Technology') && shown.includes('Math and Science') && !shown.includes('Mischief'), `ten talents are shown, mischief is not (${shown.join(', ')})`);
+  check(shown.length === 11 && shown.includes('Persuasion') && shown.includes('Modeling') && shown.includes('Technology') && shown.includes('Math and Science') && !shown.includes('Mischief'), `eleven talents are shown, mischief is not (${shown.join(', ')})`);
   const n = makeNpc({ role: 'parent', countryId: 'us', age: 40 }); // the people whose talents the game keeps
   check(ADDED_TALENTS.every((id) => Number.isInteger(n.talents[id])), 'other people have them too');
   // Families pass them down: two gifted parents, a child who leans the same way.

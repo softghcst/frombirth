@@ -53,6 +53,7 @@ export const WORK_EDGE = { tech: TECH, software: TECH, science: LAB, media: NEWS
   // Investigation, the uniformed services and the body
   detective: DETECTIVE, forensics: [...LAB, ['talents.crime', 0.1]], cyber: [...TECH, ['talents.crime', 0.1]],
   military: BODY, police: [...BODY, ['talents.crime', 0.15]], firefighter: BODY, safety: BODY, sport: MOVEMENT, fitness: MOVEMENT,
+  modeling: [['talents.modeling', 0.6], ['talents.dance', 0.15], ['talents.acting', 0.15]],
   // Teaching
   teacher: TEACHING, education: TEACHING, academic: [['talents.science', 0.25], ['talents.writing', 0.25]],
 };

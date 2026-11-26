@@ -48,7 +48,7 @@ export function ensurePotential(p = player()) {
 const HINT = { music: 'musically inclined', sports: 'athletically inclined', acting: 'drawn to performing', singing: 'that singing comes easily to you',
   dance: 'a feel for rhythm in you', art: 'artistically inclined', writing: 'that you have a way with words', tech: 'good with machines and gadgets',
   science: 'that numbers and how things work make sense to you',
-  persuasion: 'that you can talk people round' };
+  persuasion: 'that you can talk people round', modeling: 'at ease in front of a camera' };
 
 /**
  * Once a year: each talent comes on toward where the years alone would bring it (never down), and a gift not yet known

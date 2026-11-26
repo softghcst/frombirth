@@ -80,5 +80,16 @@ check(idolActor > idolPlain, `an actor is at ease on camera (${idolPlain} -> ${i
 const lookPlain = look(life()), lookActor = look(life({ acting: 100 }));
 check(lookActor > lookPlain, 'an actor knows how to pose');
 
+// Modeling is a gift of its own: it makes the look, the work is judged on the look, and lessons train it.
+const avgFace = life(); avgFace.stats.charm = 50; avgFace.stats.health = 70; avgFace.age = 20;
+const natural = life({ modeling: 95 }); natural.stats.charm = 50; natural.stats.health = 70; natural.age = 20;
+check(look(natural) >= look(avgFace) + 10, `a gift for modeling shows (${look(avgFace)} -> ${look(natural)})`);
+const modelJob = (await import('../js/data/careers.js')).CAREER_BY_ID.modeling;
+check(modelJob?.skill === 'modelLook' && modelJob.req.stats.modelLook > 0, 'modeling hires on the look');
+const { LESSONS } = await import('../js/data/lessons.js');
+check(LESSONS.find((l) => l.id === 'modeling')?.grows['talents.modeling'] > 0, 'modeling lessons train the gift');
+const { SKILL_BY_ID } = await import('../js/data/skills.js');
+check(SKILL_BY_ID.modeling?.talent === 'modeling', 'runway and posing can be practiced');
+
 if (problems.length) { console.log(problems.map((x) => `FAIL ${x}`).join('\n')); process.exit(1); }
 console.log('A gift leads somewhere: medicine, law, the newsroom, the police.');
