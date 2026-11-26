@@ -135,6 +135,53 @@ section('agencies: stable departments, units with supervisors, separate federal 
 }
 section('recruitment: eligibility per agency, dated decisions, the academy over time, a persistent training officer, probation before anything else');
 
+// ---------- 2b. Field training that is not going well: reviews by date, a cap, the same at any turn length ----------
+{
+  const dice = rng.state(); // this check's own lives leave the game's dice as they found them, for the checks after it
+  const p = life('us', 25);
+  const ag = A.agencyOf('municipal', 'us', p.city);
+  core.I().apps.push({ id: 'app_f', kind: 'police', ownerId: ag.id, status: 'offer', due: core.now(), outcome: 'offer' });
+  C.acceptAcademy('app_f');
+  const setNow = (t) => { store.state.year = Math.floor(t / 12); store.state.month = t % 12; };
+  setNow(core.now() + 12); C.settleAcademy();
+  const r0 = core.I();
+  Object.assign(r0.skills, { writing: 2, observation: 2, interviewing: 2, ethics: 2 }); r0.acted.field = 0; // a recruit who is struggling
+  const start = r0.job.fieldEnd;
+  const snapshot = JSON.stringify(store.state);
+  const run = (times) => {
+    store.state = JSON.parse(snapshot); store.state.pendingEvents = [];
+    const logs0 = store.state.journal.length;
+    for (const t of times) { setNow(t); C.settleProbation(); }
+    const r = core.I(); const j = r.job;
+    const sc = store.state.pendingEvents.find((e) => e.id === 'inv_fto_last_chance');
+    return { stage: r.stage, ext: j?.ftoExtensions ?? null, last: j?.ftoLastChance ?? null, job: !!j, scene: !!sc, months: sc?.cast?.words?.months,
+      lines: store.state.journal.slice(logs0).map((x) => x.text).filter((t) => /field training/.test(t)) };
+  };
+  // Quarterly turns check at every quarter; a yearly turn checks once, a year on.
+  const quarterly = run([start, start + 3, start + 6, start + 9, start + 12]);
+  const yearly = run([start + 12]);
+  check(quarterly.ext === C.FTO_EXTENSIONS && yearly.ext === C.FTO_EXTENSIONS, `four extensions at most (${quarterly.ext}, ${yearly.ext})`);
+  check(quarterly.stage === yearly.stage && quarterly.last === yearly.last && quarterly.job === yearly.job && quarterly.scene === yearly.scene,
+    `the same outcome on quarterly and yearly turns (${JSON.stringify([quarterly.stage, quarterly.last, quarterly.scene])} vs ${JSON.stringify([yearly.stage, yearly.last, yearly.scene])})`);
+  check(yearly.months === '12' && quarterly.months === '12' && quarterly.lines.some((t) => /three more months/.test(t)), `the player hears how long it really was: three months at a time on quarterly turns, the whole year in the scene on a yearly one (${yearly.months})`);
+  check(yearly.lines.every((t) => !/three more months/.test(t)), 'a yearly turn does not say three months when it was twelve');
+  check(quarterly.lines.some((t) => /My Investigations/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
+  check(yearly.scene && yearly.stage === 'field', 'after the last extension, a last chance to ask for');
+  // Asking, or accepting: one final three months, or the job ends.
+  store.state = JSON.parse(snapshot); setNow(start + 12); C.settleProbation();
+  const said = DR.invChoice('ftolast:accept', {});
+  check(!core.I().job && store.state.player.career.careerId !== 'police' && /badge/.test(said ?? ''), 'accepting it: the department lets the recruit go');
+  // A recruit who does the work passes, and probation runs on after a late sign-off.
+  store.state = JSON.parse(snapshot);
+  setNow(start); C.settleProbation();
+  Object.assign(core.I().skills, { writing: 60, observation: 60, interviewing: 60, ethics: 60 });
+  setNow(start + 3); C.settleProbation();
+  const rj = core.I();
+  check(rj.stage === 'probation' && rj.job.ftoExtensions === 1 && rj.job.probationEnd >= start + 3 + 6, `doing the work gets the sign-off, with probation still ahead (${rj.stage}, ${rj.job.ftoExtensions})`);
+  rng.seed(dice);
+}
+section('field training: reviews held by date at any turn length, four extensions at most, what to work on, a last chance, then the department decides');
+
 // ---------- 3. Detective selection and promotion ----------
 {
   const p = life('us', 25);
