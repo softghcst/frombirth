@@ -246,7 +246,7 @@ export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fri
  * empty they wear the older styles, as before.
  */
 export const KID_HAIR = {
-  female: { straight: ['hair_kid_girl_straight_01_blunt_bangs', 'hair_kid_girl_straight_02_ponytail', 'hair_kid_girl_straight_03_bob_headband', 'hair_kid_girl_straight_04_space_buns'], wavy: ['hair_kid_girl_wavy_06_half_up_bow', 'hair_kid_girl_wavy_07_dutch_braids', 'hair_kid_girl_wavy_08_pigtails'], curly: ['hair_kid_girl_curly_09_pineapple', 'hair_kid_girl_curly_10_ringlets'], coily: ['hair_kid_girl_coily_12_afro_puffs', 'hair_kid_girl_coily_13_box_braids_bun', 'hair_kid_girl_coily_14_afro_headband', 'hair_kid_girl_coily_15_bantu_knots'] },
+  female: { straight: ['hair_kid_girl_straight_01_blunt_bangs', 'hair_kid_girl_straight_02_ponytail', 'hair_kid_girl_straight_03_bob_headband', 'hair_kid_girl_straight_04_space_buns'], wavy: ['hair_kid_girl_wavy_05_side_braid', 'hair_kid_girl_wavy_06_half_up_bow', 'hair_kid_girl_wavy_07_dutch_braids', 'hair_kid_girl_wavy_08_pigtails'], curly: ['hair_kid_girl_curly_09_pineapple', 'hair_kid_girl_curly_10_ringlets', 'hair_kid_girl_curly_11_puff_pigtails'], coily: ['hair_kid_girl_coily_12_afro_puffs', 'hair_kid_girl_coily_13_box_braids_bun', 'hair_kid_girl_coily_14_afro_headband', 'hair_kid_girl_coily_15_bantu_knots'] },
   male: { straight: [], wavy: [], curly: [], coily: [] },
 };
 
