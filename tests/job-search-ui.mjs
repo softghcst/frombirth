@@ -50,7 +50,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const modal = page.locator('#modal-root .modal').last();
   const text = await modal.innerText();
   check(/Job recruiter/i.test(text) && /Openings this year/i.test(text), `${label}: Find work shows the recruiter and this year's openings`);
-  check(await modal.locator('[data-act="filter"], [data-act="family"]').count() === 0, `${label}: no filter chips`);
+  check(await modal.locator('[data-act="filter"], [data-act="family"], [data-sec]').count() === 0, `${label}: Find work opens the page alone: no filter chips and no row of sections`);
   const rows = await modal.locator('.nav-row[data-act="posting"]').count();
   check(rows >= 6 && rows <= 16, `${label}: about a dozen openings (${rows})`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/job-search-${label}.png` });
@@ -72,6 +72,17 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.locator('#modal-root .nav-row[data-act="posting"]:not([disabled])').first().click(); await page.waitForTimeout(200);
   check(/Apply/.test(await page.locator('#modal-root .scrim:last-child .modal').innerText()), `${label}: an opening on the list can be applied for`);
   await page.locator('#modal-root .scrim:last-child [data-cancel]').click(); await page.waitForTimeout(150);
+  // Jobs opens a menu of Work's pages; each opens alone, with a way back to the menu.
+  await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
+  await page.locator('[data-act="hub"]').first().click(); await page.waitForTimeout(300);
+  const menu = page.locator('#modal-root .modal').last();
+  check(await menu.locator('.nav-row[data-sec]').count() >= 5 && await menu.locator('.av-chip').count() === 0, `${label}: Jobs opens a menu of Work's pages, not a row of tabs`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/work-menu-${label}.png` });
+  await menu.locator('.nav-row[data-sec="find"]').click(); await page.waitForTimeout(200);
+  check(/Openings this year/i.test(await menu.innerText()) && await menu.locator('[data-sec]').count() === 0, `${label}: a page from the menu opens alone`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/work-page-${label}.png` });
+  await menu.locator('[data-back]:not(.modal-back)').click(); await page.waitForTimeout(200);
+  check(await menu.locator('.nav-row[data-sec]').count() >= 5, `${label}: Back returns to the menu`);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: nothing scrolls sideways`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();

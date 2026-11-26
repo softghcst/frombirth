@@ -64,13 +64,26 @@ function sectionsFor(p) {
   });
 }
 
+/** Pages the Work tab already lists on its own (the special careers, the military): left off the menu here. */
+const ON_WORK_TAB = new Set(['special', 'military']);
+/** What each section is for, and its icon, on the Work menu. */
+const SECTION_INFO = {
+  now: ['Your job, hours and pay', 'briefcase'], workplace: ['Your boss, coworkers and team', 'people'],
+  find: ['Openings and a job recruiter', 'compass'], offers: ['Offers and contacts', 'letter'],
+  parttime: ['Work beside school or a main job', 'calendar'], freelance: ['Your own clients and prices', 'star'], business: ['Start or run a business', 'coin'],
+  household: ['Who works and who keeps the home', 'home'], special: ['Acting, music, sport and more', 'sparkle'], military: ['The armed forces', 'medal'],
+  quals: ['Degrees, licenses and certificates', 'school'], history: ['Every job you have had', 'archive'], retire: ['Your pension and stopping work', 'calendar'],
+};
+
 /**
- * Opens the hub. api: the tab api ({ changed }) so the rest of the screen updates too.
+ * Opens Work. With no section, a menu of what there is (each opens as a page of its own, with Back to the menu);
+ * with one (Find work, a business), that page alone. api: the tab api ({ changed }) so the rest of the screen updates too.
  * @param {{changed:Function}} api
  * @param {string} [start] a section id
  */
-export function openOccupation(api, start = 'now') {
-  const st = { section: start };
+export function openOccupation(api, start) {
+  // direct: opened straight at a page, so there is no menu behind it and Back leaves.
+  const st = { section: start ?? null, direct: !!start };
   const modal = openModal('<div data-occ></div>', { dismissable: true });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-occ]');
@@ -78,19 +91,26 @@ export function openOccupation(api, start = 'now') {
   const render = () => {
     const p = player();
     const list = sectionsFor(p);
-    if (!list.some(([id]) => id === st.section)) st.section = 'now';
+    if (st.section && !list.some(([id]) => id === st.section)) { st.section = null; st.direct = false; }
+    if (!st.section) {
+      const waiting = hiring.offers().length + recruit.leads().length;
+      root.innerHTML = `<h2 style="margin-top:0">Work</h2>
+        <div class="nav-group">${list.filter(([id]) => !ON_WORK_TAB.has(id)).map(([id, label]) => navRow({ attrs: `data-sec="${id}"`, label: id === 'offers' && waiting ? `${label} (${waiting})` : label,
+    sub: SECTION_INFO[id][0], ico: SECTION_INFO[id][1], tone: id === 'offers' && waiting ? 'peach' : '' })).join('')}</div>`;
+      return;
+    }
+    const label = list.find(([id]) => id === st.section)[1];
     root.innerHTML = `
-      <h2 style="margin-top:0">Work</h2>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, st)}</div>
-      <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
+      ${st.direct ? '' : '<button type="button" class="btn small" data-back>← Work</button>'}
+      <h2 style="margin-top:${st.direct ? 0 : 10}px">${esc(label)}</h2>
+      <div style="margin-top:10px">${VIEWS[st.section](p, st)}</div>`;
   };
   const refresh = () => { api.changed(); render(); };
   const say = async (r) => { refresh(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
 
   root.addEventListener('click', async (e) => {
     const t = e.target;
-    if (t.closest('[data-close]')) { modal.close(); return; }
+    if (t.closest('[data-back]')) { st.section = null; render(); modal.el.scrollTop = 0; return; }
     const sec = t.closest('[data-sec]');
     if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
     const b = t.closest('[data-act]');
@@ -428,7 +448,7 @@ async function applyTo(id, ctx, o = {}) {
   const r = hiring.decide(id, answers, o);
   ctx.refresh();
   await messageModal({ body: r.text, tone: r.tone });
-  if (r.offer) { ctx.st.section = 'offers'; ctx.render(); }
+  if (r.offer) { ctx.st.section = 'offers'; ctx.st.direct = false; ctx.render(); }
   return undefined;
 }
 
@@ -686,8 +706,8 @@ const ACTIONS = {
   castingboard: (_, x) => { x.close(); openFame(x.api, 'casting', { career: 'acting' }); },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
-  gotofind: (_, x) => { x.st.section = 'find'; x.render(); },
-  gotofree: (_, x) => { x.st.section = 'freelance'; x.render(); },
+  gotofind: (_, x) => { x.st.section = 'find'; x.st.direct = false; x.render(); },
+  gotofree: (_, x) => { x.st.section = 'freelance'; x.st.direct = false; x.render(); },
 };
 
 /** Special careers and the military have their own way in: an audition, a portfolio, a selection board. */
