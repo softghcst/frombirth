@@ -83,6 +83,20 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/work-page-${label}.png` });
   await menu.locator('[data-back]:not(.modal-back)').click(); await page.waitForTimeout(200);
   check(await menu.locator('.nav-row[data-sec]').count() >= 5, `${label}: Back returns to the menu`);
+  // At school: Find a Job points to part-time work instead of a list of jobs that all wait for the course to end.
+  await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
+  await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const p = store.state.player;
+    p.age = 16; p.birthYear = store.state.year - 16; p.education.enrolled = true; p.education.stage = 'high'; p.flags.jobList = null; p.flags.jobRecruiter = null;
+    store.notify();
+  });
+  await page.evaluate(async () => { const { openOccupation } = await import('/js/ui/occupation.js'); openOccupation({ changed() {} }, 'find'); });
+  await page.waitForTimeout(300);
+  const school = page.locator('#modal-root .modal').last();
+  check(/While you are studying/i.test(await school.innerText()) && await school.locator('.nav-row[data-act="posting"]').count() === 0, `${label}: at school, Find a Job points to part-time work`);
+  await school.locator('[data-act="gotopart"]').click(); await page.waitForTimeout(200);
+  check(/Part-time/i.test(await school.locator('h2').first().innerText()), `${label}: and opens it`);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: nothing scrolls sideways`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();

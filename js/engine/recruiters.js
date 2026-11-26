@@ -86,7 +86,12 @@ export function stepUp() {
   const c = careerState();
   const car = CAREER_BY_ID[c.careerId];
   if (!car) return null;
-  const where = leadPlace(c);
+  let where = leadPlace(c);
+  // A headhunter only brings work abroad where the player could get the right to work.
+  if (where.countryId !== p.countryId) {
+    const ok = routes(where.countryId).some((x) => ['right', 'free', 'work'].includes(x.id) && x.eligible);
+    if (!ok) where = { countryId: p.countryId, city: p.city };
+  }
   const list = cityEmployers(where.countryId, where.city).filter((e) => e.id !== c.employerId);
   const e = list.find((x) => x.tracks.includes(car.id)) ?? list.find((x) => x.family === car.family);
   if (!e) return null;

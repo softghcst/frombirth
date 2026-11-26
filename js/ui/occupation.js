@@ -203,9 +203,18 @@ const VIEWS = {
 
   // Ordinary work: a recruiter who brings one opening at a time, and this year's list (engine/jobSearch.js).
   find(p) {
+    if (p.legal.incarceration) return '<div class="card"><p class="muted" style="margin:0">You cannot look for work from prison. The list and the recruiter will be here when you are out.</p></div>';
     const since = (post) => (post.listed < store.state.year ? ` · listed since ${post.listed}` : '');
     const r = search.recruiter();
     const list = search.yearList();
+    // Still at school or studying: full-time work waits, and the openings here are full-time. Part-time work is the way in.
+    const studying = !list.some((v) => v.eligible) && list.some((v) => /Finish or leave your course/.test(v.reasons[0] ?? ''));
+    if (studying) {
+      return `<div class="card"><h3>While you are studying</h3><p class="muted" style="margin:0 0 8px">Full-time jobs wait until you finish or leave your course. Part-time work fits around it.</p>
+        <div class="btn-stack">${btn('gotopart', 'See part-time work', { cls: 'primary' })}</div></div>
+        <div class="section-label">Openings this year · ${esc(p.city)}</div>
+        <p class="muted" style="margin:4px 2px">${list.length} full-time openings, for when you are done.</p>`;
+    }
     const open = list.filter((v) => v.eligible).length;
     const pitch = r.view ? `<div class="kv"><span>Last pitch</span><span>${esc(r.view.post.title)}, ${esc(r.view.employer.name)}</span></div>` : '';
     const status = r.done ? 'No more looks this year. Come back next year.' : r.used ? `${r.left} ${r.left === 1 ? 'look' : 'looks'} left this year.` : '';
@@ -716,6 +725,7 @@ const ACTIONS = {
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
   gotofind: (_, x) => { x.st.section = 'find'; x.st.direct = false; x.render(); },
+  gotopart: (_, x) => { x.st.section = 'parttime'; x.st.direct = false; x.render(); },
   gotofree: (_, x) => { x.st.section = 'freelance'; x.st.direct = false; x.render(); },
 };
 

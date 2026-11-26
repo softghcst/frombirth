@@ -8,7 +8,7 @@ import { advanceYear } from '../js/engine/yearProcessor.js';
 import * as market from '../js/engine/employers.js';
 import * as work from '../js/engine/worklife.js';
 import * as search from '../js/engine/jobSearch.js';
-import * as hiring from '../js/engine/hiring.js';
+import * as career from '../js/engine/career.js';
 import * as recruit from '../js/engine/recruiters.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
 
@@ -87,16 +87,7 @@ check(prominentSeen > 0, 'some prominent openings were listed');
   check(recruit.headhuntOdds() === 0, 'nobody is headhunted without a job and a record');
   // A job as a customer service representative, five years in, with good reviews.
   const careerId = Object.keys(CAREER_BY_ID).find((id) => CAREER_BY_ID[id].levels[0].title === 'Customer service representative') ?? 'retail';
-  const e = market.placeAt(careerId, p.countryId, p.city);
-  const post = market.openPosting(e, { careerId, level: 0 });
-  let got;
-  for (let i = 0; i < 40 && !got; i++) {
-    p.flags.hireActs = null; if (post.status !== 'open') post.status = 'open';
-    const a = hiring.apply(post.id);
-    if (a.kind === 'blocked') break;
-    const r = hiring.decide(post.id, a.kind === 'interview' ? a.questions.map((q) => [...q.a].sort((x, y) => hiring.answerScore(y) - hiring.answerScore(x))[0]) : [0]);
-    if (r.offer) got = hiring.accept(r.offer.id);
-  }
+  career.hire(CAREER_BY_ID[careerId], 0, 60, 'test');
   check(p.career.careerId === careerId, 'set-up: the player has a job');
   p.career.experience[careerId] = 5; p.career.performance = 90;
   check(recruit.headhuntOdds() > 0.2, `with a good record, headhunting is likely (${recruit.headhuntOdds().toFixed(2)})`);
@@ -122,6 +113,14 @@ check(prominentSeen > 0, 'some prominent openings were listed');
   // Recruiters no longer write in on their own.
   for (let i = 0; i < 6; i++) recruit.tickRecruiters();
   check(!p.career.leads.some((l) => store.state.npcs[l.from]?.flags.recruits), 'recruiters do not send leads on their own any more');
+}
+
+// Nobody looks for work from prison.
+{
+  const p = life('us');
+  p.legal.incarceration = { until: p.age + 2 };
+  const r = search.recruiterLook();
+  check(!r.ok && /prison/.test(r.text) && search.recruiter().left === 3, 'no recruiter in prison, and no look used');
 }
 
 // The economy changes how long the list is.

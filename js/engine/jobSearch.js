@@ -49,10 +49,14 @@ function pool() {
   return [...market.board({ scope: 'here' }), ...market.board({ scope: 'remote' })].filter((x) => !seen.has(x.id) && seen.add(x.id));
 }
 
-/** One opening per line of work, shuffled. */
+/** One opening per line of work, shuffled: the one the player can apply for where there is one (a part-time post, for
+ * someone at school), so a line of work they could do is not shown as one they cannot. @returns postingViews */
 function varied(posts) {
   const by = new Map();
-  for (const x of shuffle([...posts])) if (!by.has(x.careerId)) by.set(x.careerId, x);
+  for (const v of shuffle([...posts]).map((x) => hiring.postingView(x.id)).filter(Boolean)) {
+    const had = by.get(v.post.careerId);
+    if (!had || (!had.eligible && v.eligible)) by.set(v.post.careerId, v);
+  }
   return [...by.values()];
 }
 function shuffle(a) {
@@ -73,7 +77,7 @@ export function yearList(p = player()) {
       .filter((x) => x && market.isOpen(x) && x.featuredUntil >= now && local(x, p)).slice(0, CARRY_MAX);
     const kept = new Set(carried.map((x) => x.careerId));
     const last = new Set(p.flags.jobList?.ids ?? []); // the rest of last year's list makes way for new openings
-    const views = varied(pool().filter((x) => !kept.has(x.careerId) && !last.has(x.id))).map((x) => hiring.postingView(x.id)).filter(Boolean);
+    const views = varied(pool().filter((x) => !kept.has(x.careerId) && !last.has(x.id)));
     const n = Math.max(0, listSize() - carried.length);
     const can = views.filter((v) => v.eligible);
     const cannot = views.filter((v) => !v.eligible);
@@ -123,6 +127,7 @@ export function pitchOf(postingId, p = player()) {
  */
 export function recruiterLook(p = player()) {
   const d = desk(p);
+  if (p.legal?.incarceration) return { ok: false, text: 'No recruiter will see you while you are in prison.', left: RECRUITER_LOOKS - d.used };
   if (d.used >= RECRUITER_LOOKS) return { ok: false, text: 'The recruiter has nothing more for you this year. Try again next year.', left: 0 };
   // Someone with a record may be headhunted: a step up in their own line of work.
   // A recruiter who has had them in mind since the year began (recruiters.js tickRecruiters) gets the first look.
