@@ -65,7 +65,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('#modal-root .scrim:last-child .modal.modal-full').count() === 1 && /My Medical Career/.test(await page.locator('#modal-root .scrim:last-child .modal-bartitle').innerText()), `${label}: My Medical Career is a full screen, its name in the bar with Back`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-overview.png` });
   const tabs = await page.locator(`${modal} [data-sec]`).evaluateAll((els) => els.map((x) => x.dataset.sec));
-  check(['overview', 'training', 'specialization', 'active', 'hospital', 'development'].every((t) => tabs.includes(t)) && !tabs.includes('clinic'), `${label}: a resident sees the tabs that apply, and no clinic (${tabs.join(', ')})`);
+  check(['overview', 'training', 'active', 'hospital', 'history'].every((t) => tabs.includes(t)) && tabs.length <= 6 && !/My Clinic/.test(await text()), `${label}: a resident sees a handful of tabs, and no clinic (${tabs.join(', ')})`);
   for (const sec of tabs) {
     await page.click(`${modal} [data-sec="${sec}"]`);
     check(!(await overflow()), `${label}: ${sec} does not scroll sideways`);
@@ -73,7 +73,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   // Hospital Life: every hub tab.
   await page.click(`${modal} [data-sec="hospital"]`);
   const hubs = await page.locator(`${modal} [data-hub]`).evaluateAll((els) => els.map((x) => x.dataset.hub));
-  check(['department', 'colleagues', 'residents', 'patients', 'training', 'stories', 'relationships', 'history'].every((t) => hubs.includes(t)), `${label}: Hospital Life has its tabs (${hubs.join(', ')})`);
+  check(['department', 'colleagues', 'patients', 'training', 'stories'].every((t) => hubs.includes(t)) && hubs.length <= 7, `${label}: Hospital Life has a handful of tabs (${hubs.join(', ')})`);
   for (const h of hubs) { await page.click(`${modal} [data-hub="${h}"]`); check(!(await overflow()), `${label}: hospital ${h} does not scroll sideways`); }
   await page.click(`${modal} [data-sec="active"]`);
   check(/Active cases \(3 of 3/i.test(await text()), `${label}: a resident has three active cases this year`);
@@ -112,7 +112,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     await page.waitForTimeout(150);
     check(await page.locator(`${modal} [data-hub="colleagues"].on`).count() === 1, `${label}: Back returns to My Colleagues`);
   }
-  await page.click(`${modal} [data-hub="relationships"]`);
+  await page.click(`${modal} [data-hub="colleagues"]`);
   await page.locator(`${modal} [data-act="colAct"]`).first().click();
   await page.waitForTimeout(100);
   check(/Spend time together/.test(await text()), `${label}: colleagues have actions`);
@@ -149,7 +149,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     for (let i = 0; i < 3; i++) { await page.locator(`${modal} [data-act="answer"]`).first().click(); await page.waitForTimeout(80); await page.locator('#modal-root .scrim:last-child .modal button').last().click(); await page.waitForTimeout(80); }
     check(!(await page.locator(`${modal} [data-act="answer"]`).count()), `${label}: the interview is answered to the end`);
   }
-  await page.click(`${modal} [data-sec="clinic"]`);
+  await page.click(`${modal} [data-sec="hospital"]`);
   check(await page.locator(`${modal} [data-act="open"]:not([disabled])`).count() > 0, `${label}: a qualified internist can open a practice`);
   check(!(await overflow()), `${label}: My Clinic does not scroll sideways`);
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);

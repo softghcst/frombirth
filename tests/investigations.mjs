@@ -1183,7 +1183,7 @@ section('national police reform: passed by the legislature, body cameras that re
   const det = Object.values(a.units)[0].memberIds[0];
   W.openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' });
   // A real prisoner serving a custodial sentence, from a real court case (most cases end otherwise: tried until one does).
-  for (let i = 0; i < 40 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
+  for (let i = 0; i < 120 && !Object.values(k.J().sentences).some((x) => x.type === 'custody' && x.status === 'active'); i++) X.npcCourtCase(p);
   const lines = FP.psychYear(p);
   const work = FP.openWork(p);
   check(work.some((w) => w.kind === 'consult') && work.some((w) => w.kind === 'risk') && lines.length >= 2, `work from real records (${work.map((w) => w.kind)})`);

@@ -527,7 +527,7 @@ export default {
       <div class="section-label">You</div>
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${(() => { const sc = special.current(p); const c0 = careerCard(); return sc ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="sc:${sc}" data-direct-sub="Your career: ${esc(special.SPECIAL_BY_ID[sc].name)}">`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
       ${findWork(p, work)}
       ${specialCareers(p, work)}`;
 
