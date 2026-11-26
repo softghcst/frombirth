@@ -39,8 +39,10 @@ check(t.career.level >= 1 && t.career.title !== first && CAREER_BY_ID.teacher.le
 // At the top, raises carry on.
 rng.seed(8); const top = life('office', 85);
 const C = CAREER_BY_ID.office; top.career.level = C.levels.length - 1; top.career.title = C.levels.at(-1).title; top.career.yearsInRole = 0;
-const pay0 = top.career.salary; years(top, 6, 85);
+const pay0 = top.career.salary; const j0 = store.state.journal.length; years(top, 8, 85);
+const raises = store.state.journal.slice(j0).filter((e) => /raise/.test(e.text)).length;
 check(top.career.careerId === 'office' && top.career.salary > pay0, `at the top rank, raises go on (${pay0} → ${top.career.salary})`);
+check(raises >= 1 && raises < 8, `but not every year (${raises} raises in 8 years of strong work)`);
 // Poor work: a warning, then the job may go.
 let warned = 0; let fired = 0;
 for (let i = 0; i < 8; i++) {

@@ -846,8 +846,10 @@ export function tickCareer() {
         log(`The ${next.title.toLowerCase()} post went to ${rival.firstName} ${rival.lastName}. Your turn may come.`, 'system', 'neutral');
       }
     }
-    const pct = { excellent: 6, good: 3, adequate: 1, poor: 0 }[rating] + (!next && rating !== 'poor' ? 1 : 0); // at the top, a raise is the reward
-    if (pct && career.type !== 'freelance' && c.salary < payCeiling(level)) {
+    // Raises are not every year: good work makes one likelier and bigger; at the top, a raise is the reward.
+    const pct = { excellent: 6, good: 4, adequate: 2, poor: 0 }[rating] + (!next && rating !== 'poor' ? 1 : 0);
+    const raiseChance = { excellent: 0.6, good: 0.4, adequate: 0.15, poor: 0 }[rating];
+    if (pct && career.type !== 'freelance' && c.salary < payCeiling(level) && rng.chance(raiseChance)) {
       c.salary = Math.min(payCeiling(level), Math.round(c.salary * (1 + pct / 100)));
       log(`You were given a ${pct}% raise, to ${fmtMoney(c.salary, cty)}.`);
     }

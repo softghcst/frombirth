@@ -1,6 +1,6 @@
 // Every job moves: an officer, detective or agent doing solid work is considered for the next rank each year without
 // having to ask (the same review, vacancy and rival as applying, engine/investigations/careers.js seekPromotion), is
-// given a step raise each year as public pay scales do, and one doing poor work is warned, then let go.
+// given a raise now and then for solid work (not every year), and one doing poor work is warned, then let go.
 import { rng } from '../../rng.js';
 import { player, log } from '../../state.js';
 import { promotionOptions, seekPromotion } from './careers.js';
@@ -18,7 +18,8 @@ export function considerYear(p = player(), r) {
     else { r.warned = true; log('Your supervisor gave you a formal warning about your work. Another year like this, and you may be let go.', 'system', 'bad'); }
   } else if (perf >= 50) r.warned = false;
   // A step raise, as public pay scales give for each year of service done well.
-  if (perf >= 50 && c.salary) { const pct = perf >= 75 ? 3 : 2; c.salary = Math.round(c.salary * (1 + pct / 100)); }
+  // A raise now and then, likelier for strong work: not every year.
+  if (perf >= 50 && c.salary && rng.chance(perf >= 75 ? 0.55 : 0.3)) { const pct = perf >= 75 ? 4 : 3; c.salary = Math.round(c.salary * (1 + pct / 100)); log(`You were given a ${pct}% raise.`, 'system', 'good'); }
   // The next rank, if the record is there: considered without asking.
   if (perf < 45 || r.apps.some((a) => a.kind === 'promotion' && a.status === 'pending')) return;
   const o = promotionOptions(p).find((x) => !x.block);
