@@ -167,9 +167,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     await m.locator('.choice-btn').nth(Math.max(0, ph.values.indexOf(ph.want))).click(); await page.waitForTimeout(60);
   }
   // The verdict is read out a line at a time: wait for it, rather than reading the page while it is still being said.
-  await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => /Guilty|Not guilty|Judgment|Approved|Denied|court|mistrial|dropped the case|dismissed/i.test([...document.querySelectorAll('#modal-root .modal')].at(-1)?.innerText ?? ''), null, { timeout: 8000 }).catch(() => {});
   const verdict = await page.locator('#modal-root .modal').last().innerText();
-  check(/Guilty|Not guilty|Judgment|Approved|Denied|court/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
+  check(/Guilty|Not guilty|Judgment|Approved|Denied|court|mistrial|dropped the case|dismissed/i.test(verdict), `${label}: a verdict or ruling (${verdict.replace(/\n/g, ' ').slice(0, 90)})`);
   check(phases.some((x) => x.id === 'objection') || phases.some((x) => x.id === 'cross'), `${label}: the day in court asked for an objection or a cross-examination (${phases.map((x) => x.id).join(', ')})`);
   await shot('verdict');
   await ok();
