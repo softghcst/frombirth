@@ -149,6 +149,12 @@ function later(time, minutes) {
 /** What several babies born together are called. */
 export const MULTIPLES = { 2: 'twins', 3: 'triplets', 4: 'quadruplets' };
 
+/** Whether twins (or more) have been born in the family before: the player or their partner a twin, or children born together. */
+function twinsInFamily(p, other) {
+  const mine = p.npcIds.map((id) => store.state.npcs[id]).filter(Boolean);
+  return !!(p.birthInfo?.twin || other?.birthInfo?.twin || mine.some((n) => (n.role === 'sibling' && n.age === p.age) || (n.role === 'child' && n.birthInfo?.twin)));
+}
+
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
@@ -156,9 +162,14 @@ function birth() {
   p.flags.pregnancy = null;
   const babies = [newborn(other)];
   // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
-  if (rng.chance(ivf ? 0.05 : 0.025)) {
+  // Twins run in families (on the mother's side, mostly), and come more often to mothers in their late thirties: a
+  // higher level of the hormone FSH then sometimes releases two eggs in one cycle (fraternal twins). The effect peaks
+  // at 35 to 39 and eases after 40, as fewer eggs are left; IVF, with its own boost, accounts for most twins later on.
+  const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : other?.age ?? 30;
+  const odds = (ivf ? 2 : 1) * (motherAge >= 40 ? 1.2 : motherAge >= 35 ? 1.4 : 1) * (twinsInFamily(p, other) ? 1.8 : 1);
+  if (rng.chance(0.025 * odds)) {
     babies.push(newborn(other));
-    if (rng.chance(ivf ? 0.12 : 0.06)) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
+    if (rng.chance(0.06 * Math.min(odds, 2.5))) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
   }
   // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
   // share the day and the doctor, a few minutes apart, and are each a little smaller.
@@ -306,4 +317,26 @@ export function childCosts() {
 export function tickChildren() {
   const p = player();
   if (p.flags.pregnancy && p.age >= p.flags.pregnancy.dueAge) birth();
+  else surprise();
+}
+
+/**
+ * A couple who live together and are not trying can still find a baby on the way: rarely on birth control (it is not
+ * perfect), often without it. Over a year, the chance is close to the chance of one try, by the mother's age and
+ * fertility (see conceiveChance), cut down by contraception. A pregnancy already this year, or one just ended, waits.
+ */
+export function surpriseChance(npc, p = player()) {
+  if (!npc?.alive || !canTryForBaby(npc) || npc.flags?.abroad || p.flags.pregnancyEnded === store.state.year) return 0;
+  const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : npc.age;
+  const base = conceiveChance(motherAge, p.hidden.fertility);
+  // Without birth control: 44% a year for a couple in their twenties of average fertility (0.55 × 0.8), less with
+  // age, more or less with fertility. On it: a small fraction of that.
+  return p.flags.birthControl === false ? base * 0.8 : base * 0.07;
+}
+function surprise() {
+  const p = player();
+  const partner = livingNpcs().find((n) => ['spouse', 'partner'].includes(n.role));
+  if (!partner || !rng.chance(surpriseChance(partner, p))) return;
+  const said = conceive(partner, false);
+  log(p.flags.birthControl === false ? said : `${said} Birth control is not perfect.`, 'system', 'neutral');
 }
