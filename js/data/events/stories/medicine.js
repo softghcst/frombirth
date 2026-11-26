@@ -307,6 +307,11 @@ export default [
     ['Be there with them, and let their doctors be the doctors', 'You go to the appointments and ask the questions they forget.', 'familyPatient:family', 'good'],
     ['Take on their care yourself', 'You say yes before you have thought it through.', 'familyPatient:self', 'bad'],
   ]),
+  scene('med_family_ailment', '{who} has {ailment}, and calls the doctor in the family before anyone else: you.', [
+    ['Get them seen properly, today', 'You drive them in yourself, and wait in the waiting room like everyone else.', 'familyAilment:seen', 'good'],
+    ['Have a look, and tell them what to watch for', 'You look, ask the questions you would ask anyone, and tell them when to go in if it gets worse.', 'familyAilment:look'],
+    ['Sort it out yourself, to save them the trip', 'It is quicker. It is also not how it should be done, and you both know it.', 'familyAilment:self', 'bad'],
+  ]),
   scene('med_leadership_offer', '{hospital} would like you to become its {post}. More meetings, more responsibility, and fewer patients of your own.', [
     ['Accept', 'You say yes, and look at your calendar with some dread.', 'offer:yes', 'good'],
     ['Decline: you would rather keep seeing patients', 'You thank them, and say no.', 'offer:no'],
