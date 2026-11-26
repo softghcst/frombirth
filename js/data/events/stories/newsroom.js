@@ -132,7 +132,7 @@ export default [
   ]),
   scene('jn_expands', '{outlet} has outgrown its first office. Somebody brings cake to the new one.', [
     ['Make a speech', 'Short, and nobody minds.', 'expand:celebrate', 'good'],
-    ['Look over the new costs', 'Bigger is dearer.', 'expand:careful'],
+    ['Look over the new costs', 'Bigger costs more.', 'expand:careful'],
   ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
