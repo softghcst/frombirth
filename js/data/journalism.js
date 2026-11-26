@@ -21,6 +21,9 @@ export const BEATS = {
   sports: { name: 'Sports', blurb: 'Results that were really played, and the people who played them.' },
   entertainment: { name: 'Music and entertainment', blurb: 'Records that came out, and the artists who made them.' },
   politics: { name: 'Politics', blurb: 'Elections, governments and what was really said and decided.' },
+  business: { name: 'Business', blurb: 'Companies, jobs and money: from published filings, never anyone\'s bank account.' },
+  science: { name: 'Science and health', blurb: 'Studies and what they really show. One study proves little.' },
+  kpop: { name: 'K-pop', blurb: 'Groups, releases and music shows, as they really happened. Rumors stay rumors.' },
   investigative: { name: 'Investigations', blurb: 'Long stories that may, or may not, stand up. From senior reporter.', minLevel: 2 },
 };
 

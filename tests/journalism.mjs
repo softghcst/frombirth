@@ -304,6 +304,62 @@ function report(s) {
   section('a publication of one\'s own: of its era, bought with real money, real staff, years that can lose money');
 }
 
+// 10. More beats, abroad, the family record, a colleague.
+{
+  const p = life(30, 2024, 'kr');
+  hireMe(p);
+  const kp = await import('../js/engine/kpop.js');
+  kp.world();
+  // A K-pop story only about a release that really came out, with positions as the agency lists them.
+  const rel = Object.values(store.state.kpop.releases).find((r) => !r.solo && store.state.kpop.groups[r.groupId]?.debut);
+  if (rel) {
+    rel.year = store.state.year;
+    jn.J().beat = 'kpop'; jn.J().assigned = null;
+    const k = jn.assignYear(p).find((x) => x.beat === 'kpop');
+    check(k && k.links.kpopRelease && store.state.kpop.releases[k.links.kpopRelease], 'a K-pop story is about a real release');
+    if (k) {
+      const g = store.state.kpop.groups[k.links.groupId];
+      const pos = k.claims.find((c) => / is the group's /.test(c.text));
+      if (pos) { const who = Object.keys(g.positions).find((id) => pos.text.startsWith(`${store.state.npcs[id]?.firstName} `)); check(who && g.positions[who].length <= 2, 'positions are the group\'s own, two at most'); }
+      const rumor = k.claims.find((c) => /dating/.test(c.text));
+      check(rumor && rumor.kind === 'allegation' && !k.docs.some((d) => d.settles.some((x) => x.claimId === rumor.id)), 'a dating rumor stays a rumor: no record makes it true');
+      const fans = k.sources.find((x) => /Fan accounts/.test(x.name));
+      if (fans && rumor) { jn.interview(k.id, fans.id, ['saw']); jn.draft(k.id, [rumor.id], 'overstated'); check(!jn.submit(k.id).ok, 'a rumor does not run as fact'); }
+    }
+  } else check(true, 'no K-pop releases yet');
+  // Business and science: private records refused; one study is not proof.
+  jn.J().beat = 'business'; jn.J().assigned = null; store.state.year += 1;
+  const b = jn.assignYear(p).find((x) => x.beat === 'business');
+  check(b && b.docs.some((d) => !d.public && /bank/.test(d.title)) && !jn.readDoc(b.id, b.docs.find((d) => !d.public).id).ok, 'a company\'s bank accounts are not available');
+  jn.J().beat = 'science'; jn.J().assigned = null; store.state.year += 1;
+  const sci = jn.assignYear(p).find((x) => x.beat === 'science');
+  check(sci && sci.docs.some((d) => !d.public && /medical records/.test(d.title)), 'patients\' records are closed');
+  if (sci) { const main = sci.claims.find((c) => c.kind === 'allegation'); check(!sci.docs.some((d) => d.public && d.settles.some((x) => x.claimId === main.id)), 'no single record proves a study\'s finding'); }
+  // A posting abroad: senior reporters at a newsroom with a foreign desk.
+  check(/senior|staff|foreign desk/.test(jn.postingWhy('jp', p)) || p.career.level >= 2, 'postings are for senior reporters');
+  p.career.level = 2;
+  const desk = jn.outletsHere(p).find((o) => ['regional', 'tv', 'digital', 'radio'].includes(o.kind));
+  jn.J().outletId = desk.id;
+  let posted = false;
+  for (let y = 0; y < 8 && !posted; y++) { posted = jn.requestPosting('jp').ok; if (!posted) store.state.year += 1; }
+  check(posted && jn.J().posting.countryId === 'jp', 'a senior reporter is posted to Japan');
+  const abroad = jn.myStories(p).filter((x) => x.year >= jn.J().posting.from && x.status !== 'spiked');
+  check(abroad.length && abroad.every((x) => !['court', 'sports', 'entertainment', 'kpop'].includes(x.beat) || x.beat === 'kpop'), 'stories come from where they are posted');
+  // The family record: published work as it ran, no notebooks or confidential names.
+  const s0 = jn.myStories(p).find((x) => x.status !== 'published' && x.status !== 'spiked');
+  for (const s1 of jn.myStories(p).filter((x) => !['published', 'spiked', 'expired'].includes(x.status))) {
+    report(s1);
+    for (let i = 0; i < 3 && s1.status !== 'approved'; i++) { const nb = jn.notebook(s1.id); jn.draft(s1.id, nb.claims.filter((c) => ['verified', 'supported'].includes(c.status)).map((c) => c.id), 'straight'); jn.submit(s1.id); }
+    if (s1.status === 'approved') { jn.isBroadcast(jn.outlet(s1.outletId)) ? jn.present(s1.id, ['verified']) : jn.publish(s1.id); }
+    if (jn.myPubs(p).length) break;
+  }
+  void s0;
+  const fam = jn.familyJournalism();
+  const mine = fam.find((x) => x.id === p.id);
+  check(mine && mine.pubs.length && !JSON.stringify(fam).includes('"evidence"') && !JSON.stringify(fam).includes('"truth"'), `the family sees published work, never notebooks (${mine?.pubs.length}, ${jn.myStories(p).map((x) => x.status)})`);
+  section('K-pop, business and science beats, foreign postings, and the family record');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');

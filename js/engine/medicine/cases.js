@@ -177,10 +177,10 @@ export function caseView(id) {
       return { id: t.test, name: TEST_BY_ID[t.test]?.name ?? t.test, done: !!done, result: done ? fill(t.result, c, patient) : null };
     }),
     differential: fx.differential, dx: c.dx,
-    triage: fx.triage && !c.triage ? { text: fill(fx.triage.text, c, patient), options: fx.triage.options.map(({ id: oid, label }) => ({ id: oid, label })) } : null,
-    plans: plansFor(fx, c).map((x) => ({ id: x.id, label: x.label, procedure: x.procedure ? PROCEDURE_BY_ID[x.procedure]?.name : null, refer: x.refer ? SPECIALTY_BY_ID[x.refer]?.name : null, block: x.block })),
+    triage: fx.triage && !c.triage ? { text: fill(fx.triage.text, c, patient), options: fx.triage.options.map(({ id: oid, label }) => ({ id: oid, label: fill(label, c, patient) })) } : null,
+    plans: plansFor(fx, c).map((x) => ({ id: x.id, label: fill(x.label, c, patient), procedure: x.procedure ? PROCEDURE_BY_ID[x.procedure]?.name : null, refer: x.refer ? SPECIALTY_BY_ID[x.refer]?.name : null, block: x.block })),
     or: c.status === 'or' ? orView(c, patient) : null, operated: c.or ? { procedure: PROCEDURE_BY_ID[c.or.procedure]?.name, choices: c.or.choices, transferred: !!c.or.transferred } : null,
-    plan: c.plan, decision: fx.decision && c.plan && !c.decision && c.status === 'deciding' ? { text: fill(fx.decision.text, c, patient), options: fx.decision.options.map(({ id: oid, label }) => ({ id: oid, label })) } : null,
+    plan: c.plan, decision: fx.decision && c.plan && !c.decision && c.status === 'deciding' ? { text: fill(fx.decision.text, c, patient), options: fx.decision.options.map(({ id: oid, label }) => ({ id: oid, label: fill(label, c, patient) })) } : null,
     outcome: c.outcome ? { ...c.outcome, text: fill(fx.outcomes[c.outcome.result], c, patient) } : null, notes: c.notes,
   };
 }
@@ -317,7 +317,7 @@ function orView(c, p) {
   const step = OR_STEPS[o.step];
   return { procedure: proc.name, risk: o.risk >= 0.15 ? 'high' : o.risk >= 0.07 ? 'moderate' : 'low', resources: o.resources >= 80 ? 'a well-equipped center' : o.resources >= 60 ? 'a well-run hospital' : 'a hospital with limited resources',
     team: supervised(c.role) ? `You, with ${sup ? `${sup.firstName} ${sup.lastName}` : 'your supervising surgeon'} scrubbed in and in charge` : c.role === 'fellow' ? 'You, as fellow, with an attending surgeon' : 'You, leading the team',
-    step: step ? { id: o.step, text: step.text, options: step.options.map(({ id, label }) => ({ id, label })) } : null, choices: o.choices, patient: p?.firstName ?? 'The patient' };
+    step: step ? { id: o.step, text: fill(step.text, c, p), options: step.options.map(({ id, label }) => ({ id, label: fill(label, c, p) })) } : null, choices: o.choices, patient: p?.firstName ?? 'The patient' };
 }
 
 /** One decision in the operating room. */
@@ -379,7 +379,8 @@ function resolve(c, plan, decision, how = 'played') {
   // A supervisor reviews a trainee's plan. Most unsafe plans are caught.
   if (supervised(c.role) && quality === 'unsafe' && roll(0.75)) {
     const best = fx.plans.find((x) => x.quality === 'best') ?? plan;
-    notes.push(`Your supervising physician stopped the plan and talked it through with you: ${best.label.charAt(0).toLowerCase()}${best.label.slice(1)}.`);
+    const said = fill(best.label, c, store.state.npcs[c.patientId]);
+    notes.push(`Your supervising physician stopped the plan and talked it through with you: ${said.charAt(0).toLowerCase()}${said.slice(1)}.`);
     quality = 'ok';
     grow('reasoning', 0.5, m);
     grow('professionalism', -0.5, m);

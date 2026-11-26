@@ -17,12 +17,22 @@ import { practices, practiceOptions } from './practice.js';
 
 const npc = (id) => (id ? store.state.npcs[id] : null);
 const thisYear = (m, p) => (roleNow(m, p) ? caseload(m, p) : []);
+/**
+ * A patient's name in a scene: the first name, or the full name when someone in the player's own life is called the
+ * same, so a patient named Joshua is never taken for the brother named Joshua.
+ */
+function patientName(id, p) {
+  const n = npc(id);
+  if (!n) return 'A patient';
+  const clash = (p.npcIds ?? []).some((x) => x !== id && npc(x)?.firstName === n.firstName);
+  return clash ? `${n.firstName} ${n.lastName}` : n.firstName;
+}
 /** One of this year's cases whose fixture is in a specialty (or matches a test), with its patient's first name. */
 function caseFor(m, p, test) {
   const c = thisYear(m, p).find((x) => x.status !== 'closed' && test(CASE_BY_ID[x.fixtureId], x));
   if (!c) return null;
   const fx = CASE_BY_ID[c.fixtureId];
-  return { words: { patient: npc(c.patientId)?.firstName ?? 'A patient', label: fx.label.toLowerCase(), caseId: c.id } };
+  return { words: { patient: patientName(c.patientId, p), label: fx.label.toLowerCase(), caseId: c.id } };
 }
 const inSpec = (...ids) => (fx) => fx.specialty.some((s) => ids.includes(s));
 
@@ -32,7 +42,7 @@ const BEATS = [
   ['med_first_patient', (p, m) => (m.experience.cases === 0 ? caseFor(m, p, () => true) : null)],
   ['med_unexpected_result', (p, m) => caseFor(m, p, (fx) => fx.tests.some((t) => t.value === 'useful') && fx.differential.length >= 3)],
   ['med_senior_advice', (p, m) => { const s = npc(m.people.mentorId) ?? npc(m.people.supervisorIds[0]); return m.training && s?.alive ? { mentor: s.id } : null; }],
-  ['med_patient_returned', (p, m) => { const c = thisYear(m, p).find((x) => x.followOf); return c ? { words: { patient: npc(c.patientId)?.firstName ?? 'A patient' } } : null; }],
+  ['med_patient_returned', (p, m) => { const c = thisYear(m, p).find((x) => x.followOf); return c ? { words: { patient: patientName(c.patientId, p) } } : null; }],
   ['med_challenging_dx', (p, m) => caseFor(m, p, (fx) => ['complex', 'high'].includes(fx.tier))],
   ['med_consultation', (p, m) => caseFor(m, p, (fx) => fx.plans.some((x) => x.refer && x.quality === 'best'))],
   ['med_handoff', (p, m) => (m.training?.pgy >= 1 && m.experience.years >= 1 ? {} : null)],
