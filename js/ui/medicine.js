@@ -391,7 +391,8 @@ function applyBlock(m) {
 
 /** A case, worked step by step: review, evaluate, assess, decide, operate, follow up. */
 async function openCase(id, api) {
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  // A case is a page of its own, like the career it belongs to: the whole screen, Back in the bar along the top.
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: 'Patient case' });
   const root = modal.el.querySelector('[data-case]');
   let last = '';
   const render = () => {
@@ -549,6 +550,7 @@ const ACTIONS = {
 /** Opens My Medical Career, at a tab (and, coming back from a profile, at the same place it was left). */
 export function openMedicine(api, start = 'overview') {
   const st = typeof start === 'string' ? { section: start } : { section: 'overview', ...start };
+  // A screen of its own: the whole screen on a phone, a readable column on a desktop, Back and the name in the bar.
   const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: 'My Medical Career' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-med]');
@@ -557,10 +559,9 @@ export function openMedicine(api, start = 'overview') {
     const m = med(p);
     const list = tabsFor(p, m);
     if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0">My Medical Career</h2><p class="muted" style="margin-top:-6px">Every patient has a story.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>
-      <div class="btn-stack" style="margin-top:12px"><button type="button" class="btn" data-close>Close</button></div>`;
+    root.innerHTML = `<p class="muted" style="margin:0 0 4px">Every patient has a story.</p>
+      <div class="world-groups med-tabs" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${VIEWS[st.section](p, m, st)}</div>`;
   };
   const refresh = () => { api.changed(); render(); };
   const say = async (r) => { refresh(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
