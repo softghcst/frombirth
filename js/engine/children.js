@@ -327,7 +327,9 @@ export function surpriseChance(npc, p = player()) {
   if (!npc?.alive || !canTryForBaby(npc) || npc.flags?.abroad || p.flags.pregnancyEnded === store.state.year) return 0;
   const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : npc.age;
   const base = conceiveChance(motherAge, p.hidden.fertility);
-  return p.flags.birthControl === false ? base * 0.9 : base * 0.07;
+  // Without birth control: 44% a year for a couple in their twenties of average fertility (0.55 × 0.8), less with
+  // age, more or less with fertility. On it: a small fraction of that.
+  return p.flags.birthControl === false ? base * 0.8 : base * 0.07;
 }
 function surprise() {
   const p = player();

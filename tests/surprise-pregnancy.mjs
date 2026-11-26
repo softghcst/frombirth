@@ -12,7 +12,7 @@ const check = (ok, what) => { if (!ok) problems.push(what); };
 function couple(age = 28, bc = true) {
   let s; do { s = createLife({ countryId: 'us', gender: 'female' }); } while (s.player.royal || s.player.gender !== 'female');
   store.state = s; const p = s.player;
-  p.age = age; p.birthYear = s.year - age; p.flags.bornAs = 'female'; p.hidden.fertility = 70;
+  p.age = age; p.birthYear = s.year - age; p.flags.bornAs = 'female'; p.hidden.fertility = 50; // average
   if (!bc) p.flags.birthControl = false;
   const n = makeNpc({ role: 'spouse', countryId: 'us', age, gender: 'male', relationship: 80 });
   n.flags.bornAs = 'male'; s.npcs[n.id] = n; p.npcIds.push(n.id);
@@ -24,7 +24,7 @@ const onBC = kids.surpriseChance(n, p);
 ({ p, n } = couple(28, false));
 const off = kids.surpriseChance(n, p);
 check(onBC > 0.01 && onBC < 0.08, `on birth control, a small chance a year (${onBC.toFixed(3)})`);
-check(off > 0.3, `without it, a good chance a year (${off.toFixed(2)})`);
+check(off > 0.38 && off < 0.55, `without it, about 44% a year (${off.toFixed(2)})`);
 ({ p, n } = couple(44, false));
 check(kids.surpriseChance(n, p) < off / 2, 'less likely in the mid-forties');
 
