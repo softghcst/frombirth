@@ -241,10 +241,16 @@ export function settleAcademy(p = player()) {
   const r = rec(p);
   const ac = r?.academy;
   if (ac?.status !== 'enrolled' || now() < ac.end) return null;
+  // Dated from the academy's own end, not from whenever the game next looks: on a yearly turn the academy still ends,
+  // and field training starts, on the day it would have on a shorter one.
   const roll = seeded(`${me()}/${ac.ownerId}/${ac.end}`);
   const score = readiness(r, p) + roll.int(-8, 8);
   if (score >= 50) return graduate(p, r);
-  if (!ac.extended) { ac.extended = true; ac.end = now() + 2; log('The academy needs more from you: two more months of training before you can graduate.', 'system', 'neutral'); return 'more'; }
+  if (!ac.extended) {
+    ac.extended = true; ac.end += 2;
+    log('The academy needs more from you: two more months of training before you can graduate.', 'system', 'neutral');
+    return now() >= ac.end ? settleAcademy(p) : 'more'; // the two months may already have passed in this turn
+  }
   ac.status = 'failed';
   quitCareer(); // the job was the place at the academy: it ends with it
   r.stage = 'none';
@@ -255,7 +261,7 @@ export function settleAcademy(p = player()) {
 function graduate(p, r) {
   const ac = r.academy;
   ac.status = 'graduated';
-  ac.graduated = now();
+  ac.graduated = ac.end; // the day the academy ended, however long the turn
   if (ac.federal) return federalGraduate(p, r);
   const a = agency(ac.ownerId);
   const d = AGENCY_KINDS[a.kind];
@@ -266,8 +272,8 @@ function graduate(p, r) {
   r.stage = 'field';
   r.job.rank = 'probationary';
   r.job.rankSince = year();
-  r.job.fieldEnd = now() + d.fieldMonths;
-  r.job.probationEnd = now() + d.probationMonths;
+  r.job.fieldEnd = ac.graduated + d.fieldMonths;
+  r.job.probationEnd = ac.graduated + d.probationMonths;
   p.career.title = (d.titles ?? [])[1] ?? 'Probationary officer';
   note(`Graduated from the academy at ${a.name}.`, 'career', { key: `graduated:${a.id}`, milestone: 'Graduated from the police academy.', significance: 2 });
   return 'graduated';
@@ -633,7 +639,7 @@ function federalGraduate(p, r) {
   r.job.employerId = o.employerId;
   r.job.rank = 'agent';
   r.job.rankSince = year();
-  r.job.probationEnd = now() + 24;
+  r.job.probationEnd = (r.academy?.graduated ?? now()) + 24;
   r.stage = 'agent';
   const moved = city !== p.city;
   r.pendingMove = moved ? city : null;

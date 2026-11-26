@@ -1603,6 +1603,28 @@ section('true-crime media: old cases taken up years later, public attention, peo
 }
 section('police in Germany, India, Brazil, Mexico, South Korea, Italy and Spain, with their own forces, ranks and union rules');
 
+// ---------- Last: the academy's dates (kept last: a new life here would move the ids, and so the rolls, of the checks after it) ----------
+  // The academy ends on its own date too: graduation, field training and probation are dated from it, at any turn length.
+{
+  const setNow = (t) => { store.state.year = Math.floor(t / 12); store.state.month = t % 12; };
+  {
+    const p2 = life('us', 25);
+    const ag2 = A.agencyOf('municipal', 'us', p2.city);
+    core.I().apps.push({ id: 'app_g', kind: 'police', ownerId: ag2.id, status: 'offer', due: core.now(), outcome: 'offer' });
+    C.acceptAcademy('app_g');
+    Object.assign(core.I().skills, { law: 80, writing: 80, ethics: 80, communication: 80, observation: 80, interviewing: 80, teamwork: 80 });
+    const t0 = core.now();
+    const snap = JSON.stringify(store.state);
+    const runA = (times) => { store.state = JSON.parse(snap); for (const t of times) { setNow(t); C.settleAcademy(); C.settleProbation(); } const r = core.I(); return { grad: r.academy.graduated, field: r.job?.fieldEnd, prob: r.job?.probationEnd, stage: r.stage }; };
+    const q = runA([t0 + 3, t0 + 6, t0 + 9, t0 + 12]);
+    const yv = runA([t0 + 12]);
+    check(q.grad === yv.grad && q.field === yv.field && q.prob === yv.prob && q.stage === yv.stage && yv.grad === core.I().academy.end,
+      `graduation and field training dated from the academy's end, the same on quarterly and yearly turns (${JSON.stringify(q)} vs ${JSON.stringify(yv)})`);
+  }
+}
+section('the academy ends on its own date: graduation and field training the same on quarterly and yearly turns');
+
 for (const line of ok) console.log(`ok   ${line}`);
+
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every case has a history, every clue a source.');
