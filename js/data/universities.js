@@ -130,7 +130,7 @@ export const ORGS = [
     contest: { name: 'intercollegiate engineering challenge', paths: { 'skills.robotics': 0.5, 'skills.math': 0.25, 'stats.intellect': 0.25 } }, blurb: 'A solar car, a rover, or a race car, built from nothing in a year.' },
   { id: 'moot_court', name: 'Moot court', leader: 'Captain', factor: 'skills.public_speaking', yearly: { skills: { public_speaking: 4, writing: 2 } },
     contest: { name: 'moot court competition', paths: { 'skills.public_speaking': 0.5, 'skills.writing': 0.25, 'stats.intellect': 0.25 } }, blurb: 'Argue an appeal in front of real judges, and take their questions.' },
-  { id: 'prelaw', name: 'Pre-law society', leader: 'President', factor: 'stats.intellect', yearly: { skills: { writing: 2, public_speaking: 1 } }, blurb: 'LSAT study groups, alumni lawyers, and a trip to the state supreme court.' },
+  { id: 'prelaw', name: 'Pre-law society', leader: 'President', factor: 'stats.intellect', yearly: { skills: { writing: 2, public_speaking: 1 } }, blurb: 'Study groups for the law school entrance test, alumni lawyers, and a trip to the state supreme court.' },
   { id: 'greek', name: 'Fraternity or sorority', leader: 'President', factor: 'stats.charm', mark: -0.08, dues: 1200, only: ['us', 'ca', 'ph'], yearly: { stats: { charm: 2, mood: 2 } }, blurb: 'A house, a set of letters, and friends who will answer the phone in thirty years. Dues every year.' },
 ];
 export const ORG_BY_ID = Object.fromEntries(ORGS.map((o) => [o.id, o]));
