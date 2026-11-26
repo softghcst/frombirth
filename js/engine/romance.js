@@ -12,6 +12,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { remember } from './conditions.js';
 import { spendAction, countAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
+import * as contra from './health/contraception.js';
 import { supervisionBetween } from './investigations/core.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
@@ -340,8 +341,13 @@ export function hookUp(npcId) {
   bump(npc, first ? rng.int(3, 8) : rng.int(0, 2));
   p.stats.mood = clamp(p.stats.mood + (first ? 6 : 2));
   let text = `You and ${npc.firstName} spent the night together.`;
-  if (canConceive(npc) && !p.flags.pregnancy && rng.chance(0.04 * p.hidden.fertility / 70)) {
-    text += ` ${conceive(npc, false)}`;
+  if (canConceive(npc) && !p.flags.pregnancy) {
+    // The methods in place lower the chance, as with any night together (engine/bonds.js maybeConceive); a broken
+    // condom, or nothing used while not planning a pregnancy, brings the emergency contraception decision first.
+    const risk = contra.actRisk(p);
+    const would = rng.chance(0.04 * risk.mult * p.hidden.fertility / 70);
+    if (risk.offerEc) { contra.recordExposure({ npcId: npc.id, failed: risk.failed, would }, p); if (risk.failed) text += ' The condom broke.'; }
+    else if (would) text += ` ${conceive(npc, false)}`;
   }
   log(text, 'system', 'good');
   return result(true, text);

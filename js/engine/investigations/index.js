@@ -38,6 +38,12 @@ import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
 import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
+import { considerYear } from './autoPromotion.js';
+import { settleAncestor } from './family.js';
+import { seriesYear, inheritYear } from './serial.js';
+import { wellbeingYear } from './wellbeing.js';
+import { mediaYear } from './truecrime.js';
+import { endUndercover } from './undercover.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -68,6 +74,8 @@ export function settle(p = player()) {
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
   out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
+  for (const id of r.caseIds) { const line = settleAncestor(investigation(id), p); if (line) out.push(line); }
+  { const line = endUndercover(); if (line) out.push(line); }
   return out;
 }
 
@@ -82,7 +90,7 @@ export function tickInvestigations() {
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
-  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p), ...alliedYear(p), ...alliedCareerYear(p)]) log(line, 'system', 'neutral');
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
@@ -103,10 +111,12 @@ export function tickInvestigations() {
     if (['sergeant', 'lieutenant', 'captain', 'deputy_chief', 'chief', 'detective_sergeant', 'detective_lieutenant', 'supervisory', 'asac', 'sac'].includes(r.job.rank)) grow('leadership', 2);
     p.career.performance = clamp(Math.round(p.career.performance * 0.5 + reputationOf(r) * 0.5 + rng.int(-3, 3)));
     autoProgress(p, r);
+    considerYear(p, r); // considered for the next rank, a step raise, or a warning (autoPromotion.js)
     // New cases, for those who investigate: one a year, two for the experienced, never past a caseload of three.
     if (r.job.detective || (r.family === 'federal' && r.job.rank !== 'trainee')) {
       const n = r.stats.years >= 5 ? 2 : 1;
       for (let i = 0; i < n; i++) assignCase(p);
+      for (const line of [...inheritYear(p), ...seriesYear(p)]) log(line, 'system', 'neutral'); // serial.js
     }
     taskForces(p, r);
     intake(p);
@@ -117,6 +127,8 @@ export function tickInvestigations() {
   for (const line of unionYear(p)) log(line, 'system', 'neutral');
   for (const line of reformYear(p)) log(line, 'system', 'neutral');
   for (const line of payYear(p)) log(line, 'system', 'good');
+  for (const line of wellbeingYear(p)) log(line, 'system', 'bad');
+  { const line = endUndercover(); if (line) log(line, 'system', 'neutral'); }
   peopleYear(p);
   dramaYear(p);
 }

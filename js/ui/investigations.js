@@ -4,6 +4,7 @@
 // federal applications, private work, a forensic scientist's bench, professional standards and the
 // public record. Every section reads the investigations engine (engine/investigations); every case
 // is read through its role-based view (views.js), so nothing here shows what the character cannot know.
+import { navRow } from './kit.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -48,6 +49,11 @@ import * as IG from '../engine/investigations/integrity.js';
 import * as BK from '../engine/investigations/books.js';
 import * as MD from '../engine/investigations/medical.js';
 import * as AL from '../engine/investigations/allied.js';
+import * as FA from '../engine/investigations/family.js';
+import * as SE from '../engine/investigations/serial.js';
+import * as UC from '../engine/investigations/undercover.js';
+import * as WB from '../engine/investigations/wellbeing.js';
+import * as TC from '../engine/investigations/truecrime.js';
 import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
@@ -107,6 +113,24 @@ function waysIn(p) {
   return card('Ways in', kv(rows) + muted('In the game, as in many places, police work is open without a degree; leadership and federal work favor those who studied. University planning is under School.'));
 }
 
+// First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
+const HINTS = {
+  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
+  federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
+  cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
+  cold: 'Cold cases stay open, inactive. One can be reopened when a laboratory method it never had becomes available.',
+  career: 'Your record: reputation is how the work is done, never how many arrests. Promotions need years, standing and a vacancy.',
+  private: 'A license comes first; then you can open an agency. Private investigators have no police powers: lawful steps only.',
+  policy: 'Budgets, oversight and reform are decided by mayors, councils and legislatures. A chief runs the department, not the courts.',
+  allied: 'Careers that meet the same cases. Each has one piece of work a year, from real cases, people and courts.',
+  integrity: 'Reviews of real convictions. A review is not a retrial: only a court can set a conviction aside.',
+  bench: 'Requests from real cases. Do the quality steps, report what the result shows, and nothing more.',
+};
+const hintSeen = (id) => !!player().flags?.invHints?.[id];
+const hint = (id) => (HINTS[id] && !hintSeen(id) ? `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(HINTS[id])}</p>${stack(btn('hintOk', 'Got it', { arg: id }))}</div>` : '');
+const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses apart. Investigative Actions are where the work is done; each step reveals what it can, once.';
+
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
@@ -132,6 +156,11 @@ const VIEWS = {
         + stack(Object.entries(C.ACADEMY).map(([id, d]) => btn('academy', d.label, { arg: id })).join('')));
     }
     if (r?.pendingMove) out += card('Your assignment', muted(`You are posted to ${r.pendingMove}.`) + stack(btn('report', `Move to ${r.pendingMove} and report for duty`)));
+    for (const { inv, fam } of FA.relativeCases(p).slice(0, 2)) out += card(`${nm(fam[0].id)} is in a police case`, kv([['Case', inv.file.title], ['Their part', fam[0].role], ['Detective', nm(inv.file.leadId)]]) + muted('It is someone else\'s case. Family is family; the case is theirs.')
+      + stack(btn('relative', 'Stay out of the case, and stand by them', { arg: `${inv.id}|support` }) + btn('relative', 'Stay out of it entirely', { arg: `${inv.id}|apart` }) + btn('relative', 'Call the detective and ask how it looks', { arg: `${inv.id}|favor`, cls: 'danger' })));
+    for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
+      + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
+    if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
     return out;
   },
   agency(p, r) {
@@ -166,7 +195,7 @@ const VIEWS = {
       const t = UN.talks(p);
       out += card('The union', kv([['Union', un.name], ['Representative', un.repId === p.id ? 'You' : nm(un.repId)], ['Contract', `to ${un.contract.until}: ${un.contract.raise}% raise; disciplinary records ${un.contract.records}${un.contract.bodycams ? '; body cameras' : ''}`],
         ['You', mem?.member ? `A member since ${mem.since}` : 'Not a member'], ...(un.stalled ? [['Talks', 'Stalled']] : []), ...(un.action === store.state.year ? [['This year', 'Working to rule']] : [])])
-        + muted(UN.NO_STRIKE)
+        + muted(UN.strikeNote(p.countryId))
         + stack((mem?.member ? btn('unionLeave', 'Leave the union') + (mem.rep ? '' : btn('unionRep', 'Stand for representative')) + (un.stalled && mem.voted !== store.state.year ? btn('unionVote', 'Vote on working to rule') : '') : btn('unionJoin', 'Join the union'))
           + (t ? btn('bargain', t.side === 'union' ? 'Bargain for your colleagues' : 'Bargain for the department') : '')));
     }
@@ -239,6 +268,10 @@ const VIEWS = {
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
       + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
+        + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
+      + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
+        + stack(btn('ucRound', 'Stay in the role, within the rules', { arg: 'role' }) + btn('ucRound', 'Push them toward the deal', { arg: 'push', cls: 'danger' }))) : '')
       + (r.earned ? card('Pay beyond salary', kv([[`${r.earned.kind[0].toUpperCase()}${r.earned.kind.slice(1)}, ${r.earned.year}`, fmtMoney(r.earned.amount, country())]]) + muted(r.family === 'federal' ? 'Federal criminal investigators are paid a share of salary for being available beyond the workweek, instead of overtime.' : 'Overtime is paid for hours past the shift, once a year, from the work actually done.')) : '')
       + (r.stats.awards?.length ? card('Honors', r.stats.awards.map((a) => kv([[String(a.year), a.name]])).join('')) : '')
       + (r.family === 'federal' && r.job?.officeId && !r.retired ? card('Moves within the agency', kv([['Field office', A.office(r.job.officeId)?.name ?? '—'], ['Squad', WP.SQUADS[r.job.agencyKind]?.find(([id]) => id === r.job.squad)?.[1] ?? 'General'],
@@ -364,6 +397,18 @@ const VIEWS = {
         return card(`${nm(c.defendantId)}: ${inv.file.title}`, kv([['Done', m.steps.join(', ') || 'nothing yet'], ...(m.lab ? [['Laboratory result due', dateWords(m.lab.due)]] : [])])
           + stack(Object.entries(IG.STEPS).filter(([id]) => !m.steps.includes(id) || id === 'refer').map(([id, label]) => btn('integrityStep', label, { arg: `${m.id}|${id}` })).join(''))); }).join('') : muted('No matter open. Requests for review come as the year turns.'));
   },
+  more(p) {
+    const list = sectionsFor(p, rec(p));
+    const label = Object.fromEntries(list);
+    const why = {
+      federal: () => { const k2 = Object.keys(FEDERAL).find((x) => C.federalUnmet(x, p).length); return k2 ? C.federalUnmet(k2, p)[0] : ''; },
+      private: () => C.licenseUnmet(p)[0] ?? '',
+      integrity: () => IG.postBlock('innocence', p),
+      allied: () => AL.alliedBlock(Object.keys(AL.ALLIED)[0], p),
+    };
+    return muted('Other careers in this world, and what each asks first. You can read about each one now.')
+      + `<div class="nav-group">${laterPaths(p, list).map((id) => navRow({ attrs: `data-sec="${id}"`, label: label[id], sub: why[id]?.() || SECTION_INFO[id]?.[0] || '', ico: SECTION_INFO[id]?.[1] ?? 'sparkle' })).join('')}</div>`;
+  },
   allied(p) {
     const A = AL.alliedOf(p);
     const mine = A && p.career?.careerId === `ally_${A.id}`;
@@ -397,8 +442,35 @@ const TABS = [['overview', 'Overview'], ['notebook', 'Notebook'], ['people', 'Pe
 function caseTabs(v) {
   return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
 }
+/** The case file on fewer pages: people with their statements, items with the laboratory, the legal review with court. */
+const CASE_GROUPS = [['people', 'People & Statements', ['people', 'statements']], ['evidence', 'Evidence & Lab', ['evidence', 'lab']], ['legal', 'Legal & Court', ['legal', 'court']]];
+function casePages(v) {
+  const tabs = caseTabs(v);
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of tabs) {
+    if (used.has(id)) continue;
+    const g = CASE_GROUPS.find(([, , ids]) => ids.includes(id));
+    const members = g ? tabs.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  return out;
+}
 const CASE_VIEWS = {
-  overview: (v) => card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]])),
+  overview: (v, inv) => {
+    const f = inv?.file;
+    let out = card(v.title, kv([['Kind', v.kind], ['Agency', v.agency], ['Status', v.status], ['Lead investigator', v.lead], ...(v.partner ? [['Partner', v.partner]] : []), ['Opened', v.opened]]));
+    if (f?.conflict?.status === 'open') out += card('Your family is in this case', kv(f.conflict.relatives.map((x) => [nm(x.id), x.role])) + muted('The rule is to step aside when a relative is involved. It protects the case as much as you.')
+      + stack(btn('recuse', 'Tell your sergeant, and step aside', { arg: inv.id }) + btn('keepCase', 'Keep the case, and say nothing', { arg: inv.id, cls: 'danger' })));
+    if (f?.handoff?.length) out += card('Who has had this case', f.handoff.map((h) => kv([[dateWords(h.at), `${nm(h.from) === '—' ? 'You' : nm(h.from)} to ${nm(h.to) === '—' ? 'you' : nm(h.to)} (${h.why})`]])).join('') + muted('Everything done before is in the file.'));
+    if (SE.seriesOf(inv)?.linked) out += card('Linked cases', SE.seriesOf(inv).caseIds.filter((x) => x !== inv.id).map((x) => { const o = W.investigation(x); return kv([[o.file.title, nm(o.file.leadId)]]); }).join('') + muted('The same method in other cities. Each is its own case; the evidence is shared.'));
+    const notes = FA.ancestorNotes(inv);
+    if (notes) out += card(`${notes.name}'s notes`, muted(`${notes.name} led this case first. Their notes are in the file, in their hand.`) + notes.done.map((t) => `<p>• ${esc(t)}</p>`).join('')
+      + (notes.open.length ? `<div class="eyebrow">Leads they left open</div>${notes.open.map((t) => `<p>• ${esc(t)}</p>`).join('')}` : '')
+      + (f.oldPartnerAsked ? '' : stack(btn('oldPartner', `Find ${notes.name}'s old partner`, { arg: inv.id }))));
+    return out;
+  },
   notebook: (v) => card('Known facts', v.facts.map((f) => `<p>• ${esc(f.text)}</p>`).join('') || muted('Only the report so far.'))
     + card('Reported claims', v.claims.map((c) => `<p>• ${esc(c.text)} <span class="muted">(${esc(c.by)}${c.confidence != null ? `, says they are ${c.confidence >= 0.8 ? 'sure' : c.confidence >= 0.5 ? 'fairly sure' : 'unsure'}` : ''})</span></p>`).join('') || muted('No statements yet.'))
     + card('Hypotheses', v.hypotheses.map((h) => kv([[h.text, h.status]])).join('') + muted('These follow what has been found. A strong claim is not a fact.'))
@@ -414,34 +486,58 @@ const CASE_VIEWS = {
   actions: (v, inv) => {
     const st = W.steps(inv);
     const left = W.workLeft(inv);
+    const f = inv.file;
+    const mine = f.leadId === player().id;
     const ground = RT.groundworkSteps(inv.id);
-    let b = (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the Groundwork', { arg: inv.id, cls: 'primary' }) : '')
-      + st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id)).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join('');
-    if (!inv.file.outcome && !inv.file.courtCaseId) {
-      b += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
-      for (const id of inv.suspectIds) b += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
-      b += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
+    // Grouped, so a long case reads as a few kinds of work rather than one long list.
+    const groups = [];
+    const add = (title, html, note = '') => { if (html) groups.push(`<div class="section-label">${esc(title)}</div>${note ? muted(note) : ''}${stack(html)}`); };
+    const steps = st.filter((s) => ground.length <= 1 || !ground.some((g) => g.id === s.id));
+    add('Investigate', (ground.length > 1 && left > 0 ? btn('groundwork', 'Do the groundwork', { arg: inv.id, cls: 'primary' }) : '')
+      + steps.filter((s) => !String(s.id).startsWith('lab:')).map((s) => btn(s.interview ? 'interview' : 'step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join(''), 'Scene, people and records. Each step reveals what it can, once.');
+    add('Laboratory', steps.filter((s) => String(s.id).startsWith('lab:')).map((s) => btn('step', s.label, { arg: `${inv.id}|${s.id}`, disabled: left <= 0 })).join(''), 'Results come back on their own dates.');
+    let tools = '';
+    if (['drugs', 'firearms', 'robbery', 'counterfeit'].includes(f.template) && !f.outcome && mine) {
+      if (!f.informantId) tools += btn('recruit', 'Recruit an informant, registered with your supervisor', { arg: `${inv.id}|register` }) + btn('recruit', 'Recruit an informant off the books', { arg: `${inv.id}|off`, cls: 'danger' });
+      else { tools += btn('meetCI', 'Meet the informant', { arg: inv.id }); if (f.tip && !f.tip.corroborated) tools += btn('corroborate', 'Check the tip against independent evidence', { arg: inv.id }); }
+      if (rec()?.undercover?.status !== 'active') tools += btn('undercover', 'Volunteer to go undercover on this case', { arg: inv.id });
     }
-    if (inv.file.review?.status === 'open') b += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
-    if (MD.patientOf(inv) && !inv.file.medical && !inv.file.outcome) for (const [how, label] of Object.entries(MD.ASK)) b += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
-    if (v.court && !inv.file.cross && !inv.file.outcome) b += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
-    if (v.court && !inv.file.testimony && !inv.file.outcome) b += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
-    return card('What you can do', muted(`${left} hours of work left on this case this year.`) + stack(b || muted('Nothing more to do on this file now.')));
+    if (['homicide', 'robbery'].includes(f.template) && !f.compared && !f.outcome && mine) tools += btn('compare', 'Compare it with cases across the country', { arg: inv.id });
+    if (MD.patientOf(inv) && !f.medical && !f.outcome) for (const [how, label] of Object.entries(MD.ASK)) tools += btn('medical', label, { arg: `${inv.id}|${how}`, cls: how === 'informal' ? 'danger' : '' });
+    add('Other tools', tools);
+    let wrap = '';
+    if (!f.outcome && !f.courtCaseId) {
+      wrap += btn('writeReport', 'Write the case report (complete)', { arg: `${inv.id}|complete` }) + btn('writeReport', 'Write the report, leaving out what does not fit', { arg: `${inv.id}|omit`, cls: 'danger' });
+      for (const id of inv.suspectIds) wrap += btn('refer', `Refer ${nm(id)} to the prosecutor`, { arg: `${inv.id}|${id}` });
+      wrap += btn('resolve', 'Close the case on what the evidence shows', { arg: inv.id }) + btn('suspend', 'Set the case aside (stays open)', { arg: inv.id });
+    }
+    if (f.review?.status === 'open') wrap += btn('referReview', 'Send the review to the prosecutor\'s conviction review', { arg: inv.id });
+    add('Wrapping up', wrap, f.outcome || f.courtCaseId ? '' : 'The report comes before a referral. The prosecutor decides on charges.');
+    let court = '';
+    if (v.court && !f.cross && !f.outcome) court += btn('crossExam', 'Take the stand: cross-examination', { arg: inv.id });
+    if (v.court && !f.testimony && !f.outcome) court += btn('testify', 'Prepare to testify: as recorded', { arg: `${inv.id}|record` }) + btn('testify', 'Prepare to testify: including the limits', { arg: `${inv.id}|limits` }) + btn('testify', 'Prepare to testify: make it sound stronger', { arg: `${inv.id}|overstate`, cls: 'danger' });
+    add('Court', court);
+    return card('What you can do', muted(`${left} hours of work left on this case this year.`) + (groups.join('') || muted('Nothing more to do on this file now.')));
   },
 };
 function openCaseFile(api, invId, refreshHub) {
-  const st = { tab: 'overview' };
-  const modal = openModal('<div data-case></div>', { dismissable: true });
+  // A case the player is working opens on its actions, where the work is done; a finished one on its overview.
+  const inv0 = W.investigation(invId);
+  const st = { tab: inv0?.file && !inv0.file.outcome && inv0.file.leadId === player().id ? 'actions' : 'overview' };
+  const modal = openModal('<div data-case></div>', { dismissable: true, full: true, title: W.investigation(invId)?.file?.title ?? 'Case file' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-case]');
   const render = () => {
     const inv = W.investigation(invId);
     const v = V.view(inv, 'investigator');
     if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
-    const tabs = caseTabs(v);
-    root.innerHTML = `<h2 style="margin-top:0">${esc(v.title)}</h2>
-      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+    const tabs = casePages(v);
+    const tab = tabs.find((t) => t.id === st.tab) ?? tabs.find((t) => t.members.some(([x]) => x === st.tab)) ?? tabs[0];
+    st.tab = tab.id;
+    const page = tab.members.map(([x]) => CASE_VIEWS[x](v, inv)).join('');
+    root.innerHTML = `
+      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map((t) => `<button type="button" role="tab" class="world-group av-chip ${t.id === st.tab ? 'on' : ''}" aria-selected="${t.id === st.tab}" data-tab="${t.id}">${esc(t.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${page}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
   const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
   root.addEventListener('click', async (e) => {
@@ -466,7 +562,16 @@ function openCaseFile(api, invId, refreshHub) {
     else if (act === 'referReview') await say(W.referReview(id));
     else if (act === 'refer') await say(W.refer(id, x));
     else if (act === 'testify') await say(W.testify(id, x));
+    else if (act === 'hintCase') { const p0 = player(); p0.flags.invHints = { ...(p0.flags.invHints ?? {}), case: true }; render(); }
     else if (act === 'medical') await say(MD.requestMedical(id, x));
+    else if (act === 'compare') await say(SE.compareCases(id));
+    else if (act === 'recruit') await say(UC.recruit(id, x));
+    else if (act === 'meetCI') await say(UC.meetInformant(id));
+    else if (act === 'corroborate') await say(UC.corroborate(id));
+    else if (act === 'undercover') await say(UC.goUndercover(id));
+    else if (act === 'recuse') await say(FA.recuse(id));
+    else if (act === 'keepCase') await say(FA.keepCase(id));
+    else if (act === 'oldPartner') await say(FA.askOldPartner(id));
     else if (act === 'crossExam') {
       const inv = W.investigation(id);
       const answers = {};
@@ -490,6 +595,13 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
+  hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
+  media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
+  support2: (a, x) => x.say(WB.seekSupport(a)),
+  medRetire: (a, x) => x.say(WB.medicalRetirement()),
+  ucRound: (a, x) => x.say(UC.undercoverRound(a)),
+  relative: (a, x) => { const [id, how] = a.split('|'); return x.say(FA.relativeChoice(id, how)); },
   alliedTake: (a, x) => x.say(AL.takeUp(a)),
   alliedDo: (a, x) => { const [id, o] = a.split('|'); return x.say(AL.doAllied(id, o)); },
   integrityJoin: (a, x) => x.say(IG.takePost(a)),
@@ -616,26 +728,77 @@ const ACTIONS = {
 };
 
 /** Opens My Investigations. */
+/** The home screen's groups: each section as a row, with what it is for, in an order a player can follow. */
+const GROUPS = [
+  ['Your work', ['cases', 'bench', 'death', 'competency', 'psych', 'books', 'hospital', 'stories', 'press', 'standards']],
+  ['Your career', ['agency', 'career', 'team']],
+  ['Case history', ['archive', 'cold', 'reviews']],
+  ['Other paths', ['federal', 'private', 'integrity', 'allied']],
+  ['The wider world', ['policy', 'legacy']],
+];
+const SECTION_INFO = {
+  cases: ['Your open cases, and the hours each has left this year', 'briefcase'], bench: ['Requests from real cases, waiting on your bench', 'sparkle'],
+  death: ['Deaths referred to you by investigators', 'health'], competency: ['Evaluations ordered by the courts', 'health'], psych: ['Consultations, risk assessments and care for officers', 'people'],
+  books: ['Engagements on companies\' books', 'coin'], hospital: ['Patients from police cases, and what the police may know', 'health'],
+  stories: ['Stories you are working on', 'news'], press: ['Cases in the public record, and reporters\' drafts', 'news'], standards: ['Complaints, and how they are decided', 'passport'],
+  agency: ['Your department, detective seats, the union and community meetings', 'home'], career: ['Your record, promotions, wellbeing and honors', 'trophy'], team: ['Your partner, supervisor and the people you work with', 'people'],
+  archive: ['Cases you finished', 'archive'], cold: ['Old cases that new science could reopen', 'archive'], reviews: ['Convictions whose kept evidence could be tested anew', 'archive'],
+  federal: ['FBI, DEA, ATF, Marshals, Secret Service, HSI, IRS-CI', 'globe'], private: ['A license, your own agency, corporate work', 'id'],
+  integrity: ['Reviewing convictions for an innocence organization or a prosecutor', 'passport'], allied: ['Analysts, probation, advocates, court reporters and more', 'people'],
+  policy: ['Budgets, oversight, sheriffs and national reform', 'globe'], legacy: ['Your family\'s investigative careers', 'family'],
+};
+/** The other paths that are not open to the player now (their reasons are on the More careers screen). */
+function laterPaths(p, list) {
+  const have = new Set(list.map(([id]) => id));
+  const r = rec(p);
+  const open = {
+    federal: () => r?.family === 'federal' || Object.keys(FEDERAL).some((k2) => !C.federalUnmet(k2, p).length),
+    private: () => C.licensed(p) || !C.licenseUnmet(p).length || (r?.inquiryIds?.length ?? 0) > 0,
+    integrity: () => !!IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p),
+    allied: () => !!AL.alliedOf(p) || Object.keys(AL.ALLIED).some((id) => !AL.alliedBlock(id, p)),
+  };
+  return Object.keys(open).filter((id) => have.has(id) && !open[id]());
+}
+/** The home screen: where the player stands, anything waiting on them, then every section as a row. */
+function home(p, r, list) {
+  const have = new Set(list.map(([id]) => id));
+  const label = { ...Object.fromEntries(list), more: 'More careers' };
+  const later = laterPaths(p, list);
+  const groups = GROUPS.map(([name, ids]) => [name, ids.filter((id) => have.has(id) && !later.includes(id))]).filter(([, ids]) => ids.length);
+  // Paths not open yet wait behind one row, so a new officer sees what they can do now.
+  if (later.length) { const g = groups.find(([n]) => n === 'Other paths'); if (g) g[1].push('more'); else groups.push(['Other paths', ['more']]); }
+  const sub = (id) => {
+    if (id === 'more') return `${later.map((x) => label[x]).join(', ')}: not open to you yet`;
+    if (id === 'cases' && r) { const open = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome); return open.length ? `${open.length} open case${open.length === 1 ? '' : 's'}` : SECTION_INFO.cases[0]; }
+    return SECTION_INFO[id]?.[0] ?? '';
+  };
+  return `${hint('overview')}${VIEWS.overview(p, r)}${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div><div class="nav-group">${ids.map((id) => navRow({ attrs: `data-sec="${id}"`, label: label[id], sub: sub(id), ico: SECTION_INFO[id]?.[1] ?? 'sparkle' })).join('')}</div>`).join('')}`;
+}
+
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const lines = settle(player()); // anything whose date has come, made known before the page is drawn
-  const modal = openModal('<div data-inv></div>', { dismissable: true });
+  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');
   const render = () => {
     const p = player();
     const r = rec(p);
     const list = sectionsFor(p, r);
-    if (!list.some(([id]) => id === st.section)) st.section = 'overview';
-    root.innerHTML = `<h2 style="margin-top:0"><span aria-hidden="true">🕵️</span> My Investigations</h2><p class="muted" style="margin-top:-6px">Follow the evidence. Find the truth.</p>
-      <div class="world-groups" role="tablist" aria-label="Sections">${list.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.section ? 'on' : ''}" aria-selected="${id === st.section}" data-sec="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${VIEWS[st.section](p, r)}</div>
-      ${stack('<button type="button" class="btn" data-close>Close</button>')}`;
+    if (st.section !== 'more' && !list.some(([id]) => id === st.section)) st.section = 'overview';
+    // The home screen lists every section; a section is a screen of its own, and Back (in the bar) returns home.
+    const name = { ...Object.fromEntries(list), more: 'More careers' }[st.section];
+    root.innerHTML = st.section === 'overview'
+      ? `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>${home(p, r, list)}`
+      : `<button type="button" class="btn small" data-back>‹ My Investigations</button><h2 style="margin-top:0">${esc(name)}</h2>
+        <div>${hint(st.section)}${VIEWS[st.section](p, r)}</div>`;
+    root.innerHTML += stack('<button type="button" class="btn" data-close>Close</button>');
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };
   root.addEventListener('click', async (e) => {
     const t = e.target;
     if (t.closest('[data-close]')) { modal.close(); return; }
+    if (t.closest('[data-back]')) { st.section = 'overview'; render(); modal.el.scrollTop = 0; return; }
     const sec = t.closest('[data-sec]');
     if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
     const b = t.closest('[data-act]');

@@ -84,25 +84,29 @@ const SECTION_INFO = {
 export function openOccupation(api, start) {
   // direct: opened straight at a page, so there is no menu behind it and Back leaves.
   const st = { section: start ?? null, direct: !!start };
-  const modal = openModal('<div data-occ></div>', { dismissable: true });
+  // A full screen, its name in the bar along the top: the page's own when opened straight at it, else Work.
+  const title = (start && SECTIONS.find(([id]) => id === start)?.[1]) || 'Work';
+  const modal = openModal('<div data-occ></div>', { dismissable: true, full: true, title });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-occ]');
 
+  // The name in the bar: the page's own when it stands alone, else Work (the page's name is its heading).
+  const bar = (name) => { const t = modal.el.querySelector('.modal-bartitle'); if (t && t.textContent !== name) t.textContent = name; };
   const render = () => {
     const p = player();
     const list = sectionsFor(p);
     if (st.section && !list.some(([id]) => id === st.section)) { st.section = null; st.direct = false; }
     if (!st.section) {
+      bar('Work');
       const waiting = hiring.offers().length + recruit.leads().length;
-      root.innerHTML = `<h2 style="margin-top:0">Work</h2>
-        <div class="nav-group">${list.filter(([id]) => !ON_WORK_TAB.has(id)).map(([id, label]) => navRow({ attrs: `data-sec="${id}"`, label: id === 'offers' && waiting ? `${label} (${waiting})` : label,
+      root.innerHTML = `<div class="nav-group">${list.filter(([id]) => !ON_WORK_TAB.has(id)).map(([id, label]) => navRow({ attrs: `data-sec="${id}"`, label: id === 'offers' && waiting ? `${label} (${waiting})` : label,
     sub: SECTION_INFO[id][0], ico: SECTION_INFO[id][1], tone: id === 'offers' && waiting ? 'peach' : '' })).join('')}</div>`;
       return;
     }
     const label = list.find(([id]) => id === st.section)[1];
+    bar(st.direct ? label : 'Work');
     root.innerHTML = `
-      ${st.direct ? '' : '<button type="button" class="btn small" data-back>← Work</button>'}
-      <h2 style="margin-top:${st.direct ? 0 : 10}px">${esc(label)}</h2>
+      ${st.direct ? '' : `<button type="button" class="btn small" data-back>← Work</button><h2 style="margin-top:10px">${esc(label)}</h2>`}
       <div style="margin-top:10px">${VIEWS[st.section](p, st)}</div>`;
   };
   const refresh = () => { api.changed(); render(); };

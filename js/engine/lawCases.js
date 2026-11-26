@@ -19,6 +19,7 @@ import * as realLaw from './realLaw.js';
 import { policeWitness } from './lawPolice.js';
 import * as world from './polity.js';
 import { report } from './news.js';
+import { familyHears } from './lawLife.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -85,11 +86,14 @@ export function createCase(templateId, o = {}) {
   const prof = profileFor(countryId);
   LC(); // the store and its counter exist before the first id is drawn
   const id = `lc_${++k.J().lawSeq}`;
+  // Opened on its own date: a case the office assigned in a half-year a long turn passed through starts then, not at
+  // the turn (engine/lawPractice.js openWindow).
+  const start = o.at ?? nowM();
   const role = o.role ?? (T.kind === 'criminal' ? 'defense' : T.role ?? (T.gov ? 'agency' : ROLE_FOR[T.kind]));
-  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: nowM(), openedYear: store.state.year, role, lawyerId: o.lawyerId ?? p.id,
+  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: start, openedYear: Math.floor(start / 12), role, lawyerId: o.lawyerId ?? p.id,
     supervisorId: o.supervisorId ?? null, clinic: !!o.clinic, assigned: !!o.assigned, specialty: o.specialty ?? null,
     track: o.track ?? (o.clinic ? 'clinic' : LEGAL_CAREERS.includes(p.career?.careerId) ? p.career.careerId : null), // the job it was done in
-    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: nowM() + T.stages[0][1],
+    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: start + T.stages[0][1],
     jury: !!T.jury && (T.kind === 'criminal' ? prof.juries.criminal : T.kind === 'civil' ? prof.juries.civil : false), forum: T.forum,
     vars: {}, parties: {}, evidence: [], witnesses: [], filings: [], deadlines: [], hearings: [], tasks: {}, research: null,
     negotiation: { offers: [], accepted: null }, court: null, awaiting: null, outcome: null, appeal: null, errors: [], ethics: null,
@@ -813,6 +817,7 @@ export function discipline(level) {
   (L.discipline ??= []).push({ level, m: nowM(), year: store.state.year });
   if (level === 'suspended') { L.suspendedUntil = nowM() + 12; canon(`law:suspended:${player().id}:${nowM()}`, 'Suspended from practice', 'Suspended for a year by the bar for professional misconduct.', { privacy: 'public', sig: 2 }); }
   if (level === 'disbarred') report(world.polity(player().countryId), 'disbarred', {});
+  if (level !== 'reprimand') familyHears('shame', player());
   if (level === 'disbarred') { L.bar.disbarred = nowM(); (player().flags.licenses ?? []).splice((player().flags.licenses ?? []).indexOf('law'), 1); canon(`law:disbarred:${player().id}`, 'Disbarred', 'Struck off for serious professional misconduct.', { privacy: 'public', sig: 3 }); }
   const text = { reprimand: 'The bar issued a formal reprimand.', suspended: 'The bar suspended you from practice for a year.', disbarred: 'You were disbarred.' }[level];
   log(text, 'system', 'bad');
@@ -896,6 +901,7 @@ export function close(c, out, lines = []) {
     else if (c.templateId === 'criminal_appeal' && out.favorable > 0) report(w, 'conviction_overturned', words);
     else if (c.level >= 3 && c.jury) report(w, out.favorable > 0 ? 'courtWin' : 'courtLoss', words);
   }
+  if (c.level >= 4 && !c.clinic && open && out.favorable > 0) familyHears('win', p); // the family sees the news
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.

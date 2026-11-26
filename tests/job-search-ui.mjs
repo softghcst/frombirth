@@ -81,7 +81,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await menu.locator('.nav-row[data-sec="find"]').click(); await page.waitForTimeout(200);
   check(/Openings this year/i.test(await menu.innerText()) && await menu.locator('[data-sec]').count() === 0, `${label}: a page from the menu opens alone`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/work-page-${label}.png` });
-  await menu.locator('[data-back]:not(.modal-back)').click(); await page.waitForTimeout(200);
+  await menu.locator('.modal-back').click(); await page.waitForTimeout(200);
   check(await menu.locator('.nav-row[data-sec]').count() >= 5, `${label}: Back returns to the menu`);
   // At school: Find a Job points to part-time work instead of a list of jobs that all wait for the course to end.
   await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));

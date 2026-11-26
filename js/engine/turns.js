@@ -19,6 +19,7 @@ import { disastersBetween, markHome } from './disasters.js';
 import { EVENT_BY_ID } from '../data/events/index.js';
 import { between as hoodBetween } from './neighborhood.js';
 import { tickLaw } from './lawPractice.js';
+import { between as contraceptionBetween } from './health/contraception.js';
 
 export { seasonAt, turnSeasons, seasonName };
 
@@ -125,6 +126,7 @@ export function advanceTurn(state = store.state) {
   disastersBetween(state, next, step); // storms as they strike, and forecasts of what is coming
   hoodBetween(state); // the months just lived in the neighborhoods: moves, arrivals, events (engine/neighborhood.js)
   tickLaw(); // law school terms and cases move on with the months, not the button presses (engine/lawPractice.js)
+  contraceptionBetween(state); // the months just lived: refills, renewals, devices, side effects (engine/health/contraception.js)
   releaseHeld(state, seasons);
   drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };

@@ -1,5 +1,5 @@
 // The scenes for data/familyStories.js, one each. Queued by engine/familyStories.js when true, never drawn.
-import { any } from '../helpers.js';
+import { any, need } from '../helpers.js';
 import { FAMILY } from '../../familyStories.js';
 
 /** The tag on each story, by what it is about. */
@@ -8,4 +8,6 @@ const categoryOf = (id) => (/^(friend_|old_friend|truth_friend)/.test(id) ? 'fri
   : /^(widowed_year)/.test(id) ? 'loss' : 'family');
 
 export default FAMILY.map((s) => ({ id: `fam_${s.id}`, category: categoryOf(s.id), ageRange: s.ages, queuedOnly: true, text: s.text,
-  choices: s.choices.map(([label, line], i) => ({ label, outcomes: [any(line, 'neutral', { type: 'love', value: `${s.id}:${i}` })] })) }));
+  // A choice that costs money is greyed out when it cannot be paid for: its outcome says it happened.
+  choices: s.choices.map(([label, line, fx], i) => ({ label, ...(fx?.cost ? { requires: [need('cashBase', '>=', fx.cost)] } : {}),
+    outcomes: [any(line, 'neutral', { type: 'love', value: `${s.id}:${i}` })] })) }));

@@ -30,6 +30,7 @@ import { clamp } from '../../util.js';
 import { store, player, log, milestone } from '../../state.js';
 import { recordEvent } from '../chronicle.js';
 import { SKILLS, REPUTATION } from '../../data/investigations.js';
+import { addGifts } from '../aptitudes.js';
 
 export const VERSION = 1;
 export const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -73,7 +74,10 @@ function blank() {
 
 /** The investigator's record, made if it is not there. */
 export function I(p = player()) {
-  p.investigator ??= blank();
+  if (!p.investigator) { // what a gift brings to the work (engine/aptitudes.js)
+    p.investigator = blank();
+    addGifts(p.investigator.skills, 'investigations', p);
+  }
   const r = p.investigator;
   const fresh = blank();
   for (const [k, v] of Object.entries(fresh)) if (r[k] === undefined) r[k] = v;

@@ -11,6 +11,7 @@ import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
 import * as camp from '../engine/lawCampaign.js';
 import * as acad from '../engine/lawAcademy.js';
+import * as life from '../engine/lawLife.js';
 import { openCampaign } from './lawCampaignScreen.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
@@ -48,6 +49,7 @@ function overview() {
   const lines = [];
   if (o.title) lines.push(kv('Position', `${o.title}${o.trackName ? `, ${o.trackName.toLowerCase()}` : ''}`));
   if (o.specialty) lines.push(kv('Practice', o.specialty.name));
+  if (p.law?.retired) lines.push(kv('Retired', `${p.law.retired.year}${p.law.retired.how === 'mandatory' ? ', at the judges\' retirement age' : ''}`));
   if (p.law?.policeYears > 0) lines.push(kv('Before law', `${p.law.policeYears} year${p.law.policeYears === 1 ? '' : 's'} in law enforcement`));
   lines.push(kv('Admitted to practice', o.admitted ? (p.law.bar.admitted.legacy ? 'Yes (before records were kept)' : String(p.law.bar.admitted.year)) : 'Not yet'));
   if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.termsFor(p)}${S.probation ? ' · on probation' : ''}`));
@@ -128,6 +130,7 @@ function myCases() {
   return `${needs}${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
     ${lp.trackOf() ? fitBar('Workload', Math.min(100, w.points / w.capacity * 70)) : ''}
     ${open.some(lc.hasRoutine) ? `<div class="btn-row">${btn('Handle Routine Work on All Cases', 'data-routineall', 'primary')}</div>` : ''}
+    ${(() => { const why = life.proBonoWhy(); return lp.trackOf() && lp.trackOf() !== 'judiciary' ? `<div class="section-label">Pro bono</div>${row(`data-probono ${why ? 'disabled' : ''}`, 'Take a Pro Bono Case', why || `Represent someone who cannot afford a lawyer, without a fee.${player().countryId === 'us' && store.state.year >= 1983 ? ' ABA Model Rule 6.1 asks every lawyer for 50 hours a year.' : ''}`)}` : ''; })()}
     ${lp.trackOf() ? `<div class="btn-row law-load">${btn('Ask for Support', 'data-load="support"')}${btn('Take Leave', 'data-load="leave"')}</div>` : ''}
     ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}
     ${clientRows ? `<div class="section-label">Clients</div>${clientRows}` : ''}`;
@@ -167,6 +170,8 @@ function progress() {
     ${btn('Change Practice Area', 'data-law="specialty"')}`)}
     ${ns ? card('Next step', `${kv('Next', ns.title)}${ns.yearsLeft ? kv('Years to go', String(ns.yearsLeft)) : ''}${ns.missing.length ? `<p class="muted">Also needed: ${esc(ns.missing.join('; '))}.</p>` : '<p class="muted">Eligible. It depends on your reviews and on a place opening up.</p>'}`) : ''}
     ${campaignCard()}
+    ${(() => { const p2 = player(); const L2 = p2.law ?? {}; if (L2.retired) return ''; const age = life.judicialRetirementAge(p2.countryId); const judge = p2.career?.careerId === 'judiciary';
+      return card('Retirement', `${judge && age ? `<p class="muted">Judges here must retire at ${age}.</p>` : ''}${row(`data-retire ${p2.age < 55 ? 'disabled' : ''}`, judge ? 'Retire from the Bench' : 'Retire from the Law', p2.age < 55 ? 'From age 55' : 'Close your files and look back on the career.')}`); })()}
     ${ops.length ? card('Opportunities', ops.map((x) => row(`data-seek="${x.id}" ${x.why ? 'disabled' : ''}`, x.name, x.why || (x.how ? `Chosen by: ${x.how}` : ''))).join('')) : ''}
     ${card(o.specialty ? `Skills in ${o.specialty.name}` : 'Skills', o.skills.map((s) => fitBar(s.name, s.v)).join('') + (o.specialty ? '<p class="muted">Named for your practice area. Change areas and they take new names; what you have learned stays.</p>' : ''))}
     ${card('Reputation', o.rep.map((r) => fitBar(r.name, r.v)).join('') + '<p class="muted">Built from how you work, not how many cases you win.</p>')}`;
@@ -209,7 +214,10 @@ function history() {
   const me = store.state.player;
   const ev = lp.legalLegacy(me.archiveId ?? me.id, me.archiveId ?? me.id).filter((e) => e.privacy !== 'restricted');
   const H = ls.lawOf().history.slice().reverse().slice(0, 30);
-  return `${ev.length ? card('Milestones', ev.map((e) => kv(String(e.year), e.title)).join('')) : ''}
+  const R = ls.lawOf().retired;
+  const back = R ? card('Looking Back', `${kv('Years in law', String(R.summary.years))}${kv('Cases', `${R.summary.cases} (${R.summary.won} won or resolved well)`)}${R.summary.bench ? kv('Matters heard as a judge', String(R.summary.bench)) : ''}${R.summary.proBono ? kv('Without a fee', String(R.summary.proBono)) : ''}
+    ${R.summary.big.length ? `<div class="section-label">Remembered for</div>${R.summary.big.map((b) => `<p class="muted">${esc(b)}</p>`).join('')}` : ''}`) : '';
+  return `${back}${ev.length ? card('Milestones', ev.map((e) => kv(String(e.year), e.title)).join('')) : ''}
     ${H.length ? card('Completed cases', H.map((h) => kv(String(h.year), `${h.title}: ${h.outcome}`)).join('')) : '<p class="empty">No completed cases yet.</p>'}`;
 }
 
@@ -389,15 +397,15 @@ export function openGuide() {
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
-  const m = openModal('<div class="law-hub"></div>', { dismissable: true });
+  const m = openModal('<div class="law-hub"></div>', { dismissable: true, full: true, title: 'My Legal Career' });
   const host = m.el.querySelector('.law-hub');
   const draw = () => {
     const ts = tabs();
     if (!ts.some(([id]) => id === tab)) tab = 'overview';
     const c = caseId ? lc.caseById(caseId) : null;
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
-      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2><button type="button" class="btn small" data-guide>How It Works</button>
-        <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
+      : `<div class="eyebrow">Every case tells a story.</div> <button type="button" class="btn small" data-guide>How It Works</button>
+        <div class="chips law-tabs page-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
         <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
   const changed = () => { api.changed?.(); draw(); };
@@ -425,6 +433,16 @@ export function openLawCareer(api, start = {}) {
       await say(lp.seek(t.dataset.seek)); return changed();
     }
     if (t.hasAttribute('data-campopen')) { openCampaign({ changed }); return undefined; }
+    if (t.hasAttribute('data-probono')) {
+      const opts = life.proBonoOptions();
+      const a = await pickModal({ title: 'Pro Bono', body: 'People who cannot afford a lawyer. You will not be paid; it counts in other ways.', options: opts.map((o) => ({ value: o.id, label: o.summary })) });
+      if (a) { const r2 = life.takeProBono(a); await say(r2); if (r2.caseId) { caseId = r2.caseId; } }
+      return changed();
+    }
+    if (t.hasAttribute('data-retire')) {
+      if (await confirmModal({ title: 'Retire?', body: 'Your open cases go to colleagues, and your career in law comes to its end. It cannot be undone.', yes: 'Retire', no: 'Not Yet' })) await say(life.retire('choice'));
+      return changed();
+    }
     if (t.hasAttribute('data-routineall')) { await say(lc.routineAll()); return changed(); }
     if (t.dataset.cact) { const c = lc.caseById(caseId); if (c) await caseAction(c, t.dataset.cact); return changed(); }
     if (t.dataset.duty) {

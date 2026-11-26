@@ -35,7 +35,9 @@ export function publicRecord(inv) {
   const off = OFFENSE_BY_ID[c.charges[0]?.offenseId] ?? OFFENSE_BY_ID[inc.offenseId];
   const outcome = c.stage === 'sentenced' ? 'convicted' : c.stage === 'acquitted' ? 'acquitted' : c.stage === 'dismissed' ? 'dismissed' : c.stage === 'quashed' ? 'conviction quashed on appeal' : 'pending';
   return { caseId: c.id, title: `${off?.name ?? 'A criminal case'} in ${inc.city}, ${c.year}`, charge: off?.name ?? null, defendant: nm(c.defendantId), year: c.year, court: c.court, outcome,
-    agency: ownerName(inv.agencyId) };
+    agency: ownerName(inv.agencyId),
+    // What the press published about it (engine/journalism.js): the same articles, referenced, never copied.
+    press: Object.values(store.state.newsroom?.pubs ?? {}).filter((x) => x.links?.caseId === c.id).map((x) => ({ pubId: x.id, headline: x.headline, outlet: x.outlet, year: x.year, corrected: x.corrections.length > 0 })) };
 }
 
 /**

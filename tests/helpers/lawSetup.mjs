@@ -50,10 +50,14 @@ export function playCase(c, o = {}) {
   const rq = lc.researchQuestion(c);
   if (rq) lc.research(c, rq.right);
   if (lc.filingOptions(c)) lc.file(c, 'strong');
-  for (let i = 0; i < 40 && !c.awaiting && !c.done; i++) turn();
-  if (c.done) return c.outcome;
-  const day = lc.courtroom(c);
-  const ans = Object.fromEntries(day.phases.map((ph) => [ph.id, ph.valid ?? ph.good ?? ph.options[0].v]));
-  lc.argue(c, o.answers ?? ans);
+  // A hung jury means a retrial: play that too (twice at most).
+  for (let round = 0; round < 3 && !c.done; round++) {
+    for (let i = 0; i < 40 && !(c.awaiting && c.awaiting.since <= ls.nowM()) && !c.done; i++) turn();
+    if (c.done) return c.outcome;
+    const day = lc.courtroom(c);
+    if (!day) break;
+    const ans = Object.fromEntries(day.phases.map((ph) => [ph.id, ph.valid ?? ph.good ?? ph.options[0].v]));
+    lc.argue(c, o.answers ?? ans);
+  }
   return c.outcome;
 }

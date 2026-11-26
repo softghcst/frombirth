@@ -50,8 +50,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('[data-act="sc:journalism"]').count() === 1, `${label}: Journalism is a special career on the Work tab`);
   await page.click('[data-act="sc:journalism"]'); await page.waitForTimeout(300);
   check(await page.locator('#modal-root .modal-full').count() === 1 && /Newsrooms in/i.test(await page.locator('#modal-root .modal').last().innerText()), `${label}: the page lists the city's newsrooms`);
-  // Apply until a newsroom hires (a new year each round, as in play).
-  for (let i = 0; i < 12; i++) {
+  // Apply until a newsroom hires (a new year each round, as in play). Hiring is a roll: enough rounds that an
+  // unlucky run of them does not fail the check.
+  for (let i = 0; i < 30; i++) {
     const hired = await page.evaluate(async () => (await import('/js/engine/journalism.js')).isReporter());
     if (hired) break;
     const b = page.locator('#modal-root [data-act="apply"]:not([disabled])').first();
@@ -71,6 +72,39 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .btn.primary').last().click().catch(() => {}); await page.waitForTimeout(150);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: nothing scrolls sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-${label}.png` });
+  // An editor's desk: reporters' drafts to approve, send back or spike.
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); store.state.player.career.level = 3; });
+  await page.evaluate(() => document.querySelector("#modal-root [data-back]").click()); await page.waitForTimeout(200);
+  await page.locator('#modal-root [data-tab="overview"]').click(); await page.waitForTimeout(200);
+  check(/Your desk/i.test(await page.locator('#modal-root .modal').last().innerText()) && await page.locator('#modal-root [data-act="desk"]').count() === 9, `${label}: an editor sees three drafts, each to decide`);
+  await page.locator('#modal-root [data-act="desk"]').nth(1).click(); await page.waitForTimeout(200);
+  await page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .btn.primary').last().click().catch(() => {}); await page.waitForTimeout(150);
+  check(/Sent back/i.test(await page.locator('#modal-root .modal').last().innerText()), `${label}: the decision is recorded`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-desk-${label}.png`, fullPage: true });
+  await page.locator('#modal-root [data-tab="career"]').click(); await page.waitForTimeout(200);
+  check(await page.locator('#modal-root [data-act="takeleave"]').count() === 1, `${label}: leave can be taken from the Career tab`);
+  await page.locator('#modal-root [data-tab="assignments"]').click(); await page.waitForTimeout(200);
+  check(await page.locator('#modal-root [data-act="lead"]').count() === 1, `${label}: a lead of one's own can be pitched`);
+  // An owner's media company.
+  await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const jn = await import('/js/engine/journalism.js');
+    const special = await import('/js/engine/specialCareer.js');
+    const career = await import('/js/engine/career.js');
+    const p = store.state.player;
+    career.endJob('quit'); special.leave?.();
+    p.finance.cash = 50_000_000;
+    const k = ['website', 'newsletter', 'paper'].find((x) => !jn.startWhy(x, p));
+    jn.startPublication(k, 'The Test Ledger', 'careful');
+    store.state.year += 2;
+    jn.launchTitle(k, 'The Test Weekly');
+  });
+  await page.locator('#modal-root [data-tab="overview"]').click(); await page.waitForTimeout(200);
+  const own = await page.locator('#modal-root .modal').last().innerText();
+  check(/Your media company/i.test(own) && /The Test Weekly/i.test(own) && await page.locator('#modal-root [data-act="research"]').count() === 2, `${label}: the media company lists both titles`);
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: the company page fits`);
+  await page.evaluate(() => [...document.querySelectorAll("#modal-root .section-label")].find((x) => /media company/i.test(x.textContent))?.scrollIntoView());
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/journalism-company-${label}.png`, fullPage: true });
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }
