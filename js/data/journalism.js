@@ -29,6 +29,7 @@ export const BEATS = {
   technology: { name: 'Technology', blurb: 'Companies that make things with code. Their users\' data stays private.' },
   arts: { name: 'Arts and culture', blurb: 'Theaters, orchestras and galleries: seasons that really open, and what people think of them.' },
   data: { name: 'Data', blurb: 'The figures behind the news: published statistics, read carefully.', era: 1950 },
+  war: { name: 'Wartime', blurb: 'Life at home in a war the country really fought. Never the fighting itself.', assigned: true },
   investigative: { name: 'Investigations', blurb: 'Long stories that may, or may not, stand up. From senior reporter.', minLevel: 2 },
 };
 

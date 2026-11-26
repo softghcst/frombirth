@@ -134,6 +134,14 @@ export default [
     ['Make a speech', 'Short, and nobody minds.', 'expand:celebrate', 'good'],
     ['Look over the new costs', 'Bigger costs more.', 'expand:careful'],
   ]),
+  scene('jn_old_editor', '{editor}, your old editor, calls. {first} remembers your work, and has put in a word for you at {outlet}. There is a desk there if you want it.', [
+    ['Take it', 'You pack up your desk, and send {first} a thank-you note.', 'oldeditor:yes', 'good'],
+    ['Thank them, and stay', '{first} understands, and you stay in touch.', 'oldeditor:no'],
+  ]),
+  scene('jn_war_assignment', 'Your editor at {outlet} asks whether you will report on the city during {war}: the families, the shortages, the notices. Nobody has to say yes.', [
+    ['Take it', 'You will report from home. The censor will read it first.', 'war:yes'],
+    ['Say no', 'Your editor nods. There are other stories.', 'war:no'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],
