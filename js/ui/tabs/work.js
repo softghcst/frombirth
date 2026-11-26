@@ -446,11 +446,11 @@ function specialCareers(p, list) {
   const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';
   // Careers with a page of their own that are not one-at-a-time special careers: the law, law enforcement, medicine.
   const own = [];
-  own.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
-  if (showLawRow(p)) own.push(navRow({ attrs: 'data-act="law"', label: screenName('law', p), sub: lawRowSub() }));
+  own.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', menu: 'Law Enforcement', label: screenName('investigations', p), sub: screenName('investigations', p) === 'Law Enforcement' ? 'Police, detectives, federal agents, private investigators' : 'Your cases, your agency and your career', ico: 'compass' }) : lockedRow('Law Enforcement', fromAge(p.age, 16) || 'Not open to you now'));
+  if (showLawRow(p)) own.push(navRow({ attrs: 'data-act="law"', menu: 'Law', label: screenName('law', p), sub: lawRowSub() }));
   const m = p.medicine;
   const medStudy = !m?.training && !m?.job && !(m?.completed ?? []).length;
-  if (has(list, 'medicine') && !medStudy) own.push(navRow({ attrs: 'data-act="medicine"', label: screenName('medicine', p), sub: 'Training, posts, patients and cases', ico: 'book' }));
+  if (has(list, 'medicine') && !medStudy) own.push(navRow({ attrs: 'data-act="medicine"', menu: 'Medicine', label: screenName('medicine', p), sub: 'Training, posts, patients and cases', ico: 'book' }));
   return `<div class="card"><h3>Special careers</h3>
     <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career. You can follow one at a time.'}</p>
     <div class="nav-group">${rows.join('')}${useFame}</div>

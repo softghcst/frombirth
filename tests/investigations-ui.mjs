@@ -165,7 +165,7 @@ async function run(viewport) {
   await dismissMessages(page);
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(200);
   const rowText = await page.evaluate(() => document.querySelector('[data-act="investigations"]')?.textContent ?? '');
-  check(rowText.includes('🕵️'), `${w}px: Law Enforcement & Investigations has its icon`);
+  check(rowText.includes('🕵️'), `${w}px: the law enforcement row has its icon, whatever the job title`);
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
   await page.evaluate(() => document.querySelector('[data-top="archive"]').click()); await page.waitForTimeout(250);
   await page.locator('#modal-root [data-go="investigations"]').click(); await page.waitForTimeout(200);
