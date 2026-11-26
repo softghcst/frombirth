@@ -497,7 +497,7 @@ export function postcardArt({ countryId, cruise = false, lat = 40, coastal = tru
  * keeps its drawn card.
  */
 export const POSTCARD_PHOTOS = new Set([
-  'ae', 'af', 'ar', 'au', 'aw', 'bd', 'beach', 'bo', 'br', 'bs', 'bz', 'ca', 'city', 'cl', 'cn', 'co', 'cr', 'cruise', 'cu', 'do', 'ec', 'fj', 'ge', 'gt', 'gy', 'hk', 'ht', 'id', 'il', 'in', 'iq', 'ir', 'jm', 'jo', 'jp', 'kr', 'kw', 'kz', 'lb', 'mn', 'mountains', 'mv', 'mx', 'my', 'ni', 'np', 'nz', 'pa', 'pe', 'pf', 'pg', 'ph', 'pk', 'pr', 'py', 'qa', 'sa', 'sv', 'sy', 'tr', 'us', 'uy', 've', 'ws',
+  'ae', 'af', 'ar', 'au', 'aw', 'bd', 'beach', 'bo', 'br', 'bs', 'bz', 'ca', 'city', 'cl', 'cn', 'co', 'cr', 'cruise', 'cu', 'do', 'ec', 'fj', 'ge', 'gt', 'gy', 'hk', 'ht', 'id', 'il', 'in', 'iq', 'ir', 'jm', 'jo', 'jp', 'kr', 'kw', 'kz', 'lb', 'mn', 'mountains', 'mv', 'mx', 'my', 'ni', 'np', 'nz', 'pa', 'pe', 'pf', 'pg', 'ph', 'pk', 'pr', 'py', 'qa', 'sa', 'sg', 'sv', 'sy', 'th', 'tr', 'tw', 'us', 'uy', 've', 'vn', 'ws',
 ]);
 
 /**
