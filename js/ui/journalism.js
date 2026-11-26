@@ -301,7 +301,7 @@ export function openJournalism(api, start = {}) {
   if (p0.career?.careerId === 'journalist') jn.migrateJournalist(p0);
   const st = { stack: [{ view: start.view ?? 'overview', arg: start.arg ?? null }] };
   const modal = openModal('<div data-jn></div>', { dismissable: true, full: true, title: 'Journalism' });
-  modal.el.classList.add('world-modal');
+  modal.el.classList.add('world-modal', 'jn-page');
   const root = modal.el.querySelector('[data-jn]');
   const top = () => st.stack[st.stack.length - 1];
   const render = () => {
