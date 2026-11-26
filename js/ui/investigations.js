@@ -76,7 +76,7 @@ function sectionsFor(p, r) {
   if (r) out.push(['career', 'Career Progress']);
   if (p.age >= 21) out.push(['private', 'Private Investigation']);
   if (p.career?.careerId === 'forensics') out.push(['bench', 'Laboratory Bench']);
-  if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Conviction Review']);
+  if (IG.integrityOf(p) || !IG.postBlock('innocence', p) || !IG.postBlock('ciu', p)) out.push(['integrity', 'Innocence & Integrity Work']);
   if (BK.bookRole(p)) out.push(['books', 'Financial Review']);
   if (p.medicine?.job?.hospitalId || MD.myRequests(p).length) out.push(['hospital', 'Hospital & Police']);
   if (FP.psychRecord(p)?.active || p.education.degrees.some((d) => d.type === 'doctorate' && d.majorId === 'psychology')) out.push(['psych', 'Forensic Psychology']);

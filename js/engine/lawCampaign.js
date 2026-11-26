@@ -17,6 +17,7 @@ import { lawOf, nowM, canon, keepPerson, gain } from './lawSchool.js';
 import { opportunities, legalElection, standing, seek } from './lawPractice.js';
 import { discipline } from './lawCases.js';
 import { campaignRules } from './realLaw.js';
+import * as k from './cases.js';
 import * as world from './polity.js';
 import { report } from './news.js';
 
@@ -49,7 +50,10 @@ export function declare(id, p = player()) {
   const judicial = id === 'judge_election';
   const title = id === 'da' ? o.name.replace(/^Seek the office of /, '') : id === 'ag' ? 'Attorney General' : 'Judge';
   const rivalNpc = Object.values(store.state.npcs).find((n) => n.alive && n.flags.rivalOf === p.id && n.flags.justice);
-  const rival = !judicial && rivalNpc ? `${rivalNpc.firstName} ${rivalNpc.lastName}` : null;
+  // The other candidate is a real person from the day the race begins: an old rival from court, or another lawyer.
+  const other = !judicial && rivalNpc ? rivalNpc : k.civilian(p.countryId, { kind: 'lawyer', age: rng.int(40, 62) });
+  if (other !== rivalNpc) other.flags.title = `Candidate for ${id === 'da' ? 'District Attorney' : id === 'ag' ? 'Attorney General' : 'judge'}`;
+  const rival = `${other.firstName} ${other.lastName}`;
   L.campaign = { id, title, level: race.level, judicial, round: 1, used: [], fund: 0, appeal: 0, polls: [], debated: false, endorsed: [],
     flags: {}, donors: [], rivalMoves: [], rivalEndorsed: [], rival, rivalEdge: rng.int(...race.rival), bias: rng.int(-3, 3), startM: nowM() };
   log(`You filed to run for ${title}.`, 'system', 'neutral');
