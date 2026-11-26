@@ -127,8 +127,23 @@ Work → Special careers → 🕵️ Law Enforcement & Investigations. The overv
 
 ## Sources
 
-`SOURCES` in `js/data/investigations.js` names the page each rule is modeled on (FBI, DEA, ATF, BLS, NIJ, DOJ). These pages could not be
-fetched from the build environment, so every rule is marked `verified: false` and is a simplified gameplay rule until checked.
+`SOURCES` in `js/data/investigations.js` names the page each rule is modeled on. On 2026-11-26 the rules were checked against
+sources. Several official sites (dea.gov, atf.gov, usmarshals.gov, fbijobs.gov, bls.gov, college.police.uk, rcmp-grc.gc.ca and
+the French ministry) refuse automated access, so where the official page could not be read, a secondary source (Wikipedia, or
+search excerpts quoting the official pages or USAJOBS) was used. A rule stays marked `verified: false` unless its official page
+was read.
+
+| Checked | Result |
+|---|---|
+| Secret Service: founded 1865; age 21 to under 40; FLETC then Rowley | Official page: matches (maximum age corrected from 37 to 39) |
+| Law enforcement availability pay is 25% of basic pay | Official (OPM fact sheet): matches; deputy US marshals, reclassified as criminal investigators after the academy, now get it too |
+| FBI 1908, ages 23 to 36, a degree and two years of work; DEA 1973, 21 to 36; ATF 1972; US Marshals 1789, 21 to 36; HSI; IRS-CI 1919 with accounting coursework | Secondary: match |
+| Academy lengths | Secondary: FBI about 4 months, US Marshals about 5, HSI about 5 (corrected); DEA and ATF match |
+| UK entry routes, two-year probation, no strikes or trade unions | Secondary: match, with the 2024 non-degree entry route added; Scotland's prosecutor added |
+| RCMP Depot, 26 weeks; Japan's union ban; German training; Brazil's delegado; Mexico's Fiscalía; Korea's one-year probation; Italy's twelve-month course; Spain's Ávila academy | Secondary (Japan's from the law's official translation): match |
+| France: Police nationale ages and training; Gendarmerie field training | Corrected: ages 17 to 35, a year at school and a year in post; Gendarmerie four months in a unit |
+| Korea: academy nine months; the rank Chonggyeong | Corrected |
+| Private investigator licensing; Canada's municipal services; Australia; India's ages; Brazil's and India's strike rules | Not verified: rules vary by state or province, or no source could be read |
 
 ## Tests
 

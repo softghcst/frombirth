@@ -51,7 +51,7 @@ export function integrityYear(p = player()) {
   if (!I || !p.alive || I.matters.some((m) => m.status === 'open')) return [];
   let cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id));
   // Only real convictions: when there are none with anything to test, the courts' own work may produce one.
-  for (let i = 0; i < 4 && !cand; i++) { npcCourtCase(p); cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id)); }
+  for (let i = 0; i < 8 && !cand; i++) { npcCourtCase(p); cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id)); }
   if (!cand) return ['No conviction here has kept evidence that could be tested anew this year.'];
   const inv = cand.inv;
   const c = k.J().cases[inv.file.courtCaseId];

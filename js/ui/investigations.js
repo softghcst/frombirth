@@ -115,7 +115,7 @@ function waysIn(p) {
 
 // First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
 const HINTS = {
-  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  overview: 'This is your investigative life at a glance. Each row below opens a part of it; new ones appear as your career opens them.',
   agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
   federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
   cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
@@ -134,8 +134,8 @@ const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses 
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
-    let out = card('Follow the evidence. Find the truth.', kv([
-      ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
+    let out = card('Where you stand', kv([
+      ['Status', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
       ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
@@ -161,11 +161,18 @@ const VIEWS = {
     for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
       + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
     if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
+    const APP = { police: 'Police', detective: 'Detective seat', federal: 'Federal', license: 'License', promotion: 'Promotion' };
+    const apps = (r?.apps ?? []).slice(-4).reverse();
+    if (apps.length) out += card('Your applications', apps.map((a) => kv([[`${APP[a.kind] ?? 'Application'}: ${a.agency ? FEDERAL[a.agency]?.short : A.ownerName(a.ownerId)}`, a.status === 'pending' ? `Waiting: you hear by ${dateWords(a.decisionDue ?? a.due)}` : a.status === 'offer' ? 'Offered' : a.status === 'accepted' ? 'Accepted' : a.status === 'refused' ? `Not this time${a.why ? `: ${({ written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' })[a.why] ?? a.why}` : ''}` : ({ not_selected: 'The panel chose someone else', selected: 'Selected', promoted: 'Promoted', passed_over: 'Someone else was promoted', granted: 'Granted', licensed: 'Licensed', declined: 'Declined' })[a.status] ?? 'Decided']])).join('')
+      + (apps.some((a) => a.status === 'refused' && a.kind === 'police') && !apps.some((a) => a.status === 'pending' || a.status === 'offer') ? muted(`You can apply again: one application a year to each department. ${C.WHY_HELP[apps.find((a) => a.status === 'refused')?.why] ?? 'Preparing helps.'}`) + stack(btn('goDepartments', 'Apply again from Departments')) : ''));
     return out;
   },
   agency(p, r) {
     let out = '';
     if (!r?.job) {
+      // Getting ready sits here too, where people apply (and apply again).
+      out += card('Getting ready', muted('Before applying: study, train, write, and see the work for yourself. Each once a year, and it adds up.')
+        + stack(Object.entries(C.PREP).map(([id, d]) => btn('prep', d.label, { arg: id })).join('')));
       for (const a of A.agenciesHere(p)) {
         const no = C.policeUnmet(a, p);
         const d = AGENCY_KINDS[a.kind];
@@ -267,7 +274,8 @@ const VIEWS = {
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
-      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')
+        + (r.job && !r.retired && (r.stats.years ?? 0) >= 3 ? kv([['Leadership', `${Math.round(r.skills.leadership)} / 100`]]) + muted('Sergeant and above ask for leadership: it grows with mentoring newer colleagues, and with the years.') + stack(btn('mentor', 'Mentor a newer colleague')) : '')) : '')
       + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
         + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
       + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
@@ -595,6 +603,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  mentor: (a, x) => x.say(WP.mentor()),
+  goDepartments: (a, x) => { x.st.section = 'agency'; x.render(); },
   hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
   hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
   media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
@@ -777,7 +787,10 @@ function home(p, r, list) {
 
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
-  const lines = settle(player()); // anything whose date has come, made known before the page is drawn
+  const r0 = rec(player());
+  // Anything whose date has come, and what the year decided while the page was closed, made known before it is drawn.
+  const lines = [...(r0?.unread ?? []), ...settle(player())];
+  if (r0) r0.unread = [];
   const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');

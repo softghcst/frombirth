@@ -344,3 +344,13 @@ function corporateYear(p, r) {
   r.inquiryIds.push(id);
   return [`A new internal matter: ${what}.`];
 }
+
+/** Mentors a newer colleague, once a year: how a serving officer builds the leadership a sergeant's post asks for. */
+export function mentor(p = player()) {
+  const r = rec(p);
+  if (!working(r) || r.family === 'private') return result(false, 'This is for serving officers and agents.', 'neutral');
+  if ((r.stats.years ?? 0) < 3) return result(false, 'Newer colleagues ask people with a few years behind them.', 'neutral');
+  if (!once('mentor', r)) return result(false, 'You mentored someone this year.', 'neutral');
+  grow('leadership', 4); grow('teamwork', 1); regard('leadership', 2);
+  return result(true, 'A new colleague shadows you for a few months. You explain why, not just how. They will remember it, and so will your supervisors.');
+}

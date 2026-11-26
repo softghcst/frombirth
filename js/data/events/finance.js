@@ -3,6 +3,7 @@
 // chooses moves real money through the money engines (the `money` effect:
 // engine/moneyEffects.js). Bad offers and bank mistakes are rare, can always
 // be walked away from, and describe nothing anyone could copy.
+import { AT } from '../workplaces.js';
 import { st, hid, cash, rel, ok, bad, any, chk, need, mem } from './helpers.js';
 
 const money = (op, o = {}) => ({ type: 'money', op, ...o });
@@ -74,7 +75,7 @@ export default [
     ],
   },
   {
-    id: 'retirement_thoughts', category: 'money', ageRange: [55, 66], cooldown: 99, requires: [need('employed', '==', true)],
+    id: 'retirement_thoughts', workplaces: AT.colleagues, category: 'money', ageRange: [55, 66], cooldown: 99, requires: [need('employed', '==', true)],
     text: 'A colleague your own age is leaving at the end of the month. At the party someone asks, lightly, when it will be your turn. You find you do not know the answer.',
     choices: [
       { label: 'Go home and work out the figures', outcomes: [any('A pension, what you have saved, what a year costs. For the first time you know roughly where you stand. (My Money, Retirement, has the sums.)', 'good', learn(4, 'retire'), st('mood', 2))] },

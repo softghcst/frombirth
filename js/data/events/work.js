@@ -1,5 +1,6 @@
 // Working life: bosses, coworkers and the choices that shape a review.
 // These need a job with a boss, so freelancers do not see them.
+import { AT } from '../workplaces.js';
 import { st, hid, cash, rel, ms, addNpc, ok, bad, any, chk, need, mem, perf, pay, fired, promoted, heat, count } from './helpers.js';
 
 const employed = need('employed', '==', true);
@@ -7,7 +8,7 @@ const employed = need('employed', '==', true);
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
   {
-    id: 'credit_taken', category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' },
+    id: 'credit_taken', workplaces: [...AT.desk, 'school', 'police'], category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' },
     text: 'In the Monday meeting, {mate} presents the work you stayed late all last week to finish, as their own. {boss} is nodding along.',
     choices: [
       { label: 'Say, calmly, that it is your work', check: chk(0.5, { 'stats.charm': 0.6, 'cast.boss.relationship': 0.3 }), outcomes: [
@@ -23,7 +24,7 @@ export default [
     ],
   },
   {
-    id: 'weekend_ask', category: 'work', ageRange: [18, 66], requires: [employed], cast: { boss: 'tag:boss' }, cooldown: 4,
+    id: 'weekend_ask', workplaces: AT.desk, category: 'work', ageRange: [18, 66], requires: [employed], cast: { boss: 'tag:boss' }, cooldown: 4,
     text: 'At five on Friday, {boss} appears at your shoulder: the deadline has moved, and they need you in all weekend.',
     choices: [
       { label: 'Say yes', outcomes: [any('You lose the weekend and gain a boss who remembers it.', 'neutral', perf(6), st('mood', -5), rel('boss', 8),
@@ -36,7 +37,7 @@ export default [
     ],
   },
   {
-    id: 'cover_mistake', category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker' },
+    id: 'cover_mistake', workplaces: AT.company, category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker' },
     text: '{mate} has made a mistake that will cost the company real money, and asks you to say you were both working from the same wrong figures.',
     choices: [
       { label: 'Cover for them', check: chk(0.6, { 'talents.crime': 0.3, 'stats.charm': 0.2 }), outcomes: [
@@ -48,7 +49,7 @@ export default [
     ],
   },
   {
-    id: 'headhunter', category: 'work', ageRange: [22, 60], requires: [employed, need('career.performance', '>=', 60)], cast: { boss: 'tag:boss' }, cooldown: 8,
+    id: 'headhunter', workplaces: ['office', 'firm', 'lab', 'care'], category: 'work', ageRange: [22, 60], requires: [employed, need('career.performance', '>=', 60)], cast: { boss: 'tag:boss' }, cooldown: 8,
     text: 'A recruiter calls: a rival wants you, for a fifth more money. You have not told {boss}.',
     choices: [
       { label: 'Take it', outcomes: [any('New badge, new desk, same work, twenty percent more. {boss} shakes your hand without warmth.', 'good', pay(1.2), perf(-5), rel('boss', -15), st('mood', 5))] },
@@ -60,7 +61,7 @@ export default [
     ],
   },
   {
-    id: 'work_party', category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' }, cooldown: 5,
+    id: 'work_party', workplaces: AT.colleagues, category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' }, cooldown: 5,
     text: 'The end-of-year party. There is a free bar, a dance floor, and everyone you have to face on Monday.',
     choices: [
       { label: 'Throw yourself into it', check: chk(0.5, { 'stats.charm': 0.5, 'hidden.discipline': 0.4 }), outcomes: [
@@ -72,7 +73,7 @@ export default [
     ],
   },
   {
-    id: 'big_presentation', category: 'work', ageRange: [20, 66], requires: [employed], cast: { boss: 'tag:boss' }, cooldown: 4,
+    id: 'big_presentation', workplaces: ['office', 'firm', 'lab'], category: 'work', ageRange: [20, 66], requires: [employed], cast: { boss: 'tag:boss' }, cooldown: 4,
     text: '{boss} wants you to present to the people at the very top. You have a week.',
     choices: [
       { label: 'Rehearse it until you can do it asleep', check: chk(0.6, { 'hidden.discipline': 0.6, 'stats.intellect': 0.3 }), outcomes: [
@@ -87,7 +88,7 @@ export default [
     ],
   },
   {
-    id: 'seen_something', category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' }, once: true,
+    id: 'seen_something', workplaces: ['office', 'firm', 'lab', 'shop', 'site', 'care', 'school'], category: 'work', ageRange: [18, 66], requires: [employed], cast: { mate: 'coworker', boss: 'tag:boss' }, once: true,
     text: 'You walk in on a senior manager cornering {mate} by the stock room, and saying things nobody should have to hear at work. They both see you.',
     choices: [
       { label: 'Report it, with {mate}\'s agreement', outcomes: [any(
@@ -99,7 +100,7 @@ export default [
     ],
   },
   {
-    id: 'new_starter', category: 'work', ageRange: [24, 66], requires: [employed, need('career.yearsInRole', '>=', 1)], cast: { boss: 'tag:boss' }, cooldown: 6,
+    id: 'new_starter', workplaces: AT.colleagues, category: 'work', ageRange: [24, 66], requires: [employed, need('career.yearsInRole', '>=', 1)], cast: { boss: 'tag:boss' }, cooldown: 6,
     text: '{boss} asks if you would show the new starter the ropes for their first month.',
     choices: [
       { label: 'Do it properly', outcomes: [any('{newbie} learns fast and tells everyone who taught them.', 'good', perf(5), hid('karma', 3), rel('boss', 4),
@@ -109,7 +110,7 @@ export default [
     ],
   },
   {
-    id: 'expenses', category: 'work', ageRange: [20, 66], requires: [employed], cooldown: 8,
+    id: 'expenses', workplaces: AT.desk, category: 'work', ageRange: [20, 66], requires: [employed], cooldown: 8,
     text: 'Nobody checks expense claims here. Everybody knows nobody checks.',
     choices: [
       { label: 'Claim what you spent', outcomes: [any('Receipts stapled, total correct. It takes four minutes.', 'good', hid('karma', 2), hid('discipline', 1))] },
@@ -124,7 +125,7 @@ export default [
     ],
   },
   {
-    id: 'burnout', category: 'work', ageRange: [26, 60], requires: [employed, need('career.performance', '>=', 70)], cooldown: 8,
+    id: 'burnout', workplaces: AT.any, category: 'work', ageRange: [26, 60], requires: [employed, need('career.performance', '>=', 70)], cooldown: 8,
     text: 'You have been excellent for a long time, and this morning you sat in the parking lot for forty minutes, unable to go in.',
     choices: [
       { label: 'Take two weeks off', outcomes: [any('You sleep for most of the first one. By the second you remember what you like doing.', 'good', perf(-4), st('mood', 14), st('health', 5))] },
@@ -136,7 +137,7 @@ export default [
     ],
   },
   {
-    id: 'boss_leaving', category: 'work', ageRange: [26, 62], requires: [employed, need('career.yearsInRole', '>=', 2)], cast: { boss: 'tag:boss' }, cooldown: 10,
+    id: 'boss_leaving', workplaces: AT.colleagues, category: 'work', ageRange: [26, 62], requires: [employed, need('career.yearsInRole', '>=', 2)], cast: { boss: 'tag:boss' }, cooldown: 10,
     text: '{boss} is leaving for a bigger job, and tells you before anyone else. Their role will be advertised on Monday.',
     choices: [
       { label: 'Go for it', check: chk(0.3, { 'career.performance': 0.9, 'cast.boss.relationship': 0.4 }), outcomes: [
@@ -153,7 +154,7 @@ export default [
 
   // ---------- The stage ----------
   {
-    id: 'understudy_on', category: 'the stage', ageRange: [18, 60], cooldown: 6, weight: 3,
+    id: 'understudy_on', workplaces: ['stage'], category: 'the stage', ageRange: [18, 60], cooldown: 6, weight: 3,
     requires: [need('career.careerId', '==', 'mt_performer'), need('career.level', '<=', 1)],
     text: 'Half an hour before curtain, the lead goes down with no voice. The stage manager looks at you: "You know the track. You are on."',
     choices: [
@@ -165,7 +166,7 @@ export default [
     ],
   },
   {
-    id: 'eight_shows', category: 'the stage', ageRange: [18, 60], cooldown: 5, weight: 2,
+    id: 'eight_shows', workplaces: ['stage'], category: 'the stage', ageRange: [18, 60], cooldown: 5, weight: 2,
     requires: [need('career.careerId', '==', 'mt_performer')],
     text: 'Eight shows a week for seven months. Your voice is fraying and your left knee has started to click on the stairs.',
     choices: [

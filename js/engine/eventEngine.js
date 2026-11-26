@@ -15,7 +15,7 @@ import { latestLaw } from './government.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localMoney } from '../util.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
-import { meetsAll, resolve } from './conditions.js';
+import { meetsAll, resolve, workplaceOf } from './conditions.js';
 import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
@@ -99,6 +99,8 @@ function eligibleCast(ev, between = false) {
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
   if (seen && (ev.once || p.age - seen.lastAge < (ev.cooldown ?? DEFAULT_COOLDOWN))) return null;
   if (!meetsAll(ev.requires)) return null;
+  // A scene set at work happens only in the workplaces it was written for (data/workplaces.js).
+  if (ev.workplaces && !ev.workplaces.includes(workplaceOf(p))) return null;
   const specs = Object.values(ev.cast ?? {});
   if (!specs.every((spec) => npcsByRole(spec).length >= specs.filter((x) => x === spec).length)) return null;
   const cast = castFor(ev);
