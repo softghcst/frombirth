@@ -663,7 +663,9 @@ function report(s) {
   const yAw = Object.keys(K.awards ?? {}).map(Number).sort().at(-1);
   if (yAw) {
     store.state.year = yAw + 1;
-    const aw = jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), { chance: () => true, pick: (a) => a[0], int: (a) => a, next: () => 0.5 });
+    // Written once a year per reporter: if the year's assignments already gave it to them, it is that story.
+    const aw = jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), { chance: () => true, pick: (a) => a[0], int: (a) => a, next: () => 0.5 })
+      ?? jn.myStories(k).find((x) => x.links?.kpopAwards === yAw);
     check(aw && K.releases[K.awards[yAw].grand].groupId === aw.links.groupId && aw.claims[0].truth, 'the Grand Prize story is about the group that really won it');
     check(!jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), {}), 'one awards story a year');
   } else check(false, 'setup: a year of K-pop awards');
