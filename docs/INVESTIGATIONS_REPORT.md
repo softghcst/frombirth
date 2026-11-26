@@ -37,8 +37,8 @@ for f in tests/*.mjs; do node "$f"; done   # the whole suite
 ```
 
 - Passing: `investigations.mjs` (29 sections), `investigations-law.mjs` (46 checks), `investigations-ui.mjs` (38 checks),
-  and the rest of the suite (RESULTS_PLACEHOLDER).
-- Failing: FAILING_PLACEHOLDER
+  and the rest of the suite: 131 of 132 test files pass.
+- Failing: `tests/name-variety.mjs` (some small countries, such as Mauritius and the Seychelles, have too few first names and surnames). It fails on `main` as well and is unrelated to the investigations work.
 - Not run: tests on physical devices (only emulated phone and desktop widths).
 - Environmental blockers: the agencies' own pages could not be fetched from the build environment, so no rule was
   checked against its source (every `SOURCES` entry is `verified: false`).
