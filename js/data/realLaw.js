@@ -5,7 +5,7 @@
 //
 //   topic: what the law decides in a case: 'search' (evidence from an unlawful search), 'confession', 'hearsay',
 //          'leading', 'disclosure', 'counsel', 'burden', 'identification', 'jury', 'custody', 'divorce', 'retaliation',
-//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum', 'instruction', 'punitive', 'certiorari',
+//          'trademark', 'force', 'removal', 'contingency', 'will', 'prenup', 'support', 'protection', 'adoption', 'guardianship', 'wages', 'housing', 'pollution', 'records', 'eviction', 'asylum', 'instruction', 'punitive', 'certiorari', 'judicial_retirement', 'probono',
 //          'campaign' (what a candidate for legal office may do), 'recusal' (when a judge must step aside)
 //   from:  the year it took effect;  until: the year it stopped applying, if it did
 //   excludes: for 'search' and 'confession', whether the rule lets a court leave the evidence out
@@ -107,6 +107,16 @@ export const REAL_LAWS = [
   L('jp_dv', ['jp'], 'protection', 'Act on the Prevention of Spousal Violence (2001)', 2001, 'A court can order a violent spouse to stay away from the victim and leave the shared home for a time.'),
   L('jp_refugee', ['jp'], 'asylum', 'Immigration Control and Refugee Recognition Act (refugee recognition from 1982)', 1982, 'Refugee status is recognized under the Refugee Convention, which Japan joined in 1981.'),
   L('jp_water', ['jp'], 'pollution', 'Water Pollution Control Law (1970)', 1971, 'Factories must keep discharges into public waters within national standards.'),
+  // When judges must retire (engine/lawLife.js): the age in force, where Pathways lists it.
+  L('us_art3', ['us'], 'judicial_retirement', 'U.S. Constitution, Article III (federal judges)', 1789, 'Federal judges hold office during good behavior: no retirement age. Most states set one for their own judges, often 70.', { age: 70, note: 'State judges in Pathways retire at 70, the most common state age.' }),
+  L('uk_jpra93', ['uk'], 'judicial_retirement', 'Judicial Pensions and Retirement Act 1993', 1995, 'Judges must retire at 70.', { age: 70, until: 2021 }),
+  L('uk_pspjoa22', ['uk'], 'judicial_retirement', 'Public Service Pensions and Judicial Offices Act 2022', 2022, 'Raised the mandatory retirement age for judges to 75.', { age: 75 }),
+  L('ca_const60', ['ca'], 'judicial_retirement', 'Constitution Act, 1960 (superior court judges)', 1961, 'Judges of the superior courts retire at 75.', { age: 75 }),
+  L('au_1977', ['au'], 'judicial_retirement', 'Constitution Alteration (Retirement of Judges) 1977', 1977, 'Federal judges must retire at 70.', { age: 70 }),
+  L('in_const124', ['in'], 'judicial_retirement', 'Constitution of India, Article 124', 1950, 'Supreme Court judges retire at 65; High Court judges at 62.', { age: 65 }),
+  L('jp_court_act', ['jp'], 'judicial_retirement', 'Court Act (1947)', 1947, 'Judges of the lower courts retire at 65; Supreme Court justices at 70.', { age: 65 }),
+  // Pro bono: the profession's own expectation.
+  L('us_rule61', ['us'], 'probono', 'ABA Model Rule of Professional Conduct 6.1', 1983, 'Every lawyer has a professional responsibility to provide legal services to those unable to pay, aspiring to at least 50 hours a year.'),
   L('uk_children', ['uk'], 'custody', 'Children Act 1989, section 1', 1991, 'The child\'s welfare is the court\'s paramount consideration.'),
   L('uk_dra1969', ['uk'], 'divorce', 'Divorce Reform Act 1969 (in force 1971)', 1971, 'Divorce for irretrievable breakdown, shown by one of five facts: adultery, behavior or desertion, or two or five years\' separation.', { nofault: 'facts', until: 2021, note: 'Before 1971, divorce in England required proof of a matrimonial offense such as adultery or cruelty.' }),
   L('uk_ddsa', ['uk'], 'divorce', 'Divorce, Dissolution and Separation Act 2020 (in force 2022)', 2022, 'No-fault divorce: a statement that the marriage has broken down irretrievably is enough.', { nofault: true }),

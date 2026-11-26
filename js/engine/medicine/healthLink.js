@@ -42,7 +42,7 @@ export function linkFacility(f, def, fresh = false) {
 /** The medical specialty a Health Engine physician profession is. */
 export const PROFESSION_SPECIALTY = {
   gp: 'family', doctor: 'internal', psychiatrist: 'psychiatry', pediatrician: 'pediatrics', neurologist: 'neurology',
-  cardiologist: 'cardiology', oncologist: 'heme_onc', ophthalmologist: 'ophthalmology', ent: 'ent',
+  cardiologist: 'cardiology', oncologist: 'heme_onc', ophthalmologist: 'ophthalmology', ent: 'ent', obgyn: 'obgyn', urologist: 'urology',
 };
 const PHYSICIAN_CAREERS = ['doctor', 'surgery', 'psychiatry'];
 

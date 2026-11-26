@@ -285,6 +285,7 @@ button.row:active { transform: scale(0.99); background: var(--accent-soft); }
 .epitaph-row.locked strong { color: var(--muted); font-weight: 500; font-style: italic; }
 .epitaph-list { max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .btn small { display: block; font-weight: 400; opacity: 0.75; font-size: 0.8rem; }
+.btn.has-why { flex-direction: column; gap: 2px; } /* a greyed action with the reason underneath */
 
 .contact { padding: 8px 0; }
 .contact + .contact { border-top: 1px dashed var(--line); }
@@ -542,6 +543,10 @@ button.dyn-event { cursor: pointer; }
 .hl-module:last-of-type { border-bottom: 0; }
 .hl-milestone { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .hl-lock { font-size: 0.75rem; opacity: 0.7; }
+/* Birth control & family planning: compared methods side by side where there is room, stacked on a phone */
+.bc-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 10px; }
+.bc-compare .kv { flex-wrap: wrap; }
+.bc-compare .kv span:last-child { text-align: right; overflow-wrap: anywhere; }
 @media (max-width: 380px) { .hl-meter { grid-template-columns: 5.5em 1fr 4.5em; } }
 .tab-btn { position: relative; }
 .tab-btn.badge::after { content: ''; position: absolute; top: 6px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 2px var(--card); }

@@ -442,6 +442,21 @@ const TABS = [['overview', 'Overview'], ['notebook', 'Notebook'], ['people', 'Pe
 function caseTabs(v) {
   return TABS.filter(([id]) => (id === 'lab' ? v.labs.length || v.items.length : id === 'court' ? !!v.court : id === 'statements' ? v.claims.length : true));
 }
+/** The case file on fewer pages: people with their statements, items with the laboratory, the legal review with court. */
+const CASE_GROUPS = [['people', 'People & Statements', ['people', 'statements']], ['evidence', 'Evidence & Lab', ['evidence', 'lab']], ['legal', 'Legal & Court', ['legal', 'court']]];
+function casePages(v) {
+  const tabs = caseTabs(v);
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of tabs) {
+    if (used.has(id)) continue;
+    const g = CASE_GROUPS.find(([, , ids]) => ids.includes(id));
+    const members = g ? tabs.filter(([x]) => g[2].includes(x)) : [[id, label]];
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+  }
+  return out;
+}
 const CASE_VIEWS = {
   overview: (v, inv) => {
     const f = inv?.file;
@@ -516,10 +531,13 @@ function openCaseFile(api, invId, refreshHub) {
     const inv = W.investigation(invId);
     const v = V.view(inv, 'investigator');
     if (!v) { root.innerHTML = muted('This file is not yours to read.') + stack('<button type="button" class="btn" data-close>Close</button>'); return; }
-    const tabs = caseTabs(v);
+    const tabs = casePages(v);
+    const tab = tabs.find((t) => t.id === st.tab) ?? tabs.find((t) => t.members.some(([x]) => x === st.tab)) ?? tabs[0];
+    st.tab = tab.id;
+    const page = tab.members.map(([x]) => CASE_VIEWS[x](v, inv)).join('');
     root.innerHTML = `
-      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map(([id, label]) => `<button type="button" role="tab" class="world-group av-chip ${id === st.tab ? 'on' : ''}" aria-selected="${id === st.tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
-      <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${CASE_VIEWS[st.tab](v, inv)}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
+      <div class="world-groups" role="tablist" aria-label="Case file">${tabs.map((t) => `<button type="button" role="tab" class="world-group av-chip ${t.id === st.tab ? 'on' : ''}" aria-selected="${t.id === st.tab}" data-tab="${t.id}">${esc(t.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${hintSeen('case') ? '' : `<div class="card" style="border-left:3px solid currentColor"><div class="eyebrow">How this works</div><p>${esc(CASE_HINT)}</p>${stack(btn('hintCase', 'Got it'))}</div>`}${page}</div>${stack('<button type="button" class="btn" data-close>Close the file</button>')}`;
   };
   const say = async (r) => { api.changed(); refreshHub(); if (r?.text) await messageModal({ body: r.text, tone: r.tone }); render(); };
   root.addEventListener('click', async (e) => {

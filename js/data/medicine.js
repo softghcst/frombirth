@@ -32,14 +32,14 @@ const F = (id, name, doctor, after, years, o) => S(id, name, doctor, { kind: 'fe
 
 export const SPECIALTIES = [
   // Primary residencies (entered from medical school)
-  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor'], practice: 'family_clinic', minYear: 1969 }),
+  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor', 'lc_implant'], practice: 'family_clinic', minYear: 1969 }),
   S('internal', 'Internal Medicine', 'internist', { years: 3, play: 'panel', dept: 'medicine', compete: 0.35, procedures: ['office_minor'], practice: 'internal_clinic' }),
   S('pediatrics', 'Pediatrics', 'pediatrician', { years: 3, play: 'panel', dept: 'pediatrics', compete: 0.3, procedures: ['office_minor'], practice: 'pediatric_clinic' }),
   S('emergency', 'Emergency Medicine', 'emergency physician', { years: 3, play: 'acute', dept: 'emergency', compete: 0.45, procedures: ['er_procedure'], minYear: 1979 }),
   S('gensurg', 'General Surgery', 'general surgeon', { years: 5, play: 'or', dept: 'surgery', surgical: true, compete: 0.6, procedures: ['gs_abdominal', 'gs_hernia', 'office_minor'] }),
   S('ortho', 'Orthopedic Surgery', 'orthopedic surgeon', { years: 5, play: 'or', dept: 'orthopedics', surgical: true, compete: 0.8, procedures: ['or_fracture', 'or_arthroscopy', 'or_joint', 'office_minor'], practice: 'ortho_clinic' }),
   S('neurosurg', 'Neurological Surgery', 'neurosurgeon', { years: 7, play: 'or', dept: 'neurosurgery', surgical: true, compete: 0.9, procedures: ['ns_cranial', 'ns_spine'], minYear: 1920 }),
-  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor'], practice: 'obgyn_clinic' }),
+  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor', 'lc_iud', 'lc_implant', 'tubal'], practice: 'obgyn_clinic' }),
   S('psychiatry', 'Psychiatry', 'psychiatrist', { years: 4, play: 'panel', dept: 'psychiatry', compete: 0.35, practice: 'psychiatry_practice' }),
   S('dermatology', 'Dermatology', 'dermatologist', { years: 4, play: 'panel', dept: 'dermatology', compete: 0.85, procedures: ['derm_biopsy', 'derm_excision', 'office_minor'], practice: 'dermatology_clinic' }),
   S('neurology', 'Neurology', 'neurologist', { years: 4, play: 'panel', dept: 'neurology', compete: 0.4 }),
@@ -48,7 +48,7 @@ export const SPECIALTIES = [
   S('pathology', 'Pathology', 'pathologist', { years: 4, play: 'reading', dept: 'pathology', compete: 0.3 }),
   S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'oph_laser', 'office_minor'], practice: 'eye_clinic' }),
   S('ent', 'Otolaryngology (ENT)', 'ENT surgeon', { years: 5, play: 'or', dept: 'ent', surgical: true, compete: 0.75, procedures: ['ent_surgery', 'office_minor'] }),
-  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor'] }),
+  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor', 'vasectomy'] }),
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
   // General practice: a hospital internship, then practice (before residency was the usual route; see ERA.gpEra).
   S('general', 'General Practice', 'general practitioner', { kind: 'gp', years: 1, play: 'panel', dept: 'family', compete: 0, procedures: ['office_minor', 'ob_delivery'], practice: 'family_clinic', minYear: 1800, maxYear: 1968 }),
@@ -153,6 +153,12 @@ export const PROCEDURES = [
   P('ob_delivery', 'Attended delivery', 1900, 0.04, { major: false }),
   P('ob_cesarean', 'Cesarean delivery', 1940, 0.08),
   P('gyn_surgery', 'Gynecologic operation', 1920, 0.08),
+  // Contraception (engine/health/contraception.js is the patient's side of the same care): office procedures, and the
+  // permanent methods. Not every physician holds them: family physicians place implants; IUDs are referred to OB-GYN.
+  P('lc_iud', 'IUD placement or removal', 1974, 0.01, { major: false }),
+  P('lc_implant', 'Contraceptive implant placement or removal', 1990, 0.005, { major: false }),
+  P('tubal', 'Tubal sterilization', 1930, 0.03),
+  P('vasectomy', 'Vasectomy', 1925, 0.01, { major: false }),
   P('oph_cataract', 'Cataract operation', 1970, 0.03),
   P('oph_laser', 'Eye laser treatment', 1975, 0.02, { major: false }),
   P('ent_surgery', 'Ear, nose and throat operation', 1920, 0.07),

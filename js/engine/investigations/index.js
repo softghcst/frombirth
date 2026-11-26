@@ -38,6 +38,7 @@ import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
 import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
+import { considerYear } from './autoPromotion.js';
 import { settleAncestor } from './family.js';
 import { seriesYear, inheritYear } from './serial.js';
 import { wellbeingYear } from './wellbeing.js';
@@ -110,6 +111,7 @@ export function tickInvestigations() {
     if (['sergeant', 'lieutenant', 'captain', 'deputy_chief', 'chief', 'detective_sergeant', 'detective_lieutenant', 'supervisory', 'asac', 'sac'].includes(r.job.rank)) grow('leadership', 2);
     p.career.performance = clamp(Math.round(p.career.performance * 0.5 + reputationOf(r) * 0.5 + rng.int(-3, 3)));
     autoProgress(p, r);
+    considerYear(p, r); // considered for the next rank, a step raise, or a warning (autoPromotion.js)
     // New cases, for those who investigate: one a year, two for the experienced, never past a caseload of three.
     if (r.job.detective || (r.family === 'federal' && r.job.rank !== 'trainee')) {
       const n = r.stats.years >= 5 ? 2 : 1;
