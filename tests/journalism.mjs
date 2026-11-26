@@ -29,7 +29,8 @@ const life = (age = 23, year = 2024, country = 'us') => {
   return p;
 };
 const hireMe = (p) => {
-  for (let y = 0; y < 8 && !jn.isReporter(p); y++) {
+  // Applications are a fair chance, not a sure thing: keep applying, as a real graduate would, until a newsroom says yes.
+  for (let y = 0; y < 30 && !jn.isReporter(p); y++) {
     for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
