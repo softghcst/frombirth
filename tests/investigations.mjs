@@ -1674,6 +1674,20 @@ section('the academy ends on its own date: graduation and field training the sam
 }
 section('playtest fixes: interviews end with the proper questions; cases spread across the city; idle cases set aside so new ones come; leadership can be built before a leading rank; the archive keeps milestones');
 
+{
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { workplaceOf } = await import('../js/engine/conditions.js');
+  const p = life('us', 40);
+  makeOfficer();
+  const det = workplaceOf(p);
+  const offered = (id) => EVENT_BY_ID[id].workplaces.includes(workplaceOf(p));
+  check(det === 'police' && !offered('fd_law_client') && !offered('headhunter') && !offered('big_presentation') && offered('burnout') && offered('fd_safety_call'),
+    'an officer is not offered a law firm\'s client, a rival firm\'s headhunter or a boardroom presentation, but burnout and a safety call still find them');
+  p.career = { careerId: 'lawyer', partTime: null };
+  check(offered('fd_law_client') && offered('headhunter') && !offered('fd_safety_call'), 'a lawyer at a firm meets the firm\'s client and the headhunter, not the emergency call');
+}
+section('workplaces: scenes set at work happen only in the workplaces they name');
+
 for (const line of ok) console.log(`ok   ${line}`);
 
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

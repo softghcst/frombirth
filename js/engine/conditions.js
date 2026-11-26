@@ -6,6 +6,7 @@
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { rule, may } from './rules.js';
 import { CAREER_BY_ID } from '../data/careers.js';
+import { workplaceOfCareer, workplaceOfPartTime } from '../data/workplaces.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
@@ -102,6 +103,8 @@ const SPECIAL = {
   employed: (p) => !!p.career.careerId,
   // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
   workFamily: (p) => CAREER_BY_ID[p.career.careerId]?.family ?? null,
+  // The kind of place the player works (data/workplaces.js): the main job's, or a part-time job's.
+  workplace: (p) => workplaceOf(p),
   salaried: (p) => !!p.career.careerId && CAREER_BY_ID[p.career.careerId].type === 'fulltime',
   single: (p) => !p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && ['partner', 'spouse'].includes(n.role); }),
   ownsBusiness: (p) => (p.businesses ?? []).some((b) => b.status === 'open'),
@@ -176,4 +179,11 @@ export function checkBars(check, edge = 0) {
   const need = 50 + (0.5 - check.base - edge) * 100 / weight;
   const cut = (x) => Math.max(0, Math.min(100, x));
   return { you: cut(50 + lift), need: cut(need) };
+}
+
+/** The kind of place the player works: the main job, or else a part-time job (data/workplaces.js). Null with no job. */
+export function workplaceOf(p = player()) {
+  if (p.career?.careerId) return workplaceOfCareer(CAREER_BY_ID[p.career.careerId]);
+  if (p.career?.partTime) return workplaceOfPartTime(p.career.partTime.jobId);
+  return null;
 }
