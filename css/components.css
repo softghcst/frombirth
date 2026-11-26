@@ -609,6 +609,9 @@ small.zoo-link { color: var(--accent) !important; font-weight: 600; }
 div.row { cursor: default; }
 /* Lines in the life story that tell a moment in an animal's life, and the way back from one */
 .entry.linked { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+/* An everyday moment in the life story, to answer while its year lasts (ui/shell.js tellAside). */
+.entry.aside { text-decoration: none; }
+.entry.aside .aside-go { display: inline-block; margin-left: 4px; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
 .entry.lit { background: var(--accent-soft); border-radius: 0 8px 8px 0; }
 .story-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 4; max-width: calc(100% - 32px); padding: 11px 18px; min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 

@@ -26,7 +26,10 @@ export function realBusiness(tid, countryId, city, key) {
   const fit = list.filter((e) => FAMILIES[tid].includes(e.family));
   const pool = fit.length ? fit : list.filter((e) => !['government', 'safety'].includes(e.family));
   if (!pool.length) return null;
-  return seeded(`${key}/place`).pick(pool);
+  // A company is not defrauded every other year: prefer ones without the same kind of case in the last fifteen years.
+  const recent = new Set(Object.values(k.J().investigations).filter((inv) => inv.file?.template === tid && inv.file.employerId && now() - inv.file.opened < 180).map((inv) => inv.file.employerId));
+  const fresh = pool.filter((e) => !recent.has(e.id));
+  return seeded(`${key}/place`).pick(fresh.length ? fresh : pool);
 }
 /** A real resident of one of the city's neighborhoods, made a full person (the same one the player could meet). */
 export function neighborWitness(countryId, city, key, exclude = []) {

@@ -1,6 +1,7 @@
 // Everyday scenes for adult life and old age: neighbors, friends, money,
 // health, conscience and the small turns that fill the years between the
 // big ones. Most have no special requirements, so any life can meet them.
+import { AT } from '../workplaces.js';
 import { st, hid, tal, cash, rel, cond, heat, count, ms, addNpc, death, ok, bad, any, chk, need, perf, pay } from './helpers.js';
 
 const has = (amount) => need('cashBase', '>=', amount);
@@ -150,7 +151,7 @@ export default [
 
   // ---------- Work ----------
   {
-    id: 'training_course', category: 'work', ageRange: [20, 62], cooldown: 8, requires: [employed],
+    id: 'training_course', workplaces: AT.colleagues, category: 'work', ageRange: [20, 62], cooldown: 8, requires: [employed],
     text: 'Work will pay for an evening course if you give up your Tuesdays for six months.',
     choices: [
       { label: 'Take it', check: chk(0.7, { 'hidden.discipline': 0.6, 'stats.intellect': 0.3 }), outcomes: [
@@ -162,7 +163,7 @@ export default [
     ],
   },
   {
-    id: 'leaving_collection', category: 'work', ageRange: [18, 68], cooldown: 8, requires: [employed, has(50)],
+    id: 'leaving_collection', workplaces: AT.colleagues, category: 'work', ageRange: [18, 68], cooldown: 8, requires: [employed, has(50)],
     text: 'An envelope comes round for someone leaving after thirty years. You have spoken to them perhaps four times.',
     choices: [
       { label: 'Put in {$20}', outcomes: [any('You sign the card "All the best", like everybody else.', 'good', cash(-20), hid('karma', 2))] },
@@ -171,7 +172,7 @@ export default [
     ],
   },
   {
-    id: 'headhunter_call', category: 'work', ageRange: [26, 58], cooldown: 12, requires: [employed, need('career.performance', '>=', 60)],
+    id: 'headhunter_call', workplaces: ['office', 'firm', 'lab'], category: 'work', ageRange: [26, 58], cooldown: 12, requires: [employed, need('career.performance', '>=', 60)],
     text: 'A recruiter calls your cell at your desk: a rival firm would like to talk, and is hinting at more money.',
     choices: [
       { label: 'Use it to ask for a raise', check: chk(0.45, { 'stats.charm': 0.4, 'career.performance': 0.6 }), outcomes: [

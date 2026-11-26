@@ -323,7 +323,8 @@ export function steps(inv) {
   else open('specialist', f.template === 'fraud' || f.template === 'cyber' ? 'Ask a specialist to review the records' : 'Consult the crime scene specialist', 'Another pair of trained eyes.');
   for (const [wid, w] of Object.entries(f.witnesses)) {
     if (!npc(wid)?.alive) continue;
-    const left = Object.keys(WITNESS_QUESTIONS).filter((q) => !w.asked.includes(q) && (q !== 'inconsistency' || contradictions(inv).length));
+    // Only proper questions keep an interview open: once they are asked, pressing is not "what is left to do".
+    const left = Object.keys(WITNESS_QUESTIONS).filter((q) => !WITNESS_QUESTIONS[q].improper && !w.asked.includes(q) && (q !== 'inconsistency' || contradictions(inv).length));
     if (left.length) out.push({ id: `interview:${wid}`, label: `Interview ${nm(wid)}`, sub: `A witness. ${w.asked.length ? `Asked ${w.asked.length} question${w.asked.length === 1 ? '' : 's'} so far.` : 'Not yet interviewed.'}`, interview: true });
   }
   for (const id of f.poi) if (!f.done[`poi:${id}`] && !f.cleared.includes(id) && npc(id)?.alive) out.push({ id: `poi:${id}`, label: `Ask ${nm(id)} for a voluntary interview`, sub: 'They may decline, and may have a lawyer present. Declining proves nothing.' });
@@ -500,7 +501,7 @@ export function interview(inv, wid, q) {
   if (q === 'inconsistency') {
     const cx = contradictions(inv).find(([a, b]) => a.sourceId === wid || b.sourceId === wid) ?? contradictions(inv)[0];
     const self = f.clues.find((x) => x.via === `q:${wid}:observed`);
-    const t = self && !self.accurate ? `${nm(wid)} thinks again. "I was sure. But it was ${self.limitation ?? 'quick'}... I could be wrong about who it was."` : `${nm(wid)} holds to their account, calmly, and explains what they saw.`;
+    const t = self && !self.accurate ? `${nm(wid)} thinks again. "I was sure. But ${self.limitation ?? 'it was quick'}... I could be wrong about who it was."` : `${nm(wid)} holds to their account, calmly, and explains what they saw.`;
     if (self && !self.accurate) { self.confidence = Math.min(self.confidence ?? 0.5, 0.3); const ev = k.J().evidence[self.evidenceId]; if (ev) ev.reliability = Math.min(ev.reliability, 0.2); }
     w.statements.push({ at: now(), q, text: t });
     f.log.push({ at: now(), text: `Asked ${nm(wid)} about ${cx ? 'an inconsistency' : 'their account'}. ${t}` });
@@ -623,7 +624,7 @@ export function settleLabs(inv) {
       text = `${d.name}: ${LAB_RESULTS[req.result].toLowerCase()}.${req.result === 'more' ? ' Another discipline may do better.' : ''}`;
       if (req.result === 'more') { it.examined = false; }
     }
-    if (it.integrity === 'gap') text += ' The evidence log is missing one transfer signature; the defense may question the chain of custody.';
+    if (it.integrity === 'gap') text += ' The evidence log is missing one transfer signature; the defense may ask whether anyone could have tampered with it.';
     req.text = text;
     it.custody.push({ at: now(), by: req.analystId, act: `examined: ${LAB_RESULTS[req.result].toLowerCase()}` });
     f.log.push({ at: now(), text: `Laboratory report: ${text}` });
@@ -732,7 +733,7 @@ export function crossQuestions(inv) {
   const ev = (k.J().cases[f.courtCaseId]?.evidenceIds ?? []).map((id) => k.J().evidence[id]).filter(Boolean);
   return [
     { id: 'custody', q: '"Was every transfer of the evidence signed for?"', weak: f.items.some((it) => it.integrity === 'gap'),
-      options: [['Say what the log shows, gap included', 'honest'], ['Say the chain of custody was complete', 'deny']] },
+      options: [['Say what the log shows, gap included', 'honest'], ['Say every handover of the evidence was logged', 'deny']] },
     { id: 'pressure', q: '"Did you put pressure on any witness?"', weak: ev.some((e) => e.tainted),
       options: [['Answer it straight', 'honest'], ['Say no, never', 'deny']] },
     { id: 'lab', q: '"Did the laboratory ever fail to reach a conclusion in this case?"', weak: f.labs.some((l) => l.status === 'reported' && l.result !== 'consistent' && l.result !== 'excluded'),
@@ -875,7 +876,12 @@ export function caseStatus(inv) {
 export function settleCase(inv) {
   const out = settleLabs(inv);
   const court = settleCourt(inv);
-  if (court) out.push(`Court: ${court}.`);
+  if (court) {
+    // The court's decision, in words: which case, and who.
+    const c = inv.file?.courtCaseId && k.J().cases[inv.file.courtCaseId];
+    const who = c ? nm(c.defendantId) : 'The defendant';
+    out.push(`${inv.file?.title ?? 'A case'}: ${court === 'convicted' ? `the court convicted ${who}.` : court === 'acquitted' ? `the court acquitted ${who}.` : court === 'dismissed' ? `the case against ${who} was dismissed.` : `the court's decision: ${court}.`}`);
+  }
   const f = inv.file;
   if (f && inv.stage === 'suspended' && !f.coldSince && f.inactive != null && now() - f.inactive >= 36) {
     f.coldSince = f.inactive + 36; // the day it became cold, however long the turn

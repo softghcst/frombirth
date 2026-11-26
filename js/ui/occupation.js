@@ -2,6 +2,7 @@
 // at work, the job market, offers and recruiters, part-time work, freelancing,
 // special careers, the military, qualifications, history and retirement.
 // Every section reads the engine; every button does something.
+import { childPayRows } from '../engine/childEarnings.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -145,6 +146,7 @@ function jobCard(p) {
     [car.type === 'freelance' ? 'Earnings this year' : car.payModel === 'hourly' ? 'Pay (at contracted hours)' : 'Salary', `${money(c.salary)} a year${car.payModel === 'commission' ? ' + commission' : car.payModel === 'tips' ? ' + tips' : ''}`],
     ['Hours', `${c.hours}${c.extra > 0 ? ` + ${c.extra} overtime` : c.extra < 0 ? ` − ${-c.extra}` : ''} a week · ${car.schedule.replace('_', '-')}${c.remote !== 'none' ? ` · ${c.remote === 'remote' ? 'from home' : 'hybrid'}` : ''}`],
     ['In this role', years(c.yearsInRole)],
+    ...childPayRows(car, p),
     ...(away ? [['On leave', away]] : []),
     ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honors ? ` · ${c.military.honors} honors` : ''}`]] : []),
     ...(c.missions ? [['Space missions', String(c.missions)]] : []),
@@ -164,7 +166,7 @@ function mainActions(p) {
     ${btn('harder', 'Work harder this year', { sub: 'Effort shows most when there is room to improve. It costs you.' })}
     ${btn('slack', 'Take it easy this year')}
     ${car.type !== 'freelance' ? btn('raise', 'Ask for a raise') : ''}
-    ${car.type !== 'freelance' && car.levels[c.level + 1] ? btn('promo', 'Put yourself forward for promotion') : ''}
+    ${car.type !== 'freelance' && car.levels[c.level + 1] ? btn('promo', `Put yourself forward for promotion (your chances: ${place.promotionOdds()})`) : ''}
     ${lat.length ? btn('lateral', 'Move across to another track', { sub: lat.map((x) => x.name).join(', ') }) : ''}
     ${btn('hours', 'Change your hours')}
     ${car.remote !== 'none' && car.type !== 'freelance' ? btn('remote', 'Ask to work from home') : ''}
@@ -226,7 +228,7 @@ const VIEWS = {
       const cty = COUNTRIES[v.post.countryId];
       const where = [v.employer.name, v.post.remote === 'remote' ? 'remote' : v.post.city !== p.city ? v.post.city : '', v.post.partTime ? `${v.post.hours} h/week` : ''].filter(Boolean).join(' · ');
       return navRow({ attrs: `data-act="posting" data-arg="${esc(v.post.id)}"`, label: v.post.title, ico: 'briefcase', disabled: !v.eligible, why: v.reasons[0], sub: where,
-        extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}${since(v.post)}</small>` });
+        extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}${since(v.post)}</small>${v.eligible && v.odds ? `<small>Your chances: ${esc(v.odds.words)}</small>` : ''}` });
     });
     return `<div class="card"><h3>Job recruiter</h3>
         <p class="muted" style="margin:0 0 8px">Brings you one opening you qualify for${search.headhuntOdds() ? ', and with your record, sometimes a step up' : ''}. Not for you? Ask for another: ${search.RECRUITER_LOOKS} looks a year.${status ? ` <strong>${esc(status)}</strong>` : ''}</p>
@@ -346,7 +348,7 @@ const VIEWS = {
       ${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div>${ids.map((id) => CAREER_BY_ID[id]).filter(Boolean).map((t) => {
     const why = career.unmet(t);
     const mine = work.career().careerId === t.id;
-    return btn('special', `${t.name}: ${t.levels[0].title}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
+    return btn('special', `${t.name}: ${career.localTitle(t, 0)}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
   }).join('')}`).join('')}
       ${btn('castingboard', 'Casting notices: film, television, stage and voice', { cls: 'primary', sub: 'Real parts in real productions, in My Fame.' })}
       <div class="section-label">Politics</div><p class="muted">${esc(pol)}</p>
@@ -433,7 +435,7 @@ function recruiterPitch(v, r) {
       <p class="body">${esc(line)}</p>
       <div class="card" style="margin:10px 0">${kv([['Employer', v.employer.name], ['What they do', market.describe(v.employer)], ['Where', where],
     ['Pay', `${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year`], ['Hours', `${v.post.hours} a week${v.post.partTime ? ' (part-time)' : ''}`],
-    ['Experience wanted', v.want ? `About ${years(v.want)} (you have ${v.have})` : 'None']])}</div>
+    ['Experience wanted', v.want ? `About ${years(v.want)} (you have ${v.have})` : 'None'], ...(v.eligible && v.odds ? [['Your chances', v.odds.words]] : [])])}</div>
       <div class="btn-stack">
         <button type="button" class="btn primary" data-go="apply" ${v.eligible ? '' : 'disabled'}>Apply${v.eligible && v.note ? `<small>${esc(v.note)}</small>` : ''}</button>
         <button type="button" class="btn" data-go="again" ${r.left ? '' : 'disabled'}>Show me another<small>${r.left ? `${r.left} ${r.left === 1 ? 'look' : 'looks'} left this year` : 'No more looks this year'}</small></button>
@@ -526,7 +528,7 @@ const ACTIONS = {
     if (!v) return;
     const cty = COUNTRIES[v.post.countryId];
     const body = `${v.employer.name}, ${v.post.city.replace(/\.$/, '')}. ${market.describe(v.employer)}. ${v.culture.blurb} Pays ${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year for ${v.post.hours} hours a week${v.post.remote !== 'none' ? ` (${v.post.remote})` : ''}. They ask for about ${years(v.want)} of relevant experience; you have ${v.have}.${v.eligible ? '' : ` ${v.reasons.join(' ')}`}`;
-    const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? v.note : v.reasons[0] }] });
+    const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? [v.odds ? `Your chances: ${v.odds.words}. ${v.odds.help}` : '', v.note].filter(Boolean).join(' ') : v.reasons[0] }] });
     if (go) await applyTo(id, x);
   },
   async recruiter(_, x) {

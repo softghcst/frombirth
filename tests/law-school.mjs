@@ -9,7 +9,7 @@ rng.seed(20261125);
 {
   const p = graduate();
   const opt = () => edu.programOptions().find((x) => x.id === 'law');
-  check(/LSAT/.test(opt().reason), `the US asks for the LSAT before a law school application (${opt().reason})`);
+  check(/^Needs a law school entrance test score/.test(opt().reason), `the US asks for the entrance test (the LSAT) before a law school application, in plain words (${opt().reason})`);
   const before = edu.admissionChance('law');
   ls.prepEntrance(); const r = ls.sitEntrance();
   check(r.ok && r.score >= 120 && r.score <= 180 && !opt().reason, `the LSAT is scored 120 to 180, and opens the application (${r.score})`);
@@ -105,7 +105,7 @@ rng.seed(20261125);
 }
 // Other countries: the documented route, with its own exam, entrance test, length and practical training.
 {
-  check(ls.profileFor('ca').entrance.name === 'LSAT' && ls.profileFor('kr').entrance.name === 'LEET' && ls.profileFor('uk').entrance.id === 'none', 'Canada asks for the LSAT and Korea for the LEET; England does not');
+  check(ls.profileFor('ca').entrance.id === 'lsat' && ls.profileFor('kr').entrance.id === 'leet' && ls.profileFor('uk').entrance.id === 'none' && ls.profileFor('kr').entrance.name === 'law school entrance test', 'Canada asks for the LSAT and Korea for the LEET (each a law school entrance test, on screen); England does not');
   check(ls.profileFor('uk').depth === 'documented' && ls.profileFor('de').depth === 'documented' && ls.profileFor('mx').depth === 'simplified', 'documented countries are marked as such; others are simplified');
   check(/Solicitors Qualifying Examination/.test(ls.profileFor('uk').exam) && /State Examination/.test(ls.profileFor('de').exam), 'each country\'s own exam by name');
   const ph = graduate({ countryId: 'ph' });
