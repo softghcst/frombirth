@@ -24,6 +24,7 @@ says what was built, in which commit, how it was tested, and what is still missi
 | Forensic psychology | Done | `forensicPsych.js` | Consultations, parole risk assessments, care for officers | `8e21811c` |
 | Police outside the US | Done | `js/data/investigations.js`, `agencies.js`, `careers.js` | The UK, Canada, Australia, France and Japan | `8ae36128` |
 | Careers around the cases | Done | `allied.js`, `js/data/occupations.js` | Analysts, probation officers, victim advocates, court reporters, inspectors general, compliance and insurance investigators; digital forensic examiners | `a061a070` |
+| Family, series, informants and undercover, wellbeing, true-crime media, more countries, tips | Done | `family.js`, `serial.js`, `undercover.js`, `wellbeing.js`, `truecrime.js`, `js/data/investigations.js`, `js/ui/investigations.js` | The additions after the prompt; a walkthrough at phone width fixed homicide victims being treated as hospital patients | COMMIT_LAST |
 | Conviction review careers, accountants, hospitals, pay, the editor's desk | Done | `integrity.js`, `books.js`, `medical.js`, `pay.js`, `crossover.js` | The last items of the 3.0 addendum | `b42a2a35` |
 
 ## Tests
@@ -31,13 +32,13 @@ says what was built, in which commit, how it was tested, and what is still missi
 Commands run (Node 22, and the preinstalled Chromium through Playwright for the browser tests):
 
 ```
-node tests/investigations.mjs        # the engine: 30 sections
+node tests/investigations.mjs        # the engine: 36 sections
 node tests/investigations-law.mjs    # lawyers, collisions and claims
 node tests/investigations-ui.mjs     # the screen, at 390px and 1280px wide
 for f in tests/*.mjs; do node "$f"; done   # the whole suite
 ```
 
-- Passing: `investigations.mjs` (30 sections), `investigations-law.mjs` (46 checks), `investigations-ui.mjs` (38 checks),
+- Passing: `investigations.mjs` (36 sections), `investigations-law.mjs` (46 checks), `investigations-ui.mjs` (42 checks),
   and the rest of the suite: 131 of 132 test files pass.
 - Failing: `tests/name-variety.mjs` (some small countries, such as Mauritius and the Seychelles, have too few first names and surnames). It fails on `main` as well and is unrelated to the investigations work.
 - Not run: tests on physical devices (only emulated phone and desktop widths).
@@ -49,7 +50,7 @@ for f in tests/*.mjs; do node "$f"; done   # the whole suite
 | Career | Genuinely playable? |
 |---|---|
 | Local police (US municipal, county, state) | Yes |
-| Police in the UK, Canada, Australia, France, Japan | Yes, simplified rules |
+| Police in the UK, Canada, Australia, France, Japan, Germany, India, Brazil, Mexico, South Korea, Italy, Spain | Yes, simplified rules |
 | Police elsewhere | Simplified: one national service |
 | Detective | Yes |
 | Homicide | Yes, with its own scenes |
@@ -79,6 +80,6 @@ for f in tests/*.mjs; do node "$f"; done   # the whole suite
 - Every career the 3.0 addendum lists now has playable work (see the table in `docs/INVESTIGATIONS.md`). The careers
   around the cases have one piece of work a year each, simpler than the investigator's own career.
 - Agency rules are simplified gameplay rules, unverified against the agencies' own pages.
-- Police outside the five modeled countries are one simplified national service.
-- Police unions follow one simplified rule everywhere: officers may not strike.
+- Police outside the twelve modeled countries are one simplified national service.
+- Police union rules are simplified by country; nowhere modeled may officers strike.
 - No test runs on physical devices.

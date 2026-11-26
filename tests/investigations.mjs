@@ -1262,6 +1262,8 @@ section('accountants and auditors: real companies, discrepancies that are not pr
   const inv = W.openCase('robbery', { ownerId: a.id, truth: 'known' });
   r.caseIds.push(inv.id);
   check(MD.patientOf(inv) === inv.file.reportingId, 'the person robbed is the patient');
+  const killed = W.openCase('homicide', { ownerId: a.id, truth: 'known' });
+  check(!MD.patientOf(killed) && !store.state.npcs[killed.file.victimId].alive, 'a homicide victim is dead on the record, and nobody asks them for consent');
   const eth = r.rep.ethics;
   MD.requestMedical(inv.id, 'informal');
   check(!inv.file.medical && r.rep.ethics < eth, 'asking hospital staff informally gets nothing, and costs ethics');
