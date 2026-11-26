@@ -274,6 +274,8 @@ export const AVATAR_MANIFEST = {
   baby_eyes: [
     {"id": "baby_eyes_6", "file": "avatars/baby_eyes/baby_eyes_6.svg", "label": "Baby 6"},
   ],
+  facial_hair: [
+  ],
 };
 
 /** The template face every part was fitted to. Each head's own measurements are in its `fit`. */
