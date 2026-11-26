@@ -14,6 +14,7 @@ import * as jn from '../engine/journalism.js';
 import * as special from '../engine/specialCareer.js';
 import { OUTLET_KINDS, BEATS, QUESTIONS, ATTRIBUTION, STATUS, ACTIONS_A_YEAR, OWN_KINDS } from '../data/journalism.js';
 import { fmtMoney } from '../util.js';
+import { COUNTRIES } from '../data/countries.js';
 import { country } from '../state.js';
 import { inputModal } from './modals.js';
 
@@ -70,6 +71,8 @@ const VIEWS = {
         <div class="btn-stack" style="margin-top:6px">${btn('correct', 'Run a correction', { arg: x.id, cls: 'primary' })}${btn('stand', 'Stand by it', { arg: x.id })}${btn('pub', 'Read the story', { arg: x.id })}</div></div>`).join('')}
       <div class="card"><h3>Your standing</h3><p class="muted" style="margin:0 0 6px">Kept apart on purpose: being right, being trusted, and being known are different things.</p>
         ${meterHtml('Accuracy', j.rep.accuracy, true)}${meterHtml('Trust of sources and readers', j.rep.trust, true)}${meterHtml('Recognition', j.rep.recognition, true)}</div>
+      ${j.posting ? `<div class="card"><h3>Correspondent in ${esc(COUNTRIES[j.posting.countryId].name)}</h3>${kv([['Based in', j.posting.city], ['Posting', `${j.posting.from} to ${j.posting.until}`]])}<div class="btn-stack" style="margin-top:6px">${btn('home', 'Come home early')}</div></div>`
+    : `<div class="btn-stack">${btn('posting', 'Ask for a foreign posting', { disabled: !!jn.postingOpenWhy(p), sub: jn.postingOpenWhy(p) || 'Three years reporting from another country. The newsroom arranges the visa.' })}</div>`}
       <div class="section-label">Other newsrooms in ${esc(p.city)}</div>
       ${jn.outletsHere(p).filter((x) => x.id !== o.id).map((x) => { const why = jn.moveWhy(x, p); return `<div class="kv"><span>${esc(x.name)}</span><span>${esc(OUTLET_KINDS[x.kind].name)}</span></div><div class="btn-stack" style="margin:-2px 0 10px">${btn('move', 'Apply to move here', { arg: x.id, disabled: !!why, sub: why || 'At your level. They read your clips.' })}</div>`; }).join('')}
       <div class="card"><h3>Your skills</h3>${kv(Object.entries(j.skills).map(([k, v]) => [k.charAt(0).toUpperCase() + k.slice(1), String(Math.round(v))]))}</div>`;
@@ -211,6 +214,13 @@ const ACTIONS = {
     if (picks.length) await x.say(jn.present(id, picks));
   },
   freelance: (_, x) => x.say(jn.goFreelance()),
+  async posting(_, x) {
+    const p = player();
+    const c = await pickModal({ title: 'Where would you like to report from?', body: 'Politics, business, science and everyday life there. Your newsroom arranges the visa.', cancel: 'Back',
+      options: Object.values(COUNTRIES).filter((y) => y.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((y) => ({ value: y.id, label: `${y.flag ?? ''} ${y.name}`.trim() })) });
+    if (c) await x.say(jn.requestPosting(c));
+  },
+  home: (_, x) => x.say(jn.endPosting()),
   async start(_, x) {
     const p = player();
     const kind = await pickModal({ title: 'Start a publication', body: 'With your own money. Many lose money; the good ones find readers who stay.', cancel: 'Back',
@@ -271,4 +281,16 @@ export function openJournalism(api, start = {}) {
   });
   render();
   return modal;
+}
+
+/** Family Archive → Journalism: each journalist in the family and their published work as it ran. Never a notebook or a confidential source. */
+export function openJournalismLegacy() {
+  const list = jn.familyJournalism();
+  return openModal(`<div class="eyebrow">Professional legacy</div><h2>Journalism in the family</h2>
+    ${list.length ? list.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>
+      ${(x.history ?? []).map((h) => kv([[String(h.year), h.text]])).join('')}
+      ${(x.awards ?? []).map((a) => kv([[String(a.year), a.name]])).join('')}
+      <div class="section-label">Published</div>${x.pubs.map((y) => `<div class="kv"><span>${y.year} · "${esc(y.headline)}"</span><span>${esc(y.outlet)}</span></div>${y.corrections.map((c) => `<p class="muted" style="margin:0 0 6px">${esc(c)}</p>`).join('')}`).join('')}</div>`).join('')
+    : '<p class="empty">Nobody in the family has published journalism yet.</p>'}
+    <p class="muted">Only what was published is kept here: reporters' notebooks, drafts and confidential sources stay private.</p>`, { dismissable: true });
 }
