@@ -89,7 +89,7 @@ function makeOfficer(agencyKind = 'municipal') {
   check(Object.values(a1.units).every((u) => u.headId && store.state.npcs[u.headId]), 'every unit has a real supervisor');
   check(['fbi_agent', 'dea_agent', 'atf_agent'].every((id) => CAREER_BY_ID[id]?.countries?.includes('us')), 'FBI, DEA and ATF careers exist, for the US only');
   check(Object.values(D.FEDERAL_RANKS).every((r) => !/captain|sergeant|lieutenant|detective/i.test(r.name)), 'federal ranks have no police titles');
-  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && s.verified === false), 'every rule names its source, and none claims to be verified');
+  check(Object.values(D.SOURCES).every((s) => s.url.startsWith('https://') && typeof s.verified === 'boolean') && Object.entries(D.SOURCES).filter(([, s]) => s.verified).map(([id]) => id).join() === 'usss', 'every rule names its source; only one read on its official page (the Secret Service) is marked verified');
   const o1 = A.officeOf('fbi', 'Chicago'); const o2 = A.officeOf('fbi', 'Chicago'); const o3 = A.officeOf('dea', 'Chicago');
   check(o1.id === o2.id && o1.id !== o3.id && o1.prosecutorIds.length && o1.name.includes('FBI'), 'federal field offices are made once each, per agency, with their own prosecutors');
 }
@@ -1014,7 +1014,7 @@ section('corporate investigators: a real company, internal matters, no police po
 }
 {
   // Four more federal agencies, each with its own rules and its own work.
-  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.verified === false, `${key}: an agency with its own career track, its source named and unverified`);
+  for (const key of ['usms', 'usss', 'hsi', 'irs']) check(D.FEDERAL[key] && CAREER_BY_ID[D.FEDERAL[key].career] && D.SOURCES[D.FEDERAL[key].source]?.url, `${key}: an agency with its own career track, its source named`);
   let p = life('us', 27, { degree: 'criminology' });
   check(C.federalUnmet('irs').some((x) => /accounting/.test(x)) && !C.federalUnmet('usms').some((x) => /accounting/.test(x)), 'IRS Criminal Investigation asks for accounting; the Marshals do not');
   p = life('us', 27, { degree: 'accounting' });
