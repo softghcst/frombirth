@@ -42,7 +42,7 @@ const person = (n, side = '') => `<button type="button" class="row world-row" da
   <div class="side">${side || `${Math.round(n.meters.relationship)}%`}</div></button>`;
 
 const SECTIONS = [
-  ['now', 'Current jobs'], ['workplace', 'Workplace'], ['find', 'Find a job'], ['offers', 'Offers & recruiters'], ['parttime', 'Part-time'],
+  ['now', 'Current jobs'], ['workplace', 'Workplace'], ['find', 'Find a job'], ['offers', 'Offers & contacts'], ['parttime', 'Part-time'],
   ['freelance', 'Freelance'], ['business', 'Business'], ['household', 'Household'], ['special', 'Special careers'], ['military', 'Military'], ['quals', 'Qualifications'], ['history', 'History'], ['retire', 'Retirement'],
 ];
 
@@ -69,7 +69,7 @@ const ON_WORK_TAB = new Set(['special', 'military']);
 /** What each section is for, and its icon, on the Work menu. */
 const SECTION_INFO = {
   now: ['Your job, hours and pay', 'briefcase'], workplace: ['Your boss, coworkers and team', 'people'],
-  find: ['Openings and a job recruiter', 'compass'], offers: ['Offers and contacts', 'letter'],
+  find: ['Openings and a job recruiter', 'compass'], offers: ['Offers waiting, and old mentors', 'letter'],
   parttime: ['Work beside school or a main job', 'calendar'], freelance: ['Your own clients and prices', 'star'], business: ['Start or run a business', 'coin'],
   household: ['Who works and who keeps the home', 'home'], special: ['Acting, music, sport and more', 'sparkle'], military: ['The armed forces', 'medal'],
   quals: ['Degrees, licenses and certificates', 'school'], history: ['Every job you have had', 'archive'], retire: ['Your pension and stopping work', 'calendar'],
@@ -216,7 +216,7 @@ const VIEWS = {
         extra: `<small>${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year${!v.eligible ? ` · ${esc(where)}` : ''}${since(v.post)}</small>` });
     });
     return `<div class="card"><h3>Job recruiter</h3>
-        <p class="muted" style="margin:0 0 8px">Brings you one opening you qualify for. Not for you? Ask for another: ${search.RECRUITER_LOOKS} looks a year.${status ? ` <strong>${esc(status)}</strong>` : ''}</p>
+        <p class="muted" style="margin:0 0 8px">Brings you one opening you qualify for${search.headhuntOdds() ? ', and with your record, sometimes a step up' : ''}. Not for you? Ask for another: ${search.RECRUITER_LOOKS} looks a year.${status ? ` <strong>${esc(status)}</strong>` : ''}</p>
         ${pitch}
         <div class="btn-stack">${btn('recruiter', r.view && !r.done ? 'See the recruiter again' : r.view ? 'See the last opening again' : 'See a recruiter', { cls: 'primary', disabled: r.done && !r.view?.eligible })}</div></div>
       <div class="section-label">Openings this year · ${esc(p.city)}</div>
@@ -233,10 +233,10 @@ const VIEWS = {
         <div class="btn-stack" style="margin-top:8px">${btn('accept', 'Accept', { cls: 'primary', arg: o.id })}
         ${['salary', 'hours', 'remote', 'time'].map((w) => btn('negotiate', { salary: 'Ask for more money', hours: 'Ask for fewer hours', remote: 'Ask to work from home', time: 'Ask for time to decide' }[w], { arg: `${o.id}:${w}`, disabled: !!o.asked[w] })).join('')}
         ${btn('declineoffer', 'Decline', { arg: o.id })}</div></div>`).join('') : '<p class="muted">No offers on the table.</p>'}
-      <div class="section-label">Recruiters and contacts</div>
+      <div class="section-label">Contacts</div>
       ${leads.length ? leads.map((l) => `<div class="card"><p style="margin:0 0 6px">${esc(l.text)}</p>
         <div class="btn-stack">${btn('leaddetails', 'Ask for details', { arg: l.id })}${btn('leadapply', 'Go for it', { cls: 'primary', arg: l.id })}${btn('leadrefer', 'Put a friend forward instead', { arg: l.id })}${btn('leaddecline', 'Decline', { arg: l.id })}</div></div>`).join('')
-    : '<p class="muted">No recruiters yet.</p>'}`;
+    : '<p class="muted">Nobody has been in touch. An old mentor who has moved on may want you where they are now; for other openings, see the job recruiter on Find a Job.</p>'}`;
   },
 
   parttime(p) {
@@ -409,11 +409,13 @@ async function interview(questions) {
  */
 function recruiterPitch(v, r) {
   const cty = COUNTRIES[v.post.countryId];
-  const where = v.post.remote === 'remote' ? 'From home' : `${v.post.city}${v.post.remote === 'hybrid' ? ', some days from home' : ''}`;
-  const line = v.eligible ? (r.used === 1 ? '“I think I have something for you.”' : r.left ? '“All right, how about this one?”' : '“This is the last one I have for you this year.”') : v.reasons[0];
+  const abroad = v.post.countryId !== player().countryId;
+  const where = v.post.remote === 'remote' ? 'From home' : `${v.post.city}${abroad ? `, ${COUNTRIES[v.post.countryId].name}` : ''}${v.post.remote === 'hybrid' ? ', some days from home' : ''}${abroad || v.post.city !== player().city ? ' (you would move)' : ''}`;
+  const line = !v.eligible ? v.reasons[0] : r.headhunt ? r.headhunt.text
+    : r.used === 1 ? '“I think I have something for you.”' : r.left ? '“All right, how about this one?”' : '“This is the last one I have for you this year.”';
   return new Promise((resolve) => {
     const m = openModal(`
-      <div class="eyebrow">Job recruiter · look ${r.used} of ${search.RECRUITER_LOOKS}</div>
+      <div class="eyebrow">${r.headhunt ? 'Headhunted' : 'Job recruiter'} · look ${r.used} of ${search.RECRUITER_LOOKS}</div>
       <h2>${esc(v.post.title)}</h2>
       <p class="body">${esc(line)}</p>
       <div class="card" style="margin:10px 0">${kv([['Employer', v.employer.name], ['What they do', market.describe(v.employer)], ['Where', where],
@@ -526,7 +528,14 @@ const ACTIONS = {
       x.render();
       r = search.recruiter();
       const go = await recruiterPitch(view, r);
-      if (go === 'apply') { await applyTo(view.post.id, x, { bonus: search.RECRUITER_BONUS }); return; }
+      if (go === 'apply') {
+        const move = recruit.moveCheckFor(view.post);
+        if (!move.ok) { await messageModal({ body: move.text }); return; }
+        if (move.text && !(await confirmModal({ title: 'Go for it?', body: move.text, yes: 'Apply' }))) return;
+        const pitch = search.pitchOf(view.post.id);
+        await applyTo(view.post.id, x, { bonus: pitch.bonus, ...(pitch.from ? { via: pitch.from } : {}) });
+        return;
+      }
       if (go !== 'again') return;
       const look = search.recruiterLook();
       if (!look.ok) { await messageModal({ title: 'Job recruiter', body: look.text }); x.render(); return; }

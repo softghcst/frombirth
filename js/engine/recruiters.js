@@ -1,8 +1,12 @@
 // Recruiters and headhunters: people (ordinary NPCs, kept for good) who
-// bring openings to someone with a record worth bringing them to. Every lead
-// is a real opening at a real employer, the same as the job board's; a lead
+// bring openings to someone with a record worth bringing them to. Every
+// opening is a real one at a real employer, the same as the job board's, and
 // never guarantees a job. Some are in another city, a few in another country,
 // where moving, and the right to work there, come first.
+//
+// Headhunting happens through the job recruiter on Find a Job (engine/jobSearch.js): once someone has a record,
+// some of the recruiter's looks are a step up in their own line of work (stepUp below). Leads that arrive on
+// their own (p.career.leads) come from old mentors (workplace.js mentorLead), and from older saves.
 //
 //   p.career.recruiterIds  the recruiters who know the player
 //   p.career.leads         [{ id, from (npc id), postingId, age, text, abroad, seen, bonus }]
@@ -27,7 +31,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 const theCountry = (name) => (/^(United|Netherlands|Philippines|Czech|Dominican|Bahamas)/.test(name) ? `the ${name}` : name);
 
 /** A recruiter who works this family of jobs, met once and kept. */
-function recruiterFor(family) {
+export function recruiterFor(family) {
   const p = player();
   const c = careerState();
   const known = c.recruiterIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.flags.recruits === family);
@@ -57,38 +61,61 @@ function leadPlace(c) {
   return dest ? { countryId: dest.id, city: dest.cities[0] } : { countryId: p.countryId, city: p.city };
 }
 
+/** Interview help from a headhunter's step-up opening. */
+export const STEP_UP_BONUS = 0.12;
+
 /**
- * Once a year: someone with a record may be approached. A former mentor may
- * come back with an offer. @returns {string[]} journal lines
+ * How likely a look at the job recruiter is to be a headhunter's step up: only for someone in a civilian job, aged 20
+ * or more, with two years' experience; more with good reviews, experience, seniority and fame. 0 otherwise.
+ */
+export function headhuntOdds() {
+  const p = player();
+  const c = careerState();
+  const car = CAREER_BY_ID[c.careerId];
+  const years = Object.values(c.experience).reduce((a, b) => a + b, 0);
+  if (!car || car.type === 'military' || years < 2 || p.age < 20) return 0;
+  return clamp(0.12 + (c.performance - 50) / 250 + Math.min(0.2, years / 60) + c.level * 0.04 + p.hidden.fame / 400, 0.04, 0.5);
+}
+
+/**
+ * A headhunter's opening: the player's own line of work, often a rung up, at another employer, here, elsewhere in
+ * the country or (for someone past the first rung) abroad. @returns {{post:object, from:object, text:string}|null}
+ */
+export function stepUp() {
+  const p = player();
+  const c = careerState();
+  const car = CAREER_BY_ID[c.careerId];
+  if (!car) return null;
+  const where = leadPlace(c);
+  const list = cityEmployers(where.countryId, where.city).filter((e) => e.id !== c.employerId);
+  const e = list.find((x) => x.tracks.includes(car.id)) ?? list.find((x) => x.family === car.family);
+  if (!e) return null;
+  if (!e.tracks.includes(car.id)) e.tracks.push(car.id);
+  const level = Math.min(car.levels.length - 1, c.level + (rng.chance(0.55) ? 1 : 0));
+  const post = openPosting(e, { careerId: car.id, level });
+  if (!post) return null;
+  const r = recruiterFor(car.family);
+  r.lastInteractionAge = p.age;
+  const abroad = where.countryId !== p.countryId;
+  const place = abroad ? `${where.city}, ${theCountry(COUNTRIES[where.countryId].name)}` : where.city === p.city ? 'here in town' : where.city;
+  return { post, from: r, text: `${r.firstName} ${r.lastName}, who recruits in ${FAMILY_BY_ID[car.family]?.name.toLowerCase() ?? 'your field'}, has heard about your work. ${e.name} (${place}) wants ${an(post.title.toLowerCase())}.` };
+}
+
+/**
+ * Once a year: old leads lapse, a former mentor may come back with an offer, and a recruiter may have the player in
+ * mind (c.headhuntAge). Recruiters no longer write in on their own: headhunting comes through the job recruiter.
+ * @returns {string[]} journal lines
  */
 export function tickRecruiters() {
   const p = player();
   const c = careerState();
   const lines = [];
-  // Old leads lapse with the year they came in.
   c.leads = c.leads.filter((l) => l.age >= p.age - 1 && isOpen(posting(l.postingId)));
-  const car = CAREER_BY_ID[c.careerId];
-  const years = Object.values(c.experience).reduce((a, b) => a + b, 0);
   const lead = mentorLead();
   if (lead) { c.leads.push({ id: uid('lead'), age: p.age, abroad: false, seen: false, ...lead }); lines.push(lead.text); }
-  if (!car || car.type === 'military' || years < 2 || p.age < 20) return lines;
-  const odds = clamp(0.12 + (c.performance - 50) / 250 + Math.min(0.2, years / 60) + c.level * 0.04 + p.hidden.fame / 400, 0.04, 0.5);
-  if (!rng.chance(odds)) return lines;
-  const r = recruiterFor(car.family);
-  const where = leadPlace(c);
-  const list = cityEmployers(where.countryId, where.city).filter((e) => e.id !== c.employerId);
-  const e = list.find((x) => x.tracks.includes(car.id)) ?? list.find((x) => x.family === car.family);
-  if (!e) return lines;
-  if (!e.tracks.includes(car.id)) e.tracks.push(car.id);
-  const level = Math.min(car.levels.length - 1, c.level + (rng.chance(0.55) ? 1 : 0));
-  const post = openPosting(e, { careerId: car.id, level });
-  if (!post) return lines;
-  const abroad = where.countryId !== p.countryId;
-  const place = abroad ? `${where.city}, ${theCountry(COUNTRIES[where.countryId].name)}` : where.city === p.city ? 'here in town' : where.city;
-  const text = `${r.firstName} ${r.lastName}, a recruiter, has been in touch: ${e.name} (${place}) is looking for ${an(post.title.toLowerCase())}, at ${fmtMoney(post.pay[0], COUNTRIES[post.countryId])}–${fmtMoney(post.pay[1], COUNTRIES[post.countryId])} a year.`;
-  c.leads.push({ id: uid('lead'), from: r.id, postingId: post.id, age: p.age, text, abroad, seen: false, bonus: 0.12 });
-  r.lastInteractionAge = p.age;
-  lines.push(text);
+  // Word gets around: in a good year a recruiter has the player in mind, and the job recruiter's first look is theirs.
+  const odds = headhuntOdds();
+  if (odds && rng.chance(odds)) c.headhuntAge = p.age;
   return lines;
 }
 
@@ -155,14 +182,21 @@ export const referable = () => livingNpcs().filter((n) => ['friend', 'colleague'
  * @returns {{ok:boolean, text:string, route?:object}}
  */
 export function moveCheck(leadId) {
-  const p = player();
   const l = leads().find((x) => x.id === leadId);
   if (!l) return result(false, 'That opening has gone.', 'neutral');
-  if (!l.abroad && l.post.city === p.city) return result(true, '');
-  if (!l.abroad) { const block = moveBlock(); return block ? result(false, block, 'neutral') : result(true, `This job is in ${l.post.city}. Taking it means moving there.`); }
-  const r = routes(l.post.countryId).find((x) => ['right', 'free'].includes(x.id) && x.eligible) ?? routes(l.post.countryId).find((x) => x.id === 'work');
-  if (!r?.eligible) return result(false, `To work in ${theCountry(COUNTRIES[l.post.countryId].name)} you would need a work visa, and ${r?.why ?? 'you are not eligible for one'}`.replace(/\.?$/, '.'), 'neutral');
-  return { ...result(true, `This job is in ${theCountry(COUNTRIES[l.post.countryId].name)}. ${r.id === 'work' ? 'The employer would sponsor your work visa if you are offered it.' : 'You have the right to live and work there.'}`), route: r };
+  return moveCheckFor(l.post);
+}
+
+/** The same, for any opening: '' text when it is where the player lives. */
+export function moveCheckFor(post) {
+  const p = player();
+  if (!post) return result(false, 'That opening has gone.', 'neutral');
+  const abroad = post.countryId !== p.countryId;
+  if (!abroad && post.city === p.city) return result(true, '');
+  if (!abroad) { const block = moveBlock(); return block ? result(false, block, 'neutral') : result(true, `This job is in ${post.city}. Taking it means moving there.`); }
+  const r = routes(post.countryId).find((x) => ['right', 'free'].includes(x.id) && x.eligible) ?? routes(post.countryId).find((x) => x.id === 'work');
+  if (!r?.eligible) return result(false, `To work in ${theCountry(COUNTRIES[post.countryId].name)} you would need a work visa, and ${r?.why ?? 'you are not eligible for one'}`.replace(/\.?$/, '.'), 'neutral');
+  return { ...result(true, `This job is in ${theCountry(COUNTRIES[post.countryId].name)}. ${r.id === 'work' ? 'The employer would sponsor your work visa if you are offered it.' : 'You have the right to live and work there.'}`), route: r };
 }
 
 /**

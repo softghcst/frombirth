@@ -207,7 +207,7 @@ function openWindow(p, w) {
     const tid = rng.pick(ownCases);
     who.flags.askedForLegalHelp = store.state.year;
     const rel = { bestFriend: 'best friend', inlaw: 'in-law' }[who.role] ?? who.role;
-    L.offers.push({ id: `of${w}_personal`, window: w, second: false, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
+    L.offers.push({ id: `of${w}_personal`, window: w, second: inTraining(p), templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
       summary: `Your ${rel} ${who.firstName} asks for your help. ${CASE_TEMPLATES[tid].summary.replace(/\{client\}/g, who.firstName).replace(/\{\w+\}/g, (m) => ({ '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'their company' }[m] ?? 'some'))} You would not charge them.` });
   }
   // A person charged in a case from a police investigation may want a defense lawyer who practises criminal law.

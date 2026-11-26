@@ -8,6 +8,9 @@ import { advanceYear } from '../js/engine/yearProcessor.js';
 import * as market from '../js/engine/employers.js';
 import * as work from '../js/engine/worklife.js';
 import * as search from '../js/engine/jobSearch.js';
+import * as hiring from '../js/engine/hiring.js';
+import * as recruit from '../js/engine/recruiters.js';
+import { CAREER_BY_ID } from '../js/data/careers.js';
 
 rng.seed(8080);
 const problems = [];
@@ -76,6 +79,49 @@ check(prominentSeen > 0, 'some prominent openings were listed');
     }
     check(years.slice(0, search.PROMINENT_YEARS).every(Boolean) && !years[search.PROMINENT_YEARS], `a prominent opening is listed for ${search.PROMINENT_YEARS} years, then goes (${years.join(',')})`);
   }
+}
+
+// Headhunting comes through the job recruiter: with a record, some looks are a step up in the player's own work.
+{
+  const p = life('us');
+  check(recruit.headhuntOdds() === 0, 'nobody is headhunted without a job and a record');
+  // A job as a customer service representative, five years in, with good reviews.
+  const careerId = Object.keys(CAREER_BY_ID).find((id) => CAREER_BY_ID[id].levels[0].title === 'Customer service representative') ?? 'retail';
+  const e = market.placeAt(careerId, p.countryId, p.city);
+  const post = market.openPosting(e, { careerId, level: 0 });
+  let got;
+  for (let i = 0; i < 40 && !got; i++) {
+    p.flags.hireActs = null; if (post.status !== 'open') post.status = 'open';
+    const a = hiring.apply(post.id);
+    if (a.kind === 'blocked') break;
+    const r = hiring.decide(post.id, a.kind === 'interview' ? a.questions.map((q) => [...q.a].sort((x, y) => hiring.answerScore(y) - hiring.answerScore(x))[0]) : [0]);
+    if (r.offer) got = hiring.accept(r.offer.id);
+  }
+  check(p.career.careerId === careerId, 'set-up: the player has a job');
+  p.career.experience[careerId] = 5; p.career.performance = 90;
+  check(recruit.headhuntOdds() > 0.2, `with a good record, headhunting is likely (${recruit.headhuntOdds().toFixed(2)})`);
+  let hunted = 0; let ordinary = 0;
+  for (let y = 0; y < 8; y++) {
+    p.flags.jobRecruiter = null;
+    for (let i = 0; i < 3; i++) {
+      const r = search.recruiterLook();
+      if (!r.ok) continue;
+      const pitch = search.pitchOf(r.view.post.id);
+      if (pitch.headhunt) {
+        hunted += 1;
+        check(r.view.post.careerId === careerId && r.view.post.level >= p.career.level, 'a headhunter brings the player\'s own line of work, at their rung or above');
+        check(pitch.bonus === recruit.STEP_UP_BONUS && pitch.from && store.state.npcs[pitch.from]?.flags.recruits, 'a headhunter is a person, and puts in a stronger word');
+      } else { ordinary += 1; check(pitch.bonus === search.RECRUITER_BONUS, 'an ordinary look has the ordinary word'); }
+    }
+  }
+  check(hunted > 0 && ordinary > 0, `the recruiter's looks mix step ups (${hunted}) and ordinary openings (${ordinary})`);
+  // A recruiter who had the player in mind when the year began gets the first look.
+  p.flags.jobRecruiter = null; p.career.headhuntAge = p.age - 1;
+  const first = search.recruiterLook();
+  check(first.ok && search.pitchOf(first.view.post.id).headhunt, 'a recruiter who had the player in mind brings the first look of the year');
+  // Recruiters no longer write in on their own.
+  for (let i = 0; i < 6; i++) recruit.tickRecruiters();
+  check(!p.career.leads.some((l) => store.state.npcs[l.from]?.flags.recruits), 'recruiters do not send leads on their own any more');
 }
 
 // The economy changes how long the list is.

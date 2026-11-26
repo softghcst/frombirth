@@ -5,7 +5,9 @@
 //   It is longer in a boom and shorter in a recession, and most of it is new each year. Prominent openings (at a
 //   large employer, or a senior post) stay: they are held open and kept on the list for up to three years.
 // - A job recruiter: brings one opening the player qualifies for. Not keen? Ask for another, twice more. After the
-//   third look the recruiter has nothing more until next year.
+//   third look the recruiter has nothing more until next year. Once the player has a record (a job, two years'
+//   experience), a look may be a headhunter's: a step up in their own line of work, perhaps in another city or
+//   abroad, with a better word put in at the interview (recruiters.js stepUp).
 //
 // Both are kept on the player, keyed to the year of age (as the rest of the game keys a year's actions), so
 // reopening the screen shows the same list and the same pitch, and a save carries them.
@@ -15,9 +17,14 @@ import { player, store } from '../state.js';
 import * as market from './employers.js';
 import * as hiring from './hiring.js';
 import { hiringClimate } from './economy.js';
+import { headhuntOdds, stepUp, STEP_UP_BONUS } from './recruiters.js';
+
+export { headhuntOdds };
 
 /** How many looks the recruiter gives in a year: the first, and two more tries. */
 export const RECRUITER_LOOKS = 3;
+/** A recruiter puts in a word: a little help with the interview (a headhunter's step up gets more: STEP_UP_BONUS). */
+export const RECRUITER_BONUS = 0.05;
 
 /** How long this year's list is: about 12 in a steady year, 14 in a boom, 9 in a recession. */
 export function listSize() {
@@ -88,7 +95,8 @@ export function yearList(p = player()) {
 
 /** The recruiter's year: looks used, what is being pitched, what has been shown. */
 function desk(p = player()) {
-  if (p.flags.jobRecruiter?.age !== p.age) p.flags.jobRecruiter = { age: p.age, used: 0, current: null, shown: [] };
+  if (p.flags.jobRecruiter?.age !== p.age) p.flags.jobRecruiter = { age: p.age, used: 0, current: null, shown: [], headhunt: {} };
+  p.flags.jobRecruiter.headhunt ??= {};
   return p.flags.jobRecruiter;
 }
 
@@ -96,7 +104,16 @@ function desk(p = player()) {
 export function recruiter(p = player()) {
   const d = desk(p);
   const view = d.current ? hiring.postingView(d.current) : null;
-  return { left: RECRUITER_LOOKS - d.used, used: d.used, view, done: d.used >= RECRUITER_LOOKS };
+  return { left: RECRUITER_LOOKS - d.used, used: d.used, view, done: d.used >= RECRUITER_LOOKS, ...pitchOf(d.current, p) };
+}
+
+/**
+ * What is special about a pitch: a headhunter's step up (who brings it, what they said) or an ordinary opening.
+ * @returns {{headhunt:object|null, bonus:number, from:string|null}}
+ */
+export function pitchOf(postingId, p = player()) {
+  const h = desk(p).headhunt[postingId] ?? null;
+  return { headhunt: h, bonus: h ? STEP_UP_BONUS : RECRUITER_BONUS, from: h?.from ?? null };
 }
 
 /**
@@ -107,6 +124,20 @@ export function recruiter(p = player()) {
 export function recruiterLook(p = player()) {
   const d = desk(p);
   if (d.used >= RECRUITER_LOOKS) return { ok: false, text: 'The recruiter has nothing more for you this year. Try again next year.', left: 0 };
+  // Someone with a record may be headhunted: a step up in their own line of work.
+  // A recruiter who has had them in mind since the year began (recruiters.js tickRecruiters) gets the first look.
+  const expected = !d.used && p.career?.headhuntAge === p.age - 1 && headhuntOdds() > 0;
+  if (expected || rng.chance(headhuntOdds())) {
+    const up = stepUp();
+    const view = up && hiring.postingView(up.post.id);
+    if (view?.eligible) {
+      d.used += 1;
+      d.current = view.post.id;
+      d.shown.push(view.post.id);
+      d.headhunt[view.post.id] = { from: up.from.id, text: up.text };
+      return { ok: true, view, left: RECRUITER_LOOKS - d.used, headhunt: d.headhunt[view.post.id] };
+    }
+  }
   const skip = new Set([...d.shown, ...(p.flags.jobList?.age === p.age ? p.flags.jobList.ids : [])]);
   const shownTracks = new Set(d.shown.map((id) => market.posting(id)?.careerId));
   const fits = (posts) => shuffle(posts.filter((x) => !skip.has(x.id))).map((x) => hiring.postingView(x.id)).filter((v) => v?.eligible);
@@ -120,6 +151,3 @@ export function recruiterLook(p = player()) {
   d.shown.push(view.post.id);
   return { ok: true, view, left: RECRUITER_LOOKS - d.used };
 }
-
-/** A recruiter puts in a word: a little help with the interview. */
-export const RECRUITER_BONUS = 0.05;
