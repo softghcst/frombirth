@@ -135,7 +135,7 @@ const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
     let out = card('Where you stand', kv([
-      ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
+      ['Status', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
       ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
@@ -163,13 +163,16 @@ const VIEWS = {
     if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
     const APP = { police: 'Police', detective: 'Detective seat', federal: 'Federal', license: 'License', promotion: 'Promotion' };
     const apps = (r?.apps ?? []).slice(-4).reverse();
-    if (apps.length) out += card('Your applications', apps.map((a) => kv([[`${APP[a.kind] ?? 'Application'}: ${a.agency ? FEDERAL[a.agency]?.short : A.ownerName(a.ownerId)}`, a.status === 'pending' ? `Waiting: you hear by ${dateWords(a.decisionDue ?? a.due)}` : a.status === 'offer' ? 'Offered' : a.status === 'accepted' ? 'Accepted' : a.status === 'refused' ? `Not this time${a.why ? `: ${({ written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' })[a.why] ?? a.why}` : ''}` : a.status]])).join('')
-      + (apps.some((a) => a.status === 'refused' && a.kind === 'police') && !apps.some((a) => a.status === 'pending' || a.status === 'offer') ? muted('You can apply again: one application a year to each department. Preparing helps.') + stack(btn('goDepartments', 'Apply again from Departments')) : ''));
+    if (apps.length) out += card('Your applications', apps.map((a) => kv([[`${APP[a.kind] ?? 'Application'}: ${a.agency ? FEDERAL[a.agency]?.short : A.ownerName(a.ownerId)}`, a.status === 'pending' ? `Waiting: you hear by ${dateWords(a.decisionDue ?? a.due)}` : a.status === 'offer' ? 'Offered' : a.status === 'accepted' ? 'Accepted' : a.status === 'refused' ? `Not this time${a.why ? `: ${({ written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' })[a.why] ?? a.why}` : ''}` : ({ not_selected: 'The panel chose someone else', selected: 'Selected', promoted: 'Promoted', passed_over: 'Someone else was promoted', granted: 'Granted', licensed: 'Licensed', declined: 'Declined' })[a.status] ?? 'Decided']])).join('')
+      + (apps.some((a) => a.status === 'refused' && a.kind === 'police') && !apps.some((a) => a.status === 'pending' || a.status === 'offer') ? muted(`You can apply again: one application a year to each department. ${C.WHY_HELP[apps.find((a) => a.status === 'refused')?.why] ?? 'Preparing helps.'}`) + stack(btn('goDepartments', 'Apply again from Departments')) : ''));
     return out;
   },
   agency(p, r) {
     let out = '';
     if (!r?.job) {
+      // Getting ready sits here too, where people apply (and apply again).
+      out += card('Getting ready', muted('Before applying: study, train, write, and see the work for yourself. Each once a year, and it adds up.')
+        + stack(Object.entries(C.PREP).map(([id, d]) => btn('prep', d.label, { arg: id })).join('')));
       for (const a of A.agenciesHere(p)) {
         const no = C.policeUnmet(a, p);
         const d = AGENCY_KINDS[a.kind];

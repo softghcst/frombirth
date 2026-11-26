@@ -153,6 +153,8 @@ export function applyPolice(agencyId) {
 }
 
 const WHY = { written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' };
+/** What would help next time, for each part of the assessment. */
+export const WHY_HELP = { written: 'Studying for the entrance assessment helps.', fitness: 'Training for the fitness assessment helps, a little more each year you do it.', interview: 'A ride-along or open day helps you talk about the work.', background: 'A background check looks at your record and your conduct.', medical: 'Looking after your health helps.' };
 
 /** Decisions whose date has come, made known. Called from the year and whenever the hub is opened. */
 export function settleApplications(p = player()) {
@@ -166,7 +168,7 @@ export function settleApplications(p = player()) {
     const who = agency(app.ownerId)?.name ?? office(app.ownerId)?.name ?? 'The agency';
     // Refused, with nothing else pending: no longer applying (the record of the application stays).
     if (app.kind === 'police' && app.outcome !== 'offer' && r.stage === 'applying' && !r.apps.some((x) => x !== app && x.status === 'pending' && x.kind === 'police')) r.stage = 'none';
-    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. You can apply again next year.`);
+    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. ${WHY_HELP[app.why] ?? ''} You can apply again next year.`);
     if (app.kind === 'detective') out.push(settleDetective(app));
     if (app.kind === 'license') out.push(settleLicense(app));
   }
@@ -374,13 +376,13 @@ export function settleProbation(p = player()) {
 
 /** What an officer in field training or on patrol does: each once a year, and it builds the skills a detective needs. */
 export const PATROL = {
-  report: { label: 'Write up an incident report', skills: ['writing', 'observation'], text: 'A shoplifting report, then a lost bicycle. Your field training officer read both and returned one.' },
-  call: { label: 'Respond to a call for help', skills: ['interviewing', 'ethics'], text: 'A neighbor dispute over a fence. Nobody was arrested; both sides went home a little calmer.' },
-  reporting: { label: 'Take a statement from a reporting person', skills: ['interviewing', 'writing'], text: 'A woman whose car was broken into. You wrote down exactly what she said, and what she was not sure of.' },
-  observe: { label: 'Document what you observe on shift', skills: ['observation', 'timeline'], text: 'You noted times, plates and details. Most of it was nothing. Some of it might not be.' },
-  supervisor: { label: 'Ask your supervisor about a hard call', skills: ['law', 'ethics'], text: 'Your sergeant walked you through what the law allowed, and what it did not.' },
-  community: { label: 'Get to know the people on your beat', skills: ['teamwork', 'interviewing'], text: 'The shop owners on your beat know your name now, and you know theirs.' },
-  assist: { label: 'Assist a detective on a case', skills: ['evidence', 'reasoning'], text: 'You canvassed a street for a detective and wrote down what three neighbors saw. One detail mattered.' },
+  report: { label: 'Write up an incident report', skills: ['writing', 'observation'], texts: ['A shoplifting report, then a lost bicycle. Your field training officer read both and returned one.', 'A burglary at a dry cleaner: you wrote what you saw at the back door, and what the owner only thought.', 'Three reports before lunch. The one that mattered was the shortest.'] },
+  call: { label: 'Respond to a call for help', skills: ['interviewing', 'ethics'], texts: ['A neighbor dispute over a fence. Nobody was arrested; both sides went home a little calmer.', 'A man on a bridge, a long talk, and a ride to the hospital he agreed to in the end.', 'A child lost at the fair, found asleep under a stall twenty minutes later.'] },
+  reporting: { label: 'Take a statement from a reporting person', skills: ['interviewing', 'writing'], texts: ['A woman whose car was broken into. You wrote down exactly what she said, and what she was not sure of.', 'An old man sure his neighbor took his mail. You took it all down, and the neighbor\'s side too.', 'A shop owner who saw the thief\'s face. You asked how long he had looked, and wrote that down too.'] },
+  observe: { label: 'Document what you observe on shift', skills: ['observation', 'timeline'], texts: ['You noted times, plates and details. Most of it was nothing. Some of it might not be.', 'The same van outside the same warehouse three nights running. You wrote it down and passed it on.', 'A quiet shift. Your notes are still the best record of it.'] },
+  supervisor: { label: 'Ask your supervisor about a hard call', skills: ['law', 'ethics'], texts: ['Your sergeant walked you through what the law allowed, and what it did not.', 'You and your sergeant went over a search you were unsure of. You were right to be unsure.', 'Your sergeant asked what you would do differently. You had an answer.'] },
+  community: { label: 'Get to know the people on your beat', skills: ['teamwork', 'interviewing'], texts: ['The shop owners on your beat know your name now, and you know theirs.', 'The kids at the basketball court stopped going quiet when you walk past.', 'A woman you helped last year waves you over to say her son got the job.'] },
+  assist: { label: 'Assist a detective on a case', skills: ['evidence', 'reasoning'], texts: ['You canvassed a street for a detective and wrote down what three neighbors saw. One detail mattered.', 'A detective asked for your notes from a night months ago. They were good enough to use.', 'You sat in on an interview and watched how a detective lets silence do the work.'] },
 };
 export function patrol(id) {
   const r = I();
@@ -391,7 +393,9 @@ export function patrol(id) {
   r.acted.field = (r.acted.field ?? 0) + 1;
   regard('reliability', 1);
   if (id === 'community') regard('teamwork', 1);
-  return result(true, d.text, 'neutral');
+  // A different moment each year (the same three sentences every year read like a form).
+  const texts = d.texts.filter((t) => !(id === 'supervisor' && r.stage === 'officer' && t.startsWith('Your sergeant walked')));
+  return result(true, texts[(year() + id.length) % texts.length], 'neutral');
 }
 
 // ---------- Detective selection ----------
