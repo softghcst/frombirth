@@ -42,6 +42,8 @@ export function specialize(id, p = player()) {
 // ---------- The backlog ----------
 
 const KINDS = ['burglary', 'robbery', 'homicide', 'arson', 'collision', 'fraud'];
+/** The disciplines each kind of case sends to the laboratory (its items in casework.js), so a specialist gets work in their own. */
+export const CARRIES = { burglary: ['fingerprints', 'dna', 'video'], robbery: ['video'], homicide: ['dna', 'fingerprints', 'trace', 'digital'], arson: ['fire'], collision: ['trace'], fraud: ['financial'] };
 /** The requests that reach the laboratory this year: more when the department's budget is tight, from real cases. */
 export function labYear(p = player()) {
   const L = labRecord(p);
@@ -56,9 +58,12 @@ export function labYear(p = player()) {
   for (const b of waiting) if (b.due && b.due < now() && !b.overdue) { b.overdue = true; const inv = investigation(b.invId); inv?.file?.log.push({ at: now(), text: `The laboratory request for ${inv.file.items.find((x) => x.id === b.itemId)?.label.toLowerCase() ?? 'an item'} is overdue: the case waits.` }); }
   if (L.suspended === year()) return ['Off casework this year, until the corrective plan is done.'];
   if (waiting.length >= 6) return [`Your bench has ${waiting.length} requests waiting. No new ones are sent until it clears.`];
+  // A specialist is sent cases that need their discipline: the first always, most of the rest; others go to colleagues.
+  const open = KINDS.filter((t) => t !== 'collision' || year() >= 1950);
+  const fits = open.filter((t) => CARRIES[t].includes(L.discipline));
   for (let i = 0; i < n; i++) {
     const det = Object.values(a.units).flatMap((u) => u.memberIds).find((id) => npc(id)?.alive);
-    const tid = roll.pick(KINDS.filter((t) => t !== 'collision' || year() >= 1950));
+    const tid = roll.pick(fits.length && (i === 0 || roll.chance(0.75)) ? fits : open);
     const inv = openCase(tid, { ownerId: a.id, lead: det });
     const items = inv.file.items.filter((x) => x.disciplines.length);
     const it = items.find((x) => L.discipline && x.disciplines.includes(L.discipline)) ?? items[0];

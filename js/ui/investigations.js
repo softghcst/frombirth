@@ -62,6 +62,48 @@ import { screenName } from './careerNames.js';
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+/** Skills by plain names, for "what is holding you back". */
+const SKILL_SAY = { writing: 'report writing', observation: 'observation', interviewing: 'interviewing', ethics: 'ethics', reasoning: 'reasoning', evidence: 'handling evidence', law: 'knowing the law', teamwork: 'teamwork', leadership: 'leadership', timeline: 'timelines' };
+
+/**
+ * "This year" at the top of My Investigations: where you stand, the next step and when, what is holding you back
+ * (named), and the patrol work still open this year.
+ */
+function invThisYear(p, r) {
+  const j = r?.job;
+  if (!j) return '';
+  const rows = [['Now', `${p.career.title ?? 'Officer'}${r.stats.years ? `, ${r.stats.years} year${r.stats.years === 1 ? '' : 's'} of service` : ''}`]];
+  const holding = [];
+  const acts = [];
+  if (r.stage === 'academy') rows.push(['Next', r.academy?.end ? `Graduating from the academy, ${dateWords(r.academy.end)}` : 'Graduating from the academy']);
+  else if (r.stage === 'field') {
+    rows.push(['Next', `Your training officer signs off your field training${j.fieldEnd ? `: the review is ${dateWords(j.fieldEnd)}` : ''}`]);
+    const weak = [...C.FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+    holding.push(`Your training officer looks at report writing, observation, interviewing and ethics. Your weakest is ${SKILL_SAY[weak]} (${Math.round(r.skills[weak] ?? 0)}).`);
+    if (j.ftoExtensions) holding.push(`Field training has been extended ${j.ftoExtensions} time${j.ftoExtensions === 1 ? '' : 's'} (${C.FTO_EXTENSIONS} at most).`);
+  } else if (r.stage === 'probation') rows.push(['Next', `A full police officer${j.probationEnd ? `, ${dateWords(j.probationEnd)}` : ''}`]);
+  else {
+    const promo = C.promotionOptions(p)[0];
+    const det = !j.detective && r.family === 'police' ? C.detectiveUnmet(p) : null;
+    if (det) rows.push(['Next', det.length ? 'Detective (selected from serving officers)' : 'Detective: you can apply now']);
+    else if (promo) rows.push(['Next', `${promo.name}${promo.block ? '' : ': you can apply now'}`]);
+    else rows.push(['Next', 'You are at the top of this path']);
+    if (det?.length) holding.push(`For detective work: ${det.join(' ')}`);
+    if (promo?.block && !det) holding.push(`For ${promo.name.toLowerCase()}: ${promo.block}`);
+  }
+  const left = C.patrolLeft(r);
+  if (left.length && r.stage !== 'academy') {
+    const weak = [...C.FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
+    const best = left.find((x) => x.skills.includes(weak)) ?? left[0];
+    holding.push(`${left.length} kind${left.length === 1 ? '' : 's'} of patrol work still open this year: they build the skills reviews look at.`);
+    acts.push(btn('patrol', best.label, { arg: best.id }));
+  }
+  if (['field', 'probation', 'officer'].includes(r.stage) && !j.detective) acts.push(btn('autoPatrol', r.autoPatrol ? 'Patrol work: done for you (tap to choose it yourself)' : 'Let routine patrol work be done for you'));
+  return `<div class="card this-year-card"><h3>This year</h3>${kv(rows)}${holding.length ? `<div class="section-label">What is holding you back</div>${holding.map((x) => `<p class="body" style="margin:4px 0">${esc(x)}</p>`).join('')}` : ''}${acts.length ? stack(acts.join('')) : ''}</div>`;
+}
+
+/** The parts of the police assessment, as the player reads them. */
+const WHYNAME = { written: 'the written test', fitness: 'the fitness test', interview: 'the interview', background: 'the background check', medical: 'the medical' };
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}</button>`;
 const card = (title, body) => `<div class="card"><h3>${esc(title)}</h3>${body}</div>`;
 const muted = (t) => `<p class="muted">${esc(t)}</p>`;
@@ -116,7 +158,7 @@ function waysIn(p) {
 
 // First-time guidance: one short note at the top of a section the first time it is opened, until dismissed.
 const HINTS = {
-  overview: 'This is your investigative life at a glance. Each section above is a part of it; new ones appear as your career opens them.',
+  overview: 'This is your investigative life at a glance. Each row below opens a part of it; new ones appear as your career opens them.',
   agency: 'Apply to a department here. Decisions take months; the academy and field training happen over real time as you Age Up.',
   federal: 'Federal agencies have their own rules: most want a degree and some professional experience. Each has its own academy and field offices.',
   cases: 'Your open cases. Each has limited hours a year: spend them on the steps that matter. Open a file to work it.',
@@ -135,11 +177,11 @@ const CASE_HINT = 'A case file: the notebook keeps facts, claims and hypotheses 
 const VIEWS = {
   overview(p, r) {
     const cov = coverageOf(p.countryId);
-    let out = card('Follow the evidence. Find the truth.', kv([
-      ['Where you stand', STAGE_WORDS[r?.stage ?? 'none']],
+    let out = invThisYear(p, r) + card('Where you stand', kv([
+      ['Status', STAGE_WORDS[r?.stage ?? 'none']],
       ...(r?.job ? [['Employer', A.ownerName(r.job.agencyId ?? r.job.officeId) ?? '—'], ['Rank', p.career.title ?? '—']] : []),
       ...(r ? [['Professional reputation', `${reputationOf(r)} / 100`], ['Years of service', String(r.stats.years)]] : []),
-      ['Jurisdiction', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
+      ['Country rules', cov === 'full' ? 'Modeled in depth (municipal, county, state, federal, private)' : cov === 'regional' ? `This country's own police: ${A.kindsIn(p.countryId).map((k2) => AGENCY_KINDS[k2].name).join(', ')}` : 'Simplified: one national or regional police service, no federal careers'],
     ]) + muted('Investigative careers here are gameplay. Agency rules are simplified and not verified against the agencies themselves.'));
     if (!r?.job) out += waysIn(p);
     if (!r?.job) {
@@ -162,18 +204,25 @@ const VIEWS = {
     for (const m of TC.invitations(p)) out += card(`A ${m.kind}: ${m.title}`, muted(m.as === 'investigator' ? 'They want you on it, as the investigator who worked the case.' : `They want you on it: ${m.ancestor} worked the case.`)
       + stack(btn('media', 'Take part, from the public record', { arg: `${m.id}|public` }) + btn('media', 'Decline', { arg: `${m.id}|decline` }) + btn('media', 'Tell them what was in the file', { arg: `${m.id}|file`, cls: 'danger' })));
     if (Object.keys(p.flags?.invHints ?? {}).length) out += stack(btn('hintsReset', 'Show the tips again'));
+    const APP = { police: 'Police', detective: 'Detective seat', federal: 'Federal', license: 'License', promotion: 'Promotion' };
+    const apps = (r?.apps ?? []).slice(-4).reverse();
+    if (apps.length) out += card('Your applications', apps.map((a) => kv([[`${APP[a.kind] ?? 'Application'}: ${a.agency ? FEDERAL[a.agency]?.short : A.ownerName(a.ownerId)}`, a.status === 'pending' ? `Waiting: you hear by ${dateWords(a.decisionDue ?? a.due)}` : a.status === 'offer' ? 'Offered' : a.status === 'accepted' ? 'Accepted' : a.status === 'refused' ? `Not this time${a.why ? `: ${({ written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' })[a.why] ?? a.why}` : ''}` : ({ not_selected: 'The panel chose someone else', selected: 'Selected', promoted: 'Promoted', passed_over: 'Someone else was promoted', granted: 'Granted', licensed: 'Licensed', declined: 'Declined' })[a.status] ?? 'Decided']])).join('')
+      + (apps.some((a) => a.status === 'refused' && a.kind === 'police') && !apps.some((a) => a.status === 'pending' || a.status === 'offer') ? muted(`You can apply again: one application a year to each department. ${C.WHY_HELP[apps.find((a) => a.status === 'refused')?.why] ?? 'Preparing helps.'}`) + stack(btn('goDepartments', 'Apply again from Departments')) : ''));
     return out;
   },
   agency(p, r) {
     let out = '';
     if (!r?.job) {
+      // Getting ready sits here too, where people apply (and apply again).
+      out += card('Getting ready', muted('Before applying: study, train, write, and see the work for yourself. Each once a year, and it adds up.')
+        + stack(Object.entries(C.PREP).map(([id, d]) => btn('prep', d.label, { arg: id })).join('')));
       for (const a of A.agenciesHere(p)) {
         const no = C.policeUnmet(a, p);
         const d = AGENCY_KINDS[a.kind];
         out += card(a.name, kv([['Kind', d.name], ['Academy', `${d.academyMonths} months`], ['Field training', `${d.fieldMonths} months`], ['Minimum age', String(d.minAge)], ...(d.maxAge ? [['Maximum age', String(d.maxAge)]] : [])])
           + (d.entry ? muted(d.entry) : '') + (d.prosecutor ? muted(`Charging decisions are made by ${d.prosecutor}.`) : '')
           + (a.simplified ? muted('Simplified: this country\'s police recruitment is not modeled in detail.') : '')
-          + (no.length ? muted(no[0]) : stack(btn('applyPolice', 'Submit an application', { arg: a.id }))));
+          + (no.length ? muted(no[0]) : `${(() => { const o = C.policeOdds(); return muted(`Your chances: ${o.words}.${o.weakest ? ` Your weakest part: ${WHYNAME[o.weakest]}.` : ''}`); })()}${stack(btn('applyPolice', 'Submit an application', { arg: a.id }))}`));
       }
       return out || muted('There is no police agency recruiting here.');
     }
@@ -268,7 +317,8 @@ const VIEWS = {
       ['Acquittals', String(st.acquitted)], ['People cleared by the evidence', String(st.cleared)], ['Cold cases reopened', String(st.reopened)], ['Court appearances', String(st.court)],
       ['Discipline', r.discipline.length ? r.discipline.map((d) => `${d.year}: ${d.finding}`).join('; ') : 'None']]) + muted('Arrests and convictions are not the measure: thorough, lawful, honest work is.'))
       + card('Skills', SKILL_GROUPS.map(([, ids], i) => meterHtml(skillNames(r.job?.specialty)[i], Math.round(ids.reduce((t, k) => t + (r.skills[k] ?? 0), 0) / ids.length), true)).join(''))
-      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')) : '')
+      + (promos.length ? card('Promotion', promos.map((x) => kv([[x.name, x.block || x.how]]) + (x.block ? '' : stack(btn('promote', `Apply for ${x.name.toLowerCase()}`, { arg: x.id })))).join('')
+        + (r.job && !r.retired && (r.stats.years ?? 0) >= 3 ? kv([['Leadership', `${Math.round(r.skills.leadership)} / 100`]]) + muted('Sergeant and above ask for leadership: it grows with mentoring newer colleagues, and with the years.') + stack(btn('mentor', 'Mentor a newer colleague')) : '')) : '')
       + (r.job && !r.retired ? card('Wellbeing', kv([['How the work weighs', WB.level(WB.strainOf(p))]]) + muted('The work takes something out of people. Support is confidential.')
         + stack(Object.entries(WB.SUPPORT).map(([id, d]) => btn('support2', d.label, { arg: id })).join('') + (r.wellbeing?.offered ? btn('medRetire', 'Take the medical retirement') : ''))) : '')
       + (r.undercover?.status === 'active' ? card('Undercover', kv([['Until', dateWords(r.undercover.end)], ['Recordings', String(r.undercover.recordings)]]) + muted('Record what people offer on their own. Pushing them to it is entrapment.')
@@ -596,6 +646,8 @@ function openCaseFile(api, invId, refreshHub) {
 // ---------- The hub ----------
 
 const ACTIONS = {
+  mentor: (a, x) => x.say(WP.mentor()),
+  goDepartments: (a, x) => { x.st.section = 'agency'; x.render(); },
   hintOk: (a, x) => { const p = player(); p.flags.invHints = { ...(p.flags.invHints ?? {}), [a]: true }; x.render(); },
   hintsReset: (a, x) => { player().flags.invHints = {}; x.say({ text: 'The tips will show again, once each.', tone: 'neutral' }); },
   media: (a, x) => { const [id, how] = a.split('|'); return x.say(TC.takePart(id, how)); },
@@ -696,6 +748,7 @@ const ACTIONS = {
   decline: (a, x) => x.say(C.declineOffer(a)),
   academy: (a, x) => x.say(C.academyAct(a)),
   patrol: (a, x) => x.say(C.patrol(a)),
+  autoPatrol: (_, x) => x.say(C.setAutoPatrol(!rec()?.autoPatrol)),
   applyDetective: (a, x) => x.say(C.applyDetective(a)),
   applyFed: (a, x) => x.say(C.applyFederal(a)),
   report: (a, x) => x.say(C.reportToOffice()),
@@ -781,7 +834,10 @@ function overviewPage(p, r) {
 }
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
-  const lines = settle(player()); // anything whose date has come, made known before the page is drawn
+  const r0 = rec(player());
+  // Anything whose date has come, and what the year decided while the page was closed, made known before it is drawn.
+  const lines = [...(r0?.unread ?? []), ...settle(player())];
+  if (r0) r0.unread = [];
   const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: screenName('investigations') });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');

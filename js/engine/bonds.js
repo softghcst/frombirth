@@ -23,6 +23,7 @@ import { store, player, country, livingNpcs, log, milestone } from '../state.js'
 import { remember } from './conditions.js';
 import { spendAction, countAction } from './relationships.js';
 import { conceive, canConceive } from './children.js';
+import * as contra from './health/contraception.js';
 import { ensureLife } from './npcLives.js';
 import { book } from './ledger.js';
 import * as love from './romance.js';
@@ -172,13 +173,22 @@ export function propose(npcId, type) {
 
 // ---------- Being together ----------
 
-/** Contraception: on unless the player chooses otherwise. */
-export const birthControl = () => player().flags.birthControl !== false;
-export function setBirthControl(on) { player().flags.birthControl = !!on; return result(true, on ? 'You are using birth control.' : 'You have stopped using birth control.', 'neutral'); }
+/**
+ * Contraception is kept in the health record (engine/health/contraception.js): specific methods, or, for a life from
+ * before methods existed, an unspecified "birth control" assumed until the player chooses. These two keep the old switch.
+ */
+export const birthControl = () => { const c = contra.cx(); return c.legacyDefault || contra.active().length > 0; };
+export function setBirthControl(on) { return contra.legacySwitch(!!on); }
 function maybeConceive(npc, b) {
   const p = player();
   if (!canConceive(npc) || p.flags.pregnancy) return '';
-  if (!rng.chance((birthControl() ? 0.006 : 0.07) * p.hidden.fertility / 70)) return '';
+  // A night is a real exposure: the chance without anything (7% at fertility 70) is lowered by what is in place now.
+  // A broken condom, or no method when the player is not planning a pregnancy, brings the emergency contraception
+  // decision first; the night's own roll is drawn now, as always, and settled by that decision (engine/health/contraception.js).
+  const risk = contra.actRisk(p);
+  const would = rng.chance(0.07 * risk.mult * p.hidden.fertility / 70);
+  if (risk.offerEc) { contra.recordExposure({ npcId: npc.id, bondId: b.id, failed: risk.failed, would }, p); return risk.failed ? ' The condom broke.' : ''; }
+  if (!would) return '';
   const said = conceive(npc, false);
   b.pregnancy = { year: store.state.year, month: store.state.month ?? 0 };
   note(b, 'pregnancy', said);
@@ -534,7 +544,7 @@ export function bondActions(npc) {
   }
   if ((main || b) && givable().length) a.push({ id: 'bondTransfer', label: 'Make a car or a home over to them' });
   if (main) a.push({ id: 'bondTrip', label: 'Go away together' });
-  if (main || b) a.push({ id: 'bondControl', label: birthControl() ? 'Stop using birth control' : 'Use birth control' });
+  if (main || b) a.push({ id: 'bondControl', label: 'Birth control & family planning' });
   return a;
 }
 

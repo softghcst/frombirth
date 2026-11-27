@@ -9,6 +9,7 @@ import { normalize, hash } from './avatar/catalog.js';
 import { ADDED_TALENTS } from './data/talents.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { migrateHealth } from './engine/health/record.js';
+import { migrateContraception } from './engine/health/contraception.js';
 import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
@@ -97,6 +98,8 @@ function migrate(state) {
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
   // Lives saved before the health record: conditions carried over, nothing invented.
   migrateHealth(state);
+  // Contraception (engine/health/contraception.js): made lazily from the old birth-control switch; nothing invented.
+  migrateContraception(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);

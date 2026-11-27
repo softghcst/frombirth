@@ -32,14 +32,14 @@ const F = (id, name, doctor, after, years, o) => S(id, name, doctor, { kind: 'fe
 
 export const SPECIALTIES = [
   // Primary residencies (entered from medical school)
-  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor'], practice: 'family_clinic', minYear: 1969 }),
+  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor', 'lc_implant'], practice: 'family_clinic', minYear: 1969 }),
   S('internal', 'Internal Medicine', 'internist', { years: 3, play: 'panel', dept: 'medicine', compete: 0.35, procedures: ['office_minor'], practice: 'internal_clinic' }),
   S('pediatrics', 'Pediatrics', 'pediatrician', { years: 3, play: 'panel', dept: 'pediatrics', compete: 0.3, procedures: ['office_minor'], practice: 'pediatric_clinic' }),
   S('emergency', 'Emergency Medicine', 'emergency physician', { years: 3, play: 'acute', dept: 'emergency', compete: 0.45, procedures: ['er_procedure'], minYear: 1979 }),
   S('gensurg', 'General Surgery', 'general surgeon', { years: 5, play: 'or', dept: 'surgery', surgical: true, compete: 0.6, procedures: ['gs_abdominal', 'gs_hernia', 'office_minor'] }),
   S('ortho', 'Orthopedic Surgery', 'orthopedic surgeon', { years: 5, play: 'or', dept: 'orthopedics', surgical: true, compete: 0.8, procedures: ['or_fracture', 'or_arthroscopy', 'or_joint', 'office_minor'], practice: 'ortho_clinic' }),
   S('neurosurg', 'Neurological Surgery', 'neurosurgeon', { years: 7, play: 'or', dept: 'neurosurgery', surgical: true, compete: 0.9, procedures: ['ns_cranial', 'ns_spine'], minYear: 1920 }),
-  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor'], practice: 'obgyn_clinic' }),
+  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor', 'lc_iud', 'lc_implant', 'tubal'], practice: 'obgyn_clinic' }),
   S('psychiatry', 'Psychiatry', 'psychiatrist', { years: 4, play: 'panel', dept: 'psychiatry', compete: 0.35, practice: 'psychiatry_practice' }),
   S('dermatology', 'Dermatology', 'dermatologist', { years: 4, play: 'panel', dept: 'dermatology', compete: 0.85, procedures: ['derm_biopsy', 'derm_excision', 'office_minor'], practice: 'dermatology_clinic' }),
   S('neurology', 'Neurology', 'neurologist', { years: 4, play: 'panel', dept: 'neurology', compete: 0.4 }),
@@ -48,7 +48,7 @@ export const SPECIALTIES = [
   S('pathology', 'Pathology', 'pathologist', { years: 4, play: 'reading', dept: 'pathology', compete: 0.3 }),
   S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'oph_laser', 'office_minor'], practice: 'eye_clinic' }),
   S('ent', 'Otolaryngology (ENT)', 'ENT surgeon', { years: 5, play: 'or', dept: 'ent', surgical: true, compete: 0.75, procedures: ['ent_surgery', 'office_minor'] }),
-  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor'] }),
+  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor', 'vasectomy'] }),
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
   // General practice: a hospital internship, then practice (before residency was the usual route; see ERA.gpEra).
   S('general', 'General Practice', 'general practitioner', { kind: 'gp', years: 1, play: 'panel', dept: 'family', compete: 0, procedures: ['office_minor', 'ob_delivery'], practice: 'family_clinic', minYear: 1800, maxYear: 1968 }),
@@ -153,6 +153,12 @@ export const PROCEDURES = [
   P('ob_delivery', 'Attended delivery', 1900, 0.04, { major: false }),
   P('ob_cesarean', 'Cesarean delivery', 1940, 0.08),
   P('gyn_surgery', 'Gynecologic operation', 1920, 0.08),
+  // Contraception (engine/health/contraception.js is the patient's side of the same care): office procedures, and the
+  // permanent methods. Not every physician holds them: family physicians place implants; IUDs are referred to OB-GYN.
+  P('lc_iud', 'IUD placement or removal', 1974, 0.01, { major: false }),
+  P('lc_implant', 'Contraceptive implant placement or removal', 1990, 0.005, { major: false }),
+  P('tubal', 'Tubal sterilization', 1930, 0.03),
+  P('vasectomy', 'Vasectomy', 1925, 0.01, { major: false }),
   P('oph_cataract', 'Cataract operation', 1970, 0.03),
   P('oph_laser', 'Eye laser treatment', 1975, 0.02, { major: false }),
   P('ent_surgery', 'Ear, nose and throat operation', 1920, 0.07),
@@ -223,14 +229,15 @@ export const DEPARTMENTS = {
 // so pay runs through the ordinary payroll. Leadership ranks need openings and selection (engine/medicine/careers.js).
 export const RANKS = {
   student: { title: 'Medical student', level: null },
-  resident: { title: 'Resident', level: 0 },
-  chief_resident: { title: 'Chief resident', level: 0 },
-  fellow: { title: 'Fellow', level: 0 },
-  attending: { title: 'Attending physician', level: 1 },
-  experienced: { title: 'Experienced attending', level: 1 },
+  // In plain words on screen: trainee doctors, then physicians (the US words resident, fellow and attending are not used).
+  resident: { title: 'Trainee doctor', level: 0 },
+  chief_resident: { title: 'Lead trainee doctor', level: 0 },
+  fellow: { title: 'Advanced trainee', level: 0 },
+  attending: { title: 'Physician', level: 1 },
+  experienced: { title: 'Experienced physician', level: 1 },
   vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
   ceo: { title: 'Hospital chief executive', level: 3, leader: true },
-  senior: { title: 'Senior attending', level: 2 },
+  senior: { title: 'Senior physician', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
   chair: { title: 'Department chair', level: 3, leader: true },
@@ -301,9 +308,10 @@ const SIMPLE = { entry: 'direct', schoolYears: 4, degrees: ['MBBS / MD'], exams:
   license: { name: 'medical registration', afterTraining: 1 }, internship: 1, selection: 'Specialty training applications', ownership: 'open', detail: 'simplified', dpm: false, osteopathic: false };
 export const JURISDICTIONS = {
   us: { entry: 'graduate', schoolYears: 4, degrees: ['MD', 'DO'], osteopathic: true, dpm: true,
-    exams: [{ id: 'step1', name: 'USMLE Step 1', year: 2 }, { id: 'step2', name: 'USMLE Step 2 CK', year: 4 }],
-    license: { name: 'USMLE Step 3 and a state medical license', afterTraining: 1 }, internship: 0,
-    selection: 'the residency Match', ownership: 'physician', detail: 'detailed' },
+    // Plain words on screen: the licensing exams by part (the USMLE, from 1992; jurisdictionIn has the names before).
+    exams: [{ id: 'step1', name: 'Licensing exam, part 1', year: 2 }, { id: 'step2', name: 'Licensing exam, part 2', year: 4 }],
+    license: { name: 'Licensing exam, part 3, and a state license', afterTraining: 1 }, internship: 0,
+    selection: 'a national match of trainees to hospitals', ownership: 'physician', detail: 'detailed' },
   ca: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD'], exams: [{ id: 'mccqe1', name: 'MCCQE Part I', year: 4 }],
     license: { name: 'provincial licensure', afterTraining: 2 }, internship: 0, selection: 'the national residency match', ownership: 'physician' },
   uk: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
@@ -337,7 +345,7 @@ export function jurisdictionIn(countryId, y) {
   if (j !== JURISDICTIONS.us || y >= 1992) return j;
   const placed = y >= ERA.residencyMatch ? {} : { selection: 'places offered by each hospital, and accepted directly' };
   return y >= 1916
-    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National Board Part I', year: 2 }, { id: 'step2', name: 'National Board Part II', year: 4 }], license: { ...j.license, name: 'National Board Part III and a state medical license' } }
+    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National licensing exam, part 1', year: 2 }, { id: 'step2', name: 'National licensing exam, part 2', year: 4 }], license: { ...j.license, name: 'National licensing exam, part 3, and a state license' } }
     : { ...j, ...placed, exams: [{ id: 'step1', name: 'Second-year examinations', year: 2 }, { id: 'step2', name: 'Final examinations', year: 4 }], license: { ...j.license, name: 'a state board examination and medical license' } };
 }
 

@@ -75,7 +75,19 @@ async function run(viewport) {
   const app = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.investigator.apps[0]; });
   check(app?.status === 'pending', `${w}px: the application is made through the screen and is pending`);
   // Time moves on to the decision; an offer is accepted on screen.
-  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const a = store.state.player.investigator.apps[0]; a.due = store.state.year * 12 + (store.state.month ?? 0); a.outcome = 'offer'; });
+  // A refusal decided during Age Up is told when the hub next opens, and the hub says so: not "applying" for ever.
+  const refused = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const IX = await import('/js/engine/investigations/index.js'); const r = store.state.player.investigator; const a = r.apps[0]; a.due = store.state.year * 12 + (store.state.month ?? 0); a.outcome = 'refused'; a.why = 'interview'; IX.tickInvestigations(); return { stage: r.stage, unread: r.unread?.length ?? 0 }; });
+  check(refused.stage === 'none' && refused.unread >= 1, `${w}px: a refusal ends the application, and waits to be read (${JSON.stringify(refused)})`);
+  await closeHub(page); await openHub(page);
+  check(await page.locator('#modal-root .modal', { hasText: /will not take your application further/ }).count() >= 1, `${w}px: the refusal is told when the hub opens`);
+  await dismissMessages(page);
+  check(/Your applications/i.test(await page.locator('[data-inv]').innerText()) && /Not this time: the interview/i.test(await page.locator('[data-inv]').innerText()) && await page.locator('[data-inv] [data-act="goDepartments"]').count() === 1, `${w}px: the home screen shows the outcome, why, and a way to apply again`);
+  // Next year, applying again, and this time an offer.
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); store.state.year += 1; const r = store.state.player.investigator; r.acted = {}; });
+  await page.locator('[data-inv] [data-act="goDepartments"]').click(); await page.waitForTimeout(100);
+  await page.locator('[data-inv] [data-act="applyPolice"]').first().click();
+  await dismissMessages(page);
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const a = store.state.player.investigator.apps.at(-1); a.due = store.state.year * 12 + (store.state.month ?? 0); a.outcome = 'offer'; });
   await closeHub(page);
   await openHub(page);
   await dismissMessages(page);

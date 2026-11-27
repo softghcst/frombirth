@@ -131,7 +131,7 @@ export function entranceEdge(p = player()) {
   return clamp((x.best - 152) / 60, -0.25, 0.35);
 }
 /** Why the player cannot apply to law school yet, or ''. */
-export const applyBlock = (p = player()) => { const x = entrance(p); return x?.required && !x.best ? `Needs an ${x.name} score first. Sit it from Law School on the Work tab.` : ''; };
+export const applyBlock = (p = player()) => { const x = entrance(p); return x?.required && !x.best ? `Needs ${/^[aeiou]/i.test(x.name) ? 'an' : 'a'} ${x.name} score first. Sit it from Law School on the Work tab.` : ''; };
 
 // ---------- Terms and courses ----------
 
@@ -317,8 +317,8 @@ export function finishMoot(answers, p = player()) {
   const score = pts + avg(L, ['appellate', 'oral', 'research']) / 40 + (rng.next() - 0.5);
   gain(p, { appellate: 3, oral: 2, research: 1 });
   const place = score >= 3.6 ? 'won' : score >= 2.4 ? 'reached the semifinal' : 'went out in the first round';
-  if (place === 'won') { L.honors = [...(L.honors ?? []), `Moot court champion, ${store.state.year}`]; canon(`law:moot:${aid()}:${store.state.year}`, 'Won the moot court competition', 'Argued and won the final before a bench of judges.', { sig: 2 }); }
-  return result(place !== 'went out in the first round', `You ${place} of the moot court competition.`, place === 'won' ? 'good' : 'neutral', { place });
+  if (place === 'won') { L.honors = [...(L.honors ?? []), `Practice court champion, ${store.state.year}`]; canon(`law:moot:${aid()}:${store.state.year}`, 'Won the practice court competition', 'Argued and won the final before a bench of judges.', { sig: 2 }); }
+  return result(place !== 'went out in the first round', `You ${place} of the practice court competition.`, place === 'won' ? 'good' : 'neutral', { place });
 }
 
 /** Mock trial: an objection and a cross-examination, from a training case file. */
@@ -408,7 +408,7 @@ export function startReadingLaw(p = player()) {
 function progressReading(p) {
   const R = p.law?.readLaw;
   if (!R || R.done || nowM() < R.until) return;
-  R.done = nowM();
+  R.done = R.until;
   gain(p, { research: 8, writing: 6, procedure: 6, drafting: 5, counseling: 4 });
   log(`You have read the law for two years. ${store.state.npcs[R.mentorId]?.firstName ?? 'Your mentor'} says you are ready to be examined for the bar.`, 'system', 'good');
 }
@@ -506,11 +506,11 @@ function fitness(p, examName) {
   return admit(p, examName);
 }
 /** Admission to practice, at the end of the route. */
-function admit(p, examName) {
+function admit(p, examName, at = nowM()) {
   const L = lawOf(p);
   const prof = profileFor(p.countryId);
-  L.bar.training = L.bar.training ? { ...L.bar.training, done: nowM() } : null;
-  L.bar.admitted = { year: store.state.year, m: nowM(), where: COUNTRY_NAME(p.countryId), body: prof.admission };
+  L.bar.training = L.bar.training ? { ...L.bar.training, done: at } : null;
+  L.bar.admitted = { year: Math.floor(at / 12), m: at, where: COUNTRY_NAME(p.countryId), body: prof.admission };
   (p.flags.licenses ??= []).includes('law') || p.flags.licenses.push('law');
   p.stats.mood = clamp(p.stats.mood + 12);
   canon(`law:admitted:${aid()}`, 'Admitted to practice law', `Passed the ${examName}${L.bar.attempts.length > 1 ? ` at the ${['', 'first', 'second', 'third', 'fourth'][L.bar.attempts.length] ?? 'latest'} attempt` : ''} and was granted ${prof.admission}.`, { sig: 3, privacy: 'public' });
@@ -542,7 +542,7 @@ export function progressBar(p = player()) {
   const B = p.law?.bar;
   // When the law changes, a woman who passed the exam and was barred is admitted.
   if (B?.fitness === 'barred' && !B.admitted && rule('womenInLaw', p.countryId)) { B.fitness = 'cleared'; return admit(p, barExamName(p)); }
-  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam);
+  if (B?.training && !B.training.done && !B.admitted && nowM() >= B.training.until) return admit(p, profileFor(p.countryId).exam, B.training.until); // admitted when the training ended
   return null;
 }
 

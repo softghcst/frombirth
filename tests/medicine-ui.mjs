@@ -60,7 +60,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForSelector(modal);
   const overflow = () => page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); return m.scrollWidth > m.clientWidth + 1 || document.documentElement.scrollWidth > innerWidth; });
   const text = () => page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
-  check(/Resident, PGY-1 of 3/i.test(await text()) && /Every patient has a story/i.test(await text()), `${label}: the overview shows the residency year, under its subtitle`);
+  check(/Trainee doctor, year 1 of 3/i.test(await text()) && /Every patient has a story/i.test(await text()), `${label}: the overview shows the residency year, under its subtitle`);
   check(!(await overflow()), `${label}: the overview does not scroll sideways`);
   check(await page.locator('#modal-root .scrim:last-child .modal.modal-full').count() === 1 && !/^My /.test(await page.locator('#modal-root .scrim:last-child .modal-bartitle').innerText()), `${label}: My Medical Career is a full screen, its name in the bar with Back`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-overview.png` });

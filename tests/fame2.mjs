@@ -52,7 +52,7 @@ for (let y = 0; y < 5; y++) { if (e.contractId) played += 1; sportYear(); }
 check(played >= 1 && e.seasonsPlayed >= played, `a season for every year played (${e.seasonsPlayed} for ${played})`);
 check(!sportsLife.audit().length, `every game counted was played (${sportsLife.audit().slice(0, 2).join('; ')})`);
 check(fame.fameOf(p).audiences.sports > f0, 'playing makes a name with sports fans');
-check(fame.fameOf(p).log.every((l) => l.audience !== 'sports' || /season|caps|year/.test(l.why) || l.why === 'results'), 'every bit of sports fame comes from a season played');
+check(fame.fameOf(p).log.every((l) => l.audience !== 'sports' || /season|caps|year|World Games|World Baseball Classic/.test(l.why) || l.why === 'results'), 'every bit of sports fame comes from a season played, or playing for the country');
 check(fame.fameOf(p).log.filter((l) => /starter|player/i.test(l.why)).length === careerFame, 'the career gives no fame of its own: only results do');
 check(!work.payLines(p).some((l) => /sport|season|team/i.test(l.source)), 'sport pays nothing extra: the club wage is the career\'s');
 section(`sport: ${e.seasonsPlayed} seasons with ${athletics.orgOf(e.orgId)?.name ?? 'a club'}, every game played, fame only from results`);

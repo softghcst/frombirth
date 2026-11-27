@@ -134,6 +134,43 @@ export default [
     ['Make a speech', 'Short, and nobody minds.', 'expand:celebrate', 'good'],
     ['Look over the new costs', 'Bigger costs more.', 'expand:careful'],
   ]),
+  scene('jn_old_editor', '{editor}, your old editor, calls. {first} remembers your work, and has put in a word for you at {outlet}. There is a desk there if you want it.', [
+    ['Take it', 'You pack up your desk, and send {first} a thank-you note.', 'oldeditor:yes', 'good'],
+    ['Thank them, and stay', '{first} understands, and you stay in touch.', 'oldeditor:no'],
+  ]),
+  scene('jn_war_assignment', 'Your editor at {outlet} asks whether you will report on the city during {war}: the families, the shortages, the notices. Nobody has to say yes.', [
+    ['Take it', 'You will report from home. The censor will read it first.', 'war:yes'],
+    ['Say no', 'Your editor nods. There are other stories.', 'war:no'],
+  ]),
+  scene('jn_owner_pressure', 'Word comes down from the people who own {outlet}: could the story about {subject} be "less harsh"? Nobody says what happens if it is not.', [
+    ['Decline, and write down why', 'You keep a note of the request and your answer. Your editor backs you.', 'owner:decline', 'good'],
+    ['Ask for a proper editorial review', 'The story is read again on its evidence. What holds up stays.', 'owner:review', 'good'],
+    ['Soften it', 'It runs a little gentler than the evidence. You know it, and so do some readers.', 'owner:soften', 'bad'],
+  ]),
+  scene('jn_idol_interview', 'Twenty minutes with {idol} of {group}, a manager by the door and a list of approved topics on the table.', [
+    ['Ask about the music', '{idol} lights up talking about the recording. It is the best quote you get all year.', 'idol:music', 'good'],
+    ['Ask about the dating rumor', 'The manager ends the interview. A rumor is still a rumor.', 'idol:rumor', 'bad'],
+  ]),
+  scene('jn_athlete_win', 'The dressing room after the win: noise, steam, and {athlete} ready to talk.', [
+    ['Ask about the game', 'You get the quote everyone else wanted.', 'athlete:fair', 'good'],
+    ['Ask about the injury people are whispering about', '"That is private." It is, and they walk off.', 'athlete:injury', 'bad'],
+  ]),
+  scene('jn_premiere', 'The premiere of {title}: a red carpet, free drinks, and a director who is very charming to the press.', [
+    ['Write what you thought, plainly', 'Readers can trust a review that could have gone either way.', 'premiere:honest', 'good'],
+    ['Be kind: they were so nice', 'The review is warmer than the film.', 'premiere:kind'],
+  ]),
+  scene('jn_guest_changes', 'Live on {show}, a guest says the opposite of what they told you last year, and looks straight at the camera.', [
+    ['Put the earlier answer to them, calmly', 'They explain the change. Viewers can judge.', 'guest:correct', 'good'],
+    ['Let it go and move on', 'Nobody notices. You do.', 'guest:let'],
+  ]),
+  scene('jn_old_case', 'A case you covered in {year} is back in the news. "{headline}" is still in the archive, as it ran.', [
+    ['Read it again, carefully', 'It holds up better than you feared, and you remember the people in it.', 'oldcase:reread', 'good'],
+    ['Leave it to the people covering it now', 'It was a long time ago.', 'oldcase:leave'],
+  ]),
+  scene('jn_legal_letter', 'A lawyer\'s letter arrives about "{headline}": it says the story was wrong, and demands a retraction.', [
+    ['Go back through your notes, point by point', 'What the evidence holds stays. What it does not is corrected.', 'letter:review', 'good'],
+    ['Ignore it', 'Letters like this come in all the time.', 'letter:ignore'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],

@@ -62,7 +62,22 @@ const creds = (p) => (p.credentials ??= []);
 export const regulation = (careerId) => REGULATED[careerId] ?? null;
 const areaOf = (a, b) => FREE_MOVEMENT.find((x) => x.members.includes(a) && x.members.includes(b)) ?? null;
 
-/** Where the save shows someone qualified in a profession: the country they lived in when they finished it. */
+/**
+ * Whether a finished qualification trains someone for a career: its program, its trade, a degree in one of its majors,
+ * its other way in (a certificate or a vocational program), or, where any university degree will do, a university degree.
+ */
+function trainsFor(d, careerId) {
+  const r = CAREER_BY_ID[careerId]?.req ?? {};
+  if (r.program && d.type === r.program) return true;
+  if ((r.programs ?? []).filter((x) => x !== 'graduate').includes(d.type)) return true;
+  if (r.trade && d.type === 'apprenticeship' && d.majorId === r.trade) return true;
+  if (r.altProgramme && d.type === r.altProgramme) return true;
+  if (r.altCert && d.type === 'certificate' && d.majorId === r.altCert) return true;
+  if (r.degree === 'university' && d.type === 'university') return !r.majors || r.majors.includes(d.majorId) || r.majors.includes(d.minorId);
+  return false;
+}
+
+/** Where the save shows someone qualified in a profession: the country they lived in when they finished the training for it. */
 function trainedIn(p, profession) {
   const careers = Object.entries(REGULATED).filter(([, r]) => r.profession === profession).map(([id]) => id);
   const out = new Set();
@@ -73,7 +88,7 @@ function trainedIn(p, profession) {
   // Where they lived when they finished the training.
   const born = p.birthYear ?? store.state.year - p.age;
   for (const d of p.education?.degrees ?? []) {
-    if (d.age == null) continue;
+    if (d.age == null || !careers.some((id) => trainsFor(d, id))) continue;
     const y = born + d.age;
     const at = (p.locations ?? []).filter((l) => (l.from ?? -Infinity) <= y && (l.to ?? Infinity) >= y).at(-1);
     out.add(at?.countryId ?? (p.locations?.length ? p.locations[0].countryId : p.countryId));
@@ -94,6 +109,8 @@ export function licensedIn(p, careerId, countryId = p.countryId) {
 export function licenseBlock(careerId, p = player()) {
   const r = regulation(careerId);
   if (!r || licensedIn(p, careerId)) return '';
+  // Never qualified in it anywhere: nothing to recognize. What is missing (the degree, the trade) is said by career.unmet.
+  if (!trainedIn(p, r.profession).length && !creds(p).some((x) => x.profession === r.profession)) return '';
   const c = creds(p).find((x) => x.profession === r.profession && x.jurisdictionId === p.countryId && ['pending', 'conditional'].includes(x.status));
   if (c?.status === 'pending') return `Your ${r.name.toLowerCase()} qualification is with ${r.body} in ${nameOf(p.countryId)}: a decision comes when the year turns.`;
   if (c?.status === 'conditional') return `You are in your adaptation year with ${r.body}. You can practice once you pass.`;

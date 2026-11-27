@@ -115,7 +115,7 @@ export default [
 
   // ---------- Senior year: the collision ----------
   {
-    id: 'musical_cast', category: 'senior year', ageRange: [17, 17], once: true, priority: true,
+    id: 'musical_cast', workplaces: ['shop', 'leisure', 'emergency', 'office', 'site', 'school', 'lab'], category: 'senior year', ageRange: [17, 17], once: true, priority: true,
     requires: [inCompany, need('education.stage', '==', 'high'), need('career.partTime', '!=', false)],
     cast: { director: 'tag:director', manager: 'tag:manager' },
     text: '{director} pins up the cast list: you are the lead in the spring musical. Rehearsals are every Saturday, the same Saturdays {manager} has you on shift, earning the money you are saving for after graduation.',
@@ -159,7 +159,7 @@ export default [
     ],
   },
   {
-    id: 'manager_referral', category: 'after graduation', ageRange: [18, 19], once: true, priority: true,
+    id: 'manager_referral', workplaces: ['shop', 'leisure'], category: 'after graduation', ageRange: [18, 19], once: true, priority: true,
     requires: [need('flags.musicalRoute', '==', 'shifts')], cast: { manager: 'tag:manager' },
     text: '{manager} slides a card across the counter: "My cousin runs the front office at the {city} Playhouse. They need a paid intern for the summer. I told them you are the one who shows up."',
     choices: [
@@ -170,7 +170,7 @@ export default [
     ],
   },
   {
-    id: 'summer_two_offers', category: 'after graduation', ageRange: [18, 19], once: true, priority: true,
+    id: 'summer_two_offers', workplaces: ['shop', 'leisure'], category: 'after graduation', ageRange: [18, 19], once: true, priority: true,
     requires: [need('flags.musicalRoute', '==', 'both')], cast: { director: 'tag:director', manager: 'tag:manager' },
     text: 'In the same week, {director} offers to recommend you for a funded place at the summer conservatory, and {manager} offers to refer you for a paid internship at the {city} Playhouse. The dates overlap completely.',
     choices: [

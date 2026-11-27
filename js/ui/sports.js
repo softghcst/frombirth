@@ -13,6 +13,7 @@ import * as extras from '../engine/sportsExtras.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
 import * as draft from '../engine/draft.js';
+import * as nations from '../engine/nations.js';
 import * as bb from '../engine/baseball.js';
 import { classOf, eligibility as collegeLeft } from '../engine/college.js';
 import { DIVISIONS } from '../data/sports.js';
@@ -242,7 +243,6 @@ function baseballSection(st, e) {
     ${R.derby.length ? kv('Home Run Derby', `${R.derby.length} ${R.derby.length === 1 ? 'appearance' : 'appearances'}${R.derby.some((x) => x.won) ? `, won ${R.derby.filter((x) => x.won).map((x) => x.year).join(', ')}` : ''}`) : ''}
     ${R.honors.map((x) => kv(String(x.year), esc(x.what))).join('')}
     ${R.feats.map((x) => kv(String(x.year), esc(`${x.what[0].toUpperCase()}${x.what.slice(1)}`))).join('')}
-    ${R.classic.length ? kv('World Baseball Classic', R.classic.map((x) => `${x.year}: ${x.result}`).join(' · ')) : ''}
     ${R.winters.length ? kv('Winter ball', `${R.winters.length} ${R.winters.length === 1 ? 'winter' : 'winters'}, last with ${esc(R.winters.at(-1).team)}${R.winter === 'always' ? ' · every winter' : ''}`) : ''}
     ${k && (R.fortyMan || R.options?.length) ? kv('Roster', `${R.fortyMan ? 'On the 40-man roster' : 'Not on the 40-man roster'}${R.options?.length ? ` · ${R.options.length} of 3 option years used` : ''}${R.rule5 ? ' · a Rule 5 pick: must stay in the big leagues all season' : ''}`) : ''}
     ${k?.optOut || k?.noTrade ? kv('Contract', [k.optOut ? `opt-out in ${k.optOut}` : '', k.noTrade ? 'no-trade clause' : ''].filter(Boolean).join(' · ')) : ''}
@@ -338,11 +338,32 @@ function boxingSection() {
     ${b.titles.map((t) => kv(`${t.year}: ${t.weight} title`, esc(t.lost ? `held until ${t.lost}${t.defenses ? `, ${t.defenses} defenses` : ''}` : 'held'))).join('')}
     ${b.fights.slice(-4).reverse().map((f) => kv(`${f.year} · ${f.opp}`, esc(`${f.won ? 'Won' : 'Lost'} ${f.how}${f.title ? ` · ${f.title}` : ''}`))).join('')}`;
 }
-/** The national side at the World Games. */
+/**
+ * Playing for one's country (engine/nations.js): the nation, the World Games (team and individual), the qualifiers and
+ * trials missed, invitations turned down, and the World Baseball Classic.
+ */
 function gamesSection() {
-  const rows = Object.values(sp.myAthlete()?.sports ?? {}).flatMap((e) => (e.gamesTeams ?? []).filter((t) => t.picked).map((t) => ({ ...t, sportId: e.id })));
+  const st = store.state;
+  const cap = (s) => `${s[0].toUpperCase()}${s.slice(1)}`;
+  const cn = (c) => COUNTRIES[c]?.name ?? c;
+  const rows = [];
+  for (const e of Object.values(sp.myAthlete()?.sports ?? {})) {
+    const sport = sportOf(e.id).name;
+    for (const t of e.gamesTeams ?? []) {
+      const what = t.notQualified ? `${cn(t.nation)} did not qualify` : t.declined ? 'Invited; you turned it down' : !t.picked ? 'Not picked for the squad'
+        : `${t.medal ? cap(t.medal) : `Out in the ${String(t.place ?? '').toLowerCase()}`} · ${(t.rounds ?? []).map((r) => `${r.score.join('–')} v ${cn(r.opp)}${r.how}`).join(', ')}`;
+      rows.push([t.year, `${t.year} · ${sport}${t.nation && t.picked && !t.declined ? ` · ${cn(t.nation)}` : ''}`, what]);
+    }
+    for (const id of e.events ?? []) {
+      const ev = st.sports?.events?.[id];
+      if (ev?.games) rows.push([ev.year, `${ev.year} · ${sport}${ev.nation ? ` · ${cn(ev.nation)}` : ''}`, ev.medal ? `${cap(ev.medal)} medal` : /^\d/.test(ev.place) ? `Finished ${ev.place}` : `Out in the ${String(ev.place).toLowerCase()}`]);
+    }
+    for (const y of e.gamesMissed ?? []) rows.push([y, `${y} · ${sport}`, 'Missed the qualifying standard, or turned it down']);
+    for (const c of e.bb?.classic ?? []) rows.push([c.year, `${c.year} · World Baseball Classic${c.nation ? ` · ${cn(c.nation)}` : ''}`, cap(c.result)]);
+  }
   if (!rows.length) return '';
-  return `${label('World Games, with the national side')}${rows.map((t) => kv(`${t.year} · ${sportOf(t.sportId).name}`, esc(`${t.medal ? `${t.medal[0].toUpperCase()}${t.medal.slice(1)}` : `Out in the ${t.place.toLowerCase()}`} · ${t.rounds.map((r) => `${r.score.join('–')} v ${COUNTRIES[r.opp]?.name ?? r.opp}${r.how}`).join(', ')}`))).join('')}`;
+  const nation = nations.nationOf(player());
+  return `${label('For your country')}${kv('You play for', esc(cn(nation)))}${rows.sort((x, y) => y[0] - x[0]).map(([, k, v]) => kv(k, esc(v))).join('')}`;
 }
 
 /** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
@@ -763,14 +784,14 @@ export function openAthleticsAt(tabApi, link, back = null) {
   return show();
 }
 
-/** A card for the Pursuits tab. */
+/** A card for the Pursuits tab: playing a sport for fun, for a club or a school, and everything else in My Athletics. */
 export function athleticsCard() {
   const p = player();
   if (p.age < 4) return '';
   const a = sp.myAthlete();
   const active = sp.activeSports();
   const waiting = life.openDecisions().length;
-  return `<div class="card"><h3>My Athletics</h3><p class="muted" style="margin-bottom:10px">${active.length ? esc(active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ')) : a ? 'Not playing right now.' : 'Pick a sport.'}${waiting ? ` · ${waiting} waiting for you` : ''}</p>
-    <button class="btn" data-go="athletics">Open My Athletics</button></div>`;
+  const sub = `${active.length ? active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ') : a ? 'Not playing right now' : 'Play for fun, join a club, train and compete'}${waiting ? ` · ${waiting} waiting for you` : ''}`;
+  return `<div class="nav-group">${navRow({ attrs: 'data-go="athletics"', label: 'Sports', sub, ico: 'trophy' })}</div>`;
 }
 export const internals = { nav, SCREENS, show: () => show(), INJURIES };

@@ -251,8 +251,67 @@ export const awardsFor = (sport) => SEASON_AWARDS[sport.id] ?? TEAM_DEFAULT;
 /** The international games for individual sports, every four years, from the first modern games. */
 export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
 export const isGamesYear = (y) => y >= WORLD_GAMES.founded && y % WORLD_GAMES.every === 0;
+/** The winter games, between the summer ones: every four years from 1924, two years off the summer games from 1994. */
+export const isWinterGamesYear = (y) => y >= 1924 && (y <= 1992 ? y % 4 === 0 : y % 4 === 2);
+/**
+ * The sports at the games: the summer games, the winter games, and the sports at neither. Para sports go to the para
+ * games, alongside the summer games. Cricket returns in 2028; baseball and softball come and go.
+ */
+export const GAMES_SPORTS = {
+  winter: ['ice_hockey', 'figure_skating'],
+  never: ['american_football', 'pickleball', 'fitness'],
+  from: { cricket: 2028, rugby: 2016, golf: 2016, table_tennis: 1988, badminton: 1992, softball: 1996, baseball: 1992, martial_arts: 1964, running: 1896, cycling: 1896, wheelchair_basketball: 1960, wheelchair_tennis: 1992, para_athletics: 1960, para_swimming: 1960 },
+  gaps: { baseball: [2012, 2016, 2024], softball: [2012, 2016, 2024], rugby: [] },
+};
+/**
+ * The nations strongest at each sport, the strongest first: they are hard to beat, and hard to get picked for, since
+ * the places on their teams are fought over. Others are middling where the sport is popular, weaker where it is not.
+ * GAMEPLAY CONFIGURATION: a broad, rounded picture of recent decades, not a ranking of any year.
+ */
+export const NATION_STRENGTH = {
+  soccer: ['br', 'ar', 'fr', 'es', 'de', 'uk', 'it', 'nl', 'pt', 'be', 'hr', 'uy', 'mx', 'co', 'us', 'jp', 'ma', 'ng'],
+  basketball: ['us', 'es', 'rs', 'fr', 'au', 'ar', 'ca', 'gr', 'de', 'tr', 'lt', 'it', 'ru', 'cn', 'br'],
+  baseball: ['jp', 'us', 'do', 'kr', 've', 'pr', 'cu', 'mx', 'tw', 'nl', 'pa', 'ca', 'au', 'it', 'co'],
+  softball: ['us', 'jp', 'au', 'ca', 'mx', 'cn', 'it', 'nl', 'pr'],
+  volleyball: ['br', 'us', 'pl', 'it', 'fr', 'rs', 'jp', 'cn', 'tr', 'ru', 'ar', 'nl', 'ca'],
+  ice_hockey: ['ca', 'fi', 'se', 'us', 'cz', 'ru', 'ch', 'sk', 'de', 'dk', 'no', 'at', 'kz', 'fr'],
+  cricket: ['in', 'au', 'uk', 'nz', 'za', 'pk', 'af', 'bd', 'jm', 'ie', 'zw', 'nl'],
+  rugby: ['nz', 'za', 'fj', 'fr', 'ie', 'ar', 'au', 'uk', 'ws', 'jp', 'it', 'ge', 'us', 'ke', 'ca'],
+  tennis: ['es', 'us', 'rs', 'it', 'ru', 'de', 'ch', 'uk', 'fr', 'ar', 'au', 'cz', 'pl', 'gr', 'ca', 'cn', 'jp'],
+  badminton: ['cn', 'id', 'dk', 'jp', 'kr', 'my', 'in', 'th', 'tw', 'es', 'sg'],
+  table_tennis: ['cn', 'jp', 'de', 'kr', 'se', 'fr', 'tw', 'hk', 'br', 'sg', 'eg'],
+  golf: ['us', 'uk', 'ie', 'au', 'za', 'jp', 'kr', 'se', 'es', 'ca', 'no', 'nz', 'ar'],
+  swimming: ['us', 'au', 'cn', 'uk', 'jp', 'hu', 'it', 'ca', 'nl', 'fr', 'de', 'se', 'za', 'br', 'ru'],
+  track: ['us', 'jm', 'ke', 'et', 'uk', 'ca', 'nl', 'ng', 'bs', 'no', 'pl', 'cn', 'fr', 'ug', 'it', 'de', 'tt'],
+  running: ['ke', 'et', 'ug', 'jp', 'us', 'uk', 'no', 'es', 'ma', 'cn', 'nl'],
+  cycling: ['nl', 'uk', 'fr', 'be', 'it', 'dk', 'es', 'co', 'au', 'de', 'ch', 'us', 'no', 'nz'],
+  gymnastics: ['us', 'cn', 'jp', 'ru', 'uk', 'ro', 'br', 'it', 'ua', 'kr', 'fr', 'ca', 'de'],
+  figure_skating: ['jp', 'us', 'ru', 'ca', 'kr', 'fr', 'it', 'cn', 'ge', 'de', 'kz', 'ch'],
+  martial_arts: ['jp', 'kr', 'fr', 'br', 'ge', 'ru', 'cn', 'ir', 'tr', 'nl', 'it', 'mn', 'es', 'kz'],
+  boxing: ['cu', 'uk', 'us', 'kz', 'ru', 'ph', 'ua', 'uz', 'ie', 'fr', 'br', 'mx', 'jp', 'in'],
+  wrestling: ['us', 'ir', 'ru', 'jp', 'tr', 'ge', 'cu', 'in', 'kz', 'ua', 'mn', 'kr', 'cn'],
+};
+
 /** What a finish at the games is worth: a medal for the first three, whichever way the event is decided. */
 export const MEDAL_FOR = { Champion: 'gold', Final: 'silver', '2nd': 'silver', Semifinal: 'bronze', '3rd': 'bronze' };
+
+/**
+ * Where a sport is played at all, for the few that are not played everywhere (a rink, a pitch, a league that only
+ * some countries have). Any sport not listed here is played in every country. Schools offer every sport their country
+ * plays (engine/schoollife.js sportsHere).
+ */
+export const PLAYED_IN = {
+  american_football: k('us', 'ca', 'mx', 'jp', 'de', 'at', 'uk', 'fi', 'se', 'dk', 'nl', 'fr', 'it', 'es', 'pl', 'cz', 'br', 'au', 'kr', 'pa'),
+  ice_hockey: k('ca', 'us', 'se', 'fi', 'ru', 'cz', 'sk', 'ch', 'at', 'de', 'no', 'dk', 'kz', 'ua', 'fr', 'it', 'uk', 'jp', 'kr', 'cn', 'hu', 'pl', 'ee', 'nl', 'be', 'ro', 'rs', 'hr', 'mn', 'ge', 'il', 'es', 'mx', 'ad'),
+  figure_skating: k('ca', 'us', 'ru', 'jp', 'kr', 'cn', 'fr', 'it', 'de', 'ch', 'at', 'se', 'fi', 'no', 'cz', 'sk', 'ua', 'kz', 'pl', 'hu', 'uk', 'nl', 'ee', 'ge', 'il', 'es', 'ro', 'be', 'dk', 'hr', 'rs', 'mn', 'tw', 'hk', 'ph', 'au', 'mx', 'br', 'ad'),
+  cricket: k('in', 'pk', 'bd', 'af', 'np', 'au', 'uk', 'nz', 'za', 'zw', 'jm', 'bs', 'bz', 'gy', 'ie', 'nl', 'ae', 'qa', 'kw', 'ca', 'us', 'ke', 'ug', 'ng', 'gh', 'fj', 'ws', 'pg', 'my', 'sg', 'hk', 'mv', 'mu', 'sc'),
+  baseball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'cr', 'gt', 'sv', 'jp', 'kr', 'tw', 'cn', 'hk', 'ph', 'au', 'nz', 'nl', 'it', 'de', 'cz', 'es', 'fr', 'uk', 'be', 'at', 'il', 'za', 'br'),
+  softball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'gt', 'jp', 'kr', 'tw', 'cn', 'ph', 'au', 'nz', 'nl', 'it', 'cz', 'uk', 'za', 'bz', 'br', 'ar'),
+  rugby: k('nz', 'za', 'uk', 'ie', 'fr', 'au', 'ar', 'fj', 'ws', 'pg', 'it', 'jp', 'ge', 'ro', 'us', 'ca', 'uy', 'cl', 'br', 'es', 'pt', 'de', 'be', 'nl', 'ru', 'ke', 'ug', 'zw', 'tn', 'ma', 'hk', 'sg', 'pf', 'mu'),
+  pickleball: k('us', 'ca', 'mx', 'in', 'es', 'uk', 'au', 'nz', 'ph', 'sg', 'my', 'vn', 'kr', 'jp', 'pr'),
+};
+/** Whether a sport is played in a country at all. */
+export const playedIn = (sportId, countryId) => !PLAYED_IN[sportId] || PLAYED_IN[sportId].includes(countryId);
 
 export const SPORTS = Object.fromEntries(SPORTS_LIST.map((s) => [s.id, s]));
 export const sportOf = (id) => SPORTS[id] ?? null;

@@ -302,8 +302,8 @@ function matched(kind, id, site, what) {
 
 /** What the day training places are announced is called: Match Day in the US (from 1952), plainer words elsewhere. */
 function matchDay(p) {
-  if (p.countryId === 'us') return year() >= ERA.residencyMatch ? 'Match Day' : 'The day the hospital letters arrive';
-  if (p.countryId === 'ca') return 'Match Day';
+  if (p.countryId === 'us') return year() >= ERA.residencyMatch ? 'The day training places are announced' : 'The day the hospital letters arrive';
+  if (p.countryId === 'ca') return 'The day training places are announced';
   return 'Results day for specialty training';
 }
 
@@ -383,16 +383,18 @@ export function retitle(p = player(), m = med()) {
     const s = SPECIALTY_BY_ID[t.specialtyId];
     // Before the modern residency system, a doctor in hospital training was a house officer (US, before about 1950).
     const old = year() < 1950;
-    c.title = t.kind === 'fellowship' ? `${s.name} fellow` : t.kind === 'internship' ? (old ? 'House officer' : 'Intern') : t.chief ? `Chief resident, ${s.name}`
+    c.title = t.kind === 'fellowship' ? `Advanced trainee, ${s.name}` : t.kind === 'internship' ? (old ? 'House officer' : 'Hospital intern') : t.chief ? `Lead trainee doctor, ${s.name}`
       : old ? `House officer, ${s.name}${t.pgy > 1 ? ` (year ${t.pgy})` : ''}`
         // Outside the United States the game does not use US titles: a plain "specialty trainee" with the year.
-        : p.countryId !== 'us' ? `Specialty trainee, ${s.name} (year ${t.pgy})` : `${RESIDENT_TITLES[t.pgy - 1] ?? 'Resident'}, ${s.name} (PGY-${t.pgy})`;
+        // In plain words everywhere: a trainee doctor, the specialty and the year (no PGY-1 and the like).
+        : `Trainee doctor, ${s.name} (year ${t.pgy})`;
   } else if (m.job && m.job.rank !== 'ceo' && !(m.job.legacy && !m.job.specialtyId)) {
     const s = SPECIALTY_BY_ID[m.job.specialtyId];
     const doc = s?.doctor ?? 'physician';
-    c.title = { attending: year() < 1950 ? `Staff ${doc}` : `Attending ${doc}`, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
-      experienced: `Experienced attending ${doc}`, vice_chair: `Vice chair for education, ${s?.name ?? 'Medicine'}`,
-      chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${doc[0].toUpperCase()}${doc.slice(1)} in private practice` }[m.job.rank] ?? `Attending ${doc}`;
+    const Doc = `${doc[0].toUpperCase()}${doc.slice(1)}`;
+    c.title = { attending: year() < 1950 ? `Staff ${doc}` : Doc, senior: `Senior ${doc}`, director: `Medical director, ${s?.name ?? 'Medicine'}`, chief: m.job.specialtyId === 'gensurg' ? 'Chief of Surgery' : `Chief of ${s?.name ?? 'Medicine'}`,
+      experienced: `Experienced ${doc}`, vice_chair: `Vice chair for education, ${s?.name ?? 'Medicine'}`,
+      chair: `Chair of ${s?.name ?? 'Medicine'}`, cmo: 'Chief medical officer', owner: `${Doc} in private practice` }[m.job.rank] ?? Doc;
   }
 }
 
@@ -414,7 +416,7 @@ export function trainingYear() {
   if (!t) return;
   // Leaving the hospital ends the program.
   if (p.career.employerId !== t.hospitalId) {
-    note(`Left ${t.kind} in ${specialtyName(t.specialtyId)} before finishing (PGY-${t.pgy}).`, 'career');
+    note(`Left ${t.kind === 'fellowship' ? 'advanced training' : 'training'} in ${specialtyName(t.specialtyId)} before finishing (year ${t.pgy}).`, 'career');
     m.training = null;
     m.stage = m.completed.length ? 'practice' : 'graduate';
     return;
@@ -428,7 +430,7 @@ export function trainingYear() {
   if (s?.surgical || t.kind === 'fellowship' && s?.procedures?.length) grow('technical', 3, m);
   if (t.pgy >= 3) grow('leadership', 1.5, m);
   m.experience.years += 1;
-  log(`Your ${t.kind === 'fellowship' ? 'fellowship' : t.kind === 'internship' ? 'internship' : 'residency'} evaluation, PGY-${t.pgy}: ${words}.`, 'system', score >= 52 ? 'good' : 'bad');
+  log(`Your year-${t.pgy} review as a ${t.kind === 'fellowship' ? 'advanced trainee' : t.kind === 'internship' ? 'hospital intern' : 'trainee doctor'}: ${words}.`, 'system', score >= 52 ? 'good' : 'bad');
   // A weak year means remediation; a second in a row ends the program. Never instantly.
   if (score < 38) {
     t.probation += 1;
@@ -465,7 +467,7 @@ function licenseCheck(p, m, t) {
   const dpm = m.route === 'dpm';
   const pass = roll(clamp(0.82 + (m.skills.reasoning - 50) / 200, 0.5, 0.97));
   const name = dpm ? 'the podiatric board exams and a state license' : j.license.name;
-  if (!pass) { log(`You did not pass ${dpm ? 'the final podiatric board exam' : p.countryId === 'us' ? (year() >= 1992 ? 'USMLE Step 3' : year() >= 1916 ? 'National Board Part III' : 'the state board examination') : 'the registration assessment'} this year. You will sit it again; training goes on under supervision.`, 'system', 'bad'); return; }
+  if (!pass) { log(`You did not pass ${dpm ? 'the final podiatric board exam' : p.countryId === 'us' ? (year() >= 1916 ? 'the last part of the licensing exam' : 'the state board examination') : 'the registration assessment'} this year. You will sit it again; training goes on under supervision.`, 'system', 'bad'); return; }
   m.license = { status: 'full', name, since: year(), countryId: p.countryId };
   const id = dpm ? 'podiatric' : 'medical';
   if (!(p.flags.licenses ??= []).includes(id)) p.flags.licenses.push(id);

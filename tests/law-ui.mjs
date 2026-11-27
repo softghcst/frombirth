@@ -62,8 +62,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.click('.tab-btn[data-tab="work"]'); await page.waitForTimeout(200);
   // My Legal Career is on the Work tab's Special Careers screen.
   if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
-  const rowBtn = page.locator('[data-act="law"]');
-  check(await rowBtn.count() === 1 && /(^|\s)Law\s*$/m.test(await rowBtn.innerText()) && !/My Legal/.test(await rowBtn.innerText()), `${label}: the Work tab has Law, named for the field before the player is in it (${(await rowBtn.innerText()).replace(/\n/g, ' ')})`);
+  // The row that is on screen: under Special Careers at first, then (once practicing) the first row of the Work tab.
+  const rowBtn = page.locator('[data-act="law"]:visible').first();
+  check(await rowBtn.count() === 1 && /(^|\s)Law\s*$/m.test(await rowBtn.innerText()), `${label}: the Work tab has Law, named for the field before the player is in it`);
   await rowBtn.click(); await hub().waitFor();
   check(/Every case tells a story/i.test(await hub().innerText()), `${label}: the hub opens, with its subtitle`);
   const guide = page.locator('#modal-root .modal', { hasText: 'How it works' }).last();

@@ -329,6 +329,7 @@ export function tickEmployers() {
     if (post.status !== 'open') continue;
     if (post.expires < now) { post.status = 'expired'; continue; }
     const competition = 0.32 + ph.hiring * -1 + (post.level === 0 ? 0.12 : 0);
+    if (post.featuredUntil >= now) continue; // a prominent opening on the player's list is held open (engine/jobSearch.js)
     if (post.posted < now && rng.chance(clamp(competition, 0.15, 0.6))) fillPosting(post.id, 'someone else');
   }
   // Keep the save small: a closed opening is forgotten after a year, unless the player took it or still holds an offer or lead for it.

@@ -17,6 +17,9 @@ import { fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { country } from '../state.js';
 import { inputModal } from './modals.js';
+import { accountsOf } from '../engine/digital/accounts.js';
+import { formatOptions, publish as postOnline } from '../engine/digital/content.js';
+import { PLATFORM_BY_ID } from '../data/digital.js';
 
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`;
@@ -45,7 +48,7 @@ const VIEWS = {
       const indie = j.freelance ? `<div class="card"><h3>Freelance</h3>${kv([['Since', String(j.freelance.since)], ['Stories sold', String(jn.myPubs(p).filter((x) => x.fee).length)], ['Earned from them', fmtMoney(jn.myPubs(p).reduce((n, x) => n + (x.fee ?? 0), 0), c)]])}<p class="muted" style="margin:6px 0 0">Report a lead, then pitch it to a newsroom from its notebook. They pay once, when it runs.</p></div>` : '';
       const ways = p.age >= 18 ? `<div class="section-label">Working for yourself</div><div class="btn-stack">${j.freelance ? '' : btn('freelance', 'Go freelance', { disabled: !!fwhy, sub: fwhy || 'Find stories and sell them to newsrooms. No salary.' })}${own ? '' : btn('start', 'Start your own publication', { sub: 'A newsletter, a podcast, a website or a paper, with your own money.' })}</div>` : '';
       const titles = jn.ownedTitles(p);
-      const growRows = (t) => kv([['Research', ['None', 'A fact-checker', 'A research desk'][t.research ?? 0]], ['Bureaus', (t.bureaus ?? []).join(', ') || 'None'], ...(t.investor ? [['Investor', `${Math.round(t.investor.share * 100)}% of profits`]] : [])]);
+      const growRows = (t) => kv([['Loyal readers', `${Math.round(t.loyalty ?? 50)}/100`], ['Research', ['None', 'A fact-checker', 'A research desk'][t.research ?? 0]], ['Bureaus', (t.bureaus ?? []).join(', ') || 'None'], ...(t.investor ? [['Investor', `${Math.round(t.investor.share * 100)}% of profits`]] : [])]);
       const growBtns = (t) => `<div class="btn-stack" style="margin-top:6px">${btn('research', 'Research budget', { arg: t.id, sub: 'Checking costs money; mistakes cost readers.' })}${btn('bureau', 'Open a bureau', { arg: t.id, sub: 'Another city to cover.' })}</div>`;
       const sisters = titles.filter((t) => t.id !== own?.id);
       const company = own ? `<div class="section-label">${sisters.length ? 'Your media company' : 'Growing it'}</div>
@@ -70,7 +73,7 @@ const VIEWS = {
     const ed = npc(o.editorId);
     jn.raiseComplaints(p);
     const waiting = jn.myPubs(p).filter((x) => x.complaint?.raised && !x.complaint.resolved);
-    return `<div class="card"><h3>${esc(p.career.title)}, ${esc(o.name)}</h3>${kv([['Beat', BEATS[j.beat].name], ['Since', String(j.since)], ['Time left this year', `${jn.actionsLeft(p)} of ${ACTIONS_A_YEAR} actions`], ['Stories published', String(jn.myPubs(p).length)]])}
+    return `<div class="card"><h3>${esc(p.career.title)}, ${esc(o.name)}</h3>${kv([['Beat', BEATS[j.beat].name], ['Since', String(j.since)], ['Time left this year', `${jn.actionsLeft(p)} of ${ACTIONS_A_YEAR} actions`], ['Workload', jn.workload(p).text], ['Stories published', String(jn.myPubs(p).length)]])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Your editor', `${Math.round(ed.meters.relationship)}%`, ed) : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('beat', 'Change beat', { sub: BEATS[j.beat].blurb })}</div>
         ${j.leave === store.state.year ? '<p class="muted" style="margin:6px 0 0">You are on leave this year. No assignments; the desk is kept for you.</p>' : ''}</div>
@@ -114,6 +117,8 @@ const VIEWS = {
     const heard = (c) => c.heard.map((h) => `${h.offRecord ? '(off the record) ' : ''}${h.from}: ${h.says ? 'yes' : 'no'}`).join(' · ');
     return `<div class="card"><h3>${esc(nb.title)}</h3>${kv([['Status', STAGE[nb.status] ?? nb.status], ['Beat', BEATS[nb.beat].name], ['About', nb.subject ?? '—'], ['For', nb.outlet], ...(nb.deadline ? [['Due by', when(nb.deadline)]] : [])])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Editor', '', ed) : ''}</div>
+      ${live && nb.race ? `<div class="card"><h3>${nb.race.over ? 'The rival has run it' : 'A rival is on it'}</h3><p class="muted" style="margin:0">${esc(nb.race.outlet)} ${nb.race.over ? 'got there first. Yours can still be the one that is right.' : `is working on the same story, and may run it by ${when(nb.race.by)}. First is not the same as right: what is unchecked can wait, or stay out.`}</p></div>` : ''}
+      ${live && nb.conflict ? `<div class="card"><h3>A conflict of interest</h3><p class="muted" style="margin:0 0 6px">This story involves ${esc(nb.conflict)}. ${nb.disclosed ? 'You have disclosed it; the story will say so.' : 'Tell your editor, and the readers.'}</p>${nb.disclosed ? '' : btn('disclose', 'Disclose it', { arg: nb.id })}</div>` : ''}
       ${nb.review?.notes?.length && nb.status === 'revise' ? `<div class="card"><h3>Your editor's notes</h3>${nb.review.notes.map((x) => `<p style="margin:4px 0">${esc(x)}</p>`).join('')}</div>` : ''}
       <div class="section-label">Claims</div>
       ${nb.claims.map((c) => `<div class="card jn-claim"><div class="kv"><span>${esc(c.text)}${c.kind === 'allegation' ? ' <small class="muted">(allegation)</small>' : c.kind === 'opinion' ? ' <small class="muted">(opinion)</small>' : ''}</span><span>${pill(c.status)}</span></div>
@@ -127,7 +132,8 @@ const VIEWS = {
       ${nb.fee ? `<p class="muted">Commissioned: ${esc(fmtMoney(nb.fee, country()))} when it runs.</p>` : ''}
       ${live ? `<div class="section-label">Writing it</div><div class="btn-stack">
         ${btn('comment', nb.comment ? `They ${nb.comment.said}` : 'Ask them for comment', { arg: nb.id, disabled: !!nb.comment, sub: nb.needsComment ? 'Needed before an allegation runs.' : '' })}
-        ${nb.needsLegal ? btn('legal', nb.legal ? 'The lawyer has read it' : 'Have the lawyer read it', { arg: nb.id, disabled: !!nb.legal, sub: nb.legal?.notes ?? '' }) : ''}
+        ${nb.needsLegal ? btn('legal', nb.legal ? (nb.beat === 'war' ? 'The censor has read it' : 'The lawyer has read it') : nb.beat === 'war' ? 'Send it to the censor' : 'Have the lawyer read it', { arg: nb.id, disabled: !!nb.legal, sub: nb.legal?.notes ?? '' }) : ''}
+        ${jn.isReporter(p) && ['assigned', 'reporting'].includes(nb.status) ? btn('help', 'Ask a colleague for help', { arg: nb.id, sub: 'Once a year: they take one interview.' }) : ''}
         ${btn('draft', nb.draft ? 'Rewrite the draft' : 'Write the draft', { arg: nb.id, sub: nb.draft ? `"${nb.draft.headlineText}"` : 'Choose what goes in, and the headline.' })}
         ${nb.draft && nb.status !== 'approved' ? btn('submit', 'Send it to your editor', { arg: nb.id, cls: 'primary' }) : ''}
         ${nb.status === 'approved' ? (jn.isBroadcast(jn.outlet(jn.storyOf(nb.id).outletId)) ? btn('live', 'Go live', { arg: nb.id, cls: 'primary', sub: 'Present it on air. It goes out once.' }) : btn('publish', 'Publish', { arg: nb.id, cls: 'primary', sub: 'It runs once, as it is.' })) : ''}
@@ -154,15 +160,21 @@ const VIEWS = {
         ${x.corrections.map((c) => `<p class="muted" style="margin:8px 0 0"><strong>${esc(c.text)}</strong> (${esc(when(c.at))})</p>`).join('')}</div>
       ${x.sources.length ? `<div class="section-label">Sources</div>${x.sources.map((s) => (s.npcId && npc(s.npcId) ? row('person', s.npcId, s.name, ATTRIBUTION[s.attribution].name, '', npc(s.npcId)) : `<div class="kv"><span>${esc(s.name)}</span><span>${esc(ATTRIBUTION[s.attribution].name)}</span></div>`)).join('')}` : ''}
       ${x.segment ? `<div class="card"><h3>On air</h3>${kv([['Delivery', `${x.segment.delivery}/100`], ['What you did', x.segment.choices.map((c) => jn.LIVE_CHOICES[c].label.toLowerCase()).join(', ')]])}${x.segment.note ? `<p class="muted" style="margin:4px 0 0">${esc(x.segment.note)}</p>` : ''}</div>` : ''}
+      ${x.reporterId === p.id && store.state.year - x.year <= 1 && accountsOf(p.id).some((a) => a.status === 'active') ? `<div class="btn-stack">${btn('share', 'Share it on your accounts', { arg: x.id, sub: 'A link to the article, from Digital Life.' })}</div>` : ''}
       ${x.reporterId === p.id && !jn.followStoryWhy(x.id, p) ? `<div class="btn-stack">${btn('follow', 'Follow it up', { arg: x.id, sub: 'What has happened since?' })}</div>` : ''}
       ${kv([[x.medium === 'television' ? 'Viewers' : x.medium === 'radio' ? 'Listeners' : 'Readers', x.readers.toLocaleString('en-US')]])}`;
   },
 
   career(p) {
     const j = jn.J(p);
-    return `<div class="card"><h3>Your journalism</h3>${kv([['Stories published', String(jn.myPubs(p).length)], ['Corrections run', String(jn.myPubs(p).reduce((n, x) => n + x.corrections.length, 0))], ['Prizes', String(j.awards.length)]])}</div>
+    const r0 = (v) => `${Math.round(v ?? 0)}/100`;
+    const cs = jn.contacts(p);
+    return `<div class="card"><h3>Your journalism</h3>${kv([['Stories published', String(jn.myPubs(p).length)], ['Exclusives', String(jn.myPubs(p).filter((x) => x.exclusive).length)], ['Corrections run', String(jn.myPubs(p).reduce((n, x) => n + x.corrections.length, 0))], ['Prizes', String(j.awards.length)]])}</div>
+      <div class="card"><h3>Standing</h3><p class="muted" style="margin:0 0 6px">Each is its own: famous is not the same as accurate.</p>${kv([['Accuracy', r0(j.rep.accuracy)], ['Trust of sources and readers', r0(j.rep.trust)], ['Public recognition', r0(j.rep.recognition)], ...(j.rep.leadership != null ? [['Leadership', r0(j.rep.leadership)]] : [])])}
+        ${kv([['Reporting', r0(j.skills.reporting)], ['Interviewing', r0(j.skills.interviewing)], ['Verification', r0(j.skills.verification)], ['Writing', r0(j.skills.writing)], ...(j.skills.broadcast != null ? [['On air', r0(j.skills.broadcast)]] : [])])}</div>
+      ${cs.length ? `<div class="section-label">Your contacts</div>${cs.slice(0, 12).map((c) => row('person', c.npcId, `${c.n.firstName} ${c.n.lastName}`, `${c.n.occupation ?? ''} · spoken ${c.times} time${c.times === 1 ? '' : 's'}`, c.trust >= 60 ? 'Trusts you' : c.trust < 35 ? 'Wary' : '', c.n)).join('')}` : ''}
       ${j.awards.length ? `<div class="section-label">Prizes</div>${j.awards.map((a) => `<div class="kv"><span>${esc(a.name)}</span><span>${a.year}</span></div>`).join('')}` : ''}
-      ${jn.isReporter(p) ? `<div class="btn-stack">${btn('takeleave', 'Take a year\'s leave', { sub: 'A year away from the desk. Your job is kept.' })}</div>` : ''}
+      ${jn.isReporter(p) ? `<div class="btn-stack">${btn('takeleave', 'Take a year\'s leave', { sub: 'A year away from the desk. Your job is kept.' })}${btn('lighter', 'Ask for a lighter year', { sub: 'Fewer assignments next year.' })}</div>` : ''}
       <div class="section-label">History</div>${[...j.history].reverse().map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('') || '<p class="empty">Nothing yet.</p>'}`;
   },
 };
@@ -189,7 +201,7 @@ const ACTIONS = {
   apply: (arg, x) => { const [id, role] = arg.split(':'); return x.say(jn.apply(id, role)); },
   async beat(_, x) {
     const p = player();
-    const b = await pickModal({ title: 'Your beat', cancel: 'Back', options: Object.entries(BEATS).map(([k, v]) => { const why = jn.beatWhy(k, p); return { value: k, label: v.name, sub: why || v.blurb, disabled: !!why }; }) });
+    const b = await pickModal({ title: 'Your beat', cancel: 'Back', options: Object.entries(BEATS).filter(([, v]) => !v.assigned).map(([k, v]) => { const why = jn.beatWhy(k, p); return { value: k, label: v.name, sub: why || v.blurb, disabled: !!why }; }) });
     if (b) await x.say(jn.setBeat(b));
   },
   story: (id, x) => x.go('story', id),
@@ -266,10 +278,23 @@ const ACTIONS = {
   },
   async lead(_, x) {
     const p = player();
-    const b = await pickModal({ title: 'Pitch a lead', body: 'A story you want to chase, on any beat open to you.', cancel: 'Back', options: Object.entries(BEATS).map(([k, v]) => { const why = jn.pitchLeadWhy(k, p); return { value: k, label: v.name, sub: why || v.blurb, disabled: !!why }; }) });
+    const b = await pickModal({ title: 'Pitch a lead', body: 'A story you want to chase, on any beat open to you.', cancel: 'Back', options: Object.entries(BEATS).filter(([, v]) => !v.assigned).map(([k, v]) => { const why = jn.pitchLeadWhy(k, p); return { value: k, label: v.name, sub: why || v.blurb, disabled: !!why }; }) });
     if (b) await x.say(jn.pitchLead(b));
   },
   follow: (id, x) => x.say(jn.followStory(id)),
+  disclose: (id, x) => x.say(jn.disclose(id)),
+  help: (id, x) => x.say(jn.requestSupport(id)),
+  lighter: (_, x) => x.say(jn.askLighterYear()),
+  async share(id, x) {
+    const p = player();
+    const pub = jn.S().pubs[id];
+    const accs = accountsOf(p.id).filter((a) => a.status === 'active');
+    const accId = accs.length === 1 ? accs[0].id : await pickModal({ title: 'Share it on', cancel: 'Back', options: accs.map((a) => ({ value: a.id, label: PLATFORM_BY_ID[a.platformId]?.name ?? a.platformId, sub: `@${a.handle}` })) });
+    if (!accId) return;
+    const fmt = formatOptions(accId).find((f) => !f.why && ['text', 'link', 'photo'].includes(f.id)) ?? formatOptions(accId).find((f) => !f.why);
+    if (!fmt) { await x.say({ ok: false, text: 'That account cannot take a post right now.', tone: 'neutral' }); return; }
+    await x.say(postOnline({ accountId: accId, format: fmt.id, topic: 'work', source: { type: 'article', key: `article:${id}`, text: pub.headline } }));
+  },
   async research(id, x) {
     const lv = await pickModal({ title: 'Research budget', cancel: 'Back', options: [{ value: '0', label: 'None', sub: 'Cheapest. Mistakes are yours to find.' }, { value: '1', label: 'A fact-checker', sub: 'Costs more each year.' }, { value: '2', label: 'A research desk', sub: 'Costs a good deal each year.' }] });
     if (lv != null) await x.say(jn.setResearch(id, Number(lv)));
