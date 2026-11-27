@@ -41,6 +41,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
   const direct = page.locator('.sec-row[data-act="sc:music"]');
   check(await direct.count() >= 1 && /Music/.test(await direct.first().innerText()) && /Your career/.test(await direct.first().innerText()), `${label}: the Work row is the special career, by name`);
+  check(/🎸/.test(await direct.first().innerText()) && !/^\s*My /m.test(await direct.first().innerText()), `${label}: with the field's picture, and no "My" in the name`);
   check(await page.locator('.sec-row', { hasText: 'Job Details' }).count() === 1, `${label}: the job's details are one row further`);
   await direct.first().click(); await page.waitForTimeout(300);
   check(await page.locator('#modal-root .modal').count() >= 1, `${label}: one tap opens the career's own screen`);

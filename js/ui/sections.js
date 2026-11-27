@@ -24,8 +24,9 @@ function titleOf(card) {
   return h ? h.textContent.trim() : '';
 }
 
-const rowInner = (title, sub, alert) => `${rowTile(title, iconFor(title))}
-  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${(sub || menuInfo(title)?.desc) ? `<small>${esc(sub || menuInfo(title).desc)}</small>` : ''}</span>
+// `menu` names the row for its picture when the label is the player's own (a job title).
+const rowInner = (title, sub, alert, menu = title) => `${rowTile(menu, iconFor(menu))}
+  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${(sub || menuInfo(menu)?.desc) ? `<small>${esc(sub || menuInfo(menu).desc)}</small>` : ''}</span>
   ${alert ? '<span class="nr-dot" aria-hidden="true"></span>' : ''}${icon('chevron', 'nr-chev')}`;
 
 /** Sections inside sections are named by their path: "Work › Politics". */
@@ -67,7 +68,7 @@ function build(container, prefix) {
       const go = document.createElement('button');
       go.className = 'nav-row sec-row';
       go.dataset.act = card.dataset.direct;
-      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', card.dataset.directDot === '1');
+      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', card.dataset.directDot === '1', card.dataset.directMenu || undefined);
       card.before(go);
     }
     const row = document.createElement('button');

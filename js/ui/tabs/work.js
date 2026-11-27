@@ -429,20 +429,21 @@ function findWork(p, list) {
  */
 function ownCareer(p, list) {
   const sc = special.current(p);
-  if (sc) return { act: `sc:${sc}`, title: special.SPECIAL_BY_ID[sc].name, sub: `Your career${p.career?.title ? `: ${p.career.title}` : ''}`, dot: false };
+  // Named for the job, as everywhere: the title when there is one, the field otherwise; the picture is the field's.
+  if (sc) { const name = special.SPECIAL_BY_ID[sc].name; return { act: `sc:${sc}`, title: p.career?.title || name, menu: name, sub: p.career?.title ? name : 'Your career', dot: false }; }
   const m = p.medicine;
   if (has(list, 'medicine') && (m?.job || m?.training)) {
     let dot = false;
     try { dot = medCaseload(m, p).some((c) => c.status !== 'closed'); } catch { /* no caseload this year */ }
-    return { act: 'medicine', title: 'My Medical Career', sub: dot ? 'Patients are waiting for you' : (p.career?.title ?? 'Patients, training and your hospital'), dot };
+    return { act: 'medicine', title: screenName('medicine', p), menu: 'Medicine', sub: dot ? 'Patients are waiting for you' : (p.career?.title ?? 'Patients, training and your hospital'), dot };
   }
   if (LEGAL_CAREERS.includes(p.career?.careerId)) {
     let dot = false;
     try { dot = (lawOf(p).caseIds ?? []).map(lawCaseById).some((c) => c && !c.done && c.awaiting); } catch { /* not practicing yet */ }
-    return { act: 'law', title: 'My Legal Career', sub: dot ? 'A day in court is waiting for you' : (p.career?.title ?? 'Your cases'), dot };
+    return { act: 'law', title: screenName('law', p), menu: 'Law', sub: dot ? 'A day in court is waiting for you' : (p.career?.title ?? 'Your cases'), dot };
   }
   if (INVESTIGATIVE.includes(p.career?.careerId) || p.investigator?.job) {
-    return { act: 'investigations', title: 'My Investigations', sub: p.career?.title ?? 'Your cases and your department', dot: false };
+    return { act: 'investigations', title: screenName('investigations', p), menu: 'Law Enforcement', sub: p.career?.title ?? 'Your cases and your department', dot: false };
   }
   return null;
 }
@@ -567,7 +568,7 @@ export default {
       <div class="section-label">You</div>
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${(() => { const d = ownCareer(p, work); const c0 = careerCard(); return d ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="${esc(d.act)}" data-direct-title="${esc(d.title)}" data-direct-sub="${esc(d.sub)}"${d.dot ? ' data-direct-dot="1"' : ''}>`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${(() => { const d = ownCareer(p, work); const c0 = careerCard(); return d ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="${esc(d.act)}" data-direct-title="${esc(d.title)}" data-direct-sub="${esc(d.sub)}" data-direct-menu="${esc(d.menu ?? '')}"${d.dot ? ' data-direct-dot="1"' : ''}>`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
       ${findWork(p, work)}
       ${specialCareers(p, work)}`;
 
