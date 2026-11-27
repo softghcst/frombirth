@@ -157,12 +157,17 @@ export const HOSTED = {
 
 /** Things neighbors fall out over, and the shared things they are about. Never more than an ordinary disagreement. */
 export const DISAGREEMENTS = {
-  noise: { name: 'Noise', text: 'the noise from {who}\'s place late at night' },
-  parking: { name: 'Parking', text: 'where {who} parks', from: 1925, blocks: ['street', 'lane'] },
-  boundary: { name: 'A boundary', text: 'the line between your yard and {who}\'s', blocks: ['street', 'lane'] },
-  pet: { name: 'A pet', text: '{who}\'s dog barking through the day', pet: true },
-  shared: { name: 'A shared space', text: 'how {who} leaves the shared hallway and bins', blocks: ['building'] },
-  rules: { name: 'The building rules', text: 'whether {who} is allowed to keep bikes in the stairwell', blocks: ['building'] },
+  noise: { scene: 'hood_dispute_noise', name: 'Noise', text: 'the noise from {who}\'s place late at night' },
+  parking: { scene: 'hood_dispute_parking', name: 'Parking', text: 'where {who} parks', from: 1925, blocks: ['street', 'lane'] },
+  boundary: { scene: 'hood_dispute_boundary', name: 'A boundary', text: 'the line between your yard and {who}\'s', blocks: ['street', 'lane'] },
+  pet: { scene: 'hood_dispute_pet', name: 'A pet', text: '{who}\'s dog barking through the day', pet: true },
+  shared: { scene: 'hood_dispute_shared', name: 'A shared space', text: 'how {who} leaves the shared hallway and trash cans', blocks: ['building'] },
+  rules: { scene: 'hood_dispute_rules', name: 'The building rules', text: 'whether {who} is allowed to keep bikes in the stairwell', blocks: ['building'] },
+  tree: { scene: 'hood_dispute_tree', name: 'A tree', text: 'the branches of {who}\'s tree hanging over your side', blocks: ['street', 'lane'] },
+  smoke: { scene: 'hood_dispute_smoke', name: 'Smoke', text: 'the smoke from {who}\'s bonfires', blocks: ['street', 'lane'] },
+  building: { scene: 'hood_dispute_building', name: 'Building work', text: 'the building work at {who}\'s place starting at seven every morning', from: 1950 },
+  light: { scene: 'hood_dispute_light', name: 'A light', text: 'the security light on {who}\'s house shining into your bedroom', from: 1975, blocks: ['street', 'lane'] },
+  drums: { scene: 'hood_dispute_drums', name: 'Music practice', text: 'the drum practice coming from {who}\'s place', from: 1950 },
 };
 
 /**

@@ -904,6 +904,7 @@ const STORY_OF = {
   // Each community event and each kind of help has its own scene, but they are one story each for the gaps above.
   ...Object.fromEntries(Object.values(COMMUNITY_EVENTS).filter((x) => x.scene).map((x) => [x.scene, 'hood_community_event'])),
   ...Object.fromEntries(Object.values(NEIGHBOR_NEEDS).map((x) => [x.scene, 'hood_need_hand'])),
+  ...Object.fromEntries(Object.values(DISAGREEMENTS).map((x) => [x.scene, 'hood_disagreement'])),
 };
 
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
@@ -1329,7 +1330,7 @@ function apply(state, hood, e, y, quiet = false) {
       if (H.disputes.some((x) => x.res === r.id && x.status === 'open')) return;
       const id = `${hood.id}d${t}`;
       H.disputes.push({ id, h: hood.id, res: r.id, kind: e.kind, t, status: 'open' });
-      queueAbout(state, 'hood_disagreement', r.id, { about: DISAGREEMENTS[e.kind].text.replace('{who}', r.f), disputeId: id }, `dispute/${id}`, t);
+      queueAbout(state, DISAGREEMENTS[e.kind].scene ?? 'hood_disagreement', r.id, { about: DISAGREEMENTS[e.kind].text.replace('{who}', r.f), disputeId: id }, `dispute/${id}`, t);
       return;
     }
     case 'kid': {
