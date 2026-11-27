@@ -31,7 +31,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 /** Who gets a full life. Friends get one too, but their families stay off-screen. */
-const LIVE = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'stepsibling', 'niece', 'inlaw', 'friend', 'coworker', 'boss', 'colleague'];
+const LIVE = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'sibling', 'stepsibling', 'niece', 'inlaw', 'friend', 'coworker', 'boss', 'colleague'];
 /** Whose partners and children become people you can see. */
 const FAMILY_MAKERS = ['child', 'grandchild', 'sibling'];
 /** Whose big moments are reported in the player's journal. */

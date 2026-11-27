@@ -25,6 +25,8 @@ import { catalog, uniOf, teaches } from './university.js';
 import { spendAction } from './relationships.js';
 import { wealthTier } from './living.js';
 import { storyBeat } from './storyDirector.js';
+import { placementOf } from './fostering.js';
+import { keyedDice } from './keyedDice.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcOf = (id) => store.state.npcs[id];
@@ -38,8 +40,21 @@ const kidsAtSchool = () => livingNpcs().filter(atSchool);
 /** The stage a child of this age is in, here: 'elementary' | 'middle' | 'high'. */
 const stageOf = (n) => sch.stageDue(n.age, player().countryId)?.id ?? null;
 
-/** A child of the player's who is of school age and living at home. */
-export const atSchool = (n) => !!n && n.alive && n.role === 'child' && n.age >= 5 && n.age < LEAVING_AGE && !!n.life?.edu && !n.flags.abroad;
+/**
+ * A child the player is raising: their own, a spouse's child under 18 (a stepchild in the home), or a child placed with
+ * them, in foster care, kinship care or guardianship (engine/fostering.js). They all go to school the same way.
+ */
+export function homeKid(n) {
+  if (!n?.alive) return false;
+  if (n.role === 'child') return true;
+  if (n.flags?.placementId && placementOf(n.id)) return true;
+  if (n.role === 'stepchild' && n.age < 18) { const via = store.state.npcs[n.flags.stepVia]; return !!via?.alive && via.role === 'spouse'; }
+  return false;
+}
+/** In care with the player now (foster, kinship or guardianship): the agency has a say in their schooling. */
+export const inCare = (n) => !!(n?.flags?.placementId && placementOf(n.id));
+/** A child the player is raising who is of school age and living at home. */
+export const atSchool = (n) => homeKid(n) && n.age >= 5 && n.age < LEAVING_AGE && !!n.life?.edu && !n.flags.abroad;
 /** The child as the school rules see a pupil. */
 const asPupil = (n) => ({ stats: { intellect: n.meters.intellect }, talents: n.talents ?? {}, royal: null });
 export const schoolOf = (n) => (n.life?.edu?.schoolId ? store.state.schools?.[n.life.edu.schoolId] ?? null : null);
@@ -76,6 +91,33 @@ function place(n, kindId, quiet = false) {
   return text;
 }
 
+/**
+ * A child placed with the player starts at school at once. Where it is in their interest they stay at the school they
+ * already know, with transport arranged (in the US, the Every Student Succeeds Act's school-stability rule); otherwise
+ * they are enrolled at the local school straight away, records or no records, and fall back a little while they
+ * settle. Their marks then come back as they settle in (tickKids). @returns {string} what happened
+ */
+export function enrollFromCare(n) {
+  if (!n?.life?.edu || !stageOf(n)) return '';
+  const d = keyedDice(`care-school/${store.state.slotId ?? ''}/${n.id}`);
+  const wantsToStay = /same school/.test(n.flags.needs ?? '');
+  const stays = d.chance(wantsToStay ? 0.9 : 0.6);
+  place(n, 'public', true);
+  const e = n.life.edu;
+  e.fromCare = { year: store.state.year, stayed: stays };
+  const school = schoolOf(n)?.name ?? 'the local school';
+  let text;
+  if (stays) {
+    e.boost = clamp((e.boost ?? 0) - 0.05, -0.3, 0.5);
+    text = `${n.firstName} stays at ${school}, the school ${n.gender === 'male' ? 'he' : n.gender === 'female' ? 'she' : 'they'} already ${v(n, 'knows', 'know')}: the agency arranges a ride there each morning, so one thing in ${their(n)} life does not change.`;
+  } else {
+    e.boost = clamp((e.boost ?? 0) - 0.3, -0.3, 0.5);
+    text = `${n.firstName} starts at ${school} the same week, before ${their(n)} records have even arrived. New faces, new rules, and ${their(n)} work slips while ${n.gender === 'male' ? 'he settles' : n.gender === 'female' ? 'she settles' : 'they settle'}.`;
+  }
+  log(text, 'system', 'neutral');
+  return text;
+}
+
 /** After the family moves to a new town: a place at the local state school there. @returns {string} what happened */
 export function newTown(n) {
   if (!n?.life?.edu || !stageOf(n)) return '';
@@ -107,6 +149,11 @@ export function tickKids() {
       }
     }
     if (kind?.away) bump(n, -1); // away from home during the school year
+    // A child in care catches up as they settle: the longer and steadier the placement, the more (up to a point).
+    if (inCare(n)) {
+      const years = store.state.year - (n.flags.careSince ?? store.state.year);
+      if (years >= 1) e.boost = Math.round(clamp((e.boost ?? 0) + Math.min(0.25, 0.08 * years) * (n.meters.relationship >= 50 ? 1 : 0.5), -0.3, 0.5) * 100) / 100;
+    }
     const said = (e.said ??= {});
     if (n.age >= 8 && n.age <= 16 && e.gpa < 2.0 && (said.struggling ?? -9) <= n.age - 4 && rng.chance(0.5)) {
       said.struggling = n.age;
@@ -150,14 +197,33 @@ function prizeFor(n) {
 export function actionsFor(n) {
   if (!atSchool(n)) return grownActions(n);
   const list = [];
+  if (inCare(n)) list.push({ id: 'carePlan', label: player().countryId === 'uk' ? 'Go to their Personal Education Plan meeting' : 'Go to their education plan meeting' });
   if (n.age >= 6) list.push({ id: 'homework', label: 'Help with their homework' });
   list.push({ id: 'schoolEvent', label: n.life.hobby ? 'Go and watch them perform or play' : 'Go to parents\' evening' });
   if (n.age >= 7) list.push({ id: 'kidTutor', label: 'Pay for a tutor' });
-  list.push({ id: 'kidSchool', label: 'Change their school' });
+  if (!inCare(n)) list.push({ id: 'kidSchool', label: 'Change their school' }); // a child in care: the agency decides, with the carer's view
   if (n.age >= 15) list.push({ id: 'uniPlans', label: 'Talk about university' });
   return list;
 }
 const grownActions = () => [];
+
+/**
+ * The education plan meeting for a child in care: the carer, the social worker and the school's designated teacher
+ * (in England, with the Virtual School), once a year. Extra help is agreed and the child is heard.
+ */
+export function carePlanMeeting(id) {
+  const n = npcOf(id);
+  if (!atSchool(n) || !inCare(n)) return result(false, 'That meeting is for a child in care.', 'neutral');
+  if (!spendAction(n, 'carePlan')) return result(false, `${n.firstName}'s plan has been reviewed this year.`, 'neutral');
+  const e = n.life.edu;
+  e.boost = Math.round(clamp((e.boost ?? 0) + 0.15, -0.3, 0.5) * 100) / 100;
+  bump(n, 4);
+  const gb = player().countryId === 'uk';
+  const asks = keyedDice(`care-plan/${store.state.slotId ?? ''}/${n.id}/${store.state.year}`).pick(['tutoring twice a week', 'a quiet room to work in at lunch', 'a mentor to check in each morning', 'help catching up in reading', 'a place on the after-school club']);
+  const text = `${gb ? 'The Personal Education Plan meeting' : 'The education plan meeting'}: you, ${n.firstName}'s social worker and the ${gb ? 'designated teacher, with the Virtual School on the phone' : 'school counselor'}. You agree on ${asks}, and ${n.firstName} gets a say in it.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
 
 export const HOMEWORK = [
   { id: 'gentle', label: 'Sit with them, patiently', sub: 'Slow, and it keeps the peace.' },
