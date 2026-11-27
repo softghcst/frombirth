@@ -37,6 +37,7 @@ await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEac
 const fly = (o) => page.evaluate(async (o) => {
   const { store } = await import('/js/state.js'); const p = store.state.player;
   p.birthday = { m: 0, d: 1 }; store.state.today = `${store.state.year}-01-01`; p.countryId = 'us'; p.city = 'New York'; p.age = 30; p.birthYear = store.state.year - 30; p.finance.cash = 1e9; p.legal.incarceration = null;
+  p.stats.mood = 60; // a random life can start at full mood, and then a moment that cheers you shows no change
   const travel = await import('/js/engine/travel.js'); const y = store.state.year + 1;
   const t = travel.startPlan('vacation');
   travel.updatePlan(t.id, { destination: o.dest, depart: `${y}-${o.month}-02`, ret: `${y}-${o.month}-09`, mode: o.mode, ...(o.cabin ? { cabin: o.cabin } : {}), stay: 'hotel' });
