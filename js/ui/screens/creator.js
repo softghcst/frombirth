@@ -15,6 +15,7 @@ import { ORIENTATIONS } from '../../engine/identity.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
+import { ORIGINS } from '../../data/origins.js';
 
 const TALENTS = Object.fromEntries(TALENT_LIST.map((t) => [t.id, t.name]));
 
@@ -68,7 +69,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', sex: '', trans: '', orientation: '', birthRank: '', health: '' };
+  const choice = { talent: '', background: '', sex: '', trans: '', orientation: '', birthRank: '', health: '', origin: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -119,6 +120,8 @@ export function renderCreator(app, hooks) {
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           <p class="muted gift-note" data-gift-note aria-live="polite"></p>
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          ${picker('origin', 'Family origin', ORIGINS.standard.label, Object.entries(ORIGINS).filter(([k]) => k !== 'standard').map(([value, o]) => ({ value, label: o.label })))}
+          <p class="muted" data-origin-note>Born into the family that raises you.</p>
           ${picker('health', 'Born with', 'Random', [{ value: 'none', label: 'Nothing in particular' }, ...BIRTH_CHOICES.map((id) => ({ value: id, label: CONDITION_BY_ID[id].name }))])}
           
           <div class="field"><label for="f-year">Year of birth</label>
@@ -161,6 +164,7 @@ export function renderCreator(app, hooks) {
     sel.addEventListener('change', () => {
       choice[sel.dataset.pick] = sel.value;
       if (sel.dataset.pick === 'talent') giftNote();
+      if (sel.dataset.pick === 'origin') q('[data-origin-note]').textContent = (ORIGINS[sel.value] ?? ORIGINS.standard).desc;
       if (sel.dataset.pick === 'sex' || sel.dataset.pick === 'trans') ranks();
       preview();
     });
@@ -232,6 +236,7 @@ export function renderCreator(app, hooks) {
     look = randomAppearance(undefined, choice.sex || grownGender()); // the face they are born with: a trans boy's changes with hormones, later
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
+    setPick('origin', weightedKey({ none: 94, birth: 3, childhood: 1.5, kinship: 1.5 }).replace('none', ''));
     const crown = MONARCHIES[c.id];
     if (crown) {
       const nobles = crown.ranks.some((r) => !['monarch', 'heir', 'royal', 'knight'].includes(r[0]));
@@ -257,6 +262,7 @@ export function renderCreator(app, hooks) {
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,
+      origin: choice.origin || undefined,
       health: choice.health === '' ? undefined : { conditions: choice.health === 'none' ? [] : [choice.health] },
       year: (() => { const y = Math.round(Number(q('#f-year').value)); return y >= 1800 && y <= new Date().getFullYear() ? y : undefined; })(),
     });
