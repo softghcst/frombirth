@@ -83,12 +83,14 @@ section('the past: only clubs that existed then');
 
 // The committee, then the top.
 {
-  const p = life(14);
+  // Joined at 13: a year as a member before the committee (from 14), three before the chair, and two chances at it before
+  // the club is outgrown at 18. (Joined at 14, there was one chance, and the check hung on a single vote.)
+  const p = life(13);
   p.stats.charm = 85;
   cl.join('book');
   check(!cl.standFor('book').ok && cl.nextRank('book').why, 'not before a year as a member');
   let rank = 0;
-  for (let i = 0; i < 4 && rank < 2; i++) { year(); cl.standFor('book'); rank = cl.clubsOf().now.book?.rank ?? 0; }
+  for (let i = 0; i < 5 && rank < 2; i++) { year(); cl.standFor('book'); rank = cl.clubsOf().now.book?.rank ?? 0; }
   check(rank === 2, `a charming, loyal member is voted onto the committee, then to chair the club (rank ${rank})`);
   check(p.milestones.some((m) => /Chair of the book club/.test(m.text)), 'and it is a milestone');
   check(!cl.standFor('book').ok, 'nothing higher than the top');
