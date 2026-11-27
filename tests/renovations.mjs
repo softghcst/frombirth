@@ -184,6 +184,48 @@ const back = store.state?.player?.assets?.find((a) => a.id === keep.id);
 check(back && back.renovations?.[0]?.id === 'home_office' && back.value === keptValue, 'renovations are kept in the save');
 section('only owned homes, apartments included, and they are kept in the save');
 
+// ---------- 8. What they do for the people living there ----------
+{
+  const mo = await import('../js/engine/moments.js');
+  const skills = await import('../js/engine/skills.js');
+  const { makeNpc } = await import('../js/engine/npcFactory.js');
+  const person = (role, age, rel = 60) => { const n = makeNpc({ role, countryId: p.countryId, age, relationship: rel }); store.state.npcs[n.id] = n; p.npcIds.push(n.id); return n; };
+  const only = (ids, type = 'house') => { p.assets = []; const a = owned(type); for (const id of ids) reno.addRenovation(a.id, id, 'premium'); for (const r of a.renovations ?? []) r.result = 'good'; return a; };
+  p = life(2025); p.education.enrolled = false;
+  for (const n of Object.values(store.state.npcs)) n.alive = false; p.npcIds = []; store.state.traditions = [];
+  person('parent', 60); person('sibling', 35); person('friend', 40);
+  // Hosting: a new kitchen for family occasions, a game room for a game night.
+  only([]); store.state.moments = null;
+  const xmas = mo.thisYear().find((x) => x.holiday); const night = mo.thisYear().find((x) => x.occasion === 'game_night');
+  const plainHost = mo.costOf(xmas, 3); const plainNight = mo.costOf(night, 3);
+  only(['kitchen', 'game_room']);
+  check(mo.costOf(xmas, 3) < plainHost * 0.75 && mo.costOf(night, 3) < plainNight, `a new kitchen makes hosting a holiday cheaper (${plainHost} to ${mo.costOf(xmas, 3)}), a game room a game night`);
+  check(reno.homePerk('kitchen') && !reno.homePerk('pool'), 'and only what the home has counts');
+  const kept = p.assets[0]; kept.renovations[0].result = 'poor';
+  check(!reno.homePerk('kitchen'), 'shoddy work does nothing');
+  // Practice and repairs.
+  const practiced = (ids) => { let t = 0; for (let i = 0; i < 30; i++) { only(ids); p.flags.skillActs = null; p.talents.music = 30; p.finance.cash = 1e7; const r = skills.practice('guitar'); t += r.gained ?? 0; } return t; };
+  check(practiced(['music_studio']) > practiced([]), 'a music studio makes music practice go faster');
+  const shed = only([]); shed.condition = 50; const repairs = estate.renovationCost(shed.id);
+  only(['workshop']); p.assets[0].condition = 50; p.assets[0].value = shed.value;
+  check(estate.renovationCost(p.assets[0].id) < repairs, 'a workshop makes repairs cheaper');
+  // A year at home: a gym, a library, a garden, a treehouse.
+  only(['home_gym', 'library', 'garden', 'treehouse'], 'country'); // a library needs a big home
+  p.stats.health = 50; p.stats.intellect = 50; p.skills = {};
+  const kid = person('child', 8, 50);
+  reno.tickHomeLife();
+  check(p.stats.health === 51 && p.stats.intellect === 51 && p.skills.gardening >= 2 && kid.meters.relationship === 52, 'a year at home: a gym, a library, a garden and a treehouse each do their part');
+  // Scenes: over the years, a pool party with a friend, and the garden's harvest.
+  only(['pool', 'garden']);
+  const seen = new Set();
+  for (let y = 0; y < 20; y++) { store.state.pendingEvents = []; store.state.year += 1; reno.tickHomeLife(); for (const e of store.state.pendingEvents) seen.add(e.id); }
+  check(seen.has('home_pool_party') && seen.has('home_harvest'), `a pool brings summer parties and a garden a harvest (${[...seen].join(', ')})`);
+  // A renter has none of it.
+  p.homeId = null; p.stats.health = 50; reno.tickHomeLife();
+  check(p.stats.health === 50, 'nothing for a home you do not live in');
+}
+section('renovations do something for the people living there, and the screen says what');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Renovations hold together.');

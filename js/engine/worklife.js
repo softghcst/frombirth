@@ -37,6 +37,7 @@ import { employer } from './employers.js';
 import { hereCity } from './cities.js';
 import { payouts, markPaid } from './business.js';
 import { traitK } from './traits.js';
+import { homePerk } from './renovations.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -300,7 +301,7 @@ export function tickWorkLife() {
 
   let stressTarget = 12 + Math.max(0, load.total - 35) * 1.1 + (car ? car.stress * 9 : 0) + (cult?.stress ?? 0)
     + (boss && boss.meters.relationship < 35 ? 8 : 0) + (broke ? 10 : 0) + (kids && load.total > 50 ? kids * 3 : 0)
-    + (c.remote !== 'none' ? -3 : 0) - (away ? 25 : 0) - (warmth - 55) / 6;
+    + (c.remote !== 'none' ? (homePerk('home_office') ? -6 : -3) : 0) - (away ? 25 : 0) - (warmth - 55) / 6; // a door that closes helps (engine/renovations.js)
   // Someone without a job (a child, a student, someone between jobs): stress from everything they take on, school's own
   // pressure, and money worries. The more they take on, the greater the stress.
   if (!car) {

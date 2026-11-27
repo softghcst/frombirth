@@ -10,6 +10,7 @@ import { nativeLanguages } from './languages.js';
 import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS, SKILL_USES, SPOKEN } from '../data/skills.js';
 import { COUNTRIES } from '../data/countries.js';
 import { traitK } from './traits.js';
+import { homePerk } from './renovations.js';
 /** Skills that count as creative, besides instruments and the performing arts. */
 const CREATIVE = ['drawing', 'painting', 'photography', 'writing', 'cooking'];
 
@@ -128,7 +129,10 @@ export function practice(id, lesson = false) {
   let gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135))) + Math.min(6, head);
   // The creative pick up the arts faster; a green thumb, gardening (engine/traits.js).
   const nature = id === 'gardening' ? traitK('gardenK', p) : (s.group === 'instrument' || s.group === 'performing' || CREATIVE.includes(id)) ? traitK('creativeK', p) : 1;
-  if (nature !== 1) gained = Math.max(1, Math.round(gained * nature));
+  // A music studio (or soundproofing) at home: music practice goes faster (engine/renovations.js).
+  const music = s.group === 'instrument' || ['singing', 'music_theory', 'rap'].includes(id);
+  const studio = music ? (homePerk('music_studio') ? 1.25 : homePerk('soundproofing') ? 1.1 : 1) : 1;
+  if (nature !== 1 || studio !== 1) gained = Math.max(1, Math.round(gained * nature * studio));
   const after = Math.min(100, before + gained);
   if (s.talent) {
     p.talents[s.talent] = after;

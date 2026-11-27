@@ -291,7 +291,7 @@ function openRenovation(a, api) {
     const how = x.result === 'poor' ? 'Shoddy work: it needs fixing' : x.result === 'great' ? 'Beautiful work' : 'Good work';
     return `<div class="card" style="padding:10px 12px;margin:8px 0">
       <div style="display:flex;gap:10px;align-items:center"><span aria-hidden="true" style="font-size:1.4em">${r.icon}</span>
-        <div style="flex:1;min-width:0"><strong>${esc(r.name)}</strong><br><small class="muted">${esc(`${how} · ${x.by}, ${x.year}`)}</small></div></div>
+        <div style="flex:1;min-width:0"><strong>${esc(r.name)}</strong><br><small class="muted">${esc(`${how} · ${x.by}, ${x.year}`)}</small>${r.perk && x.result !== 'poor' ? `<br><small>${esc(r.perk)}</small>` : ''}</div></div>
       <div class="btn-stack" style="margin-top:8px">
         ${x.result === 'poor' ? `<button class="btn" data-fix="${esc(x.id)}">Fix it</button>` : ''}
         <button class="btn" data-remove="${esc(x.id)}">Remove (${fmtMoney(reno.removeCost(a, x.id), c)})</button>
@@ -327,7 +327,7 @@ function openRenovation(a, api) {
     }
     const choice = await pickModal({ title: 'Add a renovation', body: `Room for ${room} more. Only what would fit a home like this is listed.`,
       options: reno.fitting(a).map((x) => ({ value: x.r.id, label: `${x.r.icon} ${x.r.name}`, disabled: !x.ok,
-        sub: x.ok ? `${x.r.blurb} From about ${fmtMoney(reno.quote(a, x.r.id, 'budget'), c)}.` : x.why })) });
+        sub: x.ok ? `${x.r.blurb}${x.r.perk ? ` ${x.r.perk}` : ''} From about ${fmtMoney(reno.quote(a, x.r.id, 'budget'), c)}.` : x.why })) });
     if (!choice) return openRenovation(a, api);
     const r = R(choice);
     const firm = await pickFirm(a, `Who builds the ${r.name.toLowerCase()}?`, (t) => reno.quote(a, choice, t));

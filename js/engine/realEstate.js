@@ -212,7 +212,9 @@ export function revalue(a) {
 export const upkeepRate = (a) => Math.max(0.004, PROPERTY_BY_ID[a.catalogId].upkeep + upkeepOf(a));
 
 export function renovationCost(id) {
-  return Math.round(assetOf(id).value * 0.08);
+  const a = assetOf(id);
+  // A workshop on the place: much of the work done yourself, for a third less (engine/renovations.js).
+  return Math.round(a.value * 0.08 * ((a.renovations ?? []).some((r) => r.id === 'workshop' && r.result !== 'poor') ? 0.67 : 1));
 }
 
 export function renovate(id) {

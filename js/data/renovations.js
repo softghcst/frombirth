@@ -11,6 +11,7 @@
 //   upkeep      change to the yearly running costs, as a share of worth (solar panels save; a pool costs)
 //   from/until  the years it exists (central heating before 1920 is not a thing you can buy)
 //   space       renovations it takes up (an extension makes one more)
+//   perk        what it does for the people living there, besides comfort (engine/renovations.js homePerk and tickHomeLife)
 
 const ALL = ['trailer', 'studio', 'condo', 'house', 'townhouse', 'country', 'mansion'];
 const ROOMS = ['condo', 'house', 'townhouse', 'country', 'mansion']; // more than one room
@@ -24,36 +25,36 @@ export const SPACE = { trailer: 1, studio: 2, condo: 3, house: 6, townhouse: 5, 
 /** @type {{id:string,name:string,icon:string,blurb:string,fits:string[],cost:number,min:number,value:number,comfort:number,upkeep?:number,from?:number,until?:number,space?:number}[]} */
 export const RENOVATIONS = [
   // Everyday improvements
-  { id: 'indoor_bathroom', name: 'Indoor bathroom', icon: '🛁', blurb: 'No more trips outside in the cold.', fits: ALL, cost: 0.05, min: 1500, value: 0.06, comfort: 3, until: 1945 },
-  { id: 'central_heating', name: 'Central heating', icon: '🔥', blurb: 'Warm in every room, all winter.', fits: ALL, cost: 0.04, min: 3000, value: 0.03, comfort: 2, from: 1920 },
-  { id: 'kitchen', name: 'New kitchen', icon: '🍳', blurb: 'Counters, cupboards and a stove worth cooking on.', fits: ALL, cost: 0.07, min: 9000, value: 0.045, comfort: 2 },
+  { id: 'indoor_bathroom', name: 'Indoor bathroom', icon: '🛁', blurb: 'No more trips outside in the cold.', fits: ALL, cost: 0.05, min: 1500, value: 0.06, comfort: 3, until: 1945, perk: 'A little healthier every year.' },
+  { id: 'central_heating', name: 'Central heating', icon: '🔥', blurb: 'Warm in every room, all winter.', fits: ALL, cost: 0.04, min: 3000, value: 0.03, comfort: 2, from: 1920, perk: 'A little healthier through the winters.' },
+  { id: 'kitchen', name: 'New kitchen', icon: '🍳', blurb: 'Counters, cupboards and a stove worth cooking on.', fits: ALL, cost: 0.07, min: 9000, value: 0.045, comfort: 2, perk: 'Hosting holidays and traditions at home costs a third less.' },
   { id: 'bathroom', name: 'Bathroom remodel', icon: '🚿', blurb: 'New tiles, a proper shower, and the end of the leak.', fits: ALL, cost: 0.05, min: 6000, value: 0.03, comfort: 1, from: 1940 },
-  { id: 'air_conditioning', name: 'Air conditioning', icon: '❄️', blurb: 'Cool through the worst of summer.', fits: ALL, cost: 0.03, min: 3500, value: 0.015, comfort: 1, upkeep: 0.001, from: 1955 },
-  { id: 'soundproofing', name: 'Soundproofing', icon: '🔇', blurb: 'The neighbors stop hearing you, and you stop hearing them.', fits: ['studio', 'condo', 'townhouse'], cost: 0.03, min: 4000, value: 0.01, comfort: 1, from: 1960 },
+  { id: 'air_conditioning', name: 'Air conditioning', icon: '❄️', blurb: 'Cool through the worst of summer.', fits: ALL, cost: 0.03, min: 3500, value: 0.015, comfort: 1, upkeep: 0.001, from: 1955, perk: 'A little healthier through the summers.' },
+  { id: 'soundproofing', name: 'Soundproofing', icon: '🔇', blurb: 'The neighbors stop hearing you, and you stop hearing them.', fits: ['studio', 'condo', 'townhouse'], cost: 0.03, min: 4000, value: 0.01, comfort: 1, from: 1960, perk: 'Music practice at home goes faster.' },
   { id: 'walk_in_closet', name: 'Walk-in closet', icon: '👗', blurb: 'Every shoe in sight.', fits: ROOMS, cost: 0.03, min: 5000, value: 0.015, comfort: 1, from: 1950 },
-  { id: 'home_office', name: 'Home office', icon: '💻', blurb: 'A door that closes, and a desk that is only a desk.', fits: ROOMS, cost: 0.03, min: 4000, value: 0.015, comfort: 1, from: 1980 },
+  { id: 'home_office', name: 'Home office', icon: '💻', blurb: 'A door that closes, and a desk that is only a desk.', fits: ROOMS, cost: 0.03, min: 4000, value: 0.015, comfort: 1, from: 1980, perk: 'Less stress when you work from home.' },
   { id: 'smart_home', name: 'Smart home', icon: '📱', blurb: 'Lights, locks and heating from your phone.', fits: ALL, cost: 0.02, min: 3000, value: 0.01, comfort: 1, from: 2014 },
   { id: 'solar_panels', name: 'Solar panels', icon: '☀️', blurb: 'The roof pays some of the bills.', fits: HOUSES, cost: 0.05, min: 12000, value: 0.025, comfort: 0, upkeep: -0.003, from: 1978 },
-  { id: 'nursery', name: 'Nursery', icon: '🧸', blurb: 'A small room, painted soft, ready for someone small.', fits: ROOMS, cost: 0.02, min: 3000, value: 0.005, comfort: 1 },
+  { id: 'nursery', name: 'Nursery', icon: '🧸', blurb: 'A small room, painted soft, ready for someone small.', fits: ROOMS, cost: 0.02, min: 3000, value: 0.005, comfort: 1, perk: 'Closer to the little ones while they are small.' },
   // Fun rooms
-  { id: 'man_cave', name: 'Man cave', icon: '🛋️', blurb: 'A big chair, a bigger screen, a mini fridge, and a sign on the door.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.01, comfort: 2, from: 1970 },
-  { id: 'home_theater', name: 'Home theater', icon: '🎬', blurb: 'Tiered seats, a projector, and the good sound.', fits: HOUSES, cost: 0.06, min: 15000, value: 0.015, comfort: 2, from: 1985 },
-  { id: 'game_room', name: 'Game room', icon: '🎱', blurb: 'A pool table, a dartboard, and arguments about the rules.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.01, comfort: 2 },
-  { id: 'home_gym', name: 'Home gym', icon: '🏋️', blurb: 'No membership, no excuses.', fits: ROOMS, cost: 0.03, min: 6000, value: 0.01, comfort: 1, from: 1975 },
-  { id: 'music_studio', name: 'Music studio', icon: '🎸', blurb: 'Treated walls, good microphones, and somewhere loud to be.', fits: HOUSES, cost: 0.05, min: 12000, value: 0.01, comfort: 2, from: 1965 },
+  { id: 'man_cave', name: 'Man cave', icon: '🛋️', blurb: 'A big chair, a bigger screen, a mini fridge, and a sign on the door.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.01, comfort: 2, from: 1970, perk: 'Evenings with friends cost less, and bring them closer.' },
+  { id: 'home_theater', name: 'Home theater', icon: '🎬', blurb: 'Tiered seats, a projector, and the good sound.', fits: HOUSES, cost: 0.06, min: 15000, value: 0.015, comfort: 2, from: 1985, perk: 'Evenings with friends cost less, and bring them closer.' },
+  { id: 'game_room', name: 'Game room', icon: '🎱', blurb: 'A pool table, a dartboard, and arguments about the rules.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.01, comfort: 2, perk: 'Game nights cost less, and bring friends closer.' },
+  { id: 'home_gym', name: 'Home gym', icon: '🏋️', blurb: 'No membership, no excuses.', fits: ROOMS, cost: 0.03, min: 6000, value: 0.01, comfort: 1, from: 1975, perk: 'Healthier every year you live here.' },
+  { id: 'music_studio', name: 'Music studio', icon: '🎸', blurb: 'Treated walls, good microphones, and somewhere loud to be.', fits: HOUSES, cost: 0.05, min: 12000, value: 0.01, comfort: 2, from: 1965, perk: 'Music practice at home goes much faster.' },
   { id: 'finished_basement', name: 'Finished basement', icon: '🪜', blurb: 'The room under the house becomes a room.', fits: ['house', 'country', 'mansion'], cost: 0.06, min: 15000, value: 0.04, comfort: 1 },
-  { id: 'workshop', name: 'Workshop and garage', icon: '🔧', blurb: 'A bench, a vise, and every tool on a hook.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.02, comfort: 1 },
-  { id: 'library', name: 'Home library', icon: '📚', blurb: 'Shelves to the ceiling, and a ladder to reach them.', fits: BIG, cost: 0.03, min: 15000, value: 0.015, comfort: 2 },
-  { id: 'wine_cellar', name: 'Wine cellar', icon: '🍷', blurb: 'Cool, dark, and racked to the ceiling.', fits: BIG, cost: 0.03, min: 20000, value: 0.015, comfort: 1 },
+  { id: 'workshop', name: 'Workshop and garage', icon: '🔧', blurb: 'A bench, a vise, and every tool on a hook.', fits: HOUSES, cost: 0.04, min: 8000, value: 0.02, comfort: 1, perk: 'Repairs to the house cost a third less.' },
+  { id: 'library', name: 'Home library', icon: '📚', blurb: 'Shelves to the ceiling, and a ladder to reach them.', fits: BIG, cost: 0.03, min: 15000, value: 0.015, comfort: 2, perk: 'A little sharper every year you live here.' },
+  { id: 'wine_cellar', name: 'Wine cellar', icon: '🍷', blurb: 'Cool, dark, and racked to the ceiling.', fits: BIG, cost: 0.03, min: 20000, value: 0.015, comfort: 1, perk: 'Dinner parties cost less, and bring friends closer.' },
   // Outside
-  { id: 'garden', name: 'Landscaped garden', icon: '🌷', blurb: 'Beds, a lawn worth lying on, and a vegetable patch.', fits: YARD, cost: 0.03, min: 5000, value: 0.025, comfort: 2 },
-  { id: 'treehouse', name: 'Treehouse', icon: '🌳', blurb: 'A rope ladder, a trapdoor, and a sign that says no adults.', fits: YARD, cost: 0.01, min: 2000, value: 0.003, comfort: 1 },
-  { id: 'hot_tub', name: 'Hot tub', icon: '♨️', blurb: 'Warm water under the stars.', fits: YARD, cost: 0.02, min: 6000, value: 0.005, comfort: 1, upkeep: 0.001, from: 1970 },
-  { id: 'pool', name: 'Swimming pool', icon: '🏊', blurb: 'Summer starts the day it is filled.', fits: YARD, cost: 0.08, min: 30000, value: 0.03, comfort: 2, upkeep: 0.003, from: 1950 },
-  { id: 'tennis_court', name: 'Tennis court', icon: '🎾', blurb: 'Your own court, and no waiting for one.', fits: BIG, cost: 0.04, min: 50000, value: 0.015, comfort: 1 },
+  { id: 'garden', name: 'Landscaped garden', icon: '🌷', blurb: 'Beds, a lawn worth lying on, and a vegetable patch.', fits: YARD, cost: 0.03, min: 5000, value: 0.025, comfort: 2, perk: 'A harvest every year: gardening skill, and sometimes a prize.' },
+  { id: 'treehouse', name: 'Treehouse', icon: '🌳', blurb: 'A rope ladder, a trapdoor, and a sign that says no adults.', fits: YARD, cost: 0.01, min: 2000, value: 0.003, comfort: 1, perk: 'Children at home grow closer to you.' },
+  { id: 'hot_tub', name: 'Hot tub', icon: '♨️', blurb: 'Warm water under the stars.', fits: YARD, cost: 0.02, min: 6000, value: 0.005, comfort: 1, upkeep: 0.001, from: 1970, perk: 'Less stress every year.' },
+  { id: 'pool', name: 'Swimming pool', icon: '🏊', blurb: 'Summer starts the day it is filled.', fits: YARD, cost: 0.08, min: 30000, value: 0.03, comfort: 2, upkeep: 0.003, from: 1950, perk: 'Summer pool parties with friends.' },
+  { id: 'tennis_court', name: 'Tennis court', icon: '🎾', blurb: 'Your own court, and no waiting for one.', fits: BIG, cost: 0.04, min: 50000, value: 0.015, comfort: 1, perk: 'Healthier, and a little more athletic.' },
   // Bigger
   { id: 'extension', name: 'Extension', icon: '🏗️', blurb: 'A new room built on: more space, and room for one more renovation.', fits: ['house', 'country', 'mansion'], cost: 0.12, min: 40000, value: 0.08, comfort: 1, space: -1 },
-  { id: 'guest_suite', name: 'Guest suite', icon: '🛏️', blurb: 'A room with its own bathroom, for whoever comes to stay.', fits: BIG, cost: 0.04, min: 25000, value: 0.025, comfort: 1 },
+  { id: 'guest_suite', name: 'Guest suite', icon: '🛏️', blurb: 'A room with its own bathroom, for whoever comes to stay.', fits: BIG, cost: 0.04, min: 25000, value: 0.025, comfort: 1, perk: 'Family who come to stay stay closer.' },
 ];
 export const RENOVATION_BY_ID = Object.fromEntries(RENOVATIONS.map((r) => [r.id, r]));
 

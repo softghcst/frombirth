@@ -27,6 +27,7 @@ import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVE
 import { techAvailable } from './digital/tech.js';
 import { storyBeat } from './storyDirector.js';
 import { traitK, traitAdd } from './traits.js';
+import { homePerk } from './renovations.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const YOU = 'you';
@@ -151,7 +152,7 @@ export function costOf(item, guests = 0, styleId = null) {
   const o = item.holiday ? HOLIDAYS.find((h) => h.id === item.holiday) : OCCASIONS[item.occasion];
   const st = styleId ? STYLES[styleId] : null;
   const base = (st?.cost ?? o?.cost ?? 0) + guests * (st?.perGuest ?? o?.perGuest ?? 0);
-  return localCost(base, c);
+  return Math.round(localCost(base, c) * homeDiscount(item));
 }
 /** Under 18, living at home with a parent, the family pays for every occasion the child marks: the screen says so, and this is what charges. */
 export const familyPays = () => { const p = player(); return p.age < 18 && !!p.flags.livesWithParents && npcsByRole('parent').length > 0; };
@@ -210,7 +211,7 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
     book({ cat: item.occasion === 'their_birthday' || item.occasion === 'anniversary' ? 'giftOut' : 'leisure', src: 'moment', desc: item.label });
   }
   const st = style ? STYLES[style] : null;
-  const bond = st?.bond ?? o.bond ?? h?.bond ?? 3;
+  const bond = (st?.bond ?? o.bond ?? h?.bond ?? 3) + (socialRoom(item) ? 1 : 0); // a game room or a home theater to have them in
   for (const n of people) closer(n, n.id === item.forId ? bond * 1.5 : bond);
   p.stats.mood = clamp(p.stats.mood + (st?.mood ?? o.mood ?? h?.mood ?? 3));
   s.done[key] = true;
@@ -338,11 +339,21 @@ function traditionName(occasion, holiday, last) {
   if (occasion === 'visit_grandparents') return 'Sundays with the grandparents';
   return (OCCASIONS[occasion]?.title ?? OCCASIONS[occasion]?.name ?? 'A family tradition').replace('{family}', `${familyPlural(last)}'`).replace('{last}', last);
 }
-/** What keeping a tradition costs its host for a year, in local money. */
+/** What keeping a tradition costs its host for a year, in local money (less in a home with a good kitchen). */
 function traditionCost(t, guests, c) {
-  if (t.holiday) { const h = HOLIDAYS.find((x) => x.id === t.holiday); return localCost((h?.cost ?? 100) + (h?.perGuest ?? 0) * guests, c); }
+  const k = homePerk('kitchen') ? KITCHEN : 1;
+  if (t.holiday) { const h = HOLIDAYS.find((x) => x.id === t.holiday); return Math.round(localCost((h?.cost ?? 100) + (h?.perGuest ?? 0) * guests, c) * k); }
   const o = OCCASIONS[t.occasion];
-  return localCost(o?.cost != null ? o.cost + (o.perGuest ?? 0) * guests : 150, c);
+  return Math.round(localCost(o?.cost != null ? o.cost + (o.perGuest ?? 0) * guests : 150, c) * k);
+}
+/** What a home's renovations take off hosting (data/renovations.js perk): a kitchen for family occasions, a room to have friends in for an evening. */
+const KITCHEN = 0.67;
+const socialRoom = (item) => (item.occasion === 'game_night' && (homePerk('game_room') || homePerk('man_cave') || homePerk('home_theater')))
+  || (item.occasion === 'dinner_party' && (homePerk('wine_cellar') || homePerk('home_theater') || homePerk('man_cave')));
+function homeDiscount(item) {
+  if (familyPays()) return 1; // a child's family hosts in their own home, not the player's
+  if ((item.holiday || item.traditionId || OCCASIONS[item.occasion]?.kind === 'family') && item.occasion !== 'visit_grandparents' && homePerk('kitchen')) return KITCHEN;
+  return socialRoom(item) ? 0.8 : 1;
 }
 
 function foundTradition(item, people) {

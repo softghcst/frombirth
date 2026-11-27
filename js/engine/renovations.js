@@ -11,6 +11,8 @@ import { keyedDice } from './keyedDice.js';
 import { book } from './ledger.js';
 import { properties, revalue, placeOf } from './realEstate.js';
 import { RENOVATIONS, RENOVATION_BY_ID, SPACE, CONTRACTOR_TIERS, REMOVE_COST, COMFORT_CAP } from '../data/renovations.js';
+import { traitK } from './traits.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
@@ -167,3 +169,42 @@ export const comfortOf = (a) => Math.min(COMFORT_CAP, renovationsOf(a).reduce((t
 export const upkeepOf = (a) => renovationsOf(a).reduce((t, x) => t + (RENOVATION_BY_ID[x.id]?.upkeep ?? 0), 0);
 /** The names of what has been done, for the property screen. */
 export const doneList = (a) => renovationsOf(a).map((x) => `${RENOVATION_BY_ID[x.id]?.name ?? x.id}${x.result === 'poor' ? ' (shoddy)' : x.result === 'great' ? ' (beautiful work)' : ''}`);
+
+// ---------- Living with it (data/renovations.js `perk`) ----------
+
+/** Whether the player lives in a home with this renovation, done well enough to use (shoddy work does nothing). */
+export function homePerk(id, p = player()) {
+  const h = p?.homeId ? (p.assets ?? []).find((a) => a.id === p.homeId) : null;
+  return !!h && (h.renovations ?? []).some((r) => r.id === id && r.result !== 'poor');
+}
+
+/**
+ * Once a year: what the home's renovations do for the people living in it. A little health from a gym or warm
+ * rooms, a little sharpness from a library, a harvest from the garden, children closer for a treehouse; and now and
+ * then a scene of its own (data/events/home.js): a pool party, the garden's best at the fair. On dice of its own.
+ */
+export function tickHomeLife() {
+  const p = player();
+  if (!p?.alive || !p.homeId || p.legal?.incarceration) return;
+  const has = (id) => homePerk(id, p);
+  const d = keyedDice(`home/${store.state.slotId}/${store.state.year}`);
+  const up = (stat, n) => { p.stats[stat] = Math.max(0, Math.min(100, p.stats[stat] + n)); };
+  // Warmth, cool and running water: at most two points of health a year from all of them.
+  up('health', Math.min(2, ['indoor_bathroom', 'central_heating', 'air_conditioning'].filter(has).length));
+  if (has('home_gym')) up('health', 1);
+  if (has('tennis_court')) { up('health', 1); p.talents.sports = Math.min(100, (p.talents.sports ?? 0) + 1); }
+  if (has('library') && p.stats.intellect < 95) up('intellect', 1);
+  if (has('hot_tub') && p.career) p.career.stress = Math.max(0, (p.career.stress ?? 30) - 2);
+  const live = Object.values(store.state.npcs).filter((n) => n.alive && p.npcIds.includes(n.id));
+  const closer = (n, k) => { n.meters.relationship = Math.min(100, n.meters.relationship + k); };
+  if (has('nursery')) for (const n of live.filter((x) => x.role === 'child' && x.age < 3)) closer(n, 2);
+  if (has('treehouse')) for (const n of live.filter((x) => x.role === 'child' && x.age >= 4 && x.age <= 14)) closer(n, 2);
+  if (has('guest_suite')) for (const n of live.filter((x) => ['parent', 'sibling', 'grandparent', 'grandchild'].includes(x.role))) closer(n, 1);
+  if (has('garden') && p.age >= 6) {
+    p.skills ??= {};
+    p.skills.gardening = Math.min(100, (p.skills.gardening ?? 0) + Math.max(1, Math.round(2 * traitK('gardenK', p))));
+    if (d.chance(0.3)) storyBeat('home_harvest', {}, { source: 'family' });
+  }
+  const friend = live.filter((n) => ['friend', 'classmate'].includes(n.role) && n.meters.relationship >= 40).sort((a, b) => b.meters.relationship - a.meters.relationship)[0];
+  if (has('pool') && friend && p.age >= 10 && d.chance(0.3)) storyBeat('home_pool_party', { friend: friend.id }, { source: 'friends' });
+}
