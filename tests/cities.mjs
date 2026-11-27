@@ -45,7 +45,8 @@ section('data: twelve countries have a row per city; every regional law belongs 
 let n = 0;
 for (const c of COUNTRY_LIST) for (const k of towns.citiesOf(c.id)) { n += 1; check(k.housing > 0 && k.pay > 0 && k.housingWord && k.payWord && towns.cityLine(c.id, k.name).length > 5, `${c.id}/${k.name}: no profile`); }
 check(towns.cityOf('sg', 'Singapore').housing === 1, 'a one-city place is its own average');
-check(towns.cityOf('ke', COUNTRIES.ke.place.capital).kind === 'capital' && towns.cityOf('ke', COUNTRIES.ke.place.capital).estimated, 'elsewhere the capital gets the generic capital profile, and says it is an estimate');
+const plain = COUNTRY_LIST.find((c) => !CITY_ROWS[c.id] && c.cities.length > 1 && c.cities.includes(c.place?.capital)); // a country with no city rows
+check(towns.cityOf(plain.id, plain.place.capital).kind === 'capital' && towns.cityOf(plain.id, plain.place.capital).estimated, `elsewhere the capital gets the generic capital profile, and says it is an estimate (${plain.name})`);
 check(profile('ca').cityLines.length === COUNTRIES.ca.cities.length && profile('ca').cityLines.every(([, l]) => /^(Capital · )?[A-Za-z ]+ Homes · [A-Za-z ]+ Pay$/.test(l)), 'the world explorer lists every city, briefly: homes and pay');
 section(`profiles: all ${n} cities have one`);
 
