@@ -26,6 +26,7 @@ import { stageTierOf, stageTraining, proCredits, workOf, districtOf } from './en
 import { STAGE_BAR } from '../data/fame.js';
 import { danceTraining } from './dance.js';
 import { jobBlock as jobBlockSpecial } from './specialCareer.js';
+import { recordOdds, bestCompetitiveYears } from './sports.js';
 import { oddsWords, rollRead, afterWords } from './odds.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -218,6 +219,8 @@ export function decide(id, answers = [], o = {}) {
       : car.id === 'dance' ? ({ bfa: 0.12, ba: 0.05, theater: 0.02 })[danceTraining(p)] ?? 0 : 0;
     score = clamp(0.5 + ((Number(resolve(piece.path)) || 0) - need) / 60, 0, 1);
     chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus + trained - stretch - crowd - (bigStage ? STAGE_BAR.company.crowd : 0), 0.03, 0.95);
+    // A professional club or team hires on a record: someone who has never played competitively almost never (engine/sports.js).
+    if (car.id === 'athlete') chance *= recordOdds(bestCompetitiveYears());
     how = `You chose ${piece.t.toLowerCase()}.`;
   } else if (car.hire === 'portfolio') {
     score = clamp((Number(resolve(car.skill)) || 50) / 100, 0, 1);
