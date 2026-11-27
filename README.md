@@ -63,6 +63,8 @@ node tests/marriage.mjs            # dating, moving in, engagement, real wedding
 node tests/teen-life.mjs           # classmates, homecoming, a date who can say no, curfews, friends after graduation
 node tests/family-time-steps.mjs   # the family systems come out the same in 3-, 6- and 12-month turns
 node tests/living-families-ui.mjs  # browser: moving out, fostering and the step-family on a phone and desktop
+node tests/family-heirs.mjs        # continuing as an heir in a blended family: step-, half- and full siblings, people raised in care
+node tests/callbacks.mjs           # people from the past come back only with real shared history, once, in any turn length
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations

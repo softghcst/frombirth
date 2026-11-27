@@ -16,6 +16,7 @@ import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickBlended } from './blended.js';
 import { tickFostering } from './fostering.js';
+import { tickCallbacks } from './callbacks.js';
 import { tickIndependence } from './independence.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
@@ -117,6 +118,7 @@ export const YEARLY = [
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
   ['children', () => booked('childcare', 'Your children', tickChildren)],
   ['npcLives', tickLives],
+  ['callbacks', tickCallbacks], // someone from the past, back because of something that really happened (engine/callbacks.js)
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
   ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)

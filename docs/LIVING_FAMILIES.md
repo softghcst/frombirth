@@ -14,6 +14,8 @@ is a second family graph, household engine or clock.
 | Foster care, kinship care, guardianship, adoption from care | `js/engine/fostering.js`, `js/ui/fostering.js` |
 | Wedding guests and who came | `js/engine/weddingGuests.js` |
 | House rules (curfew) | `js/engine/houseRules.js` |
+| Family court (custody cases) and child support after a separation | `js/engine/familyCourt.js` |
+| People from the past, back because of real shared history | `js/engine/callbacks.js`, `js/data/events/callbacks.js` |
 | Dice of their own for the new systems | `js/engine/keyedDice.js` |
 | Scenes | `js/data/events/blended.js`, `independence.js`, `fostering.js` |
 | Age of majority by country | `js/data/rules.js` (`majorityAge`), `js/data/history.js` |
@@ -51,13 +53,21 @@ happens plays exactly as it did before.
   only a court ends parents' rights; adoption from care needs that, and an older child can say no.
 - Age of majority is one age per country (19 South Korea, 21 Singapore, 20 Japan before 2022, otherwise 18).
 
+## Built since the first version
+
+- Parents who cannot agree go to family court: a case in the justice record (`J().family`) with a real judge,
+  mediation or a judge's decision a year on, the child heard from ten (strongly from twelve), decided on continuity,
+  bonds and distance, never money. Child support: 15% of the absent parent's income, yearly, until 18, none with
+  shared care, reversed if the child moves.
+- Moving back home needs room (`SLEEPS` by home type).
+- Continuing as an heir keeps the blended family: half- and step-siblings told apart, close step-relatives as
+  step-grandparents and step-aunts or uncles, people raised in care in touch; active placements end on the record.
+- Callbacks: a former foster child's wedding, an old roommate's job lead, a lapsed school friend, a former step-parent at
+  a milestone birthday, a step-sibling's wedding. Only with the history behind them, once per person, keyed dice.
+
 ## Not built yet
 
 - Starting a new life already in foster care or raised by a grandparent by choice (it happens today only when no parent
   can care for the child, `engine/guardianship.js`).
-- Custody disputes through the lawyer and court systems; mediation; child support from a parent's separation (the
-  player's own divorce already has support).
-- Household capacity limits when moving back home; furniture; lease terms longer than "until you leave".
-- When the player continues as an heir, step-relatives and foster children are not yet carried into the new life's roles.
+- Appeals of a custody decision; a lawyer player taking on the family's own case.
 - Friend groups as their own records for teenagers (cliques and adult circles exist); a teen job interview.
-- A Butterfly Effect callback system: people persist and remember, but nothing schedules reunions on purpose.
