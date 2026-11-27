@@ -39,6 +39,10 @@ import militaryScenes from './stories/military.js';
 import lawScenes from './stories/law.js';
 import paper from './stories/paper.js';
 import schoolLife from './schoolLife.js';
+import blended from './blended.js';
+import independence from './independence.js';
+import fostering from './fostering.js';
+import callbacks from './callbacks.js';
 import campusLife from './campusLife.js';
 import parenting from './parenting.js';
 import healthScenes from './health.js';
@@ -62,5 +66,5 @@ import bondScenes from './stories/bonds.js';
 import originScenes from './stories/origins.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...originScenes, ...bondScenes, ...estateScenes, ...loveScenes, ...familyStoryScenes, ...sleepoverScenes, ...kinHealthScenes, ...militaryScenes, ...lawScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...everydayLife, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...medicineScenes, ...bandFateScenes, ...newsroomScenes, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...reproScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood, ...investigationScenes];
+export const EVENTS = [...originScenes, ...bondScenes, ...estateScenes, ...loveScenes, ...familyStoryScenes, ...sleepoverScenes, ...kinHealthScenes, ...militaryScenes, ...lawScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...everydayLife, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...medicineScenes, ...bandFateScenes, ...newsroomScenes, ...paper, ...schoolLife, ...blended, ...independence, ...fostering, ...callbacks, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...reproScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood, ...investigationScenes];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

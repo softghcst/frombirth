@@ -193,7 +193,7 @@ function coherent(where) {
   // Neighbors young enough to be around for the years this checks (people do die: that is checked elsewhere).
   const next = N.around(S(), home.id).filter((x) => x.hh && !x.hh.me).flatMap((x) => x.hh.m).map((id) => H().res[id]).filter((r) => r && N.ageOf(r, S()) >= 18 && N.ageOf(r, S()) <= 55 && r.ls - N.ageOf(r, S()) > 20);
   check(next.length >= 2, 'there are adults living near a grown-up');
-  const r = next[0];
+  let r = next[0];
   check(!S().npcs[r.id], 'a neighbor not yet met is not yet a person in the save');
   const acts = L.neighborActions(S(), r.id).map((a) => a.id);
   check(acts.includes('introduce') && !acts.includes('visit'), 'before meeting: introduce yourself, not drop by');
@@ -208,8 +208,12 @@ function coherent(where) {
   check(again.ok && !twice.ok, 'one hello per person per turn');
   // Friendship through time spent.
   // Followed for years: the life should not end by chance partway (an illness would close every door below).
-  const stayWell = () => { P().flags.longevity = 18; P().stats.health = 100; (P().health ??= {}).ailments = []; };
-  for (let i = 0; i < 12 && S().npcs[r.id].role === 'neighbor'; i++) { L.neighborAct(r.id, 'visit'); L.neighborAct(r.id, 'coffee'); stayWell(), advance(1); }
+  const stayWell = () => { P().flags.longevity = 18; P().stats.health = 100; (P().health ??= {}).ailments = []; const nb = S().npcs[r.id]; if (nb) nb.meters.health = 100; if (H().res[r.id]) H().res[r.id].ls = Math.max(H().res[r.id].ls, 100); };
+  for (let i = 0; i < 12 && S().npcs[r.id].role === 'neighbor'; i++) {
+    L.neighborAct(r.id, 'visit'); L.neighborAct(r.id, 'coffee'); stayWell(), advance(1);
+    // People do die, even at fifty (checked elsewhere): if this neighbor does, the friendship is followed with the next.
+    if (!S().npcs[r.id].alive) { const r2 = next.find((x) => x.id !== r.id && !x.dead && !S().npcs[x.id]); if (!r2) break; r = r2; L.neighborAct(r.id, 'introduce'); i = 0; }
+  }
   if (S().npcs[r.id].role !== 'friend') console.log('DEBUG friend', S().npcs[r.id].alive, S().npcs[r.id].meters.relationship, S().npcs[r.id].flags.hoodTimes, JSON.stringify(H().res[r.id]), JSON.stringify(L.neighborActions(S(), r.id)), P().age, P().alive);
   check(S().npcs[r.id].role === 'friend' && S().npcs[r.id].flags.metAs === 'neighbor', 'time together makes a neighbor a friend');
   check(canonEvents((e) => e.type === 'friendship' && e.people.includes(r.id)).length === 1, 'the friendship is a canonical event, once');

@@ -28,6 +28,7 @@
 // each month: all at once with year-long turns, a season at a time with shorter ones. Three-, six- and twelve-month
 // turns therefore come to the same neighborhood, the same people and the same history.
 import { store, player } from '../state.js';
+import { inFamilyHome } from './kinship.js';
 import { clamp, cap } from '../util.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -489,20 +490,66 @@ function housemates(state, d) {
   const out = [];
   const npcs = p.npcIds.map((id) => state.npcs[id]).filter((n) => n?.alive);
   if (d.kind === 'family') {
-    const away = p.flags.parentsStatus === 'separated';
+    // Parents, brothers and sisters, and a parent's partner who has moved in, with their children (engine/kinship.js).
+    // A parent who has moved out after a separation lives in a household of their own (houseApart, below).
     for (const n of npcs) {
-      if (n.role === 'parent' && !(away && n.gender === 'male')) out.push(n.id);
-      else if (n.role === 'sibling' && n.age < 18 && !n.flags.abroad) out.push(n.id);
-      else if (p.flags.care?.guardianId === n.id) out.push(n.id);
+      if (p.flags.care?.guardianId === n.id) out.push(n.id);
+      else if (inFamilyHome(n)) out.push(n.id);
     }
   } else if (d.kind !== 'dorm') {
     for (const n of npcs) {
       if (n.role === 'spouse' || (n.role === 'partner' && n.flags.livingTogether)) out.push(n.id);
       else if (n.role === 'child' && n.age < 18 && !n.flags.abroad && !n.flags.custody) out.push(n.id);
+      // A child placed with the player in foster or kinship care, or under their guardianship (engine/fostering.js).
+      else if ((n.flags.placementId || (n.role === 'ward' && n.age < 18)) && !n.flags.abroad) out.push(n.id);
+      // A spouse's child who mainly lives with them (engine/blended.js stepchildrenOnMarriage).
+      else if (n.role === 'stepchild' && n.age < 18 && n.flags.liveIn && !n.flags.abroad) out.push(n.id);
       else if (n.id === hoods(state).roommate) out.push(n.id);
     }
   }
   return out;
+}
+
+/**
+ * Someone in the player's family sets up a home of their own in a city (a parent who moves out after a separation), or
+ * joins one (`hhId`: a partner who moves in with them). A real home, with its record of who lived there; nobody is made
+ * twice. Returns the home.
+ */
+export function houseApart(state, npcId, city = state.player.city, why = 'moved out', hhId = null) {
+  const H = hoods(state);
+  const n = state.npcs[npcId];
+  if (!n || !COUNTRIES[state.player.countryId]) return null;
+  const t = nowT(state);
+  // Out of any household they are part of other than the player's (which syncHousehold keeps true to life).
+  for (const hh of Object.values(H.hhs)) if (hh.m.includes(npcId) && !hh.me && !hh.fam && hh.id !== hhId) hh.m = hh.m.filter((x) => x !== npcId);
+  const joining = hhId ? H.hhs[hhId] : null;
+  if (joining?.home) {
+    if (!joining.m.includes(npcId)) joining.m.push(npcId);
+    n.flags.hh = joining.id;
+    return H.homes[joining.home];
+  }
+  const d = { countryId: state.player.countryId, city, kind: 'rent', sig: `rent|${state.player.countryId}|${city}` };
+  const home = findHome(state, d);
+  if (!home) return null;
+  const hood = H.list[home.h];
+  const hh = { id: `${hood.id}x${++hood.nh}`, n: n.lastName, h: hood.id, home: null, m: [npcId], from: t, kind: 'single', own: false, kin: true };
+  H.hhs[hh.id] = hh;
+  settleIn(state, home, hh, t, why);
+  n.flags.hh = hh.id;
+  return home;
+}
+
+/** A relative who lived apart comes back to the family home: their own household is left, as a home they lived in. */
+export function homeAgain(state, npcId) {
+  const H = hoods(state);
+  const n = state.npcs[npcId];
+  const hh = n?.flags.hh ? H.hhs[n.flags.hh] : null;
+  if (hh) {
+    hh.m = hh.m.filter((x) => x !== npcId);
+    if (!living(state, hh).length) { const home = H.homes[hh.home]; if (home) leaveHome(state, home, nowT(state), 'moved back'); hh.to = nowT(state); }
+  }
+  if (n) delete n.flags.hh;
+  syncHousehold(state);
 }
 
 /** Keeps the player's household as it is: who has moved in with them (a spouse who was a neighbor), and who has not. */
