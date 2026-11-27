@@ -21,6 +21,7 @@ import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
 import { giveBirthday } from './engine/birthday.js';
 import { giveNativeLanguages } from './engine/languages.js';
+import { migrateFamilyLife } from './engine/familyLife.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'frombirth.index';
@@ -140,6 +141,7 @@ function migrate(state) {
   migrateHealth(state);
   // Contraception (engine/health/contraception.js): made lazily from the old birth-control switch; nothing invented.
   migrateContraception(state);
+  try { migrateFamilyLife(state); } catch (e) { console.warn('familyLife', e); }
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);

@@ -57,6 +57,7 @@ import { hoodChoice } from './neighborhoodLife.js';
 import { medicineChoice } from './medicine/drama.js';
 import { musicChoice } from './music.js';
 import { journalismChoice } from './journalism.js';
+import { familyLifeChoice } from './familyLife.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -256,6 +257,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
       case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'family': { const note = familyLifeChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'funeral': funeral(ctx.cast?.words?.goneId, e.value === 'skip' ? false : e.value === 'speak' ? 'speak' : true); break;
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
       case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }

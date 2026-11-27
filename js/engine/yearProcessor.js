@@ -83,6 +83,7 @@ import { tickJournalism, pressRequestYear } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 import { directYear, yearSteps } from './storyDirector.js';
+import { familyLifeYear } from './familyLife.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -103,6 +104,8 @@ export const YEARLY = [
   // Anything the player did with money since the last year is written down before this one begins.
   ['openWorldYear', openGlobalYear], // the world's own year opens first (engine/globalLife.js)
   ['openBooks', () => { book({ cat: 'auto', src: 'action' }); }],
+  // The months of the year just ended, before anyone's birthday is counted and before the year's money (engine/familyLife.js).
+  ['familyLife', () => booked('auto', 'Family life', familyLifeYear)],
   // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
   ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
