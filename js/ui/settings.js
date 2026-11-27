@@ -79,7 +79,7 @@ export async function openSettings(hooks = {}) {
         // Only while a life is being played: keep this moment, and live it two ways.
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
-        { value: 'about', label: 'About Pathways', sub: 'Fictional people and events; nothing here is advice' },
+        { value: 'about', label: 'About Pathways', sub: 'Fictional characters and events' },
       ],
     });
     if (!pick) return;

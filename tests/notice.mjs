@@ -1,7 +1,6 @@
-// The notice before the first life: shown once on a device, before the title screen, at phone and desktop widths; it
-// says the people and events are fiction and that nothing is advice; after "I understand" the title screen follows and
-// a reload goes straight there; Settings → About Pathways shows it again. Needs Playwright. Run with: node tests/notice.mjs
-// Set SHOT=/some/dir for screenshots.
+// The notice before the title screen: every time the game opens, the words (fiction; not advice) for a moment, then
+// the title screen by itself; a tap moves on at once; no heading or button; Settings → About Pathways shows the words
+// again. Needs Playwright. Run with: node tests/notice.mjs. Set SHOT=/some/dir for screenshots.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
@@ -29,39 +28,40 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // A real first visit (the address asks for the notice, as an automated browser would otherwise skip it).
+  // The game opening (the address asks for the notice, as an automated browser would otherwise skip it).
   await page.goto(`http://localhost:${port}/index.html?notice`);
-  await page.evaluate(() => localStorage.clear());
+  await page.waitForSelector('[data-notice]');
+  const text = await page.innerText('[data-notice]');
+  check(/fictional/.test(text) && /coincidental/.test(text) && /not medical, legal or financial advice|Nothing here is medical, legal or financial advice/.test(text), `${label}: fiction, and not advice`);
+  check(!(await page.$('[data-notice] h1, [data-notice] button')) && !/just so you know/i.test(text), `${label}: no heading, no button`);
+  check(!(await page.$('[data-random]')) && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}: before the title screen, fitting the screen`);
+  if (process.env.SHOT) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT}/notice-${label}.png` }); }
+  // It moves on by itself.
+  await page.waitForSelector('[data-random]', { timeout: 6000 });
+  check(!(await page.$('[data-notice]')), `${label}: then the title screen, by itself`);
+  // Every time the game opens; a tap moves on at once.
   await page.reload();
-  await page.waitForSelector('[data-notice-ok]');
-  const text = await page.innerText('main');
-  check(/fictional/.test(text) && /coincidental/.test(text) && /not medical, legal or financial advice|Nothing here is medical, legal or financial advice/.test(text) && text.length < 400, `${label}: the notice says it is fiction and not advice`);
-  check(!(await page.$('[data-random]')), `${label}: it comes before the title screen`);
-  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}: no sideways scrolling`);
-  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/notice-${label}.png` });
-  await page.click('[data-notice-ok]');
-  await page.waitForSelector('[data-random]');
-  check(true, 'then the title screen');
-  await page.reload();
-  await page.waitForSelector('[data-random]');
-  check(!(await page.$('[data-notice-ok]')), `${label}: once seen, a reload goes straight to the title screen`);
-  // Settings → About Pathways shows it again.
+  await page.waitForSelector('[data-notice]');
+  const t0 = Date.now();
+  await page.click('[data-notice]');
+  await page.waitForSelector('[data-random]', { timeout: 1000 });
+  check(Date.now() - t0 < 1000, `${label}: shown again on the next opening, and a tap moves on at once`);
+  // Settings → About Pathways shows the words again.
   await page.click('[data-settings]');
   await page.locator('#modal-root .choice-btn', { hasText: 'About Pathways' }).click();
   await page.waitForTimeout(100);
   const about = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
   check(/About Pathways/i.test(about) && /fictional/.test(about), `${label}: Settings shows it again`);
-  // An automated browser on a fresh device (the other checks) goes straight to the title screen.
-  const fresh = await browser.newPage({ viewport });
-  await fresh.goto(`http://localhost:${port}/index.html`);
-  await fresh.evaluate(() => localStorage.clear());
-  await fresh.reload();
-  await fresh.waitForSelector('[data-random]');
-  await fresh.close();
+  // An automated browser (the other checks) goes straight to the title screen.
+  const plain = await browser.newPage({ viewport });
+  await plain.goto(`http://localhost:${port}/index.html`);
+  check(!(await plain.$('[data-notice]')), `${label}: automated checks start at the title screen`);
+  await plain.waitForSelector('[data-random]');
+  await plain.close();
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }
 await browser.close();
 server.close();
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
-console.log('The notice comes first, once, and stays within reach.');
+console.log('A moment of fine print, then the game.');

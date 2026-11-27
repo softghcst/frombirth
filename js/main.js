@@ -92,7 +92,7 @@ function showTitle() {
 // Cloud saves: a link from an email (confirming an account, resetting a
 // password) lands here signed in; then saves sync in the background.
 const arrived = cloud.takeRedirect();
-// The first time on a device: a short notice (it is all fiction; nothing in it is advice), then the title screen.
+// A moment first: it is all fiction, and nothing in it is advice. Then the title screen.
 if (noticeDue()) renderNotice(app, showTitle); else showTitle();
 // Dialogs sit above the page, so the list of lives can be redrawn underneath one.
 cloud.onPulled(() => { if (onTitle) showTitle(); });
