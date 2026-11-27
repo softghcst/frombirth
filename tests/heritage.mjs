@@ -70,7 +70,7 @@ check(JSON.stringify(a1) === JSON.stringify(a2), 'the same game state gives the 
   const { rootsText } = await import('../js/ui/roots.js');
   check(JSON.stringify(rootsFor({ east_asian: 1 }, 'jp')) === '["jp"]', 'an East Asian family in Japan has its roots there');
   const away = rootsFor({ african: 1 }, 'jp');
-  check(away.length === 1 && away[0] !== 'jp' && shareOf(away[0], 'african') >= 0.5, `an African family in Japan has its roots where African heritage is common (${away})`);
+  check(away.length === 2 && away[0] === 'jp' && shareOf(away[1], 'african') >= 0.5, `an African family born in Japan has its roots in Japan and where African heritage is common (${away})`);
   check(JSON.stringify(blendRoots(['jp'], ['ng'])) === '["jp","ng"]', 'a child carries both parents\' roots');
   check(rootsText({ inherited: { roots: ['jp', 'ng'] } }) === 'Family roots: Japan and Nigeria.', 'shown as places');
   check(rootsText({ inherited: { roots: ['jp'] } }, 'jp') === '', 'nothing to add when the roots are where they were born');
@@ -81,8 +81,18 @@ check(JSON.stringify(a1) === JSON.stringify(a2), 'the same game state gives the 
   Object.assign(face.inherited, { skin: 'espresso', hairColor: 'black', hairTexture: 'coily', eyeColor: 'dark_brown' });
   store.state = createLife({ countryId: 'jp', appearance: face, gender: 'female' });
   const mom = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
-  check(mainHeritage(mom.appearance.inherited.heritage) === 'african' && (store.state.player.appearance.inherited.roots ?? []).every((r) => r !== 'jp'),
-    'a player who designs a face unlike the place is born there to a family that looks like them, with roots elsewhere');
+  const pr = store.state.player.appearance.inherited.roots ?? [];
+  check(mainHeritage(mom.appearance.inherited.heritage) === 'african' && pr[0] === 'jp' && pr.length >= 2,
+    `a player who designs a face unlike the place is born there to a family that looks like them, with roots there and elsewhere (${pr})`);
+  // The player's own choice of roots is the family's.
+  const family = () => Object.values(store.state.npcs).filter((n) => ['parent', 'grandparent', 'sibling'].includes(n.role) && n.appearance?.inherited);
+  store.state = createLife({ countryId: 'jp', appearance: face, gender: 'female', roots: 'here' });
+  check(JSON.stringify(store.state.player.appearance.inherited.roots) === '["jp"]' && family().every((n) => JSON.stringify(n.appearance.inherited.roots) === '["jp"]'),
+    'roots chosen as only where they are born: the whole family\'s are Japan');
+  store.state = createLife({ countryId: 'jp', gender: 'male', roots: 'gh' });
+  const ghMom = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
+  check(JSON.stringify(store.state.player.appearance.inherited.roots) === '["jp","gh"]' && mainHeritage(ghMom.appearance.inherited.heritage) === 'african',
+    `roots chosen as Japan and Ghana, with no designed face: a family of Ghanaian heritage born in Japan (${store.state.player.appearance.inherited.roots}, ${mainHeritage(ghMom.appearance.inherited.heritage)})`);
 }
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n${problems.map((p) => ` ✗ ${p}`).join('\n')}`); process.exit(1); }

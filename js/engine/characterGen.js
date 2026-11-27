@@ -26,7 +26,7 @@ import { healthAtBirth } from './health/index.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
-import { inferHeritage, blendHeritage, blendRoots, FACE_VALUES } from '../avatar/heritage.js';
+import { inferHeritage, blendHeritage, blendRoots, heritageFor, FACE_VALUES } from '../avatar/heritage.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 import { LATER_TALENTS } from '../data/talents.js';
@@ -116,7 +116,11 @@ function createOnce(opts = {}) {
   // A designed face's family is of the heritage the face most likely comes from, weighing what is common where they are
   // born: a face like the people there is of them; one unlike them, of the heritage it looks like (the family came from
   // elsewhere, and its roots say where). Its colors then go to the parents, below.
-  const designedHeritage = designed ? inferHeritage(designed.inherited, c.id, FACE_VALUES) : undefined;
+  // The player may also say where their family's roots are (opts.roots): 'here' (only where they are born), or another
+  // country, whose people their family then comes from too; left alone, the face (or the family drawn) decides.
+  const rootsAlso = opts.roots && opts.roots !== 'here' && COUNTRIES[opts.roots] && opts.roots !== c.id ? opts.roots : null;
+  const designedHeritage = designed ? inferHeritage(designed.inherited, rootsAlso ? [c.id, rootsAlso] : c.id, FACE_VALUES)
+    : rootsAlso ? heritageFor(rootsAlso) : undefined;
   const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, heritage: designedHeritage, avoidNames: [firstName] });
   // A royal child: the house is built around the family before the child is drawn from it.
   const birth = birthKind(c.id, opts.birthRank);
@@ -138,6 +142,9 @@ function createOnce(opts = {}) {
     for (const s of fam.siblings) if (s.appearance?.inherited) s.appearance.inherited.roots = blendRoots(mother.appearance?.inherited?.roots, genes.appearance?.inherited?.roots);
   }
   const family = [mother, ...(father ? [father] : []), ...fam.siblings, ...fam.grandparents, ...fam.pets];
+  // Roots the player chose are the whole family's (a parent who came from abroad keeps theirs).
+  const chosenRoots = opts.roots === 'here' ? [c.id] : rootsAlso ? [c.id, rootsAlso] : null;
+  if (chosenRoots) for (const n of family) if (n.appearance?.inherited && n !== roots?.parent && !(roots && fam.grandparents.includes(n) && n.flags.abroad)) n.appearance.inherited.roots = [...chosenRoots];
 
   if (designed) {
     // Each feature the player chose is given to one parent or the other, so the child visibly takes after them.
@@ -151,7 +158,7 @@ function createOnce(opts = {}) {
   if (designed) {
     const her = blendHeritage(mother.appearance?.inherited?.heritage, genes.appearance?.inherited?.heritage);
     if (her) designed.inherited.heritage = her;
-    const rts = blendRoots(mother.appearance?.inherited?.roots, genes.appearance?.inherited?.roots);
+    const rts = chosenRoots ?? blendRoots(mother.appearance?.inherited?.roots, genes.appearance?.inherited?.roots);
     if (rts.length) designed.inherited.roots = rts;
   }
   const appearance = ensureStyled(designed ?? inheritAppearance(mother, genes), gender);

@@ -139,19 +139,21 @@ export function homeland(heritageId, salt = '') {
 }
 
 /**
- * The roots of someone with no known family, born in a place: that place for each part of their heritage common there;
- * for a part that is not, a homeland where it is (their family came from there). Most important first.
+ * The roots of someone with no known family, born in a place: always that place first (it is where they are from), then,
+ * for each part of their heritage that is not common there, a homeland where it is (their family also came from there).
  * @returns {string[]} country ids
  */
 export function rootsFor(heritage, countryId) {
+  if (!countryId) return [];
+  const out = [countryId];
   const x = cleanHeritage(heritage);
-  if (!x || !countryId) return countryId ? [countryId] : [];
-  const out = [];
+  if (!x) return out;
   for (const [id] of Object.entries(x).sort((p, q) => q[1] - p[1])) {
-    const r = shareIn(countryId, id) >= LOCAL ? countryId : homeland(id, countryId) ?? countryId;
-    if (!out.includes(r)) out.push(r);
+    if (shareIn(countryId, id) >= LOCAL) continue;
+    const r = homeland(id, countryId);
+    if (r && !out.includes(r)) out.push(r);
   }
-  return out;
+  return out.slice(0, 3);
 }
 
 /** A child's roots: both parents', in turn, at most four. */
@@ -169,9 +171,11 @@ export function blendRoots(a, b) {
  * @param {{skin:string, hairColor:string, hairTexture:string, eyeColor:string}} inherited
  */
 export function inferHeritage(inherited, countryId, values) {
+  // One place, or several (where they are born and where the player says their family also comes from), weighed alike.
+  const places = Array.isArray(countryId) ? countryId : [countryId];
   const weights = HERITAGE_IDS.map((id) => {
     const one = { [id]: 1 };
-    let w = Math.max(shareIn(countryId, id), 0.01);
+    let w = Math.max(places.reduce((t, c) => t + shareIn(c, id), 0) / places.length, 0.01);
     for (const [key, list] of Object.entries(values)) {
       const v = inherited?.[key];
       if (!v) continue;
@@ -180,7 +184,7 @@ export function inferHeritage(inherited, countryId, values) {
     }
     return w;
   });
-  const id = heritageDice(`infer:${countryId}`).weighted(HERITAGE_IDS, (h) => weights[HERITAGE_IDS.indexOf(h)]);
+  const id = heritageDice(`infer:${places.join(',')}`).weighted(HERITAGE_IDS, (h) => weights[HERITAGE_IDS.indexOf(h)]);
   return { [id]: 1 };
 }
 
