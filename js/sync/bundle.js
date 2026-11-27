@@ -189,11 +189,11 @@ export async function decode(text) {
     } else if (t.startsWith(PREFIX_PLAIN)) bytes = fromBase64(t.slice(PREFIX_PLAIN.length));
     else throw new Error('not ours');
   } catch (e) {
-    throw new Error(e.message === 'old' ? 'This browser is too old to open that code.' : 'That is not a Pathways transfer code, or part of it is missing.');
+    throw new Error(e.message === 'old' ? 'This browser is too old to open that code.' : 'That is not a From Birth transfer code, or part of it is missing.');
   }
   let b;
   try { b = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('That transfer code is damaged. Try copying it again.'); }
-  if (b?.v !== 1 || typeof b.slots !== 'object') throw new Error('That is not a Pathways transfer code, or part of it is missing.');
+  if (b?.v !== 1 || typeof b.slots !== 'object') throw new Error('That is not a From Birth transfer code, or part of it is missing.');
   b.index ??= []; b.graveyard ??= []; b.people ??= []; b.deleted = { ...emptyGone(), ...b.deleted };
   return b;
 }

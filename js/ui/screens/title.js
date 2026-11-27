@@ -52,7 +52,7 @@ export function renderTitle(app, hooks) {
 
   app.innerHTML = `
     <main class="title-screen">
-      <div class="title-hero">${MARK}<h1>Pathways</h1><p>One Life. One Year at a Time.</p></div>
+      <div class="title-hero">${MARK}<h1>From Birth</h1><p>One Life. One Year at a Time.</p></div>
       <div class="btn-stack title-actions">
         <button class="btn peach big" data-random>${icon('sparkle')}Begin a Random Life</button>
         <button class="btn" data-design>${icon('id')}Design a Life</button>

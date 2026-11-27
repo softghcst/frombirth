@@ -1,4 +1,4 @@
-// The medical career engine (Pathways Medical Career Engine). One yearly step, run after the
+// The medical career engine (From Birth Medical Career Engine). One yearly step, run after the
 // working year (engine/yearProcessor.js 'medicine'): school and training years, the posts of a
 // qualified physician, the year's patients, private practice and hospital life. Runs once per
 // world year, so 3-, 6- and 12-month Age Ups give the same career.

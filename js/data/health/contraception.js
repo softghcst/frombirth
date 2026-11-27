@@ -1,5 +1,5 @@
 // Contraception: the canonical registry of methods, the eligibility rules applied to them, where and when each exists,
-// and who may provide it. Pathways is a game: nothing here is medical advice, and the screens never tell a player how
+// and who may provide it. From Birth is a game: nothing here is medical advice, and the screens never tell a player how
 // to use, start or stop a real method. Read docs/CONTRACEPTION.md before changing anything.
 //
 // EFFECTIVENESS. Every figure below is the PERCENT OF PEOPLE WHO BECOME PREGNANT IN THE FIRST YEAR of use, as published

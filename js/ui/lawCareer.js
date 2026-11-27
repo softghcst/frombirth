@@ -270,7 +270,7 @@ function casePage(c) {
       ${c.supervisorId ? `<button type="button" class="tree-row" data-npcperson="${c.supervisorId}"><strong>${esc(nameOf(c.supervisorId))}</strong><small>${c.clinic ? 'Clinic supervisor' : 'Supervising attorney'}</small></button>` : ''}`)}
     ${acts.length || grounds.length ? `<div class="btn-stack law-acts">${lc.hasRoutine(c) ? btn('Handle the Routine Steps', 'data-cact="routine"', 'primary') : ''}${acts.filter((a) => !lc.hasRoutine(c) || !['interview', 'review'].includes(a.id) && !a.id.startsWith('proc:')).map((a) => btn(a.label, `data-cact="${a.id}"`, a.id === 'court' ? 'primary' : '')).join('')}${grounds.length ? btn('Appeal', 'data-cact="appeal"') : ''}${!c.done && !c.clinic && !c.delegated && (player().career?.level ?? 0) >= 1 ? btn('Delegate Routine Work', 'data-cact="delegate"') : ''}${!c.done && !c.clinic ? btn('Refer to a Colleague', 'data-cact="refer"') : ''}</div>` : ''}
     ${(() => { const laws = caseLaws(c); return card('The law', laws.length ? laws.map(({ law }) => `<div class="law-ev"><strong>${esc(law.name)}</strong><small>${esc(law.summary)}${law.note ? ` ${esc(law.note)}` : ''}</small></div>`).join('')
-      : '<p class="muted">Pathways does not list this country\'s laws for this kind of case: the rules here are simplified.</p>'); })()}
+      : '<p class="muted">From Birth does not list this country\'s laws for this kind of case: the rules here are simplified.</p>'); })()}
     ${card('Evidence', ev || '<p class="muted">No evidence in this file.</p>')}
     ${c.witnesses.length ? card('Witnesses', c.witnesses.map((w) => `<button type="button" class="tree-row" data-npcperson="${w.npcId}"><strong>${esc(nameOf(w.npcId))}</strong><small>${esc(w.role)}${w.examined ? ` · ${w.examined === 'shaken' ? 'shaken on cross' : 'held firm'}` : ''}</small></button>`).join('')) : ''}
     ${c.filings.length ? card('Filings', c.filings.map((f) => kv(f.name, `${f.ruling ?? 'pending'}${f.routine ? ' (routine)' : ''}`)).join('')) : ''}
@@ -414,7 +414,7 @@ const GUIDE = [
   ['My Cases', 'Your cases. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
   ['In court', 'When a case reaches a hearing or trial, you choose your opening, your objections, your questions and your closing.'],
   ['Career Progress', 'Your five skills, named for your practice area, your reputation, and the bigger jobs: partner, District Attorney, judge.'],
-  ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],
+  ['What it is not', 'From Birth cites real laws, but how a case turns out is a game. It is not legal advice.'],
 ];
 export function openGuide() {
   const m = openModal(`<div class="eyebrow">How it works</div><h2>${esc(screenName('law'))}</h2>

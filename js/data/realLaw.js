@@ -107,8 +107,8 @@ export const REAL_LAWS = [
   L('jp_dv', ['jp'], 'protection', 'Act on the Prevention of Spousal Violence (2001)', 2001, 'A court can order a violent spouse to stay away from the victim and leave the shared home for a time.'),
   L('jp_refugee', ['jp'], 'asylum', 'Immigration Control and Refugee Recognition Act (refugee recognition from 1982)', 1982, 'Refugee status is recognized under the Refugee Convention, which Japan joined in 1981.'),
   L('jp_water', ['jp'], 'pollution', 'Water Pollution Control Law (1970)', 1971, 'Factories must keep discharges into public waters within national standards.'),
-  // When judges must retire (engine/lawLife.js): the age in force, where Pathways lists it.
-  L('us_art3', ['us'], 'judicial_retirement', 'U.S. Constitution, Article III (federal judges)', 1789, 'Federal judges hold office during good behavior: no retirement age. Most states set one for their own judges, often 70.', { age: 70, note: 'State judges in Pathways retire at 70, the most common state age.' }),
+  // When judges must retire (engine/lawLife.js): the age in force, where From Birth lists it.
+  L('us_art3', ['us'], 'judicial_retirement', 'U.S. Constitution, Article III (federal judges)', 1789, 'Federal judges hold office during good behavior: no retirement age. Most states set one for their own judges, often 70.', { age: 70, note: 'State judges in From Birth retire at 70, the most common state age.' }),
   L('uk_jpra93', ['uk'], 'judicial_retirement', 'Judicial Pensions and Retirement Act 1993', 1995, 'Judges must retire at 70.', { age: 70, until: 2021 }),
   L('uk_pspjoa22', ['uk'], 'judicial_retirement', 'Public Service Pensions and Judicial Offices Act 2022', 2022, 'Raised the mandatory retirement age for judges to 75.', { age: 75 }),
   L('ca_const60', ['ca'], 'judicial_retirement', 'Constitution Act, 1960 (superior court judges)', 1961, 'Judges of the superior courts retire at 75.', { age: 75 }),

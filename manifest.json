@@ -1,6 +1,6 @@
 {
-  "name": "Pathways",
-  "short_name": "Pathways",
+  "name": "From Birth",
+  "short_name": "From Birth",
   "description": "A text life simulation. One year at a time.",
   "start_url": "./index.html",
   "scope": "./",

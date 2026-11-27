@@ -3,7 +3,7 @@
 //
 // GAMEPLAY CONFIGURATION. Founding years and the year a sport could be played
 // for money are rounded, documented assumptions for this game, not a history.
-// Every league, club, tour and rating in Pathways is invented. The Pathways
+// Every league, club, tour and rating in From Birth is invented. The From Birth
 // Rating (PR) is the game's own measure and is not any real federation's rating.
 //
 //   kind      'team' | 'racket' (singles and doubles) | 'golf' | 'race' (timed or measured) | 'judged' | 'combat' | 'fitness'

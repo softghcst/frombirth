@@ -8,7 +8,7 @@
 // Years are when a technology first reaches ordinary people in the best-
 // connected countries. A country with weaker infrastructure gets it later
 // (see ADOPTION below). Platforms are invented for the game: their names,
-// looks and rules are Pathways' own.
+// looks and rules are From Birth's own.
 
 /**
  * @typedef {Object} CommunicationTechnology

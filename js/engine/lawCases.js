@@ -381,7 +381,7 @@ export function review(c) {
 }
 /** The research question. A right answer makes the filing and the argument stronger; a wrong one costs a little. */
 export function researchQuestion(c) { const T = { ...template(c), ...(CHILD_ROLES[c.role]?.research && c.templateId === 'dependency' ? { research: CHILD_ROLES[c.role].research } : {}) }; return T.research ? { text: fill(T.research.text, c), options: T.research.options.map((o) => fill(o, c)), right: T.research.right, why: fill(T.research.why, c) } : null; }
-/** The real law behind a case's research question, if Pathways lists it for this country and year. */
+/** The real law behind a case's research question, if From Birth lists it for this country and year. */
 function researchLaw(c) {
   const ground = c.evidence.find((e) => e.basis === 'unlawful_search' || e.basis === 'coerced')?.basis;
   if (ground) return realLaw.exclusion(ground, c.countryId);

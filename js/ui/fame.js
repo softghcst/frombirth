@@ -424,7 +424,7 @@ const VIEWS = {
     const cards = entries.map((e) => {
       const club = athletics.orgOf(e.orgId, st);
       const seasons = (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0);
-      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Pathways Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
+      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Player Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
         ...(e.caps ? [['International caps', String(e.caps)]] : []), ...((e.awards ?? []).length ? [['Awards', e.awards.filter((a) => a.kind !== 'team').map((a) => `${a.name} (${a.year})`).join(', ') || `${e.awards.length} team-of-the-season places`]] : []), ...((e.medals ?? []).length ? [['Medals', e.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>`;
     }).join('');
     const known = a?.fame >= 1 ? `<p class="muted">Sports fans know your name from your results: ${Math.round(a.fame)}/100.</p>` : '';

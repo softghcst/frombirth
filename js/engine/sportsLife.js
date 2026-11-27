@@ -625,7 +625,7 @@ function proRoutes(state, a, e) {
     return;
   }
   if (route === 'tour') {
-    if (e.pr >= 1300 && p.age <= 34 && seen('tour')) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
+    if (e.pr >= 1300 && p.age <= 34 && seen('tour')) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Player Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
@@ -1041,7 +1041,7 @@ function yearIn(state, a, e) {
     if (games.length) {
       sum.rating = Math.round(games.reduce((s, x) => s + x, 0) / games.length * 10) / 10;
       e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
-      // The Pathways Rating of a team player follows how they played and how the team did, game by game.
+      // The Player Rating of a team player follows how they played and how the team did, game by game.
       const target = Math.round(1000 + (sum.rating - 6) * 230 + (sp.internals.LEVEL_STRENGTH[e.level] ?? 40) * 6 - 240 + (sum.title ? 40 : 0));
       e.pr = Math.round(e.pr * 0.5 + target * 0.5);
       if (e.played - sum.wins - sum.losses <= games.length && !e.firstGame) { e.firstGame = state.year; sp.moment(state, { type: 'first', sportId: e.id, text: `First competitive season in ${sport.name.toLowerCase()}.`, sig: 1 }); }
@@ -1085,7 +1085,7 @@ function yearIn(state, a, e) {
     const best = can ? e.events.map((id) => S.events[id]).filter((x) => x.year === state.year).map((x) => x.place) : [];
     sum.rating = Math.round(clamp(6 + (sum.wins - sum.losses) / Math.max(4, sum.wins + sum.losses) * 3, 3, 10) * 10) / 10;
     e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
-    if (can) sp.say(state, `Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Pathways Rating ${e.pr}.`, titles ? 'good' : 'neutral', { screen: 'sport', id: e.id });
+    if (can) sp.say(state, `Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Player Rating ${e.pr}.`, titles ? 'good' : 'neutral', { screen: 'sport', id: e.id });
     else log(`Injury kept you out of every ${sport.name.toLowerCase()} event this year.`, 'system', 'bad');
   }
   e.seasonsPlayed += 1;
