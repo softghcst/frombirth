@@ -26,6 +26,7 @@ check(/<title>From Birth<\/title>/.test(html) && /apple-mobile-web-app-title" co
 check(/apple-touch-icon" sizes="180x180" href="\.\/icons\/apple-touch-icon\.png"/.test(html) && /favicon-32\.png/.test(html), 'the install and tab icons are Afterglow');
 // Afterglow is the default install icon: the files the manifest and the page use are Afterglow's.
 check(readFileSync(`${root}icons/icon-192.png`).equals(readFileSync(`${root}icons/icon-afterglow-192.png`)) && readFileSync(`${root}icons/apple-touch-icon.png`).equals(readFileSync(`${root}icons/icon-afterglow-180.png`)), 'the default installed icon is Afterglow');
+check(/og:image" content="https:\/\/softghcst\.github\.io\/frombirth\/icons\/icon-afterglow-1024\.png"/.test(html) && /og:url" content="https:\/\/softghcst\.github\.io\/frombirth\/"/.test(html), 'link previews use the site\'s full address');
 section('the supplied artwork, sized copies, and Afterglow as the installed icon');
 
 // 2. The choice: Afterglow by default, kept apart from the theme, restorable.
