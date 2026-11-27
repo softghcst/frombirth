@@ -74,18 +74,24 @@ scenario('A. first sport: a child takes up a sport and has a skill profile of th
 // ---------- B. School team ----------
 scenario('B. school team: a tryout, an outcome, a persistent roster', () => {
   let joined = false;
-  for (let t = 0; t < 15 && !joined; t++) {
-    const p = grownTo(14, 'us', 'Chicago', able); // starting high school: years left before leaving
-    edu.setSport?.('soccer');
-    p.education.sport = 'soccer';
-    // Two seasons are watched, so the team must be made by sixteen: at eighteen the player leaves school, and the team.
-    for (let i = 0; i < 2 && !joined; i++) { const r = edu.joinClub('sports_team'); joined = r.ok; if (!joined) year(); }
+  // A life cut short by an accident before the seasons are played proves nothing about teams: another is lived.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    joined = false;
+    for (let t = 0; t < 15 && !joined; t++) {
+      const p = grownTo(14, 'us', 'Chicago', able); // starting high school: years left before leaving
+      edu.setSport?.('soccer');
+      p.education.sport = 'soccer';
+      // Two seasons are watched, so the team must be made by sixteen: at eighteen the player leaves school, and the team.
+      for (let i = 0; i < 2 && !joined; i++) { const r = edu.joinClub('sports_team'); joined = r.ok; if (!joined) year(); }
+    }
+    if (!joined) break;
+    // The year a child moves up a stage of school has no club season; the first one may be the year after.
+    year({ academy: 'no' });
+    if (!sp.entryOf('soccer')?.seasons.length) year({ academy: 'no' });
+    if (P().alive) break;
   }
   check(joined, 'a strong student makes the school team');
   if (!joined) return;
-  // The year a child moves up a stage of school has no club season; the first one may be the year after.
-  year({ academy: 'no' });
-  if (!sp.entryOf('soccer')?.seasons.length) year({ academy: 'no' });
   const e = sp.entryOf('soccer');
   const org = sp.orgOf(e.orgId) ?? sp.orgOf(sp.teamOf(e.schoolTeamId)?.orgId);
   const team = sp.teamOf(e.teamId);

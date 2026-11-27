@@ -137,6 +137,8 @@ export const LAW_HISTORY = {
     ['cr', 2020], ['cl', 2022], ['ch', 2022], ['si', 2022], ['mx', 2022], ['cu', 2022], ['ad', 2023], ['ee', 2024], ['gr', 2024],
     ['li', 2025], ['th', 2025], ['*', 2000],
   ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
+  // [fact] Japan lowered its age of majority from 20 to 18 in April 2022.
+  majorityAge: { jp: [{ until: 2021, value: 20 }] },
   // [fact] Divorce introduced: Italy 1970, Brazil 1977, Spain 1981 (and briefly 1932–1939), Argentina 1987,
   // Ireland 1997, Chile 2004, Malta 2011.
   divorce: {

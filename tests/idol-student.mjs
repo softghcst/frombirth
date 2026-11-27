@@ -118,7 +118,10 @@ section('talent schools are far more expensive, with scholarships for exceptiona
 
 // ---------- 4. A crowd from middle school ----------
 {
-  const p = child(12);
+  // Some American schools run straight through eighth grade (a K-8 school is still "elementary" at twelve): a girl at
+  // one has no middle school to choose a crowd in yet, so this looks at one whose school has one.
+  let p = child(12);
+  for (let i = 0; i < 6 && p.education.stage !== 'middle'; i++) p = child(12);
   const e = p.education;
   check(e.stage === 'middle' && e.enrolled, `twelve is middle school (${e.stage})`);
   e.clique = null;
