@@ -1,6 +1,7 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
 import { rentShare } from './neighborhoodLife.js';
+import { leaseBill, rentPaid } from './independence.js';
 import { housingK } from './cities.js';
 import { careCost } from './couple.js';
 import { runPayroll } from './worklife.js';
@@ -132,6 +133,15 @@ export function tickFinance() {
 
   // Living costs start once you support yourself. Rent is the biggest part,
   // and disappears when you live in a home you own.
+  // A lease signed on moving out (engine/independence.js) is billed by the month it ran: those months replace the
+  // estimate below, never add to it. A lease that ended with a move back home is still owed for its months.
+  const lease = leaseBill(store.state.year - 1);
+  if (lease && (p.flags.livesWithParents || p.education.enrolled || p.legal.incarceration)) {
+    const paid = afford(lease.amount);
+    f.cash -= paid;
+    rentPaid(paid, lease.amount);
+    book({ cat: 'living', src: 'year', desc: 'Rent and bills on your lease', split: [['housing', toMinor(paid, c.currency.code)]] });
+  }
   if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled && !p.legal.incarceration) {
     // A spouse who earns pays their share of the household; one who does not is supported.
     // How a couple shares the household's costs is theirs to agree (engine/family.js).
@@ -140,9 +150,12 @@ export function tickFinance() {
     // A roommate pays their share of the rent (engine/neighborhoodLife.js); a neighborhood's own costs are already in what the city charges.
     let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id) * (0.5 + 0.5 * housingK()) * rentShare())); // rent is about half of it, and follows the city
     const lifestyle = lifestyleCost(gross, c);
+    // The months on a lease are its own rent and bills, shared with a spouse as the rest is; the other months, the estimate.
+    const leased = lease && !housed ? Math.round(lease.amount * share) : null;
+    if (leased != null) base = leased + Math.round(base * Math.max(0, 12 - lease.months) / 12);
     // Where pay is low against rents, people on ordinary wages do not live alone: they share.
     const takeHome = gross - incomeTax(gross, c);
-    const crowded = gross > 0 && !p.homeId && base > takeHome * 0.7;
+    const crowded = leased == null && gross > 0 && !p.homeId && base > takeHome * 0.7;
     if (crowded) {
       base = Math.round(takeHome * 0.32);
       if (p.stats.mood > 40) p.stats.mood = clamp(p.stats.mood - 1);
@@ -151,6 +164,7 @@ export function tickFinance() {
     p.flags.sharedHousing = crowded;
     const paid = afford(base + lifestyle);
     f.cash -= paid;
+    if (leased != null) rentPaid(Math.min(paid, base), base);
     everyday = Math.max(0, paid - base);
     book({ cat: 'living', src: 'year', desc: p.homeId ? 'Bills and everyday spending' : 'Rent, bills and everyday spending',
       split: [['housing', toMinor(Math.min(paid, base), c.currency.code)]] });
