@@ -53,7 +53,7 @@ export const SCHEDULES = {
 };
 
 /** The yearly chances, before era and law. */
-const CHANCE = { separate: 0.013, newPartner: 0.1, moveIn: 0.3, marry: 0.28, part: 0.04, partMarried: 0.02, baby: 0.12 };
+export const CHANCE = { separate: 0.013, newPartner: 0.1, moveIn: 0.3, marry: 0.28, part: 0.04, partMarried: 0.02, baby: 0.12 };
 
 /** The family record, filled in from what the save already says (idempotent: safe on every load). */
 export function migrateFamilyLife(state = store.state) {
@@ -64,6 +64,8 @@ export function migrateFamilyLife(state = store.state) {
   const parents = all.filter((n) => n.role === 'parent' && !n.flags.step && !n.adopted);
   f.bioParentIds ??= parents.map((n) => n.id);
   f.legalParentIds ??= [...f.bioParentIds];
+  // A partner moved in with: together.js once wrote only livingTogether, but the game reads livesTogether everywhere.
+  for (const n of all) if (n.role === 'partner' && n.flags?.livingTogether && !n.flags.livesTogether) n.flags.livesTogether = true;
   // A life that began in adoption or kinship care (engine/origins.js): its birth parents are the record's, its legal
   // parents the adoptive ones where there was an adoption; the household it grows up in is the adoptive family.
   const rec = Object.values(state.origins?.records ?? {}).find((r) => r.adopteeId === p.id);
@@ -134,9 +136,11 @@ export function tickBlended() {
   fam();
   upkeep(p);
   separate(p);
+  separateLater(p);
   newPartners(p);
   partnersMoveOn(p);
   newHalfSiblings(p);
+  partnersChildren(p);
 }
 
 // ---------- Parents who separate ----------
@@ -154,6 +158,21 @@ function separate(p) {
   const leaving = fatherFirst && rng.chance(0.65) ? fatherFirst : rng.pick(both);
   const staying = leaving === a ? b : a;
   separateParents(staying, leaving, { legal: legal ? 'divorce' : 'separation' });
+}
+
+/**
+ * Parents can part after their children are grown, too: less often, with no arrangement for the child to make. The
+ * grown-up child hears it from them (scene blend_separation_adult).
+ */
+function separateLater(p) {
+  if (p.flags.parentsStatus !== 'together' || p.age < 18 || p.royal) return;
+  const both = parentsNow();
+  if (both.length !== 2 || both.some((n) => n.age >= 75)) return;
+  const legal = divorceLegal(p.countryId);
+  if (!rng.chance(CHANCE.separate * 0.35 * eraFactor(store.state.year) * (legal ? 1 : 0.25))) return;
+  const [a, b] = both;
+  const leaving = rng.chance(0.5) ? a : b;
+  separateParents(leaving === a ? b : a, leaving, { legal: legal ? 'divorce' : 'separation' });
 }
 
 /**
@@ -175,8 +194,19 @@ export function separateParents(staying, leaving, { legal = 'divorce', farAway =
   const home = houseApart(store.state, leaving.id, leaving.city, 'separated');
   if (home) leaving.flags.homeId = home.id;
   syncHousehold(store.state);
-  const schedule = chooseSchedule(staying, leaving, year, leaving.city !== p.city);
   const key = `family:separation:${[staying.id, leaving.id].sort().join(':')}`;
+  // A grown-up child: no arrangement to make, no support to set. They are told.
+  if (p.age >= 18) {
+    f.separations.push({ year, age: p.age, parents: [staying.id, leaving.id], leftId: leaving.id, legal, key });
+    log(`Your parents ${legal === 'divorce' ? 'are divorcing' : 'have separated'}, after all these years. ${leaving.firstName} has moved ${leaving.city === staying.city ? 'to a place across town' : `to ${leaving.city}`}.`, 'system', 'bad');
+    milestone(`Parents ${legal === 'divorce' ? 'divorced' : 'separated'} when you were ${p.age}.`, 'family');
+    recordEvent({ key, type: 'family_separation', title: 'Your parents separated', people: [staying.id, leaving.id], significance: 2, privacy: 'private',
+      text: `${staying.firstName} and ${leaving.firstName} separated when ${p.firstName} was ${p.age}.` });
+    p.stats.mood = clamp(p.stats.mood - 5);
+    storyBeat('blend_separation_adult', { staying: staying.id, leaving: leaving.id }, { source: 'family', must: true });
+    return null;
+  }
+  const schedule = chooseSchedule(staying, leaving, year, leaving.city !== p.city);
   f.separations.push({ year, age: p.age, parents: [staying.id, leaving.id], leftId: leaving.id, legal, key });
   f.arrangement = { primaryId: staying.id, otherId: leaving.id, schedule, since: year, ageThen: p.age,
     basis: legal === 'divorce' && year >= 1970 ? 'parenting plan' : 'family agreement', jurisdiction: p.countryId, simplified: simplified(p.countryId),
@@ -293,16 +323,16 @@ export function seenOften(n) {
 function single(parent) { return !partnerOfParent(parent); }
 
 function newPartners(p) {
-  if (p.age > 25 || p.royal) return;
+  if (p.royal) return; // (a parent's life goes on whatever the player's age)
   const year = store.state.year;
   for (const parent of parentsNow()) {
     const widowed = parentsNow().length === 1 && bioParentIdsOf(p).length >= 2;
     const apart = p.flags.parentsStatus === 'separated' || p.flags.parentsStatus === 'single' || widowed;
-    if (!apart || !single(parent) || parent.age > 62) continue;
+    if (!apart || !single(parent) || parent.age > 75) continue;
     // A parent who has only just separated takes a while.
     const since = fam().separations.at(-1)?.year ?? -Infinity;
     if (year - since < 1) continue;
-    if (!rng.chance(CHANCE.newPartner * (year < 1960 ? 0.5 : 1))) continue;
+    if (!rng.chance(CHANCE.newPartner * (year < 1960 ? 0.5 : 1) * (parent.age > 60 ? 0.4 : 1))) continue;
     meetParentPartner(parent);
   }
 }
@@ -477,7 +507,67 @@ export function blendedChoice(value, cast = {}) {
     case 'step_show': bump(kid, 8); return `You show ${kid?.firstName} where everything is. By the end of the week you have a joke between you.`;
     case 'step_space': bump(kid, 3); return 'You leave each other alone at first. It is a relief to both of you.';
     case 'step_rules': bump(kid, -2); return 'You lay down the law about the bathroom. It does not go down well.';
+    case 'sepa_both': bump(staying, 4); bump(leaving, 4); return 'You tell them you love them both, and that it does not have to be a war. They both cry a little.';
+    case 'sepa_side': { const [x, y] = (staying?.meters.relationship ?? 0) >= (leaving?.meters.relationship ?? 0) ? [staying, leaving] : [leaving, staying]; bump(x, 6); bump(y, -10); return `You end up on ${x?.firstName}'s side. ${y?.firstName} notices.`; }
+    case 'sepa_out': return 'You tell them it is between the two of them.';
+    case 'pk_meet': if (kid) { kid.flags.met = store.state.year; bump(kid, 10); } bump(partner, 5); return `You meet ${kid?.firstName} at the park, on neutral ground. It goes better than either of you expected.`;
+    case 'pk_slow': bump(partner, 2); return 'You say you would love to meet them, when the time is right for everyone.';
+    case 'pk_alot': bump(partner, -8); return `You admit it is a lot to take in. ${partner?.firstName} goes quiet.`;
     default: return '';
+  }
+}
+
+// ---------- A partner's children ----------
+
+const childWord = (n) => word(n, 'son', 'daughter', 'child');
+/** Children of someone the player is seeing, met while they are dating (before any wedding). */
+export const partnersKids = (partnerId = null) => store.state.player.npcIds.map(npc).filter((k) => k?.alive && k.flags.partnerKid && (!partnerId || k.flags.partnerKid === partnerId));
+
+/**
+ * Someone the player dates may already have children (their life says how many: npc.life.kids). The player learns of
+ * them early, and they become real people in the player's life, as the partner's son or daughter. Living with their
+ * parent, a child under 18 lives with the player too. At a wedding, stepchildrenOnMarriage takes them in as the
+ * player's step-children (nobody is made twice). If the couple part first, a child the player grew close to stays in
+ * their life; one they never knew well does not.
+ */
+function partnersChildren(p) {
+  const year = store.state.year;
+  for (const partner of p.npcIds.map(npc).filter((n) => n?.alive && n.role === 'partner')) {
+    const has = partner.life?.kids ?? 0;
+    if (!has || partner.flags.kidsMet || p.age < 18) continue;
+    partner.flags.kidsMet = year;
+    const known = p.npcIds.map(npc).filter((n) => n?.parentIds?.includes(partner.id)).length;
+    const want = Math.min(3, Math.max(0, has - known));
+    if (!want) continue;
+    roll(`partnerkids/${partner.id}`);
+    const kids = people(`partnerkids/${partner.id}`, () => {
+      const out = [];
+      for (let i = 0; i < want; i++) {
+        const age = clamp(rng.int(0, Math.max(0, partner.age - 20)), 0, 30);
+        const kid = makeNpc({ role: 'relative', countryId: p.countryId, lastName: partner.lastName, age, relationship: rng.int(15, 30), appearance: inheritAppearance(partner, partner) });
+        kid.parentIds = [partner.id];
+        kid.flags.partnerKid = partner.id;
+        kid.flags.title = `${partner.firstName}'s ${childWord(kid)}`;
+        kid.city = partner.city ?? p.city;
+        store.state.npcs[kid.id] = kid;
+        p.npcIds.push(kid.id);
+        out.push(kid);
+      }
+      return out;
+    });
+    log(`${partner.firstName} tells you about ${kids.length === 1 ? `${word(kids[0], 'a son', 'a daughter', 'a child')}, ${kids[0].firstName}, who is ${kids[0].age}` : `${kids.length} children: ${kids.map((k) => k.firstName).join(' and ')}`}.`, 'system', 'neutral');
+    recordEvent({ key: `family:partnerkids:${partner.id}`, type: 'partner_children', title: `Learned that ${partner.firstName} has ${kids.length === 1 ? 'a child' : 'children'}`, people: [partner.id, ...kids.map((k) => k.id)], significance: 1, privacy: 'private' });
+    storyBeat('blend_partner_kids', { partner: partner.id, kid: kids[0].id }, { source: 'family', must: true });
+  }
+  // As the relationship goes, so do they.
+  for (const kid of partnersKids()) {
+    const partner = npc(kid.flags.partnerKid);
+    if (partner?.alive && partner.role === 'partner') { kid.flags.liveIn = !!partner.flags.livesTogether && kid.age < 18; continue; }
+    if (partner?.role === 'spouse') continue; // the wedding made them step-children (stepchildrenOnMarriage)
+    kid.flags.liveIn = false;
+    delete kid.flags.partnerKid;
+    if (kid.meters.relationship >= 60) kid.flags.title = `${partner?.firstName ?? 'An ex'}'s ${childWord(kid)}, still in your life`;
+    else p.npcIds = p.npcIds.filter((id) => id !== kid.id);
   }
 }
 
@@ -491,7 +581,7 @@ export function blendedChoice(value, cast = {}) {
 export function stepchildrenOnMarriage(spouse) {
   const p = player();
   const known = p.npcIds.map(npc).filter((n) => n?.alive && n.parentIds?.includes(spouse.id) && n.role !== 'child');
-  for (const k of known) { k.flags.wasRole = k.role; k.role = 'stepchild'; k.flags.stepVia = spouse.id; }
+  for (const k of known) { k.flags.wasRole = k.role; k.role = 'stepchild'; k.flags.stepVia = spouse.id; if (k.flags.partnerKid) { delete k.flags.title; delete k.flags.partnerKid; } }
   const want = Math.max(0, (spouse.life?.kids ?? 0) - known.length - p.npcIds.map(npc).filter((n) => n?.role === 'child' && n.parentIds?.includes(spouse.id)).length);
   if (!want) return known;
   roll(`stepkids/${spouse.id}`);
