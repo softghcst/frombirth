@@ -407,7 +407,8 @@ scenario('the Classic', () => {
   const R = bb.record(e);
   const caps = e.caps ?? 0;
   // The Classic is played by invitation: the nation through its qualifier, then a place on the roster (engine/nations.js).
-  const classicYear = () => { nations.yearInternational(S(), a, e); for (const d of sl.openDecisions().filter((x) => x.kind === 'classicInvite')) sl.answer(d.id, 'yes'); };
+  // Fit to play: an injury that keeps a player out keeps them off the roster too (checked elsewhere), not what this checks.
+  const classicYear = () => { a.injuries = (a.injuries ?? []).filter((x) => x.status !== 'out'); nations.yearInternational(S(), a, e); for (const d of sl.openDecisions().filter((x) => x.kind === 'classicInvite')) sl.answer(d.id, 'yes'); };
   while (bb.classicYear(S().year)) S().year += 1;
   classicYear();
   check(R.classic.length === 0, 'no Classic in a year without one');

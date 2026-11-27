@@ -219,7 +219,7 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
   const t = item.traditionId ? traditions().find((x) => x.id === item.traditionId) : matchingTradition(item);
   let begun = null;
   if (t) keepTradition(t, people, YOU);
-  else if (makeTradition && canFound(item)) begun = foundTradition(item, people);
+  else if (makeTradition && canFound(item, people.length)) begun = foundTradition(item, people);
 
   // What is worth remembering.
   const yrs = item.occasion === 'anniversary' ? p.age - npc(item.forId).marriedAtAge : 0;
@@ -323,14 +323,31 @@ function matchingTradition(item) {
   const k = traditionFor(item);
   return traditions().find((t) => t.status === 'active' && (t.holiday ? `holiday:${t.holiday}` : t.occasion) === k) ?? null;
 }
-/** Holidays, the reunion and Sunday visits can become traditions; the player must be an adult to start one. */
-export const canFound = (item) => player().age >= 18 && !matchingTradition(item) && (!!item.holiday || ['family_reunion', 'visit_grandparents'].includes(item.occasion));
+/**
+ * Holidays and the family occasions marked `tradition` can become traditions; the player must be an adult to start
+ * one, and a tradition is kept with someone (a New Year alone is a New Year, not a family tradition).
+ */
+export const canFound = (item, guests = 1) => player().age >= 18 && guests >= 1 && !matchingTradition(item) && (!!item.holiday || !!OCCASIONS[item.occasion]?.tradition);
+
+/** A tradition's name: the holiday at the host family's, or the custom's own title. */
+function traditionName(occasion, holiday, last) {
+  const h = holiday ? HOLIDAYS.find((x) => x.id === holiday) : null;
+  if (h) return `${h.name} at the ${familyPlural(last)}'`;
+  if (occasion === 'family_reunion') return `The ${last} family reunion`;
+  if (occasion === 'visit_grandparents') return 'Sundays with the grandparents';
+  return (OCCASIONS[occasion]?.title ?? OCCASIONS[occasion]?.name ?? 'A family tradition').replace('{family}', `${familyPlural(last)}'`).replace('{last}', last);
+}
+/** What keeping a tradition costs its host for a year, in local money. */
+function traditionCost(t, guests, c) {
+  if (t.holiday) { const h = HOLIDAYS.find((x) => x.id === t.holiday); return localCost((h?.cost ?? 100) + (h?.perGuest ?? 0) * guests, c); }
+  const o = OCCASIONS[t.occasion];
+  return localCost(o?.cost != null ? o.cost + (o.perGuest ?? 0) * guests : 150, c);
+}
 
 function foundTradition(item, people) {
   const p = player();
-  const h = item.holiday ? HOLIDAYS.find((x) => x.id === item.holiday) : null;
   const t = { id: `trad_${store.state.year}_${traditions().length + 1}`, occasion: item.occasion, holiday: item.holiday ?? null,
-    name: h ? `${h.name} at the ${familyPlural(p.lastName)}'` : item.occasion === 'family_reunion' ? `The ${p.lastName} family reunion` : 'Sundays with the grandparents',
+    name: traditionName(item.occasion, item.holiday, p.lastName),
     founded: store.state.year, founder: { id: p.id, name: `${p.firstName} ${p.lastName}` }, hostId: YOU, participants: [YOU, ...people.map((n) => n.id)],
     lastYear: store.state.year, count: 1, skipped: [], history: [{ year: store.state.year, text: `First kept, hosted by ${p.firstName}.` }], status: 'active' };
   traditions().push(t);
@@ -407,9 +424,9 @@ export function finishYear() {
       t.history.push({ year, text: next ? `Passed to ${next === YOU ? p.firstName : npc(next).firstName} to host.` : 'Its host was gone, and nobody took it on.' });
       t.hostId = next ?? null;
     }
+    if (t.lastYear === year) continue; // kept by hand this year: nothing more
     const people = t.participants.filter((id) => id !== YOU).map(npc).filter(inLife);
     if (!t.hostId || people.length + (t.participants.includes(YOU) ? 1 : 0) < 2) { t.status = 'lapsed'; t.history.push({ year, text: 'Too few were left to keep it.' }); continue; }
-    if (t.lastYear === year) continue; // kept by hand this year: nothing more
     if ((t.skipped ?? []).includes(year)) {
       let run = 0;
       while (t.skipped.includes(year - run)) run += 1;
@@ -418,7 +435,7 @@ export function finishYear() {
     }
     // It happens anyway, as it always has.
     if (t.hostId === YOU && !familyPays()) {
-      const cost = localCost(t.holiday ? (HOLIDAYS.find((h) => h.id === t.holiday)?.cost ?? 100) : 150, c);
+      const cost = traditionCost(t, people.length, c);
       if (p.finance.cash < cost) { t.skipped = [...(t.skipped ?? []), year]; t.history.push({ year, text: 'There was no money to host it this year.' }); continue; }
       p.finance.cash -= cost;
       book({ cat: 'leisure', src: 'moment', desc: t.name });
@@ -460,6 +477,123 @@ export function finishYear() {
   // A host who is growing old may want someone to take it on (engine/eventEngine.js scene).
   const tired = traditions().find((t) => t.status === 'active' && t.hostId !== YOU && npc(t.hostId)?.age >= 78 && !t.askedHandover && t.participants.includes(YOU) && p.age >= 18);
   if (tired) { tired.askedHandover = year; storyBeat('tradition_handover', { host: tired.hostId }, { source: 'family' }, state); }
+  else proposeTradition(state);
+}
+
+// ---------- How traditions start ----------
+// Besides the player making one of an occasion they hold, a family starts its own: a child is born into some
+// (seedTraditions), someone in the family suggests one (proposeTradition), and a grown child who has left home can
+// start their own version of the one they grew up with (the "own home" scene). All on dice of their own (keyedDice),
+// so a life plays exactly as it would have, except where a tradition begins.
+
+const FAMILY_HOSTS = ['parent', 'grandparent', 'sibling', 'spouse', 'partner'];
+/** The customs a family can begin, for a host of this role: the holidays kept here, then the everyday ones. */
+function startable(state, host, p) {
+  const year = state.year;
+  const ok = (o) => (!o.since || year >= o.since) && (!o.countries || o.countries.split(' ').includes(p.countryId));
+  const have = new Set((state.traditions ?? []).filter((t) => t.status === 'active').map((t) => (t.holiday ? `holiday:${t.holiday}` : t.occasion)));
+  const grand = Object.values(state.npcs).some((n) => n.alive && n.role === 'grandparent' && p.npcIds.includes(n.id));
+  const out = [];
+  for (const h of HOLIDAYS) if (ok(h) && h.minAge == null && !have.has(`holiday:${h.id}`)) out.push({ occasion: 'holiday', holiday: h.id, w: ['parent', 'grandparent'].includes(host.role) ? 4 : 2 });
+  const add = (id, w, when = true) => { if (when && ok(OCCASIONS[id]) && !have.has(id)) out.push({ occasion: id, holiday: null, w }); };
+  add('sunday_dinner', 3, host.age >= 30);
+  add('summers_grandparents', 2, grand && p.age < 16 && ['parent', 'grandparent'].includes(host.role));
+  add('family_game_night', 2);
+  add('family_trip', 1, host.age >= 25 && (host.meters?.money ?? 50) >= 40);
+  add('birthday_breakfast', 1, ['parent', 'spouse', 'partner'].includes(host.role));
+  return out;
+}
+function makeFamilyTradition(state, kind, host, participants, founded) {
+  const p = state.player;
+  const t = { id: `trad_${founded}_${(state.traditions ??= []).length + 1}`, occasion: kind.occasion, holiday: kind.holiday,
+    name: traditionName(kind.occasion, kind.holiday, host.lastName ?? p.lastName), founded, founder: { id: host.id, name: `${host.firstName} ${host.lastName ?? ''}`.trim() },
+    hostId: host.id, participants: [...new Set(participants)], lastYear: state.year - 1, count: Math.max(1, state.year - founded), skipped: [],
+    history: [{ year: founded, text: `Begun by ${host.firstName}.` }], status: 'active' };
+  state.traditions.push(t);
+  return t;
+}
+
+/**
+ * A newborn's family may already keep a tradition or two: a grandparent's holiday table, Sunday dinners, summers at
+ * the grandparents'. The child grows up inside them. Returns the lines for the start of the life story.
+ */
+export function seedTraditions(state) {
+  const p = state.player;
+  const d = keyedDice(`traditions/born/${state.slotId}`);
+  const kin = (role) => Object.values(state.npcs).filter((n) => n.alive && n.role === role && p.npcIds.includes(n.id) && !n.flags?.abroad);
+  const parents = kin('parent');
+  if (!parents.length) return [];
+  const grands = kin('grandparent');
+  const lines = [];
+  const n = d.chance(0.65) ? (d.chance(0.35) ? 2 : 1) : 0;
+  for (let i = 0; i < n; i++) {
+    const host0 = grands.length && d.chance(0.5) ? d.pick(grands) : d.pick(parents);
+    const kinds = startable(state, host0, p);
+    if (!kinds.length) break;
+    const kind = d.weighted(kinds, (k) => k.w);
+    const host = kind.occasion === 'summers_grandparents' && grands.length ? d.pick(grands) : host0;
+    const elder = host.role === 'grandparent';
+    const founded = state.year - (elder ? d.int(12, 40) : d.int(2, 12));
+    const people = [...parents, ...kin('sibling'), ...(elder || kind.holiday ? grands : [])].map((x) => x.id);
+    const t = makeFamilyTradition(state, kind, host, [YOU, ...people], founded);
+    t.history.push({ year: state.year, text: `${p.firstName} was born into it.` });
+    lines.push(`Your family has a tradition: ${t.name}, ${elder ? `your grandparent ${host.firstName}'s` : `begun by ${host.firstName}`} since ${founded}.`);
+  }
+  return lines;
+}
+
+/** Now and then someone in the family suggests doing something every year. Asked as a scene (data/events/moments.js). */
+function proposeTradition(state) {
+  const p = player();
+  if (!p.alive || p.legal?.incarceration || p.age < 4) return;
+  const active = traditions(state).filter((t) => t.status === 'active');
+  const d = keyedDice(`traditions/offer/${state.slotId}/${state.year}`);
+  // Someone who left home may start their own version of one they grew up with.
+  const home = !p.flags.livesWithParents && p.age >= 18 && active.find((t) => t.hostId !== YOU && t.participants.includes(YOU) && !t.ownAsked && ['parent', 'grandparent'].includes(npc(t.hostId)?.role) && !active.some((x) => x !== t && x.occasion === t.occasion && x.holiday === t.holiday && x.hostId === YOU));
+  if (home && d.chance(0.35)) { home.ownAsked = state.year; storyBeat('tradition_own_home', { host: home.hostId, words: { tradition: home.name } }, { source: 'family' }, state); return; }
+  if (active.length >= 4 || (state.traditionOffer && state.year - state.traditionOffer.year < 4) || !d.chance(0.12)) return;
+  const hosts = livingNpcs().filter((n) => FAMILY_HOSTS.includes(n.role) && n.age >= 21 && n.meters.relationship >= 45 && !n.flags.abroad && !n.flags.inside);
+  if (!hosts.length) return;
+  const host = d.pick(hosts);
+  const kinds = startable(state, host, p);
+  if (!kinds.length) return;
+  const kind = d.weighted(kinds, (k) => k.w);
+  state.traditionOffer = { year: state.year, hostId: host.id, occasion: kind.occasion, holiday: kind.holiday };
+  const words = kind.holiday ? { holiday: HOLIDAYS.find((h) => h.id === kind.holiday).name } : {};
+  storyBeat(`tradition_offer_${kind.holiday ? 'holiday' : kind.occasion}`, { host: host.id, words }, { source: 'family' }, state);
+}
+
+/** The household the player would bring to a tradition they start themselves. */
+const ownHousehold = () => livingNpcs().filter((n) => ['spouse', 'partner', 'child'].includes(n.role) && !n.flags.abroad).map((n) => n.id);
+
+/** For the scenes: the answer to someone's suggestion, or to starting your own version. */
+function offerChoice(what, cast) {
+  const state = store.state;
+  const p = player();
+  const o = state.traditionOffer;
+  const host = npc(cast.host);
+  if (!o || o.hostId !== cast.host || !inLife(host)) return null;
+  state.traditionOffer = { ...o, answered: what };
+  if (what === 'no') { host.meters.relationship = clamp(host.meters.relationship - 2); return null; }
+  const kind = { occasion: o.occasion, holiday: o.holiday };
+  if (traditions().some((t) => t.status === 'active' && t.occasion === kind.occasion && t.holiday === kind.holiday)) return null;
+  const who = [YOU, host.id, ...livingNpcs().filter((n) => ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandparent'].includes(n.role) && !n.flags.abroad && n.meters.relationship >= 30).map((n) => n.id)];
+  const byYou = what === 'host' && p.age >= 18;
+  const t = makeFamilyTradition(state, kind, byYou ? { id: YOU, firstName: p.firstName, lastName: p.lastName } : host, who, state.year);
+  if (byYou) { t.hostId = YOU; t.founder = { id: p.id, name: `${p.firstName} ${p.lastName}` }; t.history = [{ year: state.year, text: `Begun by ${p.firstName}, on ${host.firstName}'s idea.` }]; }
+  milestone(`Began a family tradition: ${t.name}.`, 'family');
+  return `${t.name}: every year from now on.`;
+}
+function ownHomeChoice(what, cast) {
+  const p = player();
+  const t = traditions().find((x) => x.status === 'active' && x.hostId === cast.host && x.ownAsked === store.state.year);
+  if (!t || what !== 'start' || p.age < 18) return null;
+  const copy = makeFamilyTradition(store.state, { occasion: t.occasion, holiday: t.holiday }, { id: YOU, firstName: p.firstName, lastName: p.lastName }, [YOU, ...ownHousehold()], store.state.year);
+  copy.hostId = YOU; copy.founder = { id: p.id, name: `${p.firstName} ${p.lastName}` };
+  copy.history = [{ year: store.state.year, text: `${p.firstName} started their own, after ${t.name}.` }];
+  if (copy.name === t.name) copy.name = `${copy.name}, at your place`;
+  milestone(`Began a family tradition of your own: ${copy.name}.`, 'family');
+  return `You will keep ${copy.name} in your own home from now on.`;
 }
 
 /** The new year: a fresh record and this year's invitations. Called by Age Up once the year has moved on. */
@@ -470,6 +604,8 @@ export function startYear() {
 
 /** For a scene: the player takes over the tradition the cast host keeps, or lets someone else. */
 export function sceneChoice(what, cast = {}) {
+  if (what.startsWith('offer:')) return offerChoice(what.slice(6), cast);
+  if (what.startsWith('own:')) return ownHomeChoice(what.slice(4), cast);
   const t = traditions().find((x) => x.status === 'active' && x.hostId === cast.host);
   if (!t) return null;
   if (what === 'takeover') return takeOver(t.id).text;

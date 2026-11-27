@@ -35,6 +35,7 @@ function life(id = 'us', age = 30, cash = 50000) {
   p.finance.cash = Math.round(cash * COUNTRIES[id].currency.scale);
   for (const n of Object.values(store.state.npcs)) n.alive = false;
   p.npcIds = [];
+  store.state.traditions = []; // and none of the family's traditions: each check starts its own
   ledgerOf();
   return p;
 }
@@ -279,6 +280,67 @@ section('with six- or three-month turns, a year\'s occasions still happen once, 
   check(teen.finance.cash === Math.round(80 * COUNTRIES.us.currency.scale), 'a teenager pays for their own choices');
 }
 section('a child at home: the family pays for occasions and for scenes, as the screen says; a teenager pays their own way in scenes');
+
+// ---------- 10. Traditions start without the player planning one ----------
+{
+  // Born into them: across many new lives, a good share of families already keep one, hosted by a parent or grandparent.
+  let withOne = 0; let hostsOk = true; let inIt = true; let named = true;
+  for (let i = 0; i < 60; i++) {
+    store.state = createLife({ countryId: 'us' });
+    const ts = mo.traditions();
+    if (ts.length) withOne += 1;
+    for (const t of ts) {
+      hostsOk &&= ['parent', 'grandparent'].includes(store.state.npcs[t.hostId]?.role);
+      inIt &&= t.participants.includes('you') && t.status === 'active' && t.founded <= store.state.year;
+      named &&= store.state.journal.some((e) => e.text.includes(t.name));
+    }
+  }
+  check(withOne >= 20 && withOne <= 55, `about two families in three are born keeping a tradition (${withOne} of 60)`);
+  check(hostsOk && inIt && named, 'hosted by a parent or grandparent, the child part of it, and told at the start of the life story');
+  // A child's family tradition is kept at Age Up without the child doing anything, and the family pays.
+  p = life('us', 8, 0); p.flags.livesWithParents = true;
+  const mom = person('parent', 38, 80); const grandma = person('grandparent', 66, 80);
+  mo.traditions().push({ id: 'trad_kid', occasion: 'sunday_dinner', holiday: null, name: 'Sunday dinners at the Okafors\'', founded: 2000, founder: { id: grandma.id, name: grandma.firstName },
+    hostId: grandma.id, participants: ['you', mom.id, grandma.id], lastYear: store.state.year - 1, count: 10, skipped: [], history: [], status: 'active' });
+  const kept = mo.traditions()[0].count;
+  advanceYear(); store.state.pendingEvents = [];
+  check(mo.traditions()[0].count === kept + 1 && !(store.state.ledger?.tx ?? []).some((x) => x.desc === mo.traditions()[0].name), 'a child\'s family tradition is kept each year, at no cost to the child');
+  // Someone in the family suggests one: over the years, a scene asks; saying yes starts it with them as host.
+  p = life('us', 30, 100000);
+  const sis = person('sibling', 34, 80); person('parent', 60, 80);
+  let asked = null;
+  for (let y = 0; y < 40 && !asked; y++) { mo.finishYear(); asked = store.state.pendingEvents.find((e) => e.id.startsWith('tradition_offer_')); store.state.year += 1; store.state.moments = null; }
+  check(!!asked && getEvent(asked.id), `a relative suggests a tradition within a few decades (${asked?.id})`);
+  if (asked) {
+    store.state.year -= 1;
+    resolveChoice(getEvent(asked.id), 0, asked.cast);
+    const t = mo.traditions().find((x) => x.hostId === asked.cast.host);
+    check(t && t.participants.includes('you') && t.status === 'active' && t.count === 1, 'saying yes starts it, hosted by whoever suggested it');
+    check(!/[{}]/.test(getEvent(asked.id).text.replace('{host}', '').replace('{holiday}', '')), 'the scene\'s words are filled');
+  }
+  // Grown and gone: the chance to start your own version of the one you grew up with.
+  p = life('us', 26, 100000); p.flags.livesWithParents = false;
+  const dad = person('parent', 58, 80); const sib2 = person('sibling', 24, 70);
+  mo.traditions().push({ id: 'trad_home', occasion: 'holiday', holiday: 'thanksgiving', name: 'Thanksgiving at the Rivas\'', founded: 1995, founder: { id: dad.id, name: dad.firstName },
+    hostId: dad.id, participants: ['you', dad.id, sib2.id], lastYear: store.state.year - 1, count: 20, skipped: [], history: [], status: 'active' });
+  let own = null;
+  for (let y = 0; y < 20 && !own; y++) { mo.finishYear(); own = store.state.pendingEvents.find((e) => e.id === 'tradition_own_home'); if (!own) { store.state.year += 1; store.state.moments = null; } }
+  check(!!own, 'a grown child who left home is asked about keeping their own version');
+  if (own) {
+    person('spouse', 27, 80);
+    resolveChoice(getEvent('tradition_own_home'), 0, own.cast);
+    const mine = mo.traditions().find((x) => x.hostId === 'you');
+    check(mine && mine.holiday === 'thanksgiving' && mo.traditions().find((x) => x.id === 'trad_home').status === 'active', 'starting your own keeps theirs going too');
+  }
+  // A tradition is kept with someone: none founded alone, and a founded one does not fade the same year.
+  p = life('us', 30, 100000);
+  const ny = item('holiday:new_year');
+  check(!mo.canFound(ny, 0) && mo.canFound(ny, 1), 'a tradition needs at least one other person');
+  r = mo.celebrate({ key: 'holiday:new_year', guests: [], makeTradition: true });
+  check(r.ok && mo.traditions().length === 0, 'marking New Year alone does not found one');
+  check(mo.canFound({ occasion: 'family_reunion' }) && mo.canFound({ occasion: 'visit_grandparents' }) && !mo.canFound({ occasion: 'dinner_party' }), 'which occasions can be traditions comes from the data');
+}
+section('traditions start on their own: born into them, suggested by family, carried into your own home');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

@@ -56,7 +56,7 @@ async function plan(item, api) {
   }
   // A tradition, if this could become one.
   let makeTradition = false;
-  if (mo.canFound(item)) {
+  if (mo.canFound(item, guests.length)) {
     const t = await pickModal({ title: 'Every year?', body: 'Some families do this every year without fail. It would happen each year from now on, unless you skip it.',
       options: [{ value: 'no', label: 'Just this once' }, { value: 'yes', label: 'Make it a family tradition', sub: 'It carries on each year, and passes down the family.' }] });
     if (!t) return undefined;

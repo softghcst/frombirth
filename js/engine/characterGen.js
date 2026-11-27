@@ -31,6 +31,7 @@ import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 import { LATER_TALENTS } from '../data/talents.js';
 import { applyOrigin } from './origins.js';
+import { seedTraditions } from './moments.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -298,5 +299,7 @@ function createOnce(opts = {}) {
   ensureEra(state); // a new life keeps its money in the money of its own years
   migrateFamilyLife(state); // who the life's parents are, and the brothers and sisters born to them (engine/blended.js)
   settleHood(state); // the family home, in a neighborhood with neighbors (engine/neighborhood.js)
+  // The traditions the family already keeps: the child grows up inside them (engine/moments.js).
+  for (const line of seedTraditions(state)) journal.push(j(line, 'good'));
   return state;
 }
