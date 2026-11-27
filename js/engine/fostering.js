@@ -49,7 +49,7 @@ export const CARER_AGE = 21;
 export const MAX_PLACED = 2;
 /** Why children come into care in this model: the family's circumstances, told plainly and without blame. */
 export const REASONS = {
-  illness: { line: 'a parent is seriously ill and in hospital for a long while', recover: 0.45 },
+  illness: { line: 'a parent is seriously ill and in the hospital for a long while', recover: 0.45 },
   crisis: { line: 'the family is going through a crisis and cannot care for them just now', recover: 0.4 },
   prison: { line: 'their parent is serving a prison sentence', recover: 0.3 },
   coping: { line: 'their parent is getting help, and cannot look after them while they do', recover: 0.35 },

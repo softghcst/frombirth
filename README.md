@@ -56,6 +56,13 @@ node tests/admissions.mjs      # university decisions and aid, on hand-built app
 node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
 node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
 node tests/graduation-ui.mjs  # browser: the graduation card after high school and university, and where each next step leads
+node tests/blended-families.mjs    # parents who separate, care arrangements, step-parents, step- and half-siblings, reload
+node tests/independence.mjs        # moving out (lease, deposit once, roommate) and back home; age of majority by country
+node tests/fostering.mjs           # foster and kinship care, reviews, reunification, guardianship vs adoption
+node tests/marriage.mjs            # dating, moving in, engagement, real wedding guests, step-children, divorce, the law
+node tests/teen-life.mjs           # classmates, homecoming, a date who can say no, curfews, friends after graduation
+node tests/family-time-steps.mjs   # the family systems come out the same in 3-, 6- and 12-month turns
+node tests/living-families-ui.mjs  # browser: moving out, fostering and the step-family on a phone and desktop
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations

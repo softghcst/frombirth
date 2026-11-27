@@ -91,7 +91,8 @@ export function kinNote(n) {
     if (kind === 'step') { const via = npc(n.flags?.stepVia); return via ? `${via.firstName}'s child` : 'Through a parent\'s marriage'; }
     if (kind === 'adoptive') return 'Through adoption';
   }
-  if (n.role === 'stepparent') { const of = npc(n.flags?.partnerOf); return of ? `${n.flags.former ? 'Was' : 'Is'} ${of.firstName}'s ${n.flags.married ? 'spouse' : 'partner'}` : ''; }
+  // The label already says whose partner they are; the note adds only what it does not: a marriage, or that it ended.
+  if (n.role === 'stepparent') { const of = npc(n.flags?.partnerOf); if (!of) return ''; if (n.flags.former) return `Was ${of.firstName}'s ${n.flags.married ? 'spouse' : 'partner'}`; return n.flags.married ? `Married to ${of.firstName}` : ''; }
   return '';
 }
 
