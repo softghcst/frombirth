@@ -530,6 +530,7 @@ def build(style, force=False):
     # template in assets/hair_templates/faces/): that face then wears its own drawing as drawn, not one fitted to it.
     own_dir = os.path.join(PNG_DIR, 'heads', style)
     owns = {f[:-4]: os.path.join(own_dir, f) for f in sorted(os.listdir(own_dir)) if f.endswith('.png')} if os.path.isdir(own_dir) else {}
+    # ... and a back for one face only (<head>_back.png there): drawn on that face, used as drawn.
     newest = max(os.path.getmtime(p) for p in (front, back, *owns.values()) if os.path.exists(p))
     if not force and os.path.exists(out) and os.path.getmtime(out) > newest:
         return None
@@ -591,6 +592,9 @@ def build(style, force=False):
             hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
             hmask = squeeze(fmask, left, right)
             bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
+            if f'{name}_back' in owns:
+                bm, brest = emit(trace(owns[f'{name}_back'])[0])
+                print(f'  {name}: its own back')
             svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name, None if name in (base_name, *SNAP_HEADS) else drawn_head)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
