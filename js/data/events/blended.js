@@ -13,7 +13,17 @@ export default [
     ['Ask to live with {leaving} instead', 'You say it before you can stop yourself.', 'sep_ask', [need('age', '>=', 12)]],
     ['Say nothing', 'You nod, and go to your room.', 'sep_quiet'],
   ]),
-  scene('blend_meet_partner', [3, 25], '{parent} wants you to meet someone: {partner}. You meet over a meal that has clearly been planned with great care. {partner} asks you questions and listens to the answers.', [
+  scene('blend_separation_adult', [18, 120], 'Your parents are separating, after all these years. {staying} and {leaving} each call you the same evening, each wanting you to understand.', [
+    ['Tell them you love them both', 'You say you will not choose.', 'sepa_both'],
+    ['Take a side', 'You tell one of them what you really think.', 'sepa_side'],
+    ['Stay out of it', 'You keep out of it.', 'sepa_out'],
+  ]),
+  scene('blend_partner_kids', [18, 120], '{partner} has something to tell you, and has clearly been working up to it: there is a child in their life, {kid}, and {kid} comes first.', [
+    ['Ask to meet {kid}', 'You say you would like to meet them.', 'pk_meet'],
+    ['Take it slowly', 'You say there is no hurry.', 'pk_slow'],
+    ['Admit it is a lot', 'You tell {partner} it is a lot to take in.', 'pk_alot'],
+  ]),
+  scene('blend_meet_partner', [3, 120], '{parent} wants you to meet someone: {partner}. You meet over a meal that has clearly been planned with great care. {partner} asks you questions and listens to the answers.', [
     ['Be friendly', 'You decide to give them a chance.', 'meet_warm'],
     ['Give it time', 'You are polite. You are not ready to be more than that.', 'meet_time'],
     ['Keep your distance', 'You answer in single words.', 'meet_cool'],
@@ -23,7 +33,7 @@ export default [
     ['Give them some space', 'You let them settle in.', 'step_space'],
     ['Set out some rules', 'You explain how things work in this house.', 'step_rules'],
   ]),
-  scene('blend_parent_wedding', [3, 40], '{parent} and {partner} are getting married. It is a small, warm day. At the end {parent} finds you, and asks how you feel about it, and means it.', [
+  scene('blend_parent_wedding', [3, 120], '{parent} and {partner} are getting married. It is a small, warm day. At the end {parent} finds you, and asks how you feel about it, and means it.', [
     ['Tell them you are happy for them', 'You hug them both.', 'wed_glad'],
     ['Tell them it is complicated', 'You tell them the truth.', 'wed_honest'],
     ['Ask what you should call {partner}', 'You have been wondering.', 'wed_names'],
