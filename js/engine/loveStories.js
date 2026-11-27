@@ -15,6 +15,7 @@ import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
 import { decide } from './pregnancyChoice.js';
+import { stageChoice } from './pregnancyStages.js';
 import { tickFamilyStories, familyChoice, FAMILY_IDS } from './familyStories.js';
 import { storyBeat } from './storyDirector.js';
 import * as contra from './health/contraception.js';
@@ -81,6 +82,7 @@ export function loveChoice(value, cast) {
   const c = country();
   const [story, choice] = value.split(':');
   if (story === 'pregnancy') return decide(choice, cast);
+  if (story === 'expecting') return stageChoice(choice, cast);
   if (FAMILY_IDS.has(story)) return familyChoice(story, Number(choice), cast);
   if (story.startsWith('teen')) return teenChoice(story, choice, cast);
   const npc = npcOf(cast.them);
