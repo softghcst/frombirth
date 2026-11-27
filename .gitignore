@@ -6,3 +6,7 @@ scripts/debug_eyes_png.html
 
 # Parallel agents work in their own checkouts here.
 .claude/worktrees/
+
+# Capacitor app (scripts/build-app.mjs makes www/ from the game; it is never committed).
+node_modules/
+www/

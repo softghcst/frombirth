@@ -1,5 +1,6 @@
 {
   "name": "from-birth",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "From Birth: a life simulation that runs in the browser. Nothing to install to play; these scripts are for development.",
@@ -15,6 +16,21 @@
     "trace-hair": "python scripts/trace_hair_png.py && python scripts/fit_hair.py",
     "eye-template": "node scripts/make_eye_template.mjs",
     "trace-eyes": "python scripts/trace_eyes_png.py && python scripts/build-avatar-manifest.py",
-    "soften-hair": "python scripts/soften_hair_lines.py && python scripts/fit_hair.py"
+    "soften-hair": "python scripts/soften_hair_lines.py && python scripts/fit_hair.py",
+    "build:app": "node scripts/build-app.mjs && npx cap sync",
+    "vendor-fonts": "node scripts/vendor-fonts.mjs"
+  },
+  "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.3",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.3"
   }
 }

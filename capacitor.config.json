@@ -1,0 +1,24 @@
+{
+  "appId": "com.softghcst.frombirth",
+  "appName": "From Birth",
+  "webDir": "www",
+  "server": {
+    "iosScheme": "capacitor",
+    "hostname": "localhost",
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F1EBFA",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "overlaysWebView": true
+    }
+  }
+}
