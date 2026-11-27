@@ -14,6 +14,7 @@ import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
+import { migrateFamilyLife } from './engine/blended.js';
 import { migrateMedicine } from './engine/medicine/core.js';
 import { migrateInvestigations } from './engine/investigations/core.js';
 import { ensureEra, alignWorld } from './engine/eras.js';
@@ -173,6 +174,7 @@ function migrate(state) {
   // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
   ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateFamilyLife(state); // parents, step-parents and half-siblings, from what the save already says (engine/blended.js)
   migrateDigital(state);
   // The medical career (engine/medicine): a doctor keeps their job and level; nothing of their training is invented.
   migrateMedicine(state);

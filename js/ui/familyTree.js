@@ -4,6 +4,7 @@ import { store, player } from '../state.js';
 import { esc } from '../util.js';
 import { roleLabel } from '../engine/relationships.js';
 import { openModal } from './modals.js';
+import { kinNote } from '../engine/kinship.js';
 
 const all = () => player().npcIds.map((id) => store.state.npcs[id]).filter(Boolean);
 
@@ -17,11 +18,11 @@ function line(npc, depth, extra = '') {
 }
 
 /** A person, their partner, and everyone descended from them. */
-function branch(npc, depth, people) {
+function branch(npc, depth, people, extra = '') {
   const love = people.find((n) => n.role === 'inlaw' && n.flags.partnerOf === npc.id);
-  const kids = people.filter((n) => n.parentIds?.includes(npc.id) && n.role !== 'child')
+  const kids = people.filter((n) => n.parentIds?.includes(npc.id) && !['child', 'sibling', 'stepsibling'].includes(n.role))
     .sort((a, b) => b.age - a.age);
-  return line(npc, depth)
+  return line(npc, depth, extra)
     + (love ? line(love, depth, '') : '')
     + kids.map((k) => branch(k, depth + 1, people)).join('');
 }
@@ -40,8 +41,11 @@ export function openFamilyTree(onPick, onHistory) {
   const you = `<div class="tree-row you" style="padding-left:12px"><strong>${esc(p.firstName)} ${esc(p.lastName)}</strong><small>You · age ${p.age}</small></div>`;
   const html = [
     section('Grandparents', of('grandparent').map((n) => line(n, 0)).join('')),
-    section('Parents', of('parent').map((n) => line(n, 0)).join('')),
-    section('Your generation', you + loves.map((n) => line(n, 0)).join('') + of('sibling').map((n) => branch(n, 0, people)).join('')),
+    section('Parents', of('parent').map((n) => line(n, 0, n.flags.livesApart && n.alive ? ' · lives apart' : '')).join('')),
+    // A parent's partner and their children (engine/blended.js): family by marriage or by living together, not by birth.
+    section('Step-family', of('stepparent').map((n) => line(n, 0, kinNote(n) ? ` · ${esc(kinNote(n))}` : '')
+      + people.filter((k) => k.role === 'stepsibling' && k.flags.stepVia === n.id).map((k) => line(k, 1)).join('')).join('')),
+    section('Your generation', you + loves.map((n) => line(n, 0)).join('') + of('sibling').map((n) => branch(n, 0, people, kinNote(n) ? ` · ${esc(kinNote(n))}` : '')).join('')),
     section('Your children and their families', of('child').map((n) => branch(n, 0, people)).join('')),
   ].join('');
 

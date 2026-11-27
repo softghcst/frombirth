@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { migrateFamilyLife } from './blended.js';
 import { giveBirthday, birthDate } from './birthday.js';
 import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
@@ -288,6 +289,7 @@ function createOnce(opts = {}) {
   player.birthCity = player.city;
   ensureGlobal(state);
   ensureEra(state); // a new life keeps its money in the money of its own years
+  migrateFamilyLife(state); // who the life's parents are, and the brothers and sisters born to them (engine/blended.js)
   settleHood(state); // the family home, in a neighborhood with neighbors (engine/neighborhood.js)
   return state;
 }

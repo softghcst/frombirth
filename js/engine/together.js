@@ -23,6 +23,7 @@ import { makeNpc } from './npcFactory.js';
 import { breakUp, divorce } from './romance.js';
 import { bonds as relationships } from './bonds.js';
 import { storyBeat } from './storyDirector.js';
+import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore } from './blended.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -56,6 +57,8 @@ const spend = (amount, why) => { const p = player(); if (p.finance.cash < amount
 
 const PARENT = ['parent'];
 const SIBLING = ['sibling'];
+const STEP = ['stepparent'];
+const STEPSIB = ['stepsibling'];
 /** What a sleepover can be. `if`: only where it makes sense (video games need a television, from 1980). */
 const SLEEPOVER = [
   { id: 'movie', label: 'Movie marathon', text: '{name} slept over and you watched a film, then half of another, and fell asleep on the floor.', memory: 'a movie and a floor full of popcorn.' },
@@ -273,6 +276,27 @@ export const BONDS = [
       bump(n, rng.int(4, 8)); remember(n, 'keptTheirSecret', 'You listened, and kept what they told you.');
       return trouble ? `${n.firstName} told you ${trouble}. You promised to keep it to yourself, and you will.` : `${n.firstName} talked about nothing in particular for an hour, then thanked you as if it had been something.`;
     } },
+  // ---------- A blended family (engine/blended.js) ----------
+  { id: 'askLiveWith', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to live with them',
+    run: (n) => { const r = askToLiveWith(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'seeMore', group: 'ask', roles: PARENT, age: [6, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to see them more often',
+    run: (n) => { const r = askToSeeMore(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'stepTime', group: 'together', roles: STEP, age: [3, 120], label: 'Spend time together',
+    run: (n) => { bump(n, rng.int(3, 7)); mood(2); remember(n, 'stepTime', 'Spent an afternoon with you, just the two of you.');
+      return rng.pick([`You and ${n.firstName} went for a long walk and found you had more to say than you expected.`, `${n.firstName} taught you to make something ${he(n)} grew up eating. It was better than you said it was.`, `You watched a game with ${n.firstName}. Neither of you cared who won.`]); } },
+  { id: 'stepSchool', group: 'talk', roles: STEP, age: [6, 17], label: 'Talk about school',
+    run: (n) => { bump(n, rng.int(2, 5)); return `${n.firstName} asked about school, and remembered the names from last time.`; } },
+  { id: 'stepHelp', group: 'ask', roles: STEP, age: [8, 30], label: 'Ask for help with something',
+    run: (n) => (rng.chance(clamp(0.45 + (n.meters.relationship - 40) / 120, 0.15, 0.9)) ? (bump(n, rng.int(4, 8)), trust(n, 3), `${n.firstName} helped, without making a thing of it.`)
+      : { text: `${n.firstName} tried to help. It came out more like advice than you wanted.`, tone: 'neutral' }) },
+  { id: 'stepBoundary', group: 'talk', roles: STEP, age: [10, 120], label: 'Set a boundary',
+    run: (n) => { trust(n, 2); bump(n, rng.chance(0.6) ? 2 : -2); return `You told ${n.firstName}, calmly, what you needed from ${him(n)}. ${cap(he(n))} took it better than you feared.`; } },
+  { id: 'stepSibTime', group: 'together', roles: STEPSIB, age: [3, 120], label: 'Spend time together',
+    run: (n) => { bump(n, rng.int(4, 8)); mood(2); return rng.pick([`You and ${n.firstName} stayed up talking about your parents. You agreed on more than you expected.`, `You and ${n.firstName} found a game you both like.`, `${n.firstName} showed you a song. You pretended not to like it, then played it twice.`]); } },
+  { id: 'stepSibHomework', group: 'together', roles: STEPSIB, age: [7, 18], if: (n) => n.age >= 6 && n.age <= 18, label: 'Help each other with homework',
+    run: (n) => { bump(n, rng.int(3, 6)); player().stats.intellect = clamp(player().stats.intellect + 1); return `You and ${n.firstName} got through the homework together, mostly.`; } },
+  { id: 'stepSibTalk', group: 'conflict', roles: STEPSIB, age: [6, 120], label: 'Talk out a disagreement',
+    run: (n) => { const ok = rng.chance(clamp(0.5 + (n.meters.relationship - 40) / 120, 0.2, 0.9)); bump(n, ok ? 6 : -2); return ok ? `You and ${n.firstName} talked it through. You both said sorry, at about the same time.` : { text: `You and ${n.firstName} did not settle it. Not yet.`, tone: 'neutral' }; } },
   { id: 'teamUp', group: 'together', roles: SIBLING, age: [8, 17], if: (n) => n.age < 25 && mine(PARENT).length > 0, label: 'Team up against your parents',
     run: (n) => { bump(n, rng.int(6, 10)); for (const pa of mine(PARENT)) trust(pa, -3); mood(3);
       return `You and ${n.firstName} put on a united front about the vacation. You lost, but you lost together.`; } },

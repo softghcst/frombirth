@@ -14,6 +14,8 @@ import { tickSports } from './sportsLife.js';
 import { tickDisasters } from './disasters.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
+import { tickBlended } from './blended.js';
+import { tickIndependence } from './independence.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
 import { tickEstate } from './estateReview.js';
@@ -107,6 +109,7 @@ export const YEARLY = [
   ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
+  ['blended', tickBlended], // parents who separate, a parent's new partner, step- and half-siblings (engine/blended.js)
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
@@ -122,7 +125,7 @@ export const YEARLY = [
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
   ['insurance', () => booked('insurance', 'Insurance premiums', tickInsurance)],
-  ['finance', tickFinance], ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
+  ['independence', tickIndependence], ['finance', tickFinance], // a lease that has ended returns its deposit (engine/independence.js) ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
   ['illness', () => booked('health', 'Health', tickHealth)],
   ['health', () => booked('health', 'Health care', () => healthYear(player()))],
   ['prison', () => booked('legal', 'Prison', tickPrison)],
