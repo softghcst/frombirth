@@ -422,7 +422,7 @@ function homeGroup(p) {
   const out = indep.moveOutBlock(p);
   if (p.flags.livesWithParents && p.age >= 16) rows.push(out ? lockedRow('Move out', out) : navRow({ attrs: 'data-go="moveout"', label: 'Move out', sub: 'Rent a place of your own, alone or with someone', ico: 'home', tone: 'peach' }));
   if (!p.flags.livesWithParents && p.age >= 18 && !indep.moveBackBlock(p)) rows.push(navRow({ attrs: 'data-go="moveback"', label: 'Move back home', sub: 'Ask your family if you can live with them again', ico: 'home' }));
-  if (indep.leaseHistory(p).length || N.placesWeCalledHome().filter((x) => x.who === (p.archiveId ?? p.id)).length > 1) rows.push(navRow({ attrs: 'data-go="homes"', label: 'Places you have lived', ico: 'compass' }));
+  if (indep.leaseHistory(p).length || N.placesWeCalledHome().filter((x) => x.who === (p.archiveId ?? p.id)).length > 1) rows.push(navRow({ attrs: 'data-go="homes"', label: 'Places you have lived', sub: 'Every home and lease, with the years', ico: 'compass' }));
   return rows.length ? navGroup(rows, 'Home') : '';
 }
 
