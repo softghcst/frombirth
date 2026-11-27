@@ -29,7 +29,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 const shot = async (name) => { if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/${name}.png` }); };
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
-await page.click('[data-random]'); await page.waitForSelector('[data-year]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 // A ten-year-old with a well-off parent and a close friend.
 const ids = await page.evaluate(async () => {
@@ -43,7 +43,7 @@ const ids = await page.evaluate(async () => {
 // 1. Sleepover, from the friend's profile.
 await page.evaluate(() => document.querySelector('.tab-btn[data-tab="people"]').click()); await page.waitForTimeout(250);
 await page.evaluate((id) => document.querySelector(`[data-npc="${id}"]`).click(), ids.pal); await page.waitForTimeout(300);
-await page.evaluate(() => document.querySelectorAll('#modal-root details.action-group').forEach((d) => { d.open = true; }));
+
 await page.locator('#modal-root [data-act="with:sleepover"]').click(); await page.waitForTimeout(250);
 check(await page.locator('#modal-root select#m-pick').count() === 1 && /Sleepover/.test(await page.locator('#modal-root .modal').last().innerText()), 'the sleepover asks with a dropdown');
 check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).some((x) => /^Sleep out in a tent$/i.test(x)), 'a night in a tent is one of the plans');

@@ -1,0 +1,144 @@
+// Checks that the Health Engine and the medical career are one health world (engine/medicine/healthLink.js):
+// the same hospitals and clinics, the same doctors, patients' conditions in their own health records, a physician's
+// relative who falls ill, and a physician treated where they work. Run with: node tests/medicine-health.mjs
+import { store } from '../js/state.js';
+import { rng } from '../js/rng.js';
+import { createLife } from '../js/engine/characterGen.js';
+import { makeNpc } from '../js/engine/npcFactory.js';
+import { CASE_BY_ID } from '../js/data/medicineCases.js';
+import * as core from '../js/engine/medicine/core.js';
+import * as train from '../js/engine/medicine/training.js';
+import * as cases from '../js/engine/medicine/cases.js';
+import * as drama from '../js/engine/medicine/drama.js';
+import { hospitalsIn } from '../js/engine/medicine/hospitals.js';
+import { maybeFamilyPatient } from '../js/engine/medicine/healthLink.js';
+import { storyBeat, yearSteps } from '../js/engine/storyDirector.js';
+import { facilitiesHere, clinicianAt } from '../js/engine/health/care.js';
+import { admit } from '../js/engine/health/hospital.js';
+import { npcHealth } from '../js/engine/health/story.js';
+import { employer } from '../js/engine/employers.js';
+import { staffOf } from '../js/engine/workplace.js';
+
+rng.seed(2468);
+const problems = [];
+const check = (c, m) => { if (!c) problems.push(m); };
+store.state = createLife({ countryId: 'us' });
+const p = store.state.player;
+p.age = 40; p.finance.cash = 1e6;
+p.education.degrees.push({ type: 'university', majorId: 'biology', gpa: 3.8, age: 22 }, { type: 'medical', gpa: 3.6, age: 26 });
+
+// The same places.
+const fs = facilitiesHere(p);
+const hosp = fs.find((f) => f.defId === 'hospital');
+const prim = fs.find((f) => f.defId === 'primary');
+const city = hospitalsIn(p.countryId, p.city).map(({ e }) => e.id);
+check(hosp?.employerId && city.includes(hosp.employerId) && hosp.name === employer(hosp.employerId).name, `the Health Engine's hospital is one of the city's hospitals (${hosp?.name})`);
+check(prim?.employerId && city.includes(prim.employerId), `the family practice is one of the city's health employers (${prim?.name})`);
+
+// The same doctors: the player works there; the hospital's internist is a colleague, and is the one who treats people.
+const m = core.M(p);
+for (const k of Object.keys(m.skills)) m.skills[k] = 80;
+m.completed.push({ specialtyId: 'family', kind: 'residency', from: 2000, to: 2003 });
+m.license = { status: 'full', countryId: 'us' };
+train.startPost('family', hosp.employerId, 'attending');
+const doc = clinicianAt(hosp, 'doctor');
+const e = employer(hosp.employerId);
+check(doc && doc.life?.job?.employerId === e.id && staffOf(e).includes(doc) && doc.flags.medSpecialty === 'internal', 'the hospital doctor who treats people is on its staff, an internist');
+check(clinicianAt(hosp, 'doctor') === doc, 'and stays the same doctor');
+const gp = clinicianAt(prim, 'gp');
+check(gp && gp.life?.job?.employerId === prim.employerId && gp.flags.medSpecialty === 'family', 'the family practice\'s doctor works there, a family physician');
+check(gp?.id !== p.id && doc?.id !== p.id, 'the player is never their own doctor');
+
+// The same conditions: a patient with type 2 diabetes, diagnosed by the player, has it in their health record.
+const fx = Object.values(CASE_BY_ID).find((x) => x.diagnosis === 't2dm');
+const pt = makeNpc({ role: 'patient', countryId: 'us', age: 55 }); store.state.npcs[pt.id] = pt;
+core.W().patients[pt.id] = { id: pt.id, caseIds: [], bornYear: store.state.year - 55 };
+core.W().cases.c_dm = { id: 'c_dm', fixtureId: fx.id, patientId: pt.id, specialtyId: 'family', role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+m.caseIds.push('c_dm');
+cases.setDiagnosis('c_dm', fx.diagnosis);
+cases.choosePlan('c_dm', fx.plans.find((x) => x.quality === 'best' && !x.maxYear).id);
+for (let i = 0; i < 6 && core.W().cases.c_dm.status === 'or'; i++) cases.orStep('c_dm', cases.caseView('c_dm').or.step.options[0].id);
+if (core.W().cases.c_dm.status === 'deciding') cases.decide('c_dm', fx.decision.options[0].id);
+const rec = npcHealth(pt).conds.find((x) => x.id === 'type2_diabetes');
+check(rec?.diagnosed && rec.diagnosedBy === 'player', 'the patient\'s own health record has the diagnosis the player made');
+
+// The same family: a parent of the physician is diagnosed; the scene offers the right colleague.
+const mom = makeNpc({ role: 'parent', countryId: 'us', age: 70, relationship: 80 }); store.state.npcs[mom.id] = mom; p.npcIds.push(mom.id);
+const mh = npcHealth(mom);
+const cond = { id: 'hypertension', age: mom.age, diagnosed: true, shared: true };
+mh.conds.push(cond);
+store.state.pendingEvents = [];
+yearSteps.on = true;
+maybeFamilyPatient(mom, cond, storyBeat);
+yearSteps.on = false;
+check(store.state.pendingEvents.some((x) => x.id === 'med_family_patient' && x.story?.must), 'a physician\'s parent, newly diagnosed, brings the scene (always told)');
+const integrity = m.skills.integrity;
+drama.medicineChoice('familyPatient:colleague', { who: mom.id, words: { condId: 'hypertension' } });
+check(cond.care && m.skills.integrity === integrity, 'helping them to the right colleague starts their care in the Health Engine');
+drama.medicineChoice('familyPatient:self', { who: mom.id, words: { condId: 'hypertension' } });
+check(m.skills.integrity < integrity, 'treating family yourself is a boundary crossed');
+
+// The same hospital, as a patient.
+store.state.journal = store.state.journal ?? [];
+const a = admit('heart', {}, p);
+check(a && hosp.id === a.facilityId, 'a physician admitted in their city goes to the hospital where they work');
+check(store.state.journal.some((j) => /patient where you work/.test(j.text)), 'and is looked after by colleagues');
+
+// The everyday doctor's visit and cosmetic surgery: the same doctors.
+const { surgeonOptions, surgeryOptions } = await import('../js/engine/health/visits.js');
+const proc = surgeryOptions()[0];
+if (proc) {
+  const opts = surgeonOptions(proc.id);
+  const good = opts.find((o) => o.id === 'renowned');
+  const surgeon = store.state.npcs[good?.surgeonNpcId];
+  check(!!good?.surgeonNpcId && (/plastic/.test(surgeon?.flags.medSpecialty ?? '') && surgeon.life?.job?.employerId), `a renowned surgeon is a plastic surgeon on a hospital's staff (${good?.name})`);
+}
+// What the case screen shows has the patient's name in it, never a placeholder: plans, triage and decisions too.
+{
+  const named = Object.values(CASE_BY_ID).filter((x) => JSON.stringify([x.plans, x.triage, x.decision]).includes('{patient}'));
+  let leaks = [];
+  for (const fx2 of named) {
+    const pt2 = makeNpc({ role: 'patient', countryId: 'us', age: 40 }); store.state.npcs[pt2.id] = pt2;
+    const id = `c_names_${fx2.id}`;
+    core.W().cases[id] = { id, fixtureId: fx2.id, patientId: pt2.id, specialtyId: fx2.specialty[0], role: 'physician', year: store.state.year, status: 'open', tests: [], dx: null, plan: null, triage: null, decision: null, outcome: null, notes: [] };
+    const v = cases.caseView(id);
+    if (/\{[a-z]+\}/i.test(JSON.stringify([v.plans, v.triage, v.decision]))) leaks.push(fx2.id);
+    delete core.W().cases[id];
+  }
+  check(named.length > 0 && !leaks.length, `case plans and choices name the patient (${named.length} cases; placeholders left in: ${leaks.join(', ')})`);
+}
+// Family and friends get the same ailments as the player, from the same list, in their own health records.
+{
+  const { kinAilmentYear, kinAilmentChoice, kinHas } = await import('../js/engine/health/kinAilments.js');
+  const { ILLNESS_BY_ID } = await import('../js/data/health/ailments.js');
+  const beats = [];
+  const beat = (id, cast) => beats.push({ id, cast });
+  const gran = makeNpc({ role: 'grandparent', countryId: 'us', age: 80 }); store.state.npcs[gran.id] = gran; gran.meters.relationship = 70;
+  npcHealth(gran);
+  let hip = null;
+  for (let i = 0; i < 4000 && !hip; i++) { gran.health.ailments = []; const got = kinAilmentYear(gran, beat); if (got?.id === 'broken_hip') hip = got; }
+  check(hip && kinHas(gran, 'broken_hip') && ILLNESS_BY_ID[hip.id], 'an older relative can break a hip, and it is in their own health record');
+  check(beats.some((b) => b.id === 'med_family_ailment' && b.cast.who === gran.id), 'a physician\'s relative with a broken hip calls the doctor in the family first');
+  let flu = null;
+  for (let i = 0; i < 400 && !flu; i++) { gran.health.ailments = []; flu = kinAilmentYear(gran, () => {}); }
+  check(flu && !gran.health.conds.some((c) => c.id === flu.id), 'ailments are kept apart from long-term conditions');
+  const integrity = m.skills.integrity;
+  gran.health.ailments = [{ id: 'broken_hip', age: gran.age, year: store.state.year }];
+  drama.medicineChoice('familyAilment:self', { who: gran.id, words: { ailmentId: 'broken_hip' } });
+  check(!kinHas(gran, 'broken_hip') && m.skills.integrity < integrity, 'sorting out family yourself is a boundary crossed');
+  // Without a medical career: a broken hip is a hospital stay and its own scene; a small child's flu is a parent's scene.
+  m.job = null; m.training = null; m.clinicIds = [];
+  beats.length = 0;
+  for (let i = 0; i < 4000 && !beats.some((b) => b.id === 'kin_broken_hip'); i++) { gran.health.ailments = []; kinAilmentYear(gran, beat); }
+  check(beats.some((b) => b.id === 'kin_broken_hip') && gran.flags.inHospital === store.state.year, 'anyone\'s grandparent can break a hip: in the hospital, and a scene');
+  const kid = makeNpc({ role: 'child', countryId: 'us', age: 4 }); store.state.npcs[kid.id] = kid; npcHealth(kid);
+  for (let i = 0; i < 400 && !beats.some((b) => b.id === 'kin_child_sick'); i++) { kid.health.ailments = []; delete p.flags.kidSickYear; kinAilmentYear(kid, beat); }
+  const sick = beats.find((b) => b.id === 'kin_child_sick');
+  check(sick && /flu|ear|arm/.test(sick.cast.words.ailment), `a small child's illness is a parent's scene (${sick?.cast.words.ailment})`);
+  const cash = p.finance.cash;
+  kid.health.ailments = [{ id: 'flu', age: 4, year: store.state.year }];
+  kinAilmentChoice('doctor', kid, 'flu');
+  check(!kinHas(kid, 'flu') && p.finance.cash <= cash, 'taking them to the doctor sees to it, and the parent pays');
+}
+if (problems.length) { console.log(`PROBLEMS (${problems.length}):\n${problems.map((x) => ` - ${x}`).join('\n')}`); process.exit(1); }
+console.log('One health world: the same hospitals, doctors, conditions and family.');

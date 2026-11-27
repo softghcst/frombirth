@@ -97,7 +97,7 @@ function serviceYear(state, e, X) {
   if (p.age >= SERVICE_BY) return enlist(state, e, X, overall(e, p) >= 62 && e.level === 'pro' ? 'sangmu' : 'regular');
   if (p.age >= 25) {
     life.decide(state, { kind: 'service', sportId: e.id, key: `service/${e.id}/${state.year}`,
-      text: `Military service is due before you turn ${SERVICE_BY}: about eighteen months. Sangmu, the armed forces' athletic corps, takes the best players and keeps them playing, in the Futures League.`,
+      text: `Military service is due before you turn ${SERVICE_BY}: about eighteen months. Sangmu, the armed forces' athletic corps, takes the best players and keeps them playing, in Korea's minor league.`,
       options: [{ id: 'sangmu', label: 'Apply to Sangmu' }, { id: 'regular', label: 'Serve now' }, { id: 'later', label: 'Later' }] });
   }
 }

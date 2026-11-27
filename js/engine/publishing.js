@@ -23,6 +23,7 @@ import { gain, regard, fameOf, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
 import { rollTerms, look, offered, clearOffer, triesLeft, search, askLowerCut } from './agents.js';
 import { makeNpc } from './npcFactory.js';
+import { claim as claimSpecial } from './specialCareer.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -57,7 +58,9 @@ export function publishers(countryId) {
 }
 
 /** How well the player writes: mind, practice, and the craft of writing. */
-export const craft = (p = player()) => Math.round(clamp(p.stats.intellect * 0.5 + levelOf('writing') * 0.4 + (p.hidden.discipline ?? 50) * 0.1));
+// A gift for writing shows on the page, before any practice: up to 10 points more.
+export const craft = (p = player()) => Math.round(clamp(p.stats.intellect * 0.5 + levelOf('writing') * 0.4 + (p.hidden.discipline ?? 50) * 0.1
+  + Math.max(0, (p.talents?.writing ?? 0) - 50) / 5));
 /** A title no book on record already has. */
 function titleFor() {
   const used = new Set(Object.values(B().books).map((b) => b.title));
@@ -194,6 +197,7 @@ export function submit(bookId) {
   const b = book(bookId);
   if (!b || b.author !== 'player' || b.status !== 'manuscript') return result(false, 'There is nothing to send.', 'neutral');
   if (w.acts.queries >= 2) return result(false, 'You have sent it out twice this year; the answers take time.', 'neutral');
+  { const sc = claimSpecial('writing'); if (sc) return result(false, sc, 'neutral'); }
   w.acts.queries += 1;
   const agent = w.agent;
   const f = fameOf(p);
@@ -227,6 +231,7 @@ export function selfPublish(bookId) {
   const p = player();
   const b = book(bookId);
   if (!b || b.author !== 'player' || !['manuscript', 'offered'].includes(b.status)) return result(false, 'There is nothing to publish.', 'neutral');
+  { const sc = claimSpecial('writing'); if (sc) return result(false, sc, 'neutral'); }
   const cost = Math.round(localWage(800, country()));
   if (p.finance.cash < cost) return result(false, `Editing and a cover cost ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;

@@ -1,5 +1,6 @@
 // Builds the family a life starts in, and runs the family's yearly business:
 // pocket money and new siblings.
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate } from './birthTag.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
@@ -108,6 +109,11 @@ export function tickFamily() {
       relationship: rng.int(55, 85), appearance: inheritAppearance(mother, father) });
     store.state.npcs[baby.id] = baby;
     p.npcIds.push(baby.id);
+    // Their hospital tag, shown when the turn is over (ui/shell.js birthNotice).
+    baby.parentIds = [mother.id, father.id];
+    baby.birthInfo = makeBirthInfo(baby, { date: dayInYearJustLived(baby.id), countryId: p.countryId, city: p.city, parents: [mother, father] });
+    baby.birthday = birthdayFromDate(baby.birthInfo.date);
+    baby.flags.birthTag = 'new';
     const kind = baby.gender === 'male' ? 'brother' : 'sister';
     log(`Your mother gave birth to a baby ${kind}, ${baby.firstName}.`, 'system', 'good');
     p.stats.mood = clamp(p.stats.mood + (p.age < 6 ? -4 : 4));

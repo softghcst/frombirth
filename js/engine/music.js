@@ -17,15 +17,17 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, wageIn, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS } from '../data/fame.js';
+import { BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS, CERTIFICATIONS } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
 import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
-import { POSITIONS, GENRES, GENRE_BY_ID, genreOf, genresIn, LABEL_KINDS, LABEL_SOUNDS, LABEL_SOUND_WORDS, BAND_SEARCH } from '../data/music.js';
+import { POSITIONS, GENRES, GENRE_BY_ID, genreOf, genresIn, LABEL_KINDS, LABEL_SOUNDS, LABEL_SOUND_WORDS, BAND_SEARCH, subgenresOf } from '../data/music.js';
 import { resolve } from './conditions.js';
-import { levelOf } from './skills.js';
+import { levelOf, practice as practiceSkill } from './skills.js';
 import { ent, workOf, orgsOf, article, commitments } from './entertainment.js';
 import { gain, regard, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
+import { claim as claimSpecial, release as releaseSpecial, whyNot as whySpecial } from './specialCareer.js';
+
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -273,6 +275,7 @@ export function auditionForBand(openingId) {
   if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
   const S2 = searchOf(p);
   if (S2.auditions >= BAND_SEARCH.auditions) return result(false, 'You have auditioned as often as you can this year.', 'neutral');
+  { const sc = claimSpecial('music'); if (sc) return result(false, sc, 'neutral'); }
   S2.auditions += 1;
   const skill = positionSkill(o.position, p);
   const odds = clamp(0.4 + (skill - o.bar) / 25 + (p.stats.charm - 50) / 300, 0.03, 0.92);
@@ -386,8 +389,9 @@ export function formAct(kind, o = {}) {
   const p = player();
   const f = musicOf(p);
   if (!exists('concert')) return result(false, 'There is no way to make a living from music here yet.', 'neutral');
-  if (p.age < 12) return result(false, 'You are too young to form an act.', 'neutral');
+  if (p.age < MUSIC_CAREER_AGE) return result(false, `Bands and record labels take people from ${MUSIC_CAREER_AGE}.`, 'neutral');
   if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
+  { const sc = claimSpecial('music'); if (sc) return result(false, sc, 'neutral'); }
   const E = M();
   const genre = genreOf(o.genre ?? rng.pick(genresIn(year())).id).id;
   const mine = kind === 'solo' ? 'solo' : POSITIONS[o.position] ? o.position : bestPositions(p, 1)[0].pos;
@@ -444,6 +448,7 @@ export function leaveAct() {
   const left = members(a).filter((m) => m.who !== 'player');
   if (a.kind === 'solo' || left.length < 2) { a.status = 'split'; a.history.push({ year: year(), text: a.kind === 'solo' ? 'Stopped performing.' : `${a.name} split up.` }); }
   else { a.history.push({ year: year(), text: 'You left the band.' }); a.npc = true; }
+  releaseSpecial('music');
   return result(true, a.status === 'split' ? `${a.name} is over. The records are still the records.` : `You leave ${a.name}. They carry on without you.`, 'neutral');
 }
 
@@ -475,12 +480,20 @@ export function reunite(actId) {
 
 // ---------- Songs and releases ----------
 
-/** Writes a song. Two a year at most: songs take time. */
+/**
+ * How many songs a year someone can write: a working act writes enough for an album in a year (12), anyone else
+ * writing on the side, four.
+ */
+export const songsAYear = (p = player()) => (myAct(p)?.status === 'active' ? 12 : 4);
+/** Songs still to be written this year. */
+export const songsLeft = (p = player()) => Math.max(0, songsAYear(p) - musicOf(p).musicActs.writes);
+
+/** Writes a song. */
 export function writeSong() {
   const p = player();
   const f = musicOf(p);
   if (p.age < 12) return result(false, 'You are a little young to be writing songs to sell.', 'neutral');
-  if (f.musicActs.writes >= 2) return result(false, 'You have written what you have in you this year.', 'neutral');
+  if (!songsLeft(p)) return result(false, 'You have written what you have in you this year.', 'neutral');
   f.musicActs.writes += 1;
   const q = Math.round(clamp(songwriting(p) + rng.around(0, 14)));
   f.songs.push({ q, written: year() });
@@ -507,16 +520,30 @@ export function record(type, o = {}) {
   const t = RELEASE_TYPES[type];
   if (!a || a.status !== 'active') return result(false, 'You need an active act.', 'neutral');
   if (!exists('recording')) return result(false, 'Music cannot be recorded yet.', 'neutral');
-  if (f.songs.length < t.songs) return result(false, `${{ single: 'A single', ep: 'An EP', album: 'An album' }[type]} needs ${t.songs} ${t.songs === 1 ? 'song' : 'songs'}; you have ${f.songs.length} ready.`, 'neutral');
-  if (Object.values(M().releases).some((r) => r.actId === a.id && r.made === year())) return result(false, 'You are already recording this year.', 'neutral');
+  if (!t) return result(false, 'There is no such kind of record.', 'neutral');
+  if (Object.values(M().releases).some((r) => r.actId === a.id && r.made === year())) return result(false, 'You have already recorded this year. One record a year: the label (and the band) will not do two.', 'neutral');
+  const out = a.releases.map(release).filter((r) => r?.released != null);
+  if (type === 'live' && fanTotal(a) < VENUES.club.fans) return result(false, `A live album needs crowds worth recording: about ${VENUES.club.fans.toLocaleString('en-US')} fans.`, 'neutral');
+  if (type === 'compilation' && out.filter((r) => ['album', 'ep', 'live'].includes(r.type)).length < 2) return result(false, 'A compilation needs at least two records out to choose from.', 'neutral');
   const label = a.deal ? ent().orgs[a.deal.labelId] : null;
   const video = !!o.video && exists('music_video');
   const cost = label ? 0 : K(t.cost) + (video ? K({ single: 3000, ep: 4000, album: 6000 }[type]) : 0);
   if (p.finance.cash < cost) return result(false, `Recording it yourself costs ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;
-  const songs = f.songs.sort((x, y) => y.q - x.q).splice(0, t.songs);
-  const quality = Math.round(songs.reduce((s, x) => s + x.q, 0) / songs.length * 0.55 + actPerf(a) * 0.3 + genreFit(a) * 0.15);
-  const r = { id: nextId('rel'), title: freshTitle(a, type !== 'single'), actId: a.id, type, songs: t.songs, quality,
+  // Songs written beforehand go on the record first; the rest are written in the studio, as well as you write.
+  let quality;
+  if (type === 'compilation') quality = Math.round(out.reduce((s, x) => s + x.quality, 0) / out.length * 0.9 + 4);
+  else if (type === 'live') quality = Math.round(actPerf(a) * 0.6 + (out.length ? out.reduce((s, x) => s + x.quality, 0) / out.length : songwriting(p)) * 0.3 + genreFit(a) * 0.1);
+  else {
+    const songs = f.songs.sort((x, y) => y.q - x.q).splice(0, t.songs);
+    while (songs.length < t.songs) songs.push({ q: Math.round(clamp(songwriting(p) + rng.around(-3, 12))), written: year() });
+    quality = Math.round(songs.reduce((s, x) => s + x.q, 0) / songs.length * 0.55 + actPerf(a) * 0.3 + genreFit(a) * 0.15);
+  }
+  // The style of the record: one that is in fashion lands a little better.
+  const sub = o.subgenre && subgenresOf(a.genre).includes(o.subgenre) ? o.subgenre : null;
+  if (sub) quality = Math.round(clamp(quality + ((hashText(`${sub}:${year()}`) % 7) - 2)));
+  const title = (o.title ?? '').trim().slice(0, 40);
+  const r = { id: nextId('rel'), title: title || freshTitle(a, type !== 'single'), subgenre: sub, actId: a.id, type, songs: t.songs, quality,
     made: year(), released: null, labelId: label?.id ?? null, units: {}, critics: null, chart: null, revenue: [], paid: [], first: !a.releases.length, share: 1 / Math.max(1, members(a).length), video,
     // A musician who can really dance carries the video themselves, to their own choreography (MUSIC_VIDEO_DANCE).
     danced: video && p.talents.dance >= MUSIC_VIDEO_DANCE.skill };
@@ -717,6 +744,8 @@ export function musicLines(p = player()) {
     if (!a) continue;
     const mine = (y) => a.members.some((m) => m.who === 'player' && m.from <= y && (m.to == null || m.to >= y));
     // The advance, once.
+    // A record contract's yearly money, for the years it runs.
+    if (a.deal?.perYear && lived > a.deal.signed && lived <= a.deal.until && mine(lived) && !(a.deal.paidYears ?? []).includes(lived)) out.push({ source: `con:${a.id}:${lived}`, label: `Record contract: ${ent().orgs[a.deal.labelId]?.name ?? 'your label'}`, gross: a.deal.perYear, act: a.id });
     if (a.deal && !a.deal.advancePaid && a.deal.signed === lived && mine(lived)) out.push({ source: `adv:${a.id}`, label: `Advance from ${ent().orgs[a.deal.labelId]?.name}`, gross: Math.round(a.deal.advance / Math.max(1, members(a, lived).length)), act: a.id, kind: 'advance' });
     // Royalties: each release's share of what it earned that year, after the advance is paid back.
     for (const rid of a.releases) {
@@ -733,7 +762,7 @@ export function musicLines(p = player()) {
   }
   // A manager takes their cut of the act's money (not of songs written for others).
   const mg = managerOf(p);
-  if (mg) for (const l of out) if (/^(adv|roy|tour):/.test(l.source)) { l.gross = Math.round(l.gross * (1 - mg.commission)); l.label += ` (after your manager's ${Math.round(mg.commission * 100)}%)`; }
+  if (mg) for (const l of out) if (/^(adv|roy|tour|con):/.test(l.source)) { l.gross = Math.round(l.gross * (1 - mg.commission)); l.label += ` (after your manager's ${Math.round(mg.commission * 100)}%)`; }
   return out;
 }
 export function markMusicPaid(p = player()) {
@@ -743,6 +772,7 @@ export function markMusicPaid(p = player()) {
     const a = act(id);
     if (!a) continue;
     if (a.deal && a.deal.signed === lived) a.deal.advancePaid = true;
+    if (a.deal?.perYear && lived > a.deal.signed && lived <= a.deal.until && !(a.deal.paidYears ??= []).includes(lived)) a.deal.paidYears.push(lived);
     for (const rid of a.releases) { const r = release(rid); if (r && r.revenue.some((x) => x.year === lived) && !r.paid.includes(lived)) r.paid.push(lived); }
     for (const tid of a.tours) { const t = tour(tid); if (t && t.year === lived && !t.paid.includes(lived)) t.paid.push(lived); }
   }
@@ -758,7 +788,7 @@ function releaseNow(r) {
   r.critics = Math.round(clamp(r.quality + rng.around(0, 10)));
   const fans = fanTotal(a);
   const push = label ? (label.tier === 'major' ? 2.2 : 1.4) : 1;
-  const typeK = { single: 0.6, ep: 0.8, album: 1 }[r.type];
+  const typeK = { single: 0.6, ep: 0.8, album: 1 }[r.type] ?? RELEASE_TYPES[r.type]?.sales ?? 0.6;
   const g = genreOf(a.genre);
   // Majors take records abroad; a genre's own heartlands come first.
   const reach = label?.tier === 'major' ? [...new Set([...g.strong.filter((c) => COUNTRIES[c] && c !== a.countryId), ...Object.keys(COUNTRIES).filter((c) => c !== a.countryId).sort(() => rng.next() - 0.5)])].slice(0, rng.int(2, 8)) : [];
@@ -885,6 +915,7 @@ export function tickMusic() {
       if (!p.milestones.some((m) => /tour/i.test(m.text))) milestone(`Toured: ${t.title}.`, 'fame');
     }
   }
+  checkMusicAchievements(p);
   // Bands are people: some fall out, some leave.
   const a = myAct(p);
   if (a?.kind === 'band') {
@@ -897,7 +928,8 @@ export function tickMusic() {
         lines.push(`${n.firstName} ${n.lastName} has left ${a.name}${n.meters.relationship < 30 ? ' after one argument too many' : ' to do something else'}.`);
       }
     }
-    if (members(a).length < 2) { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); lines.push(`${a.name} is finished. The records are still the records.`); }
+    if (members(a).length < 2) { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); lines.push(`${a.name} is finished. The records are still the records.`); releaseSpecial('music'); }
+    else bandFate(a);
   }
   if (a) maybeDealOffer(a);
   // A manager with nothing to manage moves on.
@@ -930,3 +962,277 @@ export function tickMusic() {
 /** Everything the player has recorded, oldest first. */
 export const discography = (p = player()) => musicOf(p).acts.flatMap((id) => (act(id)?.releases ?? []).map(release)).filter((r) => r && r.released != null).sort((x, y) => x.released - y.released);
 export { musicOf, members, fanTotal };
+
+// ---------- A music career: the way in, and the work ----------
+// Work > Special careers > Music: a solo artist auditions for a record label, which offers a contract (money up front,
+// money each year for some years, and the genre the career will be in); a band member looks for a band that needs
+// what they play. Then the career is the work: records (one a year), concerts, tours, practice, and, in a band, the band.
+
+/** What a solo artist can play (or sing), and what a band can use. Drummers play in bands. */
+export const SOLO_POSITIONS = ['vocals', 'lead_guitar', 'keys', 'bass', 'rapper', 'producer', 'sax', 'trumpet', 'violin', 'cello'];
+export const BAND_POSITIONS = ['vocals', 'lead_guitar', 'rhythm_guitar', 'bass', 'drums', 'keys', 'backing'];
+/** Record labels sign artists, and bands take members, from this age. */
+export const MUSIC_CAREER_AGE = 16;
+const hashText = (t) => { let x = 0; for (const ch of t) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
+const careerWhy = (p) => (p.age < MUSIC_CAREER_AGE ? `Record labels and bands take people from ${MUSIC_CAREER_AGE}. Keep up your lessons until then.` : !exists('concert') ? 'No one makes a living from music here yet.' : myAct(p) ? `You are already in ${myAct(p).name}.` : whySpecial('music', p));
+
+/** Labels a solo artist can audition for, and whether each will still see them. */
+export function labelChoices(p = player()) {
+  const refused = musicOf(p).refusedLabels ?? [];
+  return labels(p.countryId).map((l) => ({ label: l, why: refused.includes(l.id) ? 'You turned them down; they no longer return your calls.' : '' }));
+}
+
+/** A solo audition for a record label, playing the instrument (or singing). A good one ends with a contract offered. */
+export function soloAudition(position, labelId) {
+  const p = player();
+  const f = musicOf(p);
+  const why = careerWhy(p);
+  if (why) return result(false, why, 'neutral');
+  if (!SOLO_POSITIONS.includes(position)) return result(false, 'That is not something to go solo with.', 'neutral');
+  const l = ent().orgs[labelId];
+  if (!l || l.kind !== 'label') return result(false, 'There is no such label.', 'neutral');
+  if ((f.refusedLabels ?? []).includes(labelId)) return result(false, `${l.name} no longer returns your calls.`, 'neutral');
+  f.musicActs.labelAuditions = (f.musicActs.labelAuditions ?? 0) + 1;
+  if (f.musicActs.labelAuditions > 3) return result(false, 'You have auditioned for all the labels you can this year.', 'neutral');
+  const skill = positionSkill(position, p);
+  const bar = l.tier === 'major' ? 72 : 52;
+  if (!rng.chance(clamp(0.35 + (skill - bar) / 30 + (p.stats.charm - 50) / 300, 0.03, 0.92))) {
+    return result(false, skill < bar - 12 ? `${l.name} listen politely. They are looking for someone further along: keep practicing.` : `${l.name} liked you, but not enough to sign you. Not this year.`);
+  }
+  const sounds = (l.sound ?? []).map((g) => GENRE_BY_ID[g]).filter((g) => g && year() >= g.from);
+  const fits = genresIn(year()).filter((g) => (position === 'rapper' ? ['hip_hop', 'trap', 'drill', 'grime'].includes(g.id) : !g.band || g.id === 'pop'));
+  // The label's sound, as it is heard here: a style popular in this country far more often than one from far away.
+  const local = (list) => rng.weighted(list, (g) => (popularIn(g.id, p.countryId) * (g.strong.includes(p.countryId) ? 3 : g.strong.length ? 0.6 : 1)) ** 2);
+  const genre = (sounds.length ? local(sounds) : local(fits.length ? fits : genresIn(year()))).id;
+  const t = l.terms ?? LABEL_KINDS[l.tier];
+  const c = country();
+  const years = rng.int(2, 5);
+  f.soloOffer = { labelId, position, genre, years, advance: Math.round(localWage((l.tier === 'major' ? 9000 : 2500) + skill * (l.tier === 'major' ? 180 : 60), c)),
+    perYear: Math.round(localWage((l.tier === 'major' ? 4000 : 1200) + skill * (l.tier === 'major' ? 60 : 20), c)),
+    royalty: Math.round((t.royalty[0] + rng.next() * (t.royalty[1] - t.royalty[0])) * 100) / 100, albums: rng.int(t.albums[0], t.albums[1]), year: year() };
+  return { ...result(true, `${l.name} want to sign you.`, 'good'), offer: f.soloOffer };
+}
+
+/** Signs the solo contract on offer: the career begins, in the genre the label chose. */
+export function acceptSoloOffer() {
+  const p = player();
+  const f = musicOf(p);
+  const o = f.soloOffer;
+  if (!o || o.year !== year()) return result(false, 'That offer has lapsed.', 'neutral');
+  const formed = formAct('solo', { genre: o.genre });
+  if (!formed.ok) return formed;
+  const a = myAct(p);
+  a.instrument = o.position;
+  a.name = p.flags.stageName || a.name;
+  a.deal = { labelId: o.labelId, royalty: o.royalty, albumsOwed: o.albums, advance: o.advance, unrecouped: o.advance, signed: year(), advancePaid: false, perYear: o.perYear, until: year() + o.years };
+  a.labelId = o.labelId;
+  f.soloOffer = null;
+  const l = ent().orgs[o.labelId];
+  a.history.push({ year: year(), text: `Signed to ${l.name} as a solo artist.` });
+  milestone(`Signed to ${l.name} as a solo ${genreOf(o.genre).name.toLowerCase()} artist.`, 'fame');
+  gain({ audience: 'music', amount: 2, why: 'a record deal' }, p);
+  return result(true, `You sign with ${l.name}: ${fmtMoney(o.advance, country())} up front, ${fmtMoney(o.perYear, country())} a year for ${o.years} years, and ${Math.round(o.royalty * 100)}% of what your records earn once the advance is paid back. Your sound is ${genreOf(o.genre).name.toLowerCase()}.`, 'good');
+}
+
+/** Turns the offer down. That label will not take the call again. */
+export function declineSoloOffer() {
+  const f = musicOf();
+  const o = f.soloOffer;
+  if (!o) return result(false, 'There is no offer.', 'neutral');
+  (f.refusedLabels ??= []).push(o.labelId);
+  f.soloOffer = null;
+  return result(true, `You turn ${ent().orgs[o.labelId]?.name ?? 'them'} down. They will remember.`, 'neutral');
+}
+
+/** Looks for a band that needs what you play. Nothing turns up for a player who is not good enough yet. */
+export function findBand(position) {
+  const p = player();
+  const why = careerWhy(p);
+  if (why) return result(false, why, 'neutral');
+  const skill = positionSkill(position, p);
+  const fits = openings(p.countryId).filter((o) => o.status === 'open' && o.position === position && skill >= o.bar - 10)
+    .sort((x, y) => y.fans - x.fans);
+  if (!fits.length) return result(false, `You looked for a band in need of a ${posLow(position)}, but could not find one${skill < 45 ? ' that would have you yet' : ' this year'}.`, 'neutral');
+  const o = fits[0];
+  const a = o.actId ? act(o.actId) : null;
+  return { ...result(true, '', 'neutral'), opening: o, band: { name: o.name, genre: genreOf(o.genre).name, fans: o.fans, members: a ? Math.max(members(a).length, genreOf(a.genre).lineup.length - 1) : (o.crew?.length ?? 2) + 1, // an established band is filled out when you join
+    label: o.labelId ? ent().orgs[o.labelId]?.name : null, lastYear: Math.round(localWage(o.fans * 3, country())) } };
+}
+
+/** Popularity: how much the act's music is liked right now, 0-100 (fans, and how the last records did). */
+export function popularity(a) {
+  if (!a) return 0;
+  const recent = a.releases.map(release).filter((r) => r?.released != null && r.released >= year() - 3);
+  const buzz = recent.length ? recent.reduce((s, r) => s + r.critics, 0) / recent.length : 40;
+  return Math.round(clamp(Math.log10(1 + fanTotal(a)) * 13 + (buzz - 50) / 3));
+}
+
+/** A record's certification by the units it has sold, if any. */
+export function certification(r) {
+  const n = Object.values(r?.units ?? {}).reduce((s, x) => s + x, 0);
+  return CERTIFICATIONS.find(([, at]) => n >= at)?.[0] ?? null;
+}
+export const unitsSold = (r) => Object.values(r?.units ?? {}).reduce((s, x) => s + x, 0);
+
+/** Practice the instrument you play in the act (or your voice): part of the work. */
+export function practiceMusic() {
+  const p = player();
+  const a = myAct(p);
+  const me = a?.members.find((m) => m.who === 'player' && m.to == null);
+  const pos = a?.instrument ?? (me && POSITIONS[me.role] ? me.role : 'vocals');
+  return practiceSkill(POSITIONS[pos]?.skill ?? 'singing');
+}
+
+/** A stage name: what the world calls you. Your own name is unchanged. A solo act is known by it. */
+export function setStageName(name) {
+  const p = player();
+  const n = (name ?? '').trim().slice(0, 30);
+  p.flags.stageName = n || null;
+  const a = myAct(p);
+  if (a?.kind === 'solo') a.name = n || `${p.firstName} ${p.lastName}`;
+  return result(true, n ? `From now on you perform as ${n}.` : 'You go back to your own name.', 'neutral');
+}
+
+/** Renaming the band: the rest of the band has a say, and usually says no. */
+export function renameBand(name) {
+  const a = myAct();
+  const n = (name ?? '').trim().slice(0, 40);
+  if (!a || a.kind !== 'band') return result(false, 'You are not in a band.', 'neutral');
+  if (!n) return result(false, 'A band needs a name.', 'neutral');
+  const liking = members(a).filter((m) => m.who !== 'player').map((m) => store.state.npcs[m.who]?.meters.relationship ?? 50);
+  const yes = rng.chance(clamp(0.15 + ((liking.reduce((s, x) => s + x, 0) / Math.max(1, liking.length)) - 50) / 120, 0.05, 0.6));
+  if (!yes) return result(false, `You suggest ${n}. The others look at each other. ${a.name} it stays.`, 'neutral');
+  a.history.push({ year: year(), text: `${a.name} became ${n}.` });
+  a.name = n;
+  return result(true, `The band agrees: from now on you are ${n}.`);
+}
+
+/** Asks a member to leave. The rest of the band notices. */
+export function kickMember(npcId) {
+  const a = myAct();
+  const m = a?.members.find((x) => x.who === npcId && x.to == null);
+  if (!m) return result(false, 'They are not in the band.', 'neutral');
+  m.to = year();
+  const n = store.state.npcs[npcId];
+  if (n) n.meters.relationship = clamp(n.meters.relationship - 40);
+  for (const o of members(a)) if (o.who !== 'player') { const x = store.state.npcs[o.who]; if (x) x.meters.relationship = clamp(x.meters.relationship - 6); }
+  a.history.push({ year: year(), text: `${n?.firstName ?? 'A member'} was asked to leave.` });
+  return result(true, `${n?.firstName ?? 'They'} ${n ? 'is' : 'are'} out of ${a.name}. It was not a pleasant conversation.`, 'neutral');
+}
+
+/** Leaves the band to go solo, on the same instrument. A drummer cannot. */
+export function goSolo() {
+  const p = player();
+  const a = myAct(p);
+  if (!a || a.kind !== 'band') return result(false, 'You are not in a band.', 'neutral');
+  const me = a.members.find((m) => m.who === 'player' && m.to == null);
+  if (!SOLO_POSITIONS.includes(me.role)) return result(false, `A ${posLow(me.role)} does not go solo. You could look for another band instead.`, 'neutral');
+  const genre = a.genre;
+  leaveAct();
+  const r = formAct('solo', { genre });
+  if (!r.ok) return r;
+  const s = myAct(p);
+  s.instrument = me.role;
+  if (p.flags.stageName) s.name = p.flags.stageName;
+  s.fans = Object.fromEntries(Object.entries(a.fans).map(([c, n]) => [c, Math.round(n * 0.3)])); // some of the band's fans follow you
+  return result(true, `You leave ${a.name} and go solo. Some of their fans come with you.`, 'good');
+}
+
+/** Asks the label (or, independent, books it yourself) for the biggest tour the fans will fill. */
+export function tourNow() {
+  const a = myAct();
+  if (!a || a.status !== 'active') return result(false, 'You need an active act.', 'neutral');
+  const fans = fanTotal(a);
+  const scale = ['stadium', 'arena', 'theater', 'club'].find((k) => fans >= VENUES[k].fans);
+  if (!scale) return result(false, `Nobody tours to empty rooms: a tour needs about ${VENUES.club.fans.toLocaleString('en-US')} fans. Play concerts first.`, 'neutral');
+  return planTour(scale, tourPlaces(a, scale));
+}
+
+/** Whether the act has already recorded this year (one record a year). */
+export const recordedThisYear = (a) => Object.values(M().releases).some((r) => r.actId === a?.id && r.made === year());
+
+// ---------- When the band is done with you ----------
+
+/**
+ * Once a year, for a band the player is in: a band that has fallen out with the player may ask them to leave, and
+ * now and then a band breaks up. Either way the player is asked what now (data/events/stories/bandFate.js).
+ */
+function bandFate(a) {
+  const p = player();
+  if (a.kind !== 'band' || a.status !== 'active' || a.npc) return;
+  const me = a.members.find((m) => m.who === 'player' && m.to == null);
+  if (!me) return;
+  const others = members(a).filter((m) => m.who !== 'player' && m.to == null).map((m) => store.state.npcs[m.who]).filter(Boolean);
+  const liking = others.length ? others.reduce((s, n) => s + n.meters.relationship, 0) / others.length : 60;
+  const years = year() - a.formed;
+  const lastFlop = a.releases.map(release).filter((r) => r?.released != null).at(-1);
+  const kicked = liking < 40 && rng.chance(0.3);
+  const split = !kicked && years >= 2 && rng.chance(0.012 + (liking < 45 ? 0.03 : 0) + (lastFlop && lastFlop.critics < 40 ? 0.02 : 0));
+  if (!kicked && !split) return;
+  const drummer = !SOLO_POSITIONS.includes(me.role);
+  me.to = year();
+  musicOf(p).lastBand = { actId: a.id, role: me.role, genre: a.genre, fans: fanTotal(a), countryId: a.countryId };
+  if (kicked) { a.history.push({ year: year(), text: `${p.firstName} was asked to leave.` }); a.npc = true; }
+  else { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); }
+  releaseSpecial('music');
+  log(kicked ? `${a.name} asked you to leave the band.` : `${a.name} split up.`, 'system', 'bad');
+  store.state.pendingEvents.push({ id: `music_${kicked ? 'kicked' : 'disbanded'}${drummer ? '_drummer' : ''}`, cast: { words: { band: a.name, years: String(Math.max(1, years)) } } });
+}
+
+/** The answer to a band's ending (effect type 'music'). @returns {string} a line for the outcome */
+export function musicChoice(value) {
+  const p = player();
+  const last = musicOf(p).lastBand;
+  if (!last) return '';
+  if (value === 'solo') {
+    const r = formAct('solo', { genre: last.genre });
+    if (!r.ok) return r.text;
+    const s = myAct(p);
+    s.instrument = last.role;
+    if (p.flags.stageName) s.name = p.flags.stageName;
+    s.fans = { [last.countryId]: Math.round(last.fans * 0.25) };
+    return 'Some of the old fans come with you.';
+  }
+  if (value === 'look') return 'Bands looking for players are on the Music page: Join a Band.';
+  if (value === 'reunite') {
+    const a = act(last.actId);
+    if (a?.status === 'split' && rng.chance(0.35)) {
+      a.status = 'active';
+      for (const m of a.members) if (m.to === year()) m.to = null;
+      claimSpecial('music');
+      a.history.push({ year: year(), text: 'Talked back together.' });
+      return 'It takes a lot of phone calls, but everyone agrees to give it another go.';
+    }
+    return 'Not everyone picks up. It really is over.';
+  }
+  return '';
+}
+
+// ---------- Music achievements ----------
+
+/** Milestones of a music career, earned from what actually happened. */
+export const MUSIC_ACHIEVEMENTS = [
+  { id: 'gold', name: 'Gold Record', blurb: 'A record certified Gold.', earned: (p) => discography(p).some((r) => certification(r)) },
+  { id: 'platinum', name: 'Platinum Record', blurb: 'A record certified Platinum or better.', earned: (p) => discography(p).some((r) => unitsSold(r) >= 1000000) },
+  { id: 'diamond', name: 'Diamond Record', blurb: 'Ten million copies of one record.', earned: (p) => discography(p).some((r) => unitsSold(r) >= 10000000) },
+  { id: 'number_one', name: 'Number One', blurb: 'A record at the top of the chart.', earned: (p) => discography(p).some((r) => r.chart === 1) },
+  { id: 'virtuoso', name: 'Virtuoso', blurb: 'An instrument (or your voice) practiced as far as it goes.', earned: (p) => Object.values(POSITIONS).some((P) => levelOf(P.skill) >= 100) },
+  { id: 'stadium', name: 'Stadium Filler', blurb: 'A stadium tour.', earned: (p) => musicOf(p).acts.flatMap((id) => act(id)?.tours ?? []).some((t) => tour(t)?.scale === 'stadium') },
+  { id: 'lifer', name: 'Lifer', blurb: 'Studio albums released across more than twenty-five years.', earned: (p) => { const ys = discography(p).filter((r) => r.type === 'album').map((r) => r.released); return ys.length > 1 && Math.max(...ys) - Math.min(...ys) > 25; } },
+  { id: 'still_touring', name: 'Still Touring', blurb: 'On tour at seventy-five or older.', earned: (p) => musicOf(p).acts.flatMap((id) => act(id)?.tours ?? []).some((t) => { const x = tour(t); return x && x.year - p.birthYear >= 75; }) },
+];
+/** The music achievements, each earned or not (and the year it was). */
+export function musicAchievements(p = player()) {
+  const got = p.flags.musicAch ?? {};
+  return MUSIC_ACHIEVEMENTS.map((x) => ({ ...x, year: got[x.id] ?? null }));
+}
+/** Marks any newly earned, as a milestone. Run at the turn of the year. */
+export function checkMusicAchievements(p = player()) {
+  const got = (p.flags.musicAch ??= {});
+  for (const x of MUSIC_ACHIEVEMENTS) {
+    if (got[x.id]) continue;
+    let ok = false;
+    try { ok = !!x.earned(p); } catch { ok = false; }
+    if (ok) { got[x.id] = year(); milestone(`Music: ${x.name}. ${x.blurb}`, 'fame'); }
+  }
+}

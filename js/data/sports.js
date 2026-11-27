@@ -3,7 +3,7 @@
 //
 // GAMEPLAY CONFIGURATION. Founding years and the year a sport could be played
 // for money are rounded, documented assumptions for this game, not a history.
-// Every league, club, tour and rating in Pathways is invented. The Pathways
+// Every league, club, tour and rating in From Birth is invented. The From Birth
 // Rating (PR) is the game's own measure and is not any real federation's rating.
 //
 //   kind      'team' | 'racket' (singles and doubles) | 'golf' | 'race' (timed or measured) | 'judged' | 'combat' | 'fitness'
@@ -251,8 +251,67 @@ export const awardsFor = (sport) => SEASON_AWARDS[sport.id] ?? TEAM_DEFAULT;
 /** The international games for individual sports, every four years, from the first modern games. */
 export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
 export const isGamesYear = (y) => y >= WORLD_GAMES.founded && y % WORLD_GAMES.every === 0;
+/** The winter games, between the summer ones: every four years from 1924, two years off the summer games from 1994. */
+export const isWinterGamesYear = (y) => y >= 1924 && (y <= 1992 ? y % 4 === 0 : y % 4 === 2);
+/**
+ * The sports at the games: the summer games, the winter games, and the sports at neither. Para sports go to the para
+ * games, alongside the summer games. Cricket returns in 2028; baseball and softball come and go.
+ */
+export const GAMES_SPORTS = {
+  winter: ['ice_hockey', 'figure_skating'],
+  never: ['american_football', 'pickleball', 'fitness'],
+  from: { cricket: 2028, rugby: 2016, golf: 2016, table_tennis: 1988, badminton: 1992, softball: 1996, baseball: 1992, martial_arts: 1964, running: 1896, cycling: 1896, wheelchair_basketball: 1960, wheelchair_tennis: 1992, para_athletics: 1960, para_swimming: 1960 },
+  gaps: { baseball: [2012, 2016, 2024], softball: [2012, 2016, 2024], rugby: [] },
+};
+/**
+ * The nations strongest at each sport, the strongest first: they are hard to beat, and hard to get picked for, since
+ * the places on their teams are fought over. Others are middling where the sport is popular, weaker where it is not.
+ * GAMEPLAY CONFIGURATION: a broad, rounded picture of recent decades, not a ranking of any year.
+ */
+export const NATION_STRENGTH = {
+  soccer: ['br', 'ar', 'fr', 'es', 'de', 'uk', 'it', 'nl', 'pt', 'be', 'hr', 'uy', 'mx', 'co', 'us', 'jp', 'ma', 'ng'],
+  basketball: ['us', 'es', 'rs', 'fr', 'au', 'ar', 'ca', 'gr', 'de', 'tr', 'lt', 'it', 'ru', 'cn', 'br'],
+  baseball: ['jp', 'us', 'do', 'kr', 've', 'pr', 'cu', 'mx', 'tw', 'nl', 'pa', 'ca', 'au', 'it', 'co'],
+  softball: ['us', 'jp', 'au', 'ca', 'mx', 'cn', 'it', 'nl', 'pr'],
+  volleyball: ['br', 'us', 'pl', 'it', 'fr', 'rs', 'jp', 'cn', 'tr', 'ru', 'ar', 'nl', 'ca'],
+  ice_hockey: ['ca', 'fi', 'se', 'us', 'cz', 'ru', 'ch', 'sk', 'de', 'dk', 'no', 'at', 'kz', 'fr'],
+  cricket: ['in', 'au', 'uk', 'nz', 'za', 'pk', 'af', 'bd', 'jm', 'ie', 'zw', 'nl'],
+  rugby: ['nz', 'za', 'fj', 'fr', 'ie', 'ar', 'au', 'uk', 'ws', 'jp', 'it', 'ge', 'us', 'ke', 'ca'],
+  tennis: ['es', 'us', 'rs', 'it', 'ru', 'de', 'ch', 'uk', 'fr', 'ar', 'au', 'cz', 'pl', 'gr', 'ca', 'cn', 'jp'],
+  badminton: ['cn', 'id', 'dk', 'jp', 'kr', 'my', 'in', 'th', 'tw', 'es', 'sg'],
+  table_tennis: ['cn', 'jp', 'de', 'kr', 'se', 'fr', 'tw', 'hk', 'br', 'sg', 'eg'],
+  golf: ['us', 'uk', 'ie', 'au', 'za', 'jp', 'kr', 'se', 'es', 'ca', 'no', 'nz', 'ar'],
+  swimming: ['us', 'au', 'cn', 'uk', 'jp', 'hu', 'it', 'ca', 'nl', 'fr', 'de', 'se', 'za', 'br', 'ru'],
+  track: ['us', 'jm', 'ke', 'et', 'uk', 'ca', 'nl', 'ng', 'bs', 'no', 'pl', 'cn', 'fr', 'ug', 'it', 'de', 'tt'],
+  running: ['ke', 'et', 'ug', 'jp', 'us', 'uk', 'no', 'es', 'ma', 'cn', 'nl'],
+  cycling: ['nl', 'uk', 'fr', 'be', 'it', 'dk', 'es', 'co', 'au', 'de', 'ch', 'us', 'no', 'nz'],
+  gymnastics: ['us', 'cn', 'jp', 'ru', 'uk', 'ro', 'br', 'it', 'ua', 'kr', 'fr', 'ca', 'de'],
+  figure_skating: ['jp', 'us', 'ru', 'ca', 'kr', 'fr', 'it', 'cn', 'ge', 'de', 'kz', 'ch'],
+  martial_arts: ['jp', 'kr', 'fr', 'br', 'ge', 'ru', 'cn', 'ir', 'tr', 'nl', 'it', 'mn', 'es', 'kz'],
+  boxing: ['cu', 'uk', 'us', 'kz', 'ru', 'ph', 'ua', 'uz', 'ie', 'fr', 'br', 'mx', 'jp', 'in'],
+  wrestling: ['us', 'ir', 'ru', 'jp', 'tr', 'ge', 'cu', 'in', 'kz', 'ua', 'mn', 'kr', 'cn'],
+};
+
 /** What a finish at the games is worth: a medal for the first three, whichever way the event is decided. */
 export const MEDAL_FOR = { Champion: 'gold', Final: 'silver', '2nd': 'silver', Semifinal: 'bronze', '3rd': 'bronze' };
+
+/**
+ * Where a sport is played at all, for the few that are not played everywhere (a rink, a pitch, a league that only
+ * some countries have). Any sport not listed here is played in every country. Schools offer every sport their country
+ * plays (engine/schoollife.js sportsHere).
+ */
+export const PLAYED_IN = {
+  american_football: k('us', 'ca', 'mx', 'jp', 'de', 'at', 'uk', 'fi', 'se', 'dk', 'nl', 'fr', 'it', 'es', 'pl', 'cz', 'br', 'au', 'kr', 'pa'),
+  ice_hockey: k('ca', 'us', 'se', 'fi', 'ru', 'cz', 'sk', 'ch', 'at', 'de', 'no', 'dk', 'kz', 'ua', 'fr', 'it', 'uk', 'jp', 'kr', 'cn', 'hu', 'pl', 'ee', 'nl', 'be', 'ro', 'rs', 'hr', 'mn', 'ge', 'il', 'es', 'mx', 'ad'),
+  figure_skating: k('ca', 'us', 'ru', 'jp', 'kr', 'cn', 'fr', 'it', 'de', 'ch', 'at', 'se', 'fi', 'no', 'cz', 'sk', 'ua', 'kz', 'pl', 'hu', 'uk', 'nl', 'ee', 'ge', 'il', 'es', 'ro', 'be', 'dk', 'hr', 'rs', 'mn', 'tw', 'hk', 'ph', 'au', 'mx', 'br', 'ad'),
+  cricket: k('in', 'pk', 'bd', 'af', 'np', 'au', 'uk', 'nz', 'za', 'zw', 'jm', 'bs', 'bz', 'gy', 'ie', 'nl', 'ae', 'qa', 'kw', 'ca', 'us', 'ke', 'ug', 'ng', 'gh', 'fj', 'ws', 'pg', 'my', 'sg', 'hk', 'mv', 'mu', 'sc'),
+  baseball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'cr', 'gt', 'sv', 'jp', 'kr', 'tw', 'cn', 'hk', 'ph', 'au', 'nz', 'nl', 'it', 'de', 'cz', 'es', 'fr', 'uk', 'be', 'at', 'il', 'za', 'br'),
+  softball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'gt', 'jp', 'kr', 'tw', 'cn', 'ph', 'au', 'nz', 'nl', 'it', 'cz', 'uk', 'za', 'bz', 'br', 'ar'),
+  rugby: k('nz', 'za', 'uk', 'ie', 'fr', 'au', 'ar', 'fj', 'ws', 'pg', 'it', 'jp', 'ge', 'ro', 'us', 'ca', 'uy', 'cl', 'br', 'es', 'pt', 'de', 'be', 'nl', 'ru', 'ke', 'ug', 'zw', 'tn', 'ma', 'hk', 'sg', 'pf', 'mu'),
+  pickleball: k('us', 'ca', 'mx', 'in', 'es', 'uk', 'au', 'nz', 'ph', 'sg', 'my', 'vn', 'kr', 'jp', 'pr'),
+};
+/** Whether a sport is played in a country at all. */
+export const playedIn = (sportId, countryId) => !PLAYED_IN[sportId] || PLAYED_IN[sportId].includes(countryId);
 
 export const SPORTS = Object.fromEntries(SPORTS_LIST.map((s) => [s.id, s]));
 export const sportOf = (id) => SPORTS[id] ?? null;
@@ -284,7 +343,7 @@ export const LEVELS = ['recreational', 'club', 'school', 'academy', 'college', '
 export const LEVEL_NAMES = { recreational: 'Recreational', club: 'Club', school: 'School', academy: 'Academy', college: 'University', pro: 'Professional' };
 
 /**
- * Sports injuries. They go into the health record (data/illnesses.js has a matching entry for each), and heal
+ * Sports injuries. They go into the health record (data/health/ailments.js has a matching entry for each), and heal
  * on a rehabilitation plan, not by chance. `seasons` is how much of a year (or years) is missed.
  */
 export const INJURIES = {
@@ -356,8 +415,8 @@ export const DRAFTS = {
  * September): high school and university seniors; posting after seven seasons, and military service before 28.
  */
 export const COUNTRY_DRAFTS = {
-  jp: { baseball: { name: 'NPB', rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
-  kr: { baseball: { name: 'KBO', rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
+  jp: { baseball: { name: "Japan's league", rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
+  kr: { baseball: { name: "Korea's league", rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
 };
 /** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
 /** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
@@ -395,15 +454,26 @@ export const INTL_SIGNING = {
 //
 // A season in the game is a sample of a real one: the player's numbers are scaled to the length of the real season at
 // their level, so a career adds up to the totals baseball counts (3,000 hits, 500 home runs, 300 wins).
+/**
+ * The names players see for leagues that exist in the real world. The keys stay as they are (they are saved, and the
+ * engine reads them); what is shown is a plain description, since a real league's name is its owner's trademark.
+ */
+export const LEAGUE_NAMES = { MLB: 'the major leagues', NPB: "Japan's top league", KBO: "Korea's top league",
+  'Dominican Summer League': 'the academy summer league', 'Futures League': "Korea's minor league", 'G League': 'the development league', AHL: 'the top minor league' };
+/** As it reads in a sentence ("You start in the development league"). */
+export const leagueName = (key) => LEAGUE_NAMES[key] ?? key;
+/** As a label ("The development league"). */
+export const leagueLabel = (key) => { const s = leagueName(key); return s ? s[0].toUpperCase() + s.slice(1) : s; };
+
 export const BASEBALL = {
   games: { MLB: 162, NPB: 143, KBO: 144, 'Triple-A': 150, 'Double-A': 138, 'High-A': 132, 'Single-A': 132, 'Rookie ball': 60, 'Dominican Summer League': 60,
     'Farm team': 110, 'Futures League': 100, 'Independent League': 100, college: 56, school: 28, other: 30 },
   top: { us: 'MLB', ca: 'MLB', jp: 'NPB', kr: 'KBO' },
   // The rounds of the postseason, as each league names them. The big leagues take twelve clubs: four rest through the
   // wild card round (engine/sports.js playoffs).
-  rounds: { MLB: { 'Wild Card': 'Wild Card Series', Quarterfinal: 'Division Series', Semifinal: 'League Championship Series', Final: 'World Series' },
-    NPB: { Quarterfinal: 'Climax Series, first stage', Semifinal: 'Climax Series, final stage', Final: 'Japan Series' },
-    KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korean Series' } },
+  rounds: { MLB: { 'Wild Card': 'Wild Card Series', Quarterfinal: 'Division Series', Semifinal: 'Semifinal Series', Final: 'Championship Series' },
+    NPB: { Quarterfinal: 'Playoffs, first stage', Semifinal: 'Playoffs, final stage', Final: 'Japan Championship' },
+    KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korea Championship' } },
   milestones: { H: [1000, 2000, 3000], HR: [100, 200, 300, 400, 500, 600, 700], W: [100, 200, 300], SV: [100, 300, 500], K: [1000, 2000, 3000] },
   names: { H: 'hits', HR: 'home runs', W: 'wins', SV: 'saves', K: 'strikeouts' },
   // The World Baseball Classic: 2006, 2009, 2013, 2017, 2023, 2026; assumed every four years after that.

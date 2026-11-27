@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { oddsWords, rollRead, afterWords } from './odds.js';
 import { majorEdge } from './aptitudes.js';
 import { majorOpen } from './history.js';
 import { forgetNpc } from './digital/core.js';
@@ -22,10 +23,11 @@ import { graduationDay } from './schoollife.js';
 import { leftSchoolTeam } from './sports.js';
 import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
 import * as campus from './campus.js';
+import * as lawSchool from './lawSchool.js';
 import * as adult from './adulted.js';
 import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
-import { jurisdiction } from '../data/medicine.js';
+import { jurisdiction, ERA } from '../data/medicine.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
@@ -319,6 +321,66 @@ function leaveSchool(how = 'completed') {
   }
 }
 
+/** Law school ends when its last term is graded, on whatever turn that falls (engine/lawPractice.js tickLaw). */
+export function finishLawSchool() {
+  const p = player();
+  const e = p.education;
+  if (e.enrolled && e.stage === 'law' && lawSchool.termsDone(p) >= lawSchool.termsFor(p)) graduate();
+}
+
+// ---------- Gifted children: a grade skipped, college early ----------
+
+/** How far ahead a child may be put: two grades at most. */
+export const MAX_AHEAD = 2;
+/** Whether a child could skip a grade now: '' if so, else why not. Far ahead of their class, and young enough for it to help. */
+export function skipBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage === 'high') return 'Only before high school.';
+  if (p.age < 6) return 'Not this young.';
+  if ((e.ahead ?? 0) >= MAX_AHEAD) return `You are already ${MAX_AHEAD} grades ahead.`;
+  if (p.flags.skipAskedAge === p.age) return 'You asked this year already.';
+  if (p.stats.intellect < 78 || (e.gpa && e.gpa < 3.4)) return 'Only for a child far ahead of their class.';
+  return '';
+}
+/**
+ * Skips a grade: the school agrees when the child is far ahead, and the child moves up a year. Being the youngest in
+ * the class is its own pressure: more stress, and the friends they had are a year behind now.
+ */
+export function skipGrade() {
+  const p = player();
+  const e = p.education;
+  const why = skipBlock(p);
+  if (why) return result(false, why, 'neutral');
+  p.flags.skipAskedAge = p.age;
+  const yes = rng.chance(Math.min(0.9, 0.35 + (p.stats.intellect - 78) / 30 + ((e.gpa || 3.4) - 3.4) / 2));
+  if (!yes) return result(false, 'The school tests you, and says you are ahead, but not by enough to move up. Try again next year.', 'neutral');
+  e.ahead = (e.ahead ?? 0) + 1;
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 8));
+  milestone('Skipped a grade.', 'education');
+  const text = `You skipped a grade. You are the youngest in your new class, and the work is finally interesting.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+/** Whether a teenager could finish school now and start college early: '' if so, else why not. */
+export function earlyCollegeBlock(p = player()) {
+  const e = p.education;
+  if (!sch.atSchool(p) || e.stage !== 'high') return 'Only from high school.';
+  if (p.age < 14) return 'Not this young.';
+  if (p.age + (e.ahead ?? 0) >= SCHOOL_LEAVING_AGE - 1) return 'You finish school soon anyway.';
+  if (p.stats.intellect < 84 || (e.gpa || 0) < 3.6) return 'Only for a student well ahead of their year, with top marks.';
+  return '';
+}
+/** Finishes high school early: a diploma now, and university applications open (Plan what comes next). */
+export function startCollegeEarly() {
+  const p = player();
+  const why = earlyCollegeBlock(p);
+  if (why) return result(false, why, 'neutral');
+  milestone(`Finished school early, at ${p.age}, to start college.`, 'education');
+  p.career.stress = Math.round(clamp((p.career.stress ?? 30) + 6));
+  graduate();
+  return result(true, `You finish high school at ${p.age}, years ahead of your friends. Now: which college? (Plan what comes next.)`);
+}
+
 function graduate() {
   const p = player();
   const e = p.education;
@@ -351,6 +413,13 @@ function graduate() {
     certificate: `your course with a certificate in ${CERT_BY_ID[e.majorId]?.name.toLowerCase()}`,
   }[e.stage] ?? prog?.done ?? stageLabel(e.stage).toLowerCase();
   const plain = ['medical', 'podiatric', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.license;
+  // The graduation card (ui/graduation.js): shown once, after the turn, with what comes next.
+  p.flags.gradCard = { stage: e.stage, year: store.state.year, age: p.age,
+    school: e.stage === 'high' ? (place && place.kind !== 'home' ? place.name : null) : e.schoolName ?? null,
+    award: e.stage === 'high' ? leaving : null,
+    subject: e.stage === 'doctorate' ? e.thesis?.topic ?? null : major?.name ?? trade?.name ?? (e.stage === 'certificate' ? CERT_BY_ID[e.majorId]?.name : null) ?? null,
+    mark: ['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? null : e.stage === 'high' ? sch.mark(e.gpa) : sch.degreeMark(e.gpa),
+    honors: plain ? '' : honors.replace(/^ with /, '') };
   log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honors}${['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (${sch.degreeMark(e.gpa)})`}.`, 'system', 'good');
   milestone(e.stage === 'cosmetology' ? 'Earned a license in hair and makeup.'
     : e.stage === 'apprenticeship' || e.stage === 'technical' ? `Qualified as a ${trade?.name.toLowerCase()}.`
@@ -361,6 +430,7 @@ function graduate() {
         : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, ${sch.degreeMark(e.gpa)}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
   if (prog?.license === 'teaching') log(`Schools will hire a graduate without it, but they prefer the ${adult.examName(prog.license)}, which you can now sit.`);
+  else if (prog?.license === 'law') lawSchool.graduated(p); // law school's own record closes, and the bar opens (engine/lawSchool.js)
   else if (prog?.license) log(`The degree is not yet the right to practice: for that there is the ${adult.examName(prog.license)}, which you can now sit.`);
   if (e.stage === 'equivalency') { e.droppedOut = false; e.expelled = false; log('Everything that asks for a school-leaving qualification is open to you now.'); }
   if (e.stage === 'doctorate') { e.degrees[e.degrees.length - 1].thesis = e.thesis.topic; p.flags.doctor = true; delete e.thesis; }
@@ -439,7 +509,9 @@ export function tickEducation() {
   for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
 
   // School starts, and moves from stage to stage, at the ages this country sets. Only ever forward.
-  const due = sch.stageDue(p.age);
+  // A child who has skipped a grade is a year (or two) ahead: they move up, and finish, as if they were that much older.
+  const ahead = e.ahead ?? 0;
+  const due = sch.stageDue(p.age + ahead);
   const at = SCHOOL.indexOf(e.stage);
   const finished = e.degrees.some((d) => d.type === 'high');
   if (due && !isHigher(e.stage) && !finished && !e.expelled && !e.droppedOut && SCHOOL.indexOf(due.id) > at && (e.enrolled || e.stage === 'none')) { enterStage(due); return; }
@@ -449,6 +521,7 @@ export function tickEducation() {
   e.yearInStage += 1;
   const g = yearGpa(p);
   e.gpa = round2(e.gpa === 0 ? g : e.gpa * 0.6 + g * 0.4);
+  if (e.stage === 'law') { lawSchool.progressSchool(p); const lg = lawSchool.lawGpa(p); if (lg != null) e.gpa = lg; } // graded term by term (engine/lawSchool.js)
   p.stats.intellect = clamp(p.stats.intellect + rng.int(0, 2) + (p.flags.tutorAge === p.age - 1 ? 2 : 0));
 
   // What you gained from the company you keep and your course.
@@ -478,7 +551,7 @@ export function tickEducation() {
   e.effort = Math.round(clamp(e.effort * 0.5 + (30 + p.hidden.discipline * 0.4) * 0.5));
 
   // Finishing, failing or carrying on
-  if (e.stage === 'high' && p.age >= SCHOOL_LEAVING_AGE) return graduate();
+  if (e.stage === 'high' && p.age + ahead >= SCHOOL_LEAVING_AGE) return graduate();
   if (!isHigher(e.stage)) return;
   // A doctorate is finished when the thesis is, however long that takes.
   if (e.stage === 'doctorate' && e.thesis) {
@@ -490,7 +563,9 @@ export function tickEducation() {
     return;
   }
   // A degree is finished when its credits are earned; other courses, when their years are served.
-  if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
+  // Law school ends when its terms are done (engine/lawSchool.js), counted in months, not New Years passed.
+  if (e.stage === 'law') { if (lawSchool.termsDone(p) >= lawSchool.termsFor(p)) return graduate(); }
+  else if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
   if (e.gpa < 1.2) {
     log(`Your grades collapsed and ${stageLabel(e.stage).toLowerCase()} asked you to leave.`, 'system', 'bad');
     p.stats.mood = clamp(p.stats.mood - 12);
@@ -630,8 +705,9 @@ export function clubOptions() {
     joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1, bars: c.tryout ? checkBars(c.tryout) : null }));
 }
 /** Children can take classes before they start school; adults need to be enrolled. */
-export const canJoinClubs = () =>
-  (player().education.enrolled || player().age < 18) && clubOptions().length > 0;
+/** School clubs are joined at school, from School › Activities: not at university (campus life has its own), and not
+ *  out of school (Pursuits has the clubs and classes near home). */
+export const canJoinClubs = () => sch.atSchool(player()) && clubOptions().length > 0;
 
 export function joinClub(id) {
   const p = player();
@@ -750,15 +826,21 @@ export function programOptions() {
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
     else if (prog.minYear && store.state.year < prog.minYear) reason = `There is no such school in ${store.state.year}.`;
     else if (prog.id === 'podiatric' && !jurisdiction(p.countryId).dpm) reason = 'The game models the podiatric (DPM) route in the United States only.';
+    // Historical Eras: before about 1870 almost no medical school took women (data/medicine.js ERA).
+    else if (['medical', 'podiatric'].includes(prog.id) && (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenInMedicine) reason = `Almost no medical school admits women in ${store.state.year}.`;
     else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
     else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
     else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
     else if (prog.id === 'community' && held('university')) reason = 'You already have a university degree.';
     else if (base && base.gpa < prog.minGpa) reason = `Needs a GPA of ${prog.minGpa.toFixed(1)} (yours: ${base.gpa.toFixed(2)}).`;
     else if (prog.science && !MAJOR_BY_ID[bachelor.majorId]?.tracks.includes('medical')) reason = 'Needs a science or health degree.';
+    else if (prog.id === 'law' && lawSchool.applyBlock(p)) reason = lawSchool.applyBlock(p);
     else if (acts().applied[prog.id]) reason = 'You already applied this year.';
     const transfer = prog.id === 'university' && isTransfer();
-    return { id: prog.id, label: transfer ? 'University (transfer)' : prog.label,
+    // The chance in plain words, where a place is decided on the application (not open courses, and not a university,
+    // which has its own screen with each course's chances).
+    const odds = !reason && !prog.open && prog.kind !== 'trade' && !['university', 'community'].includes(prog.id) ? oddsWords(admissionChance(prog.id)) : '';
+    return { id: prog.id, odds, label: transfer ? 'University (transfer)' : prog.label,
       blurb: transfer ? 'Your community-college credits count: you start in the third year.' : prog.blurb,
       years: transfer ? 2 : prog.years, tuition: tuitionFor(prog.id),
       stipend: prog.stipend ? localWage(prog.stipend, c) : 0, eligible: !reason, reason };
@@ -801,12 +883,15 @@ export function admissionChance(progId, subjectId) {
   if (progId === 'graduate') return clamp(0.5 + (b.gpa - 3.0) * 0.5 + (iq - 50) / 200 + prof, 0.05, 0.97);
   // What a premedical student did besides their grades (engine/medicine/training.js) counts for medical and podiatric school.
   const pm = p.medicine?.premed;
-  const premed = pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0;
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed, 0.05, 0.95);
+  const calling = p.flags.medCalling && ['medical', 'podiatric'].includes(progId) ? 0.04 : 0;
+  const premed = calling + (pm ? Math.min(0.18, (pm.service + pm.exposure + pm.research + pm.letters) * 0.02 + pm.exam * 0.03) + (p.medicine.doToo && progId === 'medical' ? 0.06 : 0) : 0);
+  // Until about 1920 many schools took few women, or none (data/medicine.js ERA): fewer places, not less ability.
+  const barrier = (p.flags?.trueGender ?? p.gender) === 'female' && store.state.year < ERA.womenWidelyAdmitted ? 0.55 : 1;
+  if (progId === 'medical') return clamp((0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2 + premed) * barrier, 0.03, 0.95);
   if (progId === 'podiatric') return clamp(0.45 + (b.gpa - 3.2) * 0.7 + (iq - 55) / 150 + prof / 2 + premed, 0.05, 0.95);
   if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
   if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMS[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);
-  return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2, 0.05, 0.95);
+  return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2 + lawSchool.entranceEdge(p), 0.05, 0.95); // the LSAT, where there is one
 }
 
 /** Rolls the scholarship a school would offer, if any. aid scales the odds. */
@@ -867,17 +952,25 @@ export function applyTo(progId, subjectId) {
   const major = progId === 'university' || progId === 'community' ? MAJOR_BY_ID[subjectId] : null;
   const trade = progId === 'apprenticeship' ? TRADE_BY_ID[subjectId] : null;
   if (!prog.repeat) acts().applied[progId] = true;
+  // Medical and podiatric schools interview their applicants: told once in a life (data/events/stories/medicine.js).
+  if (['medical', 'podiatric'].includes(progId) && !p.medicine?.scenes?.['story:med_school_interview']) {
+    if (p.medicine?.scenes) p.medicine.scenes['story:med_school_interview'] = store.state.year;
+    else p.flags.medInterviewed = store.state.year;
+    store.state.pendingEvents.push({ id: 'med_school_interview', cast: {} });
+  }
   const subject = major ? ` to study ${major.name}` : '';
   const rec = major?.audition && p.flags.directorRec;
 
-  if (!rng.chance(admissionChance(progId, subjectId))) {
+  const read = rollRead(rng, admissionChance(progId, subjectId));
+  if (!read.ok) {
     p.stats.mood = clamp(p.stats.mood - 6);
     const text = trade ? `You applied for an apprenticeship as a ${trade.name.toLowerCase()}. They took someone else. You can try again next year.`
       : major?.audition
         ? `You auditioned for ${major.name} and were not offered a place. The panel wants stronger singing, dancing and acting. You can try again next year.`
-        : `Your application to ${prog.label.toLowerCase()}${subject} was rejected. You can try again next year.`;
-    log(text, 'system', 'bad');
-    return { accepted: false, text };
+        : `Your application to ${prog.label.toLowerCase()}${subject} was rejected${whyNot(progId)}. You can try again next year.`;
+    const said = `${text}${afterWords(read)}`;
+    log(said, 'system', 'bad');
+    return { accepted: false, text: said };
   }
 
   const base = prog.needs ? lastDegree(prog.needs) : null;
@@ -888,8 +981,20 @@ export function applyTo(progId, subjectId) {
     : `${major?.audition ? `Your audition won you a place${subject}` : `You were accepted to ${prog.label.toLowerCase()}${subject}`}`
       + `${rec ? '. Your drama director\'s recommendation was on the panel\'s desk' : ''}`
       + `${scholarship ? `. You were offered ${scholarship}${housingAid ? ' that also covers a dorm room' : ''}` : ''}.`;
-  log(text, 'system', 'good');
-  return { accepted: true, text, scholarship, housingAid };
+  const said = `${text}${afterWords(read)}`;
+  log(said, 'system', 'good');
+  return { accepted: true, text: said, scholarship, housingAid };
+}
+
+/** Why an application was turned down, as the school would see it: the part of it that was weakest. */
+function whyNot(progId) {
+  const p = player();
+  const prog = PROGRAMS[progId];
+  const base = prog.needs ? lastDegree(prog.needs) : null;
+  if (['medical', 'podiatric'].includes(progId) && !(p.medicine?.premed && Object.values(p.medicine.premed).some((v) => v > 0))) return ': they wanted to see more time spent around medicine (volunteering, shadowing, research)';
+  if (base && base.gpa < (prog.minGpa ?? 0) + 0.4) return ': your grades were the weak point';
+  if (p.stats.intellect < 55) return ': other applicants did better on the tests';
+  return ': it was a strong year for applicants';
 }
 
 /** Parents pay for a young person's studies, not for a grown adult's. */
@@ -962,6 +1067,7 @@ export function enroll(progId, subjectId, funding, living = {}, school = null) {
   }
   if (progId === 'university' || progId === 'community') campus.start(transfer);
   if (progId === 'doctorate') adult.startThesis();
+  if (progId === 'law') lawSchool.school(p); // law school's own record starts the day you enroll (engine/lawSchool.js)
   chargeTuition();
   // Someone studying alongside a job goes on living where they live.
   if (e.partTime) { e.housing = 'own'; e.roommateId = null; if (e.credits != null) e.load = 'part'; log('You will study in the evenings and keep your job.'); }

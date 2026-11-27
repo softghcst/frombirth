@@ -5,6 +5,7 @@ import { ROOTS } from '../js/data/economy.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { COUNTRY_LIST } from '../js/data/countries.js';
+import { CITY_ROWS } from '../js/data/cities.js';
 import { LIVING } from '../js/data/living.js';
 import { ISSUES } from '../js/data/parties.js';
 import { RULES } from '../js/data/rules.js';
@@ -150,7 +151,9 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   check(local.myRegion().name === 'Quebec' && local.regionalLawOptions().length > 0 && !local.regionalLawOptions().some((o) => o.rule === 'deathPenalty'), 'a Canadian premier can change provincial law, but not the death penalty, which is federal');
   p = governor('in', 'Mumbai');
   check(local.regionalLawOptions().some((o) => o.rule === 'alcohol'), 'an Indian state can ban alcohol, as some do');
-  p = governor('ng', COUNTRY_LIST.find((c) => c.id === 'ng').cities[0]);
+  // A country the game has no states recorded for, that has regional government to take part in.
+  const noStates = COUNTRY_LIST.filter((c) => !CITY_ROWS[c.id] && c.cities.length > 1).find((c) => { do { store.state = createLife({ countryId: c.id }); } while (store.state.player.royal); return politics.offices().some((o) => o.id === 'region'); });
+  p = governor(noStates.id, noStates.cities[0]);
   check(/^the area around /.test(local.myRegion().name) && local.myRegion().id.startsWith('around:'), 'where the game has no states recorded, the region is the area around the city');
   section('regions: a governor changes regional law for that region only; the national government cannot touch it');
 }

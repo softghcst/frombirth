@@ -4,7 +4,7 @@
 // skill: the skill (data/skills.js) a year of lessons trains, so it shows under Skills and counts where that skill
 // counts (coding for computer science, for example: engine/aptitudes.js).
 export const LESSONS = [
-  { id: 'voice', name: 'Voice lessons', emoji: '🎤', ages: [6, 120], cost: 900, skill: 'singing', grows: { 'talents.singing': 5, 'talents.music': 1 } },
+  { id: 'voice', name: 'Voice lessons', emoji: '🎤', ages: [8, 120], cost: 900, skill: 'singing', grows: { 'talents.singing': 5, 'talents.music': 1 } },
   { id: 'piano', name: 'Piano lessons', emoji: '🎹', ages: [5, 120], cost: 900, skill: 'piano', grows: { 'talents.music': 5, 'stats.intellect': 1 } },
   { id: 'guitar', name: 'Guitar lessons', emoji: '🎸', ages: [7, 120], cost: 700, skill: 'guitar', grows: { 'talents.music': 5 } },
   { id: 'violin', name: 'Violin lessons', emoji: '🎻', ages: [5, 120], cost: 900, skill: 'violin', grows: { 'talents.music': 5, 'hidden.discipline': 1 } },
@@ -14,7 +14,7 @@ export const LESSONS = [
   { id: 'swimming', name: 'Swimming lessons', emoji: '🏊', ages: [4, 120], cost: 400, skill: 'swimming', grows: { 'talents.sports': 2, 'stats.health': 3 } },
   { id: 'tennis', name: 'Tennis lessons', emoji: '🎾', ages: [6, 120], cost: 800, skill: 'sports', grows: { 'talents.sports': 4, 'stats.health': 1 } },
   { id: 'drama', name: 'Drama classes', emoji: '🎭', ages: [6, 120], cost: 600, skill: 'acting', grows: { 'talents.acting': 5, 'stats.charm': 1 } },
-  { id: 'modeling', name: 'Modeling lessons', emoji: '📸', ages: [10, 120], cost: 900, from: 1950, grows: { 'stats.charm': 3 } },
+  { id: 'modeling', name: 'Modeling lessons', emoji: '📸', ages: [10, 120], cost: 900, from: 1950, skill: 'modeling', grows: { 'talents.modeling': 5, 'stats.charm': 1 } },
   { id: 'chess', name: 'Chess club lessons', emoji: '♟️', ages: [6, 120], cost: 300, skill: 'chess', grows: { 'stats.intellect': 3, 'talents.science': 1 } },
   { id: 'coding', name: 'Coding classes', emoji: '💻', ages: [9, 120], cost: 800, from: 1985, skill: 'coding', grows: { 'stats.intellect': 2, 'talents.tech': 3 } },
   { id: 'robotics', name: 'Robotics club', emoji: '🤖', ages: [9, 18], cost: 900, from: 1995, skill: 'robotics', grows: { 'talents.tech': 3, 'talents.science': 1 } },

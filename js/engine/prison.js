@@ -19,6 +19,7 @@ import {
   STAFF_ROLES, OFFENSES, OFFENSE_BY_ID, EVIDENCE_FROM, courtsFor,
 } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
+import { ailmentsOf } from './health/ailments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 export const cell = () => player().legal.incarceration;
@@ -404,7 +405,7 @@ export function studyTogether(npcId) {
 export function healthcare() {
   const p = player();
   if (!once('healthcare')) return result(false, 'You have had your appointment this year.', 'neutral');
-  const untreated = p.conditions.find((x) => !x.treated);
+  const untreated = ailmentsOf(p).find((x) => !x.treated);
   if (untreated) {
     const ok = rng.chance(0.7);
     if (ok) untreated.treated = true;

@@ -1,19 +1,23 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
-import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo } from './birthTag.js';
+import { birthdayFor, dateNow } from './birthday.js';
+import { makeBirthInfo, dayInYearJustLived, birthdayFromDate, playerBirthInfo, adoptionInfoFor } from './birthTag.js';
 import { announce } from './pregnancyChoice.js';
+import { dropStageScenes } from './pregnancyStages.js';
+import * as contra from './health/contraception.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { noteBirth } from './globalLife.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
-import { store, player, country, npcsByRole, log, milestone } from '../state.js';
+import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, addedTalents } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
 import { childGenome, genomeOf } from './health/heredity.js';
 import { quickAdopt } from './animalCare.js';
+import { recordPlayerAdoption } from './origins.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -62,19 +66,55 @@ export const canTryForBaby = (npc) =>
   (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy
   && !player().legal.incarceration;
 
+/** Why trying for a baby is not open now because of contraception in place (a reason to show), or null. */
+export const tryBlockedBy = (o = {}) => contra.blocksTrying(player(), o);
+
+/** The chance a try works, by the mother's age and fertility: good when young, falling after 35, low past 42. */
+function conceiveChance(motherAge, fertility) {
+  const byAge = motherAge <= 34 ? 0.55 : motherAge <= 38 ? 0.4 : motherAge <= 42 ? 0.2 : 0.08;
+  return clamp(byAge * (0.6 + (fertility ?? 50) / 125), 0.04, 0.85);
+}
+
+/** Trying for a baby: as often as the couple likes, each try a fresh chance. */
 export function tryForBaby(npcId) {
   const p = player();
   const npc = store.state.npcs[npcId];
   if (!canTryForBaby(npc)) return result(false, 'That is not possible right now.', 'neutral');
-  if (!spendAction(npc, 'baby')) return result(false, 'You have been trying all year.', 'neutral');
+  const blocked = contra.blocksTrying(p);
+  if (blocked) return result(false, blocked, 'neutral');
   const motherAge = p.gender === 'female' ? p.age : npc.age;
-  const chance = clamp(p.hidden.fertility / 100 * (motherAge > 38 ? 0.45 : 0.85), 0.03, 0.9);
-  if (!rng.chance(chance)) {
-    const text = `You and ${npc.firstName} tried for a baby this year. It has not happened yet.`;
+  if (!rng.chance(conceiveChance(motherAge, p.hidden.fertility))) {
+    const text = `You and ${npc.firstName} tried for a baby. Not this time.`;
     log(text);
     return result(false, text, 'neutral');
   }
   const text = `You and ${npc.firstName} tried for a baby. ${conceive(npc, true)}`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** A round of IVF: from 1978, at a clinic's price; a much better chance, and twins (or more) about twice as often. */
+export const IVF_COST = 15000;
+export const ivfOpen = (npc) => canTryForBaby(npc) && store.state.year >= 1978;
+export const ivfPrice = () => localMoney(IVF_COST, country());
+export function tryIvf(npcId) {
+  const p = player();
+  const npc = store.state.npcs[npcId];
+  if (!ivfOpen(npc)) return result(false, store.state.year < 1978 ? 'IVF does not exist yet.' : 'That is not possible right now.', 'neutral');
+  const blocked = tryBlockedBy({ ivf: true });
+  if (blocked) return result(false, blocked, 'neutral');
+  const cost = ivfPrice();
+  if (p.finance.cash < cost) return result(false, `A round of IVF costs ${fmtMoney(cost, country())}.`, 'neutral');
+  p.finance.cash -= cost;
+  const motherAge = p.gender === 'female' ? p.age : npc.age;
+  const chance = clamp(conceiveChance(motherAge, p.hidden.fertility) * 1.6 + 0.1, 0.15, 0.9);
+  if (!rng.chance(chance)) {
+    const text = `A round of IVF with ${npc.firstName}: weeks of appointments and hope, and then a negative test. It cost ${fmtMoney(cost, country())}.`;
+    log(text, 'system', 'bad');
+    return result(false, text, 'neutral');
+  }
+  const text = `A round of IVF with ${npc.firstName}. ${conceive(npc, true)} It cost ${fmtMoney(cost, country())}.`;
+  p.flags.pregnancy.ivf = true;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -119,15 +159,28 @@ function later(time, minutes) {
 /** What several babies born together are called. */
 export const MULTIPLES = { 2: 'twins', 3: 'triplets', 4: 'quadruplets' };
 
+/** Whether twins (or more) have been born in the family before: the player or their partner a twin, or children born together. */
+function twinsInFamily(p, other) {
+  const mine = p.npcIds.map((id) => store.state.npcs[id]).filter(Boolean);
+  return !!(p.birthInfo?.twin || other?.birthInfo?.twin || mine.some((n) => (n.role === 'sibling' && n.age === p.age) || (n.role === 'child' && n.birthInfo?.twin)));
+}
+
 function birth() {
   const p = player();
   const other = store.state.npcs[p.flags.pregnancy.otherId];
+  const ivf = !!p.flags.pregnancy.ivf;
   p.flags.pregnancy = null;
+  dropStageScenes(); // anything about the months before that is still waiting
   const babies = [newborn(other)];
-  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000).
-  if (rng.chance(0.025)) {
+  // Twins now and then; triplets and quadruplets very rarely (about 1 birth in 700, and 1 in 7,000). IVF doubles the chance.
+  // Twins run in families (on the mother's side, mostly), and come more often to mothers in their late thirties: a
+  // higher level of the hormone FSH then sometimes releases two eggs in one cycle (fraternal twins). The effect peaks
+  // at 35 to 39 and eases after 40, as fewer eggs are left; IVF, with its own boost, accounts for most twins later on.
+  const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : other?.age ?? 30;
+  const odds = (ivf ? 2 : 1) * (motherAge >= 40 ? 1.2 : motherAge >= 35 ? 1.4 : 1) * (twinsInFamily(p, other) ? 1.8 : 1);
+  if (rng.chance(0.025 * odds)) {
     babies.push(newborn(other));
-    if (rng.chance(0.06)) { babies.push(newborn(other)); if (rng.chance(0.1)) babies.push(newborn(other)); }
+    if (rng.chance(0.06 * Math.min(odds, 2.5))) { babies.push(newborn(other)); if (rng.chance(ivf ? 0.2 : 0.1)) babies.push(newborn(other)); }
   }
   // The hospital tag (engine/birthTag.js): the day, during the year just lived, the time, the size, the doctor. Twins
   // share the day and the doctor, a few minutes apart, and are each a little smaller.
@@ -156,6 +209,8 @@ function birth() {
   if (other?.alive && (other.role === 'spouse' || other.role === 'partner')) {
     other.meters.relationship = clamp(other.meters.relationship + 6);
   }
+  // The one who gave birth is offered a postpartum consultation (offered, never forced: engine/health/contraception.js).
+  if (p.alive && !p.flags.birthDeath && contra.canBePregnant(p)) contra.afterBirth(p);
 }
 
 export const canAdopt = () => {
@@ -175,6 +230,12 @@ export function adopt() {
   const child = addNpc(makeNpc({ role: 'child', countryId: p.countryId, lastName: p.lastName, age: rng.int(0, 8),
     relationship: rng.int(45, 70) }));
   child.adopted = true;
+  // The day they came home (ui/birthTag.js adoption card).
+  const partner = livingNpcs().find((n) => ['spouse', 'partner'].includes(n.role));
+  child.birthday ??= birthdayFor(child.id);
+  child.adoptionInfo = adoptionInfoFor(child, { date: dateNow(), countryId: c.id, city: p.city, by: [p.id, ...(partner ? [partner.id] : [])] });
+  child.flags.adoptionCard = 'new';
+  recordPlayerAdoption(child, child.adoptionInfo.by); // a record of the adoption, apart from any birth family (engine/origins.js)
   child.stats = { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
   child.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60),
     singing: rng.int(0, 60), dance: rng.int(0, 60) };
@@ -184,7 +245,7 @@ export function adopt() {
   const text = `After a year of forms and home visits, you adopted ${child.firstName}, age ${child.age}. The fees came to ${fmtMoney(fee, c)}.`;
   log(text, 'system', 'good');
   milestone(`Adopted ${child.firstName}.`, 'family');
-  return result(true, text);
+  return { ...result(true, text), childId: child.id };
 }
 
 /** How long a name may be, and what it may be made of: letters (any alphabet, accents too), spaces, hyphens, apostrophes. */
@@ -270,4 +331,32 @@ export function childCosts() {
 export function tickChildren() {
   const p = player();
   if (p.flags.pregnancy && p.age >= p.flags.pregnancy.dueAge) birth();
+  else surprise();
+}
+
+/**
+ * A couple who live together and are not trying can still find a baby on the way: rarely on birth control (it is not
+ * perfect), often without it. Over a year, the chance is close to the chance of one try, by the mother's age and
+ * fertility (see conceiveChance), cut down by contraception. A pregnancy already this year, or one just ended, waits.
+ */
+export function surpriseChance(npc, p = player()) {
+  if (!npc?.alive || !canTryForBaby(npc) || npc.flags?.abroad || p.flags.pregnancyEnded === store.state.year) return 0;
+  const motherAge = (p.flags.bornAs ?? p.gender) === 'female' ? p.age : npc.age;
+  const base = conceiveChance(motherAge, p.hidden.fertility);
+  // Without birth control: 44% a year for a couple in their twenties of average fertility (0.55 × 0.8), less with
+  // age, more or less with fertility. Contraception lowers it month by month, by what was really in place each month
+  // of the year (engine/health/contraception.js): never a full year's failure rate per turn.
+  return contra.yearChance(base * 0.8, p);
+}
+function surprise() {
+  const p = player();
+  const partner = livingNpcs().find((n) => ['spouse', 'partner'].includes(n.role));
+  if (!partner) return;
+  // The year's roll belongs to the life and the year (engine/health/contraception.js yearRoll), so it comes out the same
+  // whether the year was lived in one turn, two or four. One game die is still spent, as before, to keep the rest in step.
+  rng.next();
+  if (contra.yearRoll(p, store.state.year) >= surpriseChance(partner, p)) return;
+  const using = contra.protectionWords(p);
+  const said = conceive(partner, false);
+  log(using ? `${said} No reversible method is perfect.` : said, 'system', 'neutral');
 }

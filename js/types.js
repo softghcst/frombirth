@@ -1,4 +1,4 @@
-// Master schemas for Pathways. Types only; this module exports nothing at runtime.
+// Master schemas for From Birth. Types only; this module exports nothing at runtime.
 
 /**
  * @typedef {{mood:number, health:number, intellect:number, charm:number}} CoreStats  0–100
@@ -246,6 +246,7 @@
  * @property {Milestone[]} milestones
  * @property {LifeCounters} counters
  * @property {number} generation
+ * @property {{gender:string, appearance:object, seed:string, dress:object}} [portrait]  the face, for the shareable card
  *
  * @typedef {Object} GameState
  * @property {number} schemaVersion

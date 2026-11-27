@@ -8,12 +8,12 @@
 // The "age down" history is left out: it is large, and only makes sense on
 // the device where the years were lived.
 
-const K_INDEX = 'pathways.index';
-const K_SLOT = 'pathways.slot.';
-const K_GRAVE = 'pathways.graveyard';
-const K_UNDO = 'pathways.undo.';
-const K_PEOPLE = 'pathways.people';
-const K_GONE = 'pathways.deleted';
+const K_INDEX = 'frombirth.index';
+const K_SLOT = 'frombirth.slot.';
+const K_GRAVE = 'frombirth.graveyard';
+const K_UNDO = 'frombirth.undo.';
+const K_PEOPLE = 'frombirth.people';
+const K_GONE = 'frombirth.deleted';
 /** Deletions older than this are forgotten. */
 const TOMBSTONE_DAYS = 180;
 
@@ -152,8 +152,8 @@ export function describe(bundle) {
 
 // ---------- As text ----------
 
-const PREFIX_GZ = 'PATHWAYS1:';
-const PREFIX_PLAIN = 'PATHWAYS0:';
+const PREFIX_GZ = 'FROMBIRTH1:';
+const PREFIX_PLAIN = 'FROMBIRTH0:';
 
 function toBase64(bytes) {
   let s = '';
@@ -180,20 +180,23 @@ export async function encode(bundle) {
 
 /** Reads text made by encode(). Throws a plain-words Error if it is not one. */
 export async function decode(text) {
-  const t = String(text ?? '').replace(/\s+/g, '');
+  let t = String(text ?? '').replace(/\s+/g, '');
   let bytes;
   try {
+    // A code made while the game was called Pathways reads the same.
+    if (t.startsWith('PATHWAYS1:')) t = PREFIX_GZ + t.slice('PATHWAYS1:'.length);
+    else if (t.startsWith('PATHWAYS0:')) t = PREFIX_PLAIN + t.slice('PATHWAYS0:'.length);
     if (t.startsWith(PREFIX_GZ)) {
       if (typeof DecompressionStream !== 'function') throw new Error('old');
       bytes = await streamBytes(new Blob([fromBase64(t.slice(PREFIX_GZ.length))]).stream().pipeThrough(new DecompressionStream('gzip')));
     } else if (t.startsWith(PREFIX_PLAIN)) bytes = fromBase64(t.slice(PREFIX_PLAIN.length));
     else throw new Error('not ours');
   } catch (e) {
-    throw new Error(e.message === 'old' ? 'This browser is too old to open that code.' : 'That is not a Pathways transfer code, or part of it is missing.');
+    throw new Error(e.message === 'old' ? 'This browser is too old to open that code.' : 'That is not a From Birth transfer code, or part of it is missing.');
   }
   let b;
   try { b = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('That transfer code is damaged. Try copying it again.'); }
-  if (b?.v !== 1 || typeof b.slots !== 'object') throw new Error('That is not a Pathways transfer code, or part of it is missing.');
+  if (b?.v !== 1 || typeof b.slots !== 'object') throw new Error('That is not a From Birth transfer code, or part of it is missing.');
   b.index ??= []; b.graveyard ??= []; b.people ??= []; b.deleted = { ...emptyGone(), ...b.deleted };
   return b;
 }

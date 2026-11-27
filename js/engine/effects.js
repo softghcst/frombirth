@@ -1,16 +1,21 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { unload } from './worklife.js';
 import { funeral } from './passing.js';
 import { militaryChoice } from './military.js';
+import { lawChoice } from './lawPractice.js';
 import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { feelingChoice } from './identity.js';
-import { ailmentChoice } from './health.js';
+import { ailmentChoice } from './health/ailments.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
+import { blendedChoice } from './blended.js';
+import { fosterChoice } from './fostering.js';
+import { callbackChoice } from './callbacks.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
@@ -22,11 +27,13 @@ import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
 import { togetherChoice } from './together.js';
+import { invChoice } from './investigations/drama.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition } from './health/ailments.js';
 import { healthEffect } from './health/story.js';
+import { sceneChoice as reproChoice } from './health/contraception.js';
 import { remember, parentsPay, parentsSpend } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
@@ -51,6 +58,9 @@ import { sportArcChoice } from './sportsArcs.js';
 import { disasterChoice } from './disasters.js';
 import { hoodChoice } from './neighborhoodLife.js';
 import { medicineChoice } from './medicine/drama.js';
+import { musicChoice } from './music.js';
+import { journalismChoice } from './journalism.js';
+import { originsChoice } from './origins.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -201,12 +211,18 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'scandal': ctx.note = scandalChoice(e.value); break;
       case 'justice': ctx.note = justiceScene(e.value, ctx.cast); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
+      case 'music': ctx.note = musicChoice(e.value, ctx.cast); break;
+      case 'journalism': ctx.note = journalismChoice(e.value, ctx.cast); break;
       case 'medicine': { const said = medicineChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
+      case 'blended': ctx.note = blendedChoice(e.value, ctx.cast); break;
+      case 'foster': ctx.note = fosterChoice(e.value, ctx.cast); break;
+      case 'callback': ctx.note = callbackChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
       case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
+      case 'unload': ctx.note = unload(e.value); break;
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
@@ -226,6 +242,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
         break;
       case 'condition': addCondition(e.value); break;
+      case 'repro': { const n = reproChoice(e.value, ctx.cast); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'health': { const n = healthEffect(e.value, ctx); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'cure': cureCondition(e.value); break;
       case 'gpa':
@@ -237,6 +254,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
       case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
+      case 'inv': { const note = invChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
@@ -247,7 +265,9 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'funeral': funeral(ctx.cast?.words?.goneId, e.value === 'skip' ? false : e.value === 'speak' ? 'speak' : true); break;
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
+      case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'origins': { const note = originsChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;

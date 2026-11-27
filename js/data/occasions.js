@@ -1,7 +1,7 @@
 // What a year can hold besides work and school: birthdays, school dances,
 // family occasions, holidays, traditions, invitations and evenings with friends.
 //
-// Pathways is lived a year at a time, so none of this has a date. Each entry
+// From Birth is lived a year at a time, so none of this has a date. Each entry
 // says who it is for, when in a life it can happen, and, so that a life set in
 // another time or place gets the right things, the first year it exists and the
 // countries it belongs to.
@@ -35,6 +35,9 @@ export const OCCASIONS = {
     blurb: 'The last big night of school, in a hired hall.' },
   leavers_ball: { name: 'The leavers\' prom', kind: 'school', since: 2000, countries: 'uk ie', minAge: 16, maxAge: 18, for: 'self', guests: 'date', cost: 250, bond: 5, mood: 9, memorable: true,
     blurb: 'A newer custom here, and everyone goes.' },
+  // [default] Homecoming: an American high-school tradition, the football game and the dance; dated here from 1930.
+  homecoming: { name: 'Homecoming', kind: 'school', since: 1930, countries: 'us', minAge: 14, maxAge: 18, for: 'self', guests: 'date', cost: 120, bond: 5, mood: 7, memorable: true,
+    blurb: 'The game on Friday, the dance on Saturday, and a corsage that wilts by ten.' },
   school_dance: { name: 'The school dance', kind: 'school', since: 1950, countries: 'us ca au nz uk ie', minAge: 12, maxAge: 18, for: 'self', guests: 'friends', cost: 20, bond: 3, mood: 5,
     blurb: 'A gym with the lights down and a playlist someone\'s brother made.' },
   graduation_party: { name: 'A graduation party', kind: 'school', for: 'self', minAge: 15, guests: true, styles: ['small', 'party'], memorable: true },

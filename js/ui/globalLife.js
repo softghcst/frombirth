@@ -21,7 +21,7 @@ import * as cit from '../engine/citizenship.js';
 import * as imm from '../engine/immigration.js';
 import * as move from '../engine/emigration.js';
 import * as chron from '../engine/chronicle.js';
-import { languagesOf, fluency } from '../engine/languages.js';
+import { languagesOf, fluency, languageNote } from '../engine/languages.js';
 import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engine/geo.js';
 import { avatarSvg } from './avatar.js';
 import { openPassportBook } from './passportBook.js';
@@ -135,12 +135,49 @@ const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'b
  * @param {object} api  the shell's api (changed, ...)
  * @param {{view?:string, params?:object}} [start]
  */
+/** The way there, as a scene: home, any changes of plane or ports of call, and the destination, on a map. */
+export async function journeyOf(trip) {
+  try {
+    const { openJourney, overOf } = await import('./journey.js');
+    const legs = trip.itinerary?.out ?? [];
+    const stops = legs.length ? [legs[0].from, ...legs.map((l) => l.to)] : [trip.origin, trip.destination];
+    if (trip.type === 'cruise') stops.push(...travel.portCalls(trip).map((x) => ({ countryId: x.countryId, city: x.port })));
+    const kind = { honeymoon: 'Off on the honeymoon', vacation: 'Off on vacation', getaway: 'A weekend away', business: 'Off on business' }[trip.type];
+    await openJourney({ stops, over: trip.type === 'cruise' ? 'sea' : overOf(legs[0]?.mode ?? trip.mode), title: kind });
+  } catch { /* no map: on with the trip */ }
+}
+
+/**
+ * Off on a booked trip, now: the journey on a map, its moments one at a time, each answered, then home, with a notice
+ * of how it went (and, home from a honeymoon, the postcard). Also how a honeymoon booked with the wedding begins.
+ * @returns {Promise<{ok:boolean, text?:string}>}
+ */
+export async function goOnTrip(api, id, changed = () => api?.changed?.()) {
+  const start = travel.beginTrip(id);
+  if (!start.ok) return start;
+  changed();
+  const trip = start.trip;
+  await journeyOf(trip); // the plane (or ship, train, car) on its way there, on a map (js/ui/journey.js)
+  const scenes = travel.tripScenes(trip);
+  let previous = null;
+  for (const [i, sc] of scenes.entries()) {
+    const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
+    previous = travel.chooseTripScene(id, sc.id, index);
+    changed();
+  }
+  const end = travel.finishTrip(id);
+  changed();
+  await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+  if (trip.type === 'honeymoon' || trip.honeymoon) { const { honeymoonPostcard } = await import('./weddingPlanner.js'); await honeymoonPostcard(api, trip); changed(); }
+  return { ok: true };
+}
+
 export function openExplore(api, start = {}) {
   const p = player();
   if (NAV.slot !== store.state.slotId) { NAV.slot = store.state.slotId; NAV.stack = []; NAV.ui = {}; }
   if (start.view) NAV.stack = [{ view: start.view, params: start.params ?? {}, scroll: 0 }];
   if (!NAV.stack.length) NAV.stack = [{ view: travel.whereabouts().away ? 'trips' : 'discover', params: {}, scroll: 0 }];
-  const modal = openModal('<div data-gl></div>', { dismissable: true });
+  const modal = openModal('<div data-gl></div>', { dismissable: true, full: true, title: 'Explore the World' });
   modal.el.classList.add('world-modal', 'gl-modal');
   const root = modal.el.querySelector('[data-gl]');
   const top = () => NAV.stack[NAV.stack.length - 1];
@@ -160,7 +197,7 @@ export function openExplore(api, start = {}) {
     root.innerHTML = `
       <div class="gl-head">
         ${isRoot ? '' : btn('← Back', 'data-back', 'small')}
-        <h2 style="margin:6px 0 0">${v.view === 'story' ? 'Our Global Story' : 'Explore the World'}</h2>
+        ${v.view === 'story' ? '<h2 style="margin:6px 0 0">Our Global Story</h2>' : ''}
         <p class="muted" style="margin:0">${v.view === 'story' ? 'How the family has lived across places and generations.' : ''}</p>
         <p class="gl-where">${where.away ? `✈ Away: ${esc(where.name)}. Home is still ${esc(placeName(p.countryId, p.city, store.state.year))}.` : `At home in ${esc(placeName(p.countryId, p.city, store.state.year))} · ${esc(docs.today())}`}</p>
         ${(() => { const era = getEra(store.state.year); if (era.id === 'now') return ''; const papers = { open: 'No passports or visas are asked for, and anyone may go and settle where they like.', controls: 'Passports are required, and most borders want a visa.', modern: 'Passports and visas as in the modern world, by the rules of the time.' }[docs.eraOf().id]; return `<p class="muted gl-era">${esc(era.name)} (${esc(era.short)}). ${esc(papers)} Travel is by what exists in ${store.state.year}.</p>`; })()}
@@ -193,7 +230,7 @@ export function openExplore(api, start = {}) {
       const d = travel.destination(id, city);
       const e = d.entry;
       return `<div class="world-head"><div class="world-flag big">${d.flag}</div><div><h2 style="margin:0">${esc(d.city)}</h2><p class="muted" style="margin:0">${esc(d.name)}</p></div></div>
-        <div class="card"><h3>Overview</h3>${kvt('Distance', `${(d.km ?? 0).toLocaleString('en-US')} km from home`)}${kvt('Climate', d.climate ?? '—')}${kvt('Now', d.season ?? '—')}${kvt('Languages', d.languages.join(', '))}${kvt('Currency', d.currency)}${kvt('A week, for one', money(d.weekCost))}
+        <div class="card"><h3>Overview</h3>${kvt('Distance', `${(d.km ?? 0).toLocaleString('en-US')} km from home`)}${kvt('Climate', d.climate ?? '—')}${kvt('Now', d.season ?? '—')}${kvt('Languages', d.languages.join(', '))}${languageNote(id) ? `<p class="muted">${esc(languageNote(id))}</p>` : ''}${kvt('Currency', d.currency)}${kvt('A week, for one', money(d.weekCost))}
           <label class="field" style="margin-top:8px">City <select data-destcity>${d.cities.map((c) => `<option ${c === d.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label></div>
         <div class="card"><h3>Entry requirements</h3>${e ? `${kvt('For you', e.name)}${e.days ? kvt('Longest stay', `${e.days} days${e.rolling ? ` in any ${e.rolling}` : ''}`) : ''}<p class="muted">${esc(e.why)} Simplified game rules, not travel advice.</p>` : '<p class="muted">No border to cross.</p>'}</div>
         <div class="card"><h3>Getting there</h3>${d.modes.length ? d.modes.map((m) => kvt(m.name, `${m.hours < 48 ? `${Math.round(m.hours)} hours` : `${Math.round(m.hours / 24)} days`}`)).join('') : '<p class="muted">No way to make this journey in this period.</p>'}</div>
@@ -232,9 +269,9 @@ export function openExplore(api, start = {}) {
       return `
         <div class="card gl-step"><h3>1 · Kind of trip</h3>
           <select data-planfield="type" aria-label="Kind of trip">${types.map((t) => `<option value="${t.id}" ${t.id === trip.type ? 'selected' : ''} ${t.why ? 'disabled' : ''}>${esc(t.group)}: ${esc(t.name)}${t.why ? ` (${esc(t.why)})` : ''}</option>`).join('')}</select></div>
-        ${cruise ? cruiseStep(trip) : `<div class="card gl-step"><h3>2 · From and to</h3>\${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
-          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>\${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => \`<option value="\${c.id}" \${dest?.countryId === c.id ? 'selected' : ''}>\${c.flag} \${esc(c.name)}</option>\`).join('')}</select></label>
-          \${dest ? \`<label class="field">City <select data-planfield="city">\${COUNTRIES[dest.countryId].cities.map((c) => \`<option \${c === dest.city ? 'selected' : ''}>\${esc(c)}</option>\`).join('')}</select></label>\` : ''}</div>`}
+        ${cruise ? cruiseStep(trip) : `<div class="card gl-step"><h3>2 · From and to</h3>${kvt('From', placeName(trip.origin.countryId, trip.origin.city))}
+          <label class="field">Country <select data-planfield="country"><option value="">Choose…</option>${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest?.countryId === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select></label>
+          ${dest ? `<label class="field">City <select data-planfield="city">${COUNTRIES[dest.countryId].cities.map((c) => `<option ${c === dest.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>` : ''}</div>`}
         <div class="card gl-step"><h3>3 · Dates</h3>
           <div class="gl-dates"><label class="field">Leave <input type="date" data-planfield="depart" value="${esc(trip.depart)}" min="${docs.today()}" max="${y + 1}-12-31"></label>
           ${cruise ? '' : `<label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label>`}</div>
@@ -256,7 +293,7 @@ export function openExplore(api, start = {}) {
             ${x.mayApply && x.needs && x.needs !== 'passport' ? btn(`Apply: ${x.rule.name}`, `data-applyentry="${x.id}"`, 'small') : ''}</div>`).join('') : '<p class="muted">No border to cross.</p>'}
           <p class="muted">A visitor may not work.</p></div>
         ${cruise ? stateroomStep(trip) : m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
-        ${cruise ? onboardStep(trip) : `<div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">\${acts.map((a) => chip(\`\${a.name}\${a.liked ? ' ★' : ''}\`, trip.activities.includes(a.id), \`data-act="\${a.id}"\`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>`}
+        ${cruise ? onboardStep(trip) : `<div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>`}
         <div class="card gl-step"><h3>9 · Paying</h3>
           <select data-planfield="payment" aria-label="Who pays">${travel.paymentOptions().map((o) => `<option value="${o.id}" ${payHow === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select>
           ${payHow === 'family' ? (trip.familyAnswer ? `<p class="gl-answer">${esc(trip.familyAnswer.text)}</p>${travel.canAskFamilyAgain(trip) ? btn(`Ask ${kinWho} again`, `data-askfamily="${trip.id}"`, 'small') : ''}` : `<p class="muted">They might say yes, or help with some of it, or say no.</p>${trip.destination ? btn(`Ask ${kinWho}`, `data-askfamily="${trip.id}"`, 'small') : ''}`) : ''}
@@ -349,7 +386,7 @@ export function openExplore(api, start = {}) {
               <div class="btn-stack">${btn('Complete the move', `data-complete="${a.id}"`, 'primary')}</div>` : ''}</div>`;
         }).join('')}
         <div class="card"><h3>Explore countries</h3><select data-dest aria-label="Country"><option value="">Choose a country…</option>${COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select>
-          ${dest ? `<div class="section-label">Immigration options</div>${ways.map((r) => `<div class="gl-route ${r.eligible ? '' : 'closed'}"><strong>${esc(r.name)}</strong><small>${esc(r.blurb)}</small><small>${esc(r.eligible ? `${r.outlook} ${r.fee ? money(r.fee) : 'No fee'}${r.years ? ` · ${r.years} years, then renewed or ended` : ''}. You arrive as: ${cit.STATUS_WORDS[r.status] ?? r.status}.` : r.why)}</small>
+          ${dest ? `<div class="section-label">Immigration options</div>${languageNote(dest) ? `<p class="muted">${esc(languageNote(dest))}</p>` : ''}${ways.map((r) => `<div class="gl-route ${r.eligible ? '' : 'closed'}"><strong>${esc(r.name)}</strong><small>${esc(r.blurb)}</small><small>${esc(r.eligible ? `${r.outlook} ${r.fee ? money(r.fee) : 'No fee'}${r.years ? ` · ${r.years} years, then renewed or ended` : ''}. You arrive as: ${cit.STATUS_WORDS[r.status] ?? r.status}.` : r.why)}</small>
             ${r.eligible ? btn(['right', 'free'].includes(r.id) ? 'Start arranging the move' : `Apply (${money(Math.round(r.fee * 0.2))} now)`, `data-applymove="${r.id}"`, 'small') : ''}</div>`).join('')}
             <div class="section-label">Family relocation</div><p>Coming: ${esc(move.household(dest).map((n) => n.firstName).join(', ') || 'only you')}.</p>
             ${move.askable().map((x) => `<button type="button" class="tree-row" data-ask="${x.npc.id}" ${x.asked ? 'disabled' : ''}><strong>Ask ${esc(x.npc.firstName)}</strong><small>${x.coming ? 'Has said yes' : x.asked ? 'Has said no' : 'They decide for themselves'}</small></button>`).join('')}` : ''}</div>
@@ -573,21 +610,8 @@ export function openExplore(api, start = {}) {
       if (t('[data-passportbook]')) return openPassportBook();
       if ((x = t('[data-depart]'))) {
         // Off on the trip: its moments one at a time, each answered, then home.
-        const id = x.dataset.depart;
-        const start = travel.beginTrip(id);
-        if (!start.ok) return tell(start);
-        changed(); render(modal.el.scrollTop);
-        const trip = start.trip;
-        const scenes = travel.tripScenes(trip);
-        let previous = null;
-        for (const [i, sc] of scenes.entries()) {
-          const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
-          previous = travel.chooseTripScene(id, sc.id, index);
-          changed();
-        }
-        const end = travel.finishTrip(id);
-        changed();
-        await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+        const r = await goOnTrip(api, x.dataset.depart, changed);
+        if (!r.ok) return tell(r);
         return render(modal.el.scrollTop);
       }
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));

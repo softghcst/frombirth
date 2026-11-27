@@ -6,41 +6,120 @@
 // A leadership post needs a seat to be free and a selection; it is offered, never automatic, and
 // the player may say no. Leaving the hospital (quitting, being let go, taking another job) ends
 // the post; another hospital can be applied to from My Medical Career.
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { clamp } from '../../util.js';
+import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
+import { makeNpc } from '../npcFactory.js';
+import { remember } from '../conditions.js';
 import { RANKS, SPECIALTY_BY_ID } from '../../data/medicine.js';
 import { promote, endJob } from '../career.js';
 import { employer, chronicle } from '../employers.js';
 import { M, med, year, grow, note, result, roll, reputationOf, once, specialtyName, currentSpecialty, qualified } from './core.js';
 import { hospital, deptOf, deptHead, workplacesFor, careerFor, levelFor } from './hospitals.js';
 import { retitle, startPost } from './training.js';
+import { hire } from '../career.js';
+import { CAREER_BY_ID } from '../../data/careers.js';
+import { storyBeat } from '../storyDirector.js';
 
-const ORDER = ['attending', 'senior', 'director', 'chief', 'chair', 'cmo'];
-/** What each step up asks: years at the rank below, reputation, leadership, and the kind of hospital. */
-const STEPS = {
-  senior: { from: 'attending', years: 5, rep: 52, lead: 0, odds: 0.45 },
-  director: { from: 'senior', years: 3, rep: 58, lead: 45, odds: 0.22, leader: true },
-  chief: { from: 'director', years: 3, rep: 62, lead: 55, odds: 0.18, leader: true },
-  chair: { from: 'chief', years: 4, rep: 68, lead: 62, odds: 0.12, leader: true, kinds: ['academic', 'childrens'] },
-  cmo: { from: 'chief', years: 5, rep: 70, lead: 68, odds: 0.08, leader: true },
+const an = (w) => `${/^[aeiou]/i.test(w) ? 'an' : 'a'} ${w}`;
+const ORDER = ['attending', 'experienced', 'senior', 'director', 'vice_chair', 'chief', 'chair', 'cmo', 'ceo'];
+
+/**
+ * Separate career branches (not everyone becomes a chief, and nobody becomes chief executive for being a fine
+ * surgeon). What each step asks: years at the rank below, reputation, leadership, management, the kind of
+ * hospital, and for the academic branch a faculty post and a record of teaching and research.
+ *
+ *   clinical        attending → experienced attending → senior physician → chief of service (selected)
+ *   academic        attending → experienced attending → vice chair for education (faculty) → department chair
+ *   administrative  attending → medical director → department chair → chief medical officer → hospital chief executive
+ */
+export const TRACKS = {
+  clinical: { name: 'Clinical', words: 'Patients first: experience, seniority, and perhaps leading your service.' },
+  academic: { name: 'Academic', words: 'Teaching and research alongside patients: a faculty post, academic leadership, a chair.' },
+  administrative: { name: 'Administrative', words: 'Running things: medical director, chair, chief medical officer, perhaps the hospital itself.' },
 };
+const STEPS = [
+  { id: 'experienced', from: 'attending', tracks: ['clinical', 'academic'], years: 3, rep: 45, lead: 0, odds: 0.6 },
+  { id: 'senior', from: 'experienced', tracks: ['clinical'], years: 4, rep: 52, lead: 0, odds: 0.45 },
+  { id: 'chief', from: 'senior', tracks: ['clinical'], years: 4, rep: 62, lead: 55, odds: 0.15, leader: true },
+  { id: 'vice_chair', from: 'experienced', tracks: ['academic'], years: 3, rep: 58, lead: 50, odds: 0.25, leader: true, faculty: true },
+  { id: 'chair', from: 'vice_chair', tracks: ['academic'], years: 4, rep: 66, lead: 60, odds: 0.15, leader: true, kinds: ['academic', 'childrens', 'heart', 'bone'], faculty: true },
+  { id: 'director', from: 'attending', tracks: ['administrative'], years: 4, rep: 55, lead: 45, mgmt: 50, odds: 0.22, leader: true },
+  { id: 'chair', from: 'director', tracks: ['administrative'], years: 3, rep: 62, lead: 58, mgmt: 55, odds: 0.15, leader: true },
+  // A chief medical officer is chosen for running an organization, not for surgical fame: management counts.
+  { id: 'cmo', from: 'chair', tracks: ['administrative'], years: 4, rep: 68, lead: 65, mgmt: 65, odds: 0.1, leader: true },
+  { id: 'cmo', from: 'chief', tracks: ['administrative', 'clinical'], years: 5, rep: 70, lead: 68, mgmt: 65, odds: 0.08, leader: true },
+  { id: 'ceo', from: 'cmo', tracks: ['administrative'], years: 3, rep: 70, lead: 72, mgmt: 75, odds: 0.08, leader: true },
+  // Older records: a senior physician from before the branches, or a director on another path, still has a way on.
+  { id: 'director', from: 'senior', tracks: ['administrative'], years: 3, rep: 58, lead: 45, mgmt: 50, odds: 0.2, leader: true },
+];
 
-/** The next step up from a rank, if this hospital has it. */
-export function nextRank(job, h) {
-  const opts = Object.entries(STEPS).filter(([, s]) => s.from === job.rank && (!s.kinds || s.kinds.includes(h.kind)));
-  return opts.map(([id, s]) => ({ id, ...s }));
+/** The branch a physician is on (clinical unless they choose otherwise). */
+export const trackOf = (m = med()) => m?.track ?? 'clinical';
+/** Chooses a branch. A change is allowed once a year; the rank already held stays. */
+export function setTrack(track) {
+  const m = M();
+  if (!TRACKS[track]) return result(false, 'There is no such path.', 'neutral');
+  if (m.track === track) return result(false, 'That is already your path.', 'neutral');
+  if (!once('track', m)) return result(false, 'You changed direction this year already.', 'neutral');
+  m.track = track;
+  return result(true, `You set your sights on the ${TRACKS[track].name.toLowerCase()} path: ${TRACKS[track].words}`, 'neutral');
+}
+
+/** The next step up from a rank on the physician's branch, if this hospital has it. */
+export function nextRank(job, h, m = med()) {
+  const track = trackOf(m);
+  const fromHere = STEPS.filter((s) => s.from === job.rank && (!s.kinds || s.kinds.includes(h.kind)));
+  const mine = fromHere.filter((s) => s.tracks.includes(track));
+  return (mine.length ? mine : fromHere.filter((s) => !STEPS.some((x) => x.from === job.rank && x.tracks.includes(track))).slice(0, 1))
+    .filter((s) => !s.faculty || m?.research?.faculty);
+}
+
+/** What the next step asks, for the career page. */
+export function nextStepNeeds(m = med()) {
+  if (!m?.job) return null;
+  const h = hospital(m.job.hospitalId);
+  const step = h ? nextRank(m.job, h, m)[0] : null;
+  if (!step) return { title: null, needs: [trackOf(m) === 'academic' && !m.research?.faculty ? 'a faculty post (Professional development)' : 'nothing further on this path here'] };
+  const years = year() - (m.job.rankSince ?? m.job.since);
+  const needs = [];
+  if (years < step.years) needs.push(`${step.years - years} more year${step.years - years === 1 ? '' : 's'} at your rank`);
+  if (reputationOf(m) < step.rep) needs.push(`reputation ${step.rep}`);
+  if (m.skills.leadership < step.lead) needs.push(`leadership ${step.lead}`);
+  if (m.skills.management < (step.mgmt ?? 0)) needs.push(`management ${step.mgmt}`);
+  return { title: RANKS[step.id].title, needs, selected: !!step.leader };
 }
 
 /** Takes a post offered by a hospital (or a leadership seat): the rank, the pay level, the title. */
 function takeRank(p, m, rank) {
+  if (rank === 'ceo') {
+    // The hospital's chief executive: an executive post (hospital administration), no longer a clinical one.
+    const e0 = employer(m.job.hospitalId);
+    const exec = CAREER_BY_ID.health_admin;
+    hire(exec, exec.levels.length - 1, 70, `You are appointed chief executive of ${e0.name}.`, { employerId: e0.id });
+    m.job.rank = 'ceo'; m.job.rankSince = year();
+    p.career.title = `Chief executive, ${e0.name}`;
+    m.topRank = 'ceo'; m.topTitle = p.career.title;
+    chronicle(e0, `${p.firstName} ${p.lastName} became chief executive.`);
+    note(`Became chief executive of ${e0.name}.`, 'career', { key: `rank:ceo:${e0.id}`, milestone: `Chief executive of ${e0.name}.`, significance: 3, log: false });
+    return;
+  }
   const career = careerFor(m.job.specialtyId);
   const want = levelFor(rank, career);
   while (p.career.level < want && promote()) { /* the payroll level follows the rank */ }
   m.job.rank = rank;
   m.job.rankSince = year();
   retitle(p, m);
+  if (ORDER.indexOf(rank) >= ORDER.indexOf(m.topRank ?? 'attending')) { m.topRank = rank; m.topTitle = p.career.title; }
   const e = employer(m.job.hospitalId);
   const h = hospital(e);
+  // The people who were there at the start notice.
+  const mentor = store.state.npcs[m.people.mentorId];
+  if (RANKS[rank].leader && mentor?.alive) {
+    mentor.meters.relationship = clamp(mentor.meters.relationship + 6);
+    log(`${mentor.firstName} ${mentor.lastName}, your mentor from residency, sent a note: "I said you would."`, 'system', 'good');
+  }
   if (['chief', 'chair'].includes(rank)) {
     // The person who held the seat steps aside (retires or moves on); the player takes it.
     const dept = deptOf(m.job.specialtyId);
@@ -52,6 +131,16 @@ function takeRank(p, m, rank) {
   if (rank === 'cmo') h.cmoId = p.id ?? 'player';
   chronicle(e, `${p.firstName} ${p.lastName} became ${p.career.title.toLowerCase()}.`);
   note(`Became ${p.career.title.toLowerCase()} at ${e.name}.`, 'career', { key: `rank:${rank}:${e.id}`, milestone: `${p.career.title} at ${e.name}.`, significance: RANKS[rank].leader ? 2 : 1, log: false });
+}
+
+/** Who else wants a leadership seat: a rival at the same hospital first, then a senior colleague there. */
+function contender(h, m) {
+  const p = player();
+  const here = (n) => n?.alive && n.life?.job?.employerId === h.id;
+  const rival = (m.people.rivalIds ?? []).map((id) => store.state.npcs[id]).find(here);
+  if (rival) return { npc: rival, rival: true, strength: clamp(0.3 + ((rival.meters.intellect ?? 50) - reputationOf(m)) / 150, 0.1, 0.6) };
+  const senior = p.npcIds.map((id) => store.state.npcs[id]).find((n) => here(n) && n.flags.medRole !== 'trainee' && (n.life?.job?.level ?? 0) >= 1);
+  return senior ? { npc: senior, rival: false, strength: 0.25 } : null;
 }
 
 /** Accepts or declines a leadership offer standing this year. */
@@ -69,6 +158,49 @@ export function answerOffer(accept) {
   return result(true, `You accepted. You are now ${p.career.title.toLowerCase()}.`);
 }
 
+/**
+ * An attending at a teaching hospital supervises residents: real people, met through the work,
+ * whose year goes better or worse with the teaching. Romance with them is ruled out (engine/medicine/drama.js).
+ */
+function teach(p, m) {
+  const h = hospital(m.job.hospitalId);
+  if (!h?.teaching) return;
+  const e = employer(h.id);
+  let mine = (m.people.traineeIds ?? []).map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.life?.job?.employerId === h.id && n.flags.pgy <= 7);
+  // Residents finish and move on; new ones arrive each year.
+  for (const n of mine) n.flags.pgy = (n.flags.pgy ?? 1) + 1;
+  for (const n of mine.filter((x) => x.flags.pgy > 4)) { n.flags.medRole = 'peer'; n.flags.title = 'Former resident'; if (n.life?.job) n.life.job.level = 1; }
+  mine = mine.filter((x) => x.flags.pgy <= 4);
+  while (mine.length < 2) {
+    const n = makeNpc({ role: 'colleague', countryId: e.countryId, age: 26 + Math.floor(rng.next() * 4), relationship: 50 });
+    n.flags.medRole = 'trainee'; n.flags.pgy = 1; n.flags.title = 'Resident you supervise'; n.flags.workedWith = e.name;
+    n.occupation = 'resident doctor';
+    n.life = { edu: { stage: 'done', gpa: 3.5, majorId: 'biology', trade: null, degrees: [], yearsLeft: 0 }, job: { careerId: 'doctor', level: 0, title: 'Resident doctor', salary: 0, years: 0, employerId: e.id },
+      savings: 0, aspiration: null, partnerId: null, together: 0, married: false, kids: 0, history: [] };
+    store.state.npcs[n.id] = n;
+    if (!e.staff.includes(n.id)) e.staff.push(n.id);
+    p.npcIds.push(n.id);
+    mine.push(n);
+  }
+  m.people.traineeIds = mine.map((n) => n.id);
+  for (const n of mine) n.meters.relationship = clamp(n.meters.relationship + (m.skills.communication - 50) / 10);
+  grow('leadership', 1, m); grow('communication', 0.5, m);
+}
+
+/** Complaints and claims from a year ago are decided: dismissed where care met the standard, upheld where it did not. */
+export function claimsYear(p = player(), m = med()) {
+  if (!m) return;
+  for (const c of (m.claims ?? []).filter((x) => x.status === 'open' && x.year < year())) {
+    if (!c.below) { c.status = 'dismissed'; log('A claim brought by a patient\'s family was reviewed and dismissed: the care met the standard.', 'system', 'neutral'); continue; }
+    c.status = 'upheld';
+    m.discipline.push({ year: year(), what: 'A claim about a patient\'s care was upheld.' });
+    const cost = Math.round(p.career.salary * 0.05);
+    p.finance.cash -= cost;
+    log(`A claim about a patient's care was upheld. Malpractice insurance paid most of it; your share was ${cost.toLocaleString('en-US')}, and it goes on your record.`, 'system', 'bad');
+    p.stats.mood = clamp(p.stats.mood - 10);
+  }
+}
+
 /** The yearly review of a post: the rank's years, reputation, and a step up when a seat opens. */
 export function postYear() {
   const p = player();
@@ -76,13 +208,33 @@ export function postYear() {
   if (!m?.job) return;
   if (p.career.employerId !== m.job.hospitalId) {
     const e = employer(m.job.hospitalId);
-    note(`Left ${e?.name ?? 'the hospital'} after ${year() - m.job.since} years.`, 'career', { log: false });
+    if (p.career.retired) {
+      // Retiring: the career as the family will remember it (engine/medicine/core.js physicianSummary).
+      const total = m.experience.years;
+      note(`Retired from medicine after ${total} years${m.topTitle ? `, ${an(m.topTitle.toLowerCase())}` : ''}.`, 'career',
+        { key: 'retired', milestone: `Retired from medicine after ${total} years.`, significance: 2 });
+      const mentor = store.state.npcs[m.people.mentorId];
+      if (mentor?.alive) log(`${mentor.firstName} ${mentor.lastName}, who mentored you as a resident, came to your retirement dinner and gave the shortest speech of the night.`, 'system', 'good');
+      m.stage = 'retired';
+    } else note(`Left ${e?.name ?? 'the hospital'} after ${year() - m.job.since} years.`, 'career', { log: false });
     m.job = null;
     return;
   }
   if (m.job.since === year()) return; // taken this year: the first review comes next year
+  // A temporary (locum) post ends with its year; another can be applied for.
+  if (m.job.contract?.locum && m.job.contract.until <= year()) {
+    const e0 = employer(m.job.hospitalId);
+    note(`Finished a temporary post at ${e0?.name ?? 'the hospital'}.`, 'career', { log: false });
+    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from the Work tab.`, 'system', 'neutral');
+    m.job = null;
+    endJob('temporary post ended');
+    return;
+  }
+  teach(p, m);
   const h = hospital(m.job.hospitalId);
   m.experience.years += 1;
+  // A raise now and then for solid work, likelier and larger for strong work: pay grows between promotions and after the last one.
+  if ((p.career.performance ?? 50) >= 50 && p.career.salary && roll((p.career.performance ?? 50) >= 75 ? 0.55 : 0.3)) p.career.salary = Math.round(p.career.salary * ((p.career.performance ?? 50) >= 75 ? 1.04 : 1.03)); // now and then, not every year
   grow('management', 1, m); grow('reasoning', 0.8, m);
   if (RANKS[m.job.rank]?.leader) { grow('leadership', 1.5, m); grow('management', 1, m); }
   m.reputation = reputationOf(m);
@@ -101,15 +253,31 @@ export function postYear() {
     }
   }
   // A leadership offer stands for the year; the player answers it from My Medical Career.
-  if (m.offer && m.offer.year < year()) m.offer = null;
+  // A leadership offer stands for the year; one left unanswered is taken as accepted, as most people would, except a
+  // move out of clinical work into running the hospital (chief medical officer, chief executive), which is the player's to make.
+  if (m.offer && m.offer.year < year()) { const o = m.offer; m.offer = null; if (RANKS[o.rank] && !['cmo', 'ceo'].includes(o.rank) && o.hospitalId === m.job.hospitalId) { takeRank(p, m, o.rank); log(`You took up the post of ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; } }
   const years = year() - (m.job.rankSince ?? m.job.since);
   for (const step of nextRank(m.job, h)) {
-    if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead) continue;
-    if (!roll(step.odds + (m.reputation - step.rep) / 200)) continue;
+    if (years < step.years || m.reputation < step.rep || m.skills.leadership < step.lead || m.skills.management < (step.mgmt ?? 0)) continue;
+    if (step.faculty && !m.research?.faculty) continue;
+    // A chief you once helped is on your side; one you fell out with is not (actual memories, not invented ones).
+    const head = store.state.npcs[h.heads[deptOf(m.job.specialtyId)]];
+    const ally = head && (head.memories ?? []).some((x) => x.key === 'medHelped') ? 0.08 : head && (head.memories ?? []).some((x) => x.key === 'medDisagreed') && !head.flags.medReconciled ? -0.05 : 0;
+    if (!roll(step.odds + ally + (m.reputation - step.rep) / 200)) continue;
     if (!step.leader) { takeRank(p, m, step.id); log(`You were made ${p.career.title.toLowerCase()}.`, 'system', 'good'); return; }
+    // A leadership seat has other candidates: a rival from residency who works here, or a colleague of long standing.
+    const other = contender(h, m);
+    if (other && roll(other.strength)) {
+      other.npc.flags.title = RANKS[step.id].title;
+      other.npc.occupation = RANKS[step.id].title.toLowerCase();
+      if (other.npc.life?.job) other.npc.life.job.level = Math.max(other.npc.life.job.level ?? 0, 2);
+      remember(other.npc, `medRank:${step.id}`, `Was chosen as ${RANKS[step.id].title.toLowerCase()} over you.`);
+      log(`The post of ${RANKS[step.id].title.toLowerCase()} went to ${other.npc.firstName} ${other.npc.lastName}${other.rival ? ', your old rival from residency' : ''}. Your turn may come.`, 'system', 'neutral');
+      return;
+    }
     m.offer = { rank: step.id, year: year(), hospitalId: h.id };
-    store.state.pendingEvents.push({ id: 'med_leadership_offer', cast: { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } } });
-    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from My Medical Career.`, 'system', 'good');
+    storyBeat('med_leadership_offer', { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } }, { source: 'medicine', must: true });
+    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from the Work tab.`, 'system', 'good');
     return;
   }
 }
@@ -124,6 +292,7 @@ export function postOptions(p = player(), m = med()) {
 
 /** Applies for an attending post at a hospital, once a year. Not guaranteed. */
 export function applyForPost(hospitalId) {
+  { const sc = jobBlockSpecial('doctor', player()); if (sc) return result(false, sc, 'neutral'); }
   const p = player();
   const m = M();
   const o = postOptions(p, m).find((x) => x.id === hospitalId);

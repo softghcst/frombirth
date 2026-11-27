@@ -53,7 +53,11 @@ export function sourceOptions() {
   const homes = p.assets.filter((a) => a.kind === 'property' && (a.boughtAtAge >= p.age - 1 || a.renovatedYear >= store.state.year - 1))
     .map((a) => ({ type: 'home', key: `home:${a.id}:${a.renovatedYear ?? a.boughtAtAge}`, text: a.renovatedYear >= store.state.year - 1 ? 'Your renovation, finished' : 'Your new home', topic: 'life' }))
     .filter((s) => !used.has(s.key));
-  return [...projects, ...trips, ...homes, ...ms.reverse()];
+  // Articles the player published (engine/journalism.js), shared as links to the same article.
+  const articles = Object.values(store.state.newsroom?.pubs ?? {}).filter((x) => x.reporterId === p.id && store.state.year - x.year <= 1)
+    .map((x) => ({ type: 'article', key: `article:${x.id}`, text: x.headline, topic: 'work', outlet: x.outlet }))
+    .filter((s) => !used.has(s.key));
+  return [...projects, ...articles, ...trips, ...homes, ...ms.reverse()];
 }
 
 function topicFor(text, kind) {
@@ -158,7 +162,7 @@ export function publish(o) {
   return result(true, sim.text, sim.tone, { post });
 }
 
-const sourceLine = (s) => (s.type === 'project' ? `New: ${s.text}.` : s.type === 'trip' ? `${s.text.replace(/^Your/, 'My')}, in pictures.` : s.type === 'home' ? `${s.text.replace(/^Your/, 'My')}.` : `Some news: ${s.text.replace(/\.$/, '')}.`);
+const sourceLine = (s) => (s.type === 'article' ? `New story: "${s.text}".` : s.type === 'project' ? `New: ${s.text}.` : s.type === 'trip' ? `${s.text.replace(/^Your/, 'My')}, in pictures.` : s.type === 'home' ? `${s.text.replace(/^Your/, 'My')}.` : `Some news: ${s.text.replace(/\.$/, '')}.`);
 
 /** Keeps an account's post list within storage limits, never dropping posts the life story points at. */
 function trimPosts(acc) {

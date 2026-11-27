@@ -7,6 +7,7 @@
 // state itself (hours, pay, bosses, the employer, a business).
 // Entertainment careers have no scenes here on purpose: productions, tours
 // and releases are left for their own system.
+import { AT } from '../workplaces.js';
 import { st, hid, cash, rel, ms, addNpc, ok, bad, any, chk, need, mem, perf, pay, promoted, npcSet } from './helpers.js';
 
 const wk = (value) => ({ type: 'work', value });
@@ -19,7 +20,7 @@ const queued = (id, category, text, choices) => ({ id, category, ageRange: [0, 1
 export default [
   // ---------- Work and home ----------
   {
-    id: 'wf_missed_evening', category: 'work', ageRange: [22, 62], requires: [salaried, need('hasYoungChild', '==', true)], cast: { kid: 'child', boss: 'tag:boss' },
+    id: 'wf_missed_evening', workplaces: AT.any, category: 'work', ageRange: [22, 62], requires: [salaried, need('hasYoungChild', '==', true)], cast: { kid: 'child', boss: 'tag:boss' },
     castRequires: [need('cast.kid.age', '<=', 12), need('cast.kid.age', '>=', 4)], cooldown: 5,
     text: '{kid} has a part in the school show tonight, and has talked about nothing else for a month. At four o\'clock {boss} calls everyone in: something has gone wrong, and it has to be fixed before morning.',
     choices: [
@@ -35,7 +36,7 @@ export default [
     ],
   },
   {
-    id: 'wf_part_time', category: 'work', ageRange: [24, 55], requires: [salaried, need('hasYoungChild', '==', true)], cast: { boss: 'tag:boss' }, cooldown: 8,
+    id: 'wf_part_time', workplaces: AT.any, category: 'work', ageRange: [24, 55], requires: [salaried, need('hasYoungChild', '==', true)], cast: { boss: 'tag:boss' }, cooldown: 8,
     text: 'The childcare has fallen through again. You have done the sums on the back of an envelope three times: someone has to be home more, or you have to pay someone a great deal to be.',
     choices: [
       { label: 'Ask {boss} for a shorter week', check: chk(0.6, { 'cast.boss.relationship': 0.6 }), outcomes: [
@@ -47,7 +48,7 @@ export default [
     ],
   },
   {
-    id: 'wf_promotion_elsewhere', category: 'work', ageRange: [26, 58], requires: [salaried, need('yearsInRole', '>=', 2), need('career.performance', '>=', 65)], cast: { boss: 'tag:boss', love: 'spouse' }, cooldown: 12,
+    id: 'wf_promotion_elsewhere', workplaces: ['office', 'firm', 'lab', 'care', 'school', 'shop', 'court'], category: 'work', ageRange: [26, 58], requires: [salaried, need('yearsInRole', '>=', 2), need('career.performance', '>=', 65)], cast: { boss: 'tag:boss', love: 'spouse' }, cooldown: 12,
     text: '{boss} closes the door. There is a bigger job, and it is yours if you want it. It is in another city. At home, {love} listens to the whole of it and then says, quietly, that their own work is here.',
     choices: [
       { label: 'Take it, and ask {love} to come', check: chk(0.5, { 'cast.love.relationship': 0.9 }), outcomes: [
@@ -76,7 +77,7 @@ export default [
     ],
   },
   {
-    id: 'wf_work_trip', category: 'work', ageRange: [24, 62], requires: [salaried, inField('corporate', 'tech', 'media', 'government', 'science', 'transport')], cast: { love: 'spouse', boss: 'tag:boss' }, cooldown: 10,
+    id: 'wf_work_trip', workplaces: ['office', 'firm', 'lab'], category: 'work', ageRange: [24, 62], requires: [salaried, inField('corporate', 'tech', 'media', 'government', 'science', 'transport')], cast: { love: 'spouse', boss: 'tag:boss' }, cooldown: 10,
     text: '{boss} wants you abroad for three weeks, starting Monday. It is the week of your anniversary with {love}.',
     choices: [
       { label: 'Go, and make it up to {love} afterward', outcomes: [any('The trip goes well. The anniversary is a video call with a bad connection.', 'neutral', perf(6), rel('love', -8), wk('stress:4'))] },
@@ -90,7 +91,7 @@ export default [
 
   // ---------- The life of a workplace ----------
   {
-    id: 'wp_new_manager', category: 'work', ageRange: [20, 64], requires: [salaried, need('yearsInRole', '>=', 1)], cast: { boss: 'tag:boss' }, cooldown: 12,
+    id: 'wp_new_manager', workplaces: AT.colleagues, category: 'work', ageRange: [20, 64], requires: [salaried, need('yearsInRole', '>=', 1)], cast: { boss: 'tag:boss' }, cooldown: 12,
     text: '{boss} gathers the team to say goodbye: a new job, starting next month. The replacement comes from outside, with a reputation for changing things.',
     choices: [
       { label: 'Introduce yourself early and offer to show them round', outcomes: [any('{newcomer} remembers who was helpful in the first week. {boss} says to keep in touch, and seems to mean it.', 'good',
@@ -104,7 +105,7 @@ export default [
     ],
   },
   {
-    id: 'wp_acquired', category: 'work', ageRange: [22, 64], requires: [salaried, inField('corporate', 'tech', 'media', 'retail', 'hospitality', 'transport', 'science')], cast: { mate: 'coworker' }, cooldown: 20,
+    id: 'wp_acquired', workplaces: AT.company, category: 'work', ageRange: [22, 64], requires: [salaried, inField('corporate', 'tech', 'media', 'retail', 'hospitality', 'transport', 'science')], cast: { mate: 'coworker' }, cooldown: 20,
     text: 'The email arrives at nine: the company has been bought. By ten, {mate} has heard that a third of the jobs will go, that nobody\'s will, and that the new owners are moving everything to another country.',
     choices: [
       { label: 'Carry on working, and wait for facts', outcomes: [any('The facts, when they come, are duller than the rumors. Your job is safe for now. The place feels different.', 'neutral', wk('acquired'), wk('stress:5'))] },
@@ -116,7 +117,7 @@ export default [
     ],
   },
   {
-    id: 'wp_surprise_bonus', category: 'work', ageRange: [20, 66], requires: [salaried, need('career.performance', '>=', 70)], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'wp_surprise_bonus', workplaces: ['office', 'firm', 'shop', 'site', 'lab'], category: 'work', ageRange: [20, 66], requires: [salaried, need('career.performance', '>=', 70)], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'It has been a good year, and {boss} has been given a pot of money to share out. You are called in.',
     choices: [
       { label: 'Say thank you', outcomes: [any('{boss} tells you what it is for, specifically, which matters more than the figure.', 'good', wk('bonus:0.06'), st('mood', 6), wk('satisfaction:6'))] },
@@ -128,7 +129,7 @@ export default [
     ],
   },
   {
-    id: 'wp_project_fails', category: 'work', ageRange: [22, 64], requires: [salaried, need('yearsInRole', '>=', 1)], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 10,
+    id: 'wp_project_fails', workplaces: ['office', 'firm', 'lab'], category: 'work', ageRange: [22, 64], requires: [salaried, need('yearsInRole', '>=', 1)], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 10,
     text: 'The project you and {mate} have given most of a year to is canceled in a ten-minute meeting. {boss} wants to know, before it goes upstairs, what went wrong.',
     choices: [
       { label: 'Say what you would do differently, starting with yourself', outcomes: [any('{boss} writes it down almost word for word. What goes upstairs is a report on lessons learned, with your name on it as the author.', 'good', perf(4), rel('boss', 5), rel('mate', 3), st('mood', -3))] },
@@ -140,7 +141,7 @@ export default [
     ],
   },
   {
-    id: 'wp_leaving_do', category: 'work', ageRange: [20, 66], requires: [salaried], cast: { mate: 'coworker' }, castRequires: [need('cast.mate.relationship', '>=', 45)], cooldown: 9,
+    id: 'wp_leaving_do', workplaces: AT.colleagues, category: 'work', ageRange: [20, 66], requires: [salaried], cast: { mate: 'coworker' }, castRequires: [need('cast.mate.relationship', '>=', 45)], cooldown: 9,
     text: 'There is a card going round and a collection in an envelope: someone who has been here longer than the furniture is retiring. {mate} asks if you will say a few words on Friday.',
     choices: [
       { label: 'Write something properly, and say it', check: chk(0.6, { 'stats.charm': 0.6 }), outcomes: [
@@ -152,7 +153,7 @@ export default [
     ],
   },
   {
-    id: 'wp_offered_secondment', category: 'work', ageRange: [22, 58], requires: [salaried, need('career.performance', '>=', 60)], cast: { boss: 'tag:boss' }, cooldown: 12,
+    id: 'wp_offered_secondment', workplaces: AT.colleagues, category: 'work', ageRange: [22, 58], requires: [salaried, need('career.performance', '>=', 60)], cast: { boss: 'tag:boss' }, cooldown: 12,
     text: '{boss} has been asked to lend someone to another part of the organization for a year: different work, a steep hill to climb, and no promise your old desk will be waiting.',
     choices: [
       { label: 'Go', check: chk(0.6, { 'stats.intellect': 0.5, 'hidden.discipline': 0.3 }), outcomes: [
@@ -165,7 +166,7 @@ export default [
 
   // ---------- By field ----------
   {
-    id: 'fd_health_short', category: 'work', ageRange: [20, 66], requires: [inField('health')], cast: { boss: 'tag:boss' }, cooldown: 7,
+    id: 'fd_health_short', workplaces: ['care'], category: 'work', ageRange: [20, 66], requires: [inField('health')], cast: { boss: 'tag:boss' }, cooldown: 7,
     text: 'Two people have called in sick, the ward is full, and {boss} is asking whether anyone can stay on after a twelve-hour shift.',
     choices: [
       { label: 'Stay', outcomes: [any('You do another six hours. Nobody comes to harm on your watch. You drive home with the window down to stay awake.', 'neutral', perf(6), wk('stress:10'), st('health', -2), rel('boss', 6))] },
@@ -174,7 +175,7 @@ export default [
     ],
   },
   {
-    id: 'fd_health_mistake', category: 'work', ageRange: [22, 66], requires: [inField('health')], cast: { mate: 'coworker' }, cooldown: 12,
+    id: 'fd_health_mistake', workplaces: ['care'], category: 'work', ageRange: [22, 66], requires: [inField('health')], cast: { mate: 'coworker' }, cooldown: 12,
     text: 'Checking the charts at the end of the shift, you see that {mate} gave a patient the wrong dose. The patient seems fine. {mate} has not noticed.',
     choices: [
       { label: 'Tell {mate}, and report it together', outcomes: [any('The patient is monitored overnight and is fine. The report leads to the labels being changed. {mate} is shaken, and grateful.', 'good', perf(4), rel('mate', 6), hid('karma', 4))] },
@@ -183,7 +184,7 @@ export default [
     ],
   },
   {
-    id: 'fd_edu_struggling', category: 'work', ageRange: [21, 66], requires: [inField('education')], cooldown: 7,
+    id: 'fd_edu_struggling', workplaces: ['school'], category: 'work', ageRange: [21, 66], requires: [inField('education')], cooldown: 7,
     text: 'One of your students has stopped handing anything in. Clever, quiet, falling behind fast. Their records say nothing; their face says something is wrong at home.',
     choices: [
       { label: 'Find ten minutes a day for them, without making a thing of it', check: chk(0.6, { 'stats.charm': 0.5, 'hidden.discipline': 0.3 }), outcomes: [
@@ -195,7 +196,7 @@ export default [
     ],
   },
   {
-    id: 'fd_edu_parent', category: 'work', ageRange: [21, 66], requires: [inField('education')], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'fd_edu_parent', workplaces: ['school'], category: 'work', ageRange: [21, 66], requires: [inField('education')], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'A parent is in the hallway, loudly certain that their child\'s mark is your fault. {boss} is watching from the office door to see how you handle it.',
     choices: [
       { label: 'Invite them in, show the work, and listen', check: chk(0.65, { 'stats.charm': 0.6 }), outcomes: [
@@ -207,7 +208,7 @@ export default [
     ],
   },
   {
-    id: 'fd_tech_release', category: 'work', ageRange: [20, 62], requires: [inField('tech')], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 7,
+    id: 'fd_tech_release', workplaces: ['office'], category: 'work', ageRange: [20, 62], requires: [inField('tech')], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 7,
     text: 'The release is tomorrow. At six in the evening {mate} finds a fault that loses customers\' data one time in a thousand. {boss} says it has to ship: the announcement has been made.',
     choices: [
       { label: 'Refuse to sign it off, and say why in writing', outcomes: [any('The release slips by four days. {boss} is furious for all four, and then quietly relieved for a year.', 'good', perf(5), rel('boss', -6), rel('mate', 8), hid('karma', 3), wk('stress:8'))] },
@@ -219,7 +220,7 @@ export default [
     ],
   },
   {
-    id: 'fd_tech_new_tools', category: 'work', ageRange: [26, 64], requires: [inField('tech'), need('yearsInRole', '>=', 3)], cooldown: 12,
+    id: 'fd_tech_new_tools', workplaces: ['office'], category: 'work', ageRange: [26, 64], requires: [inField('tech'), need('yearsInRole', '>=', 3)], cooldown: 12,
     text: 'The team is moving to tools you have never used. The newest hires already know them. You are the one people have always asked for help, and now you are the one asking.',
     choices: [
       { label: 'Learn it properly, on your own time', check: chk(0.6, { 'stats.intellect': 0.5, 'hidden.discipline': 0.5 }), outcomes: [
@@ -231,7 +232,7 @@ export default [
     ],
   },
   {
-    id: 'fd_hosp_inspection', category: 'work', ageRange: [18, 64], requires: [inField('hospitality')], cast: { boss: 'tag:boss' }, cooldown: 8,
+    id: 'fd_hosp_inspection', workplaces: ['shop'], category: 'work', ageRange: [18, 64], requires: [inField('hospitality')], cast: { boss: 'tag:boss' }, cooldown: 8,
     text: 'The inspector arrives unannounced in the middle of lunch. You know something they do not yet: the walk-in fridge was out for two hours this morning.',
     choices: [
       { label: 'Tell them, and show what was thrown away', outcomes: [any('The inspector writes for a long time. The score is good, with a note about the fridge. {boss} is angry for a day and then puts you in charge of the temperature log.', 'good', perf(4), hid('karma', 3), rel('boss', -2))] },
@@ -243,7 +244,7 @@ export default [
     ],
   },
   {
-    id: 'fd_hosp_rush', category: 'work', ageRange: [16, 64], requires: [inField('hospitality')], cast: { mate: 'coworker' }, cooldown: 6,
+    id: 'fd_hosp_rush', workplaces: ['shop'], category: 'work', ageRange: [16, 64], requires: [inField('hospitality')], cast: { mate: 'coworker' }, cooldown: 6,
     text: 'The busiest night of the year: every table booked twice over, and {mate} has just walked out mid-service in tears.',
     choices: [
       { label: 'Take {mate}\'s section as well as your own', check: chk(0.55, { 'hidden.discipline': 0.5, 'stats.health': 0.3 }), outcomes: [
@@ -255,7 +256,7 @@ export default [
     ],
   },
   {
-    id: 'fd_trades_shortcut', category: 'work', ageRange: [18, 66], requires: [inField('trades')], cooldown: 8,
+    id: 'fd_trades_shortcut', workplaces: ['site'], category: 'work', ageRange: [18, 66], requires: [inField('trades')], cooldown: 8,
     text: 'The customer wants the job done by Friday and done cheap. They have worked out that if you leave out one step, the one nobody will ever see behind the wall, it can be both.',
     choices: [
       { label: 'Explain what that step is for, and quote for the job done right', check: chk(0.6, { 'stats.charm': 0.5 }), outcomes: [
@@ -267,7 +268,7 @@ export default [
     ],
   },
   {
-    id: 'fd_trades_referral', category: 'work', ageRange: [20, 66], requires: [inField('trades'), need('career.performance', '>=', 60)], cooldown: 9,
+    id: 'fd_trades_referral', workplaces: ['site'], category: 'work', ageRange: [20, 66], requires: [inField('trades'), need('career.performance', '>=', 60)], cooldown: 9,
     text: 'A customer you did a small job for last year has recommended you to a developer with forty units to fit out. It is more work than you have ever taken on at once.',
     choices: [
       { label: 'Take it, and bring in people you trust to help', check: chk(0.55, { 'hidden.discipline': 0.5, 'stats.intellect': 0.3 }), outcomes: [
@@ -279,7 +280,7 @@ export default [
     ],
   },
   {
-    id: 'fd_retail_target', category: 'work', ageRange: [16, 64], requires: [inField('retail')], cast: { boss: 'tag:boss' }, cooldown: 6,
+    id: 'fd_retail_target', workplaces: ['shop'], category: 'work', ageRange: [16, 64], requires: [inField('retail')], cast: { boss: 'tag:boss' }, cooldown: 6,
     text: 'Head office has set a target for selling the extended warranty, which you know is poor value. {boss} reads out the league table every morning. You are at the bottom of it.',
     choices: [
       { label: 'Sell it only to the people it actually suits', outcomes: [any('You stay near the bottom of the table and near the top for customers who come back and ask for you by name.', 'neutral', perf(-2), hid('karma', 3), wk('satisfaction:4'))] },
@@ -291,7 +292,7 @@ export default [
     ],
   },
   {
-    id: 'fd_gov_pressure', category: 'work', ageRange: [22, 66], requires: [inField('government')], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'fd_gov_pressure', workplaces: ['office', 'court'], category: 'work', ageRange: [22, 66], requires: [inField('government')], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'The figures you have been asked to prepare do not say what your department\'s leadership would like them to say. {boss} suggests, without quite saying so, that a different method might give a happier answer.',
     choices: [
       { label: 'Present the figures as they are, with the method attached', outcomes: [any('It is not welcomed. It is also not challenged, because it cannot be. You are not invited to the next meeting.', 'neutral', perf(-2), hid('karma', 4), rel('boss', -6), wk('satisfaction:3'))] },
@@ -303,7 +304,7 @@ export default [
     ],
   },
   {
-    id: 'fd_science_results', category: 'work', ageRange: [22, 66], requires: [inField('science')], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'fd_science_results', workplaces: ['lab'], category: 'work', ageRange: [22, 66], requires: [inField('science')], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'A year of work, and the result is the opposite of what the grant application promised. {boss} needs something to show the funders by the end of the month.',
     choices: [
       { label: 'Write it up as it is: a clear result nobody expected', check: chk(0.55, { 'stats.intellect': 0.7 }), outcomes: [
@@ -315,7 +316,7 @@ export default [
     ],
   },
   {
-    id: 'fd_transport_weather', category: 'work', ageRange: [19, 66], requires: [inField('transport')], cooldown: 7,
+    id: 'fd_transport_weather', workplaces: ['site'], category: 'work', ageRange: [19, 66], requires: [inField('transport')], cooldown: 7,
     text: 'You are four hours behind, the weather is closing in, and control has left the decision with you: push on, or stop where you are and be later still.',
     choices: [
       { label: 'Stop, and say so', outcomes: [any('You sit it out. The delivery is a day late, the customer complains, and everyone gets home.', 'neutral', perf(-2), hid('karma', 2))] },
@@ -327,7 +328,7 @@ export default [
     ],
   },
   {
-    id: 'fd_safety_call', category: 'work', ageRange: [19, 62], requires: [inField('safety')], cast: { mate: 'coworker' }, cooldown: 8,
+    id: 'fd_safety_call', workplaces: ['police', 'emergency'], category: 'work', ageRange: [19, 62], requires: [inField('safety')], cast: { mate: 'coworker' }, cooldown: 8,
     text: 'A call like the others, until it is not. Afterward, back at the station, {mate} is washing their hands for the third time and not saying anything.',
     choices: [
       { label: 'Sit with {mate}, and say you are not all right either', outcomes: [any('You talk until the next shift comes on. It does not fix it. It means neither of you carries it alone.', 'good', rel('mate', 12), wk('stress:-6'), st('mood', 2))] },
@@ -339,7 +340,7 @@ export default [
     ],
   },
   {
-    id: 'fd_media_correction', category: 'work', ageRange: [21, 66], requires: [inField('media')], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'fd_media_correction', workplaces: ['office', 'stage'], category: 'work', ageRange: [21, 66], requires: [inField('media')], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'Something you published last week has a mistake in it: small, but it makes someone look worse than they are. Nobody has noticed. Yet.',
     choices: [
       { label: 'Tell {boss}, and run a correction', outcomes: [any('The correction is two lines long. The person it concerned writes to say thank you, and later becomes a source.', 'good', perf(2), hid('karma', 4), rel('boss', 3))] },
@@ -351,7 +352,7 @@ export default [
     ],
   },
   {
-    id: 'fd_law_client', category: 'work', ageRange: [24, 68], requires: [inField('law')], cast: { boss: 'tag:boss' }, cooldown: 9,
+    id: 'fd_law_client', workplaces: ['firm'], category: 'work', ageRange: [24, 68], requires: [inField('law')], cast: { boss: 'tag:boss' }, cooldown: 9,
     text: 'The firm\'s best-paying client tells you something across the table that, if true, means the statement you are about to file for them is false.',
     choices: [
       { label: 'Stop the meeting and explain what you can and cannot now do', outcomes: [any('The client is outraged, then thoughtful, then signs a different statement. {boss} says you handled it exactly right, and looks as if it cost something to say.', 'good', perf(5), hid('karma', 4), wk('stress:6'))] },
@@ -360,7 +361,7 @@ export default [
     ],
   },
   {
-    id: 'fd_land_storm', category: 'work', ageRange: [16, 70], requires: [inField('land')], cast: { mate: 'coworker' }, cooldown: 7,
+    id: 'fd_land_storm', workplaces: ['site'], category: 'work', ageRange: [16, 70], requires: [inField('land')], cast: { mate: 'coworker' }, cooldown: 7,
     text: 'The forecast has changed: the storm is coming tonight, not Thursday. Everything that is still out there needs to be in, and there are two of you.',
     choices: [
       { label: 'Work through the night with {mate}', check: chk(0.6, { 'stats.health': 0.5, 'hidden.discipline': 0.4 }), outcomes: [
@@ -372,7 +373,7 @@ export default [
     ],
   },
   {
-    id: 'fd_corp_restructure', category: 'work', ageRange: [24, 64], requires: [inField('corporate'), need('yearsInRole', '>=', 2)], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 12,
+    id: 'fd_corp_restructure', workplaces: ['office', 'firm'], category: 'work', ageRange: [24, 64], requires: [inField('corporate'), need('yearsInRole', '>=', 2)], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 12,
     text: 'The consultants have been in for a month. {boss} has a slide with boxes on it, and there is one box fewer than there are people. You and {mate} do nearly the same job.',
     choices: [
       { label: 'Make the case for what you do, with numbers', check: chk(0.5, { 'career.performance': 0.9, 'stats.intellect': 0.3 }), outcomes: [
@@ -387,7 +388,7 @@ export default [
     ],
   },
   {
-    id: 'fd_sport_client', category: 'work', ageRange: [18, 62], requires: [inField('sport')], cooldown: 8,
+    id: 'fd_sport_client', workplaces: ['leisure', 'stage'], category: 'work', ageRange: [18, 62], requires: [inField('sport')], cooldown: 8,
     text: 'One of the people you train has stopped improving and started punishing themselves for it: extra sessions, missed meals, a look you have seen before.',
     choices: [
       { label: 'Talk to them, honestly, about what you are seeing', check: chk(0.6, { 'stats.charm': 0.6 }), outcomes: [
@@ -442,7 +443,7 @@ export default [
 
   // ---------- A relationship at work ----------
   {
-    id: 'wr_closer', category: 'romance', ageRange: [18, 60], requires: [salaried, need('flags.workRomance', '==', false)], cast: { mate: 'coworker' },
+    id: 'wr_closer', workplaces: AT.colleagues, category: 'romance', ageRange: [18, 60], requires: [salaried, need('flags.workRomance', '==', false)], cast: { mate: 'coworker' },
     castRequires: [need('cast.mate.relationship', '>=', 68), need('cast.mate.age', '>=', 18), need('cast.mate.flags.report', '==', 0)], cooldown: 8,
     text: 'You and {mate} have been the last two in the building most nights this month. Tonight, walking out, neither of you seems to want to reach the door.',
     choices: [

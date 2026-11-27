@@ -222,13 +222,18 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   life(); turns.setStep(3);
   for (let i = 0; i < 16; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; }
   const { UNDO_BUDGET, saveGame } = await import('../js/save.js');
-  const held = JSON.parse(localStorage.getItem(`pathways.undo.${S().slotId}`) ?? '[]');
+  const held = JSON.parse(localStorage.getItem(`frombirth.undo.${S().slotId}`) ?? '[]');
   check(undoDepth(S().slotId) >= 2 && undoDepth(S().slotId) <= 12 && held.reduce((n, x) => n + x.length, 0) <= UNDO_BUDGET, `undo keeps as many turns as fit its share of storage (${undoDepth(S().slotId)})`);
   // A full browser: five million characters for everything. The life's own save always wins over its undo history.
   const room = 5000000; const real = { set: localStorage.setItem };
   localStorage.setItem = (k, v) => { let used = 0; for (const [kk, vv] of disk) if (kk !== k) used += kk.length + vv.length; if (used + k.length + String(v).length > room) throw new Error('QuotaExceededError'); disk.set(k, String(v)); };
   let failed = 0;
-  for (let i = 0; i < 4 * 25 && P().alive; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; if (!saveGame(S())) failed++; }
+  // Twenty-five years of quarters. A life the dice end early (an illness, an accident) proves nothing about storage: another is lived.
+  for (let tries = 0; tries < 4; tries++) {
+    if (tries) { const old = S().slotId; for (const k of [...disk.keys()]) if (k.includes(old)) disk.delete(k); life(); turns.setStep(3); }
+    for (let i = 0; i < 4 * 25 && P().alive; i++) { P().stats.health = 95; pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; if (!saveGame(S())) failed++; }
+    if (P().alive) break;
+  }
   localStorage.setItem = real.set;
   check(failed === 0, `with storage nearly full, the life still saves every turn (${failed} failed)`);
   const to = peekUndo(S().slotId);

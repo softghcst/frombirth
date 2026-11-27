@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { weeklyLoad } from '../../engine/worklife.js';
 import { openBirthTag } from '../birthTag.js';
 import { playerBirthInfo } from '../../engine/birthTag.js';
 import { noticed } from '../../engine/talentGrowth.js';
@@ -16,16 +17,19 @@ import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
-import * as med from '../../engine/medical.js';
+import * as med from '../../engine/health/visits.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
-import { openSalonVisit, shopLabel } from '../salonVisit.js';
+import { openSalonVisit, shopRow } from '../salonVisit.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
 import { navRow, navGroup } from '../kit.js';
 import { loveFamilyGroup, openLoveFamily } from './people.js';
+import { ailmentsOf } from '../../engine/health/ailments.js';
+import { healthOf, presentConditions, diagnosisFor } from '../../engine/health/record.js';
+import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -35,8 +39,13 @@ export default {
     const traits = p.traits.map((id) => TRAIT_BY_ID[id]).filter(Boolean);
     const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)' })[p.traitSources?.[id]] ?? '';
     const born = (p.birth ?? []).map((id) => BIRTH_BY_ID[id]).filter(Boolean);
-    const conditions = p.conditions.length
-      ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.sinceAge}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
+    // One health record: the ailments, and the long-term conditions a clinician has diagnosed (the rest is in My Health).
+    const ails = ailmentsOf(p).map((c) => ({ name: c.name, since: c.sinceAge, treated: c.treated }));
+    const h = healthOf(p);
+    const known = presentConditions(h).filter((r) => diagnosisFor(r, h)).map((r) => ({ name: CONDITION_BY_ID[r.conditionId].name, since: r.onsetAge ?? 0, treated: !!r.legacyManaged || h.plans?.some((x) => x.conditionId === r.conditionId && x.status === 'active') }));
+    const all = [...ails, ...known];
+    const conditions = all.length
+      ? all.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.since}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
     // Health milestones are private: shown here with a lock, and they open the Treatment Journey.
     const milestones = p.milestones.map((m, i) => (m.kind === 'health'
@@ -46,20 +55,27 @@ export default {
     const sick = med.treatable().some((x) => !x.managed && !x.seen);
     const crownLine = !p.royal && !p.flags.formerRoyal ? royalCard() : '';
     el.innerHTML = `
+      ${salon.canVisitSalon() ? navGroup([shopRow(p)]) : ''}
       <div class="card"><h3>Health and mood</h3>
         ${meterHtml('Mood', p.stats.mood, true)}${meterHtml('Health', p.stats.health, true)}
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
+        ${meterHtml('Stress', p.career?.stress ?? 0, true, true)}
+        ${(() => { const w = weeklyLoad(p); return w.total ? `<p class="muted" style="margin:6px 0 0">Your week: ${w.total} hours (${esc(w.word.toLowerCase())}): ${esc(w.rows.map((r) => `${r.label.toLowerCase()} ${r.hours}`).join(', '))}. The more you take on, the more stress you carry.</p>` : ''; })()}
         <div class="section-label">Conditions</div>${conditions}
         ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
         <div style="margin-top:10px">${navGroup([
           navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
           navRow({ attrs: 'data-health', label: 'My Health' }),
           ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
-          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: shopLabel(p) })] : []),
         ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
-        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
+        ${(() => {
+          // Five at a time: the ones you are best at now, with the rest one tap away.
+          const all = TALENTS.filter((t) => !t.hidden).map((t) => ({ t, v: p.talents[t.id] ?? 0 })).sort((a, b) => b.v - a.v);
+          const bar = ({ t, v }) => meterHtml(t.name, v, true);
+          return all.slice(0, 5).map(bar).join('') + (all.length > 5 ? `<details class="more-talents"><summary>All talents</summary>${all.slice(5).map(bar).join('')}</details>` : '');
+        })()}
         <p class="muted" style="margin-top:6px">${p.age < 3 ? 'Everyone starts somewhere. What you are good at grows with the years, and with practice.' : 'How good you are now: the years bring it on, and practice takes it further.'}</p>
         ${(() => { const seen = noticed(p); return `<div class="section-label">What you have noticed about yourself</div>${seen.length ? seen.map((x) => `<div class="kv"><span>${esc(x.name)}</span><span>${esc(x.text)}</span></div>`).join('') : '<p class="muted">Nothing yet. Try things: a gift shows itself sooner when you do.</p>'}`; })()}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}

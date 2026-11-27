@@ -1,5 +1,7 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { migrateFamilyLife } from './blended.js';
 import { giveBirthday, birthDate } from './birthday.js';
+import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
@@ -16,7 +18,6 @@ import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from '.
 import { uid, theCountry } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
-import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { generateFamily } from './familyGen.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, rollBirthConditions,
   applyMods, unknownParent } from './genetics.js';
@@ -28,6 +29,8 @@ import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
+import { LATER_TALENTS } from '../data/talents.js';
+import { applyOrigin } from './origins.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -49,8 +52,10 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @returns {import('../types.js').GameState}
  */
 /** Every life starts with at least one gift (a talent of 75 or more): if none was inherited, one is picked at random. */
+// A gift for one of the newest talents (LATER_TALENTS) comes on top of it, so that adding them changes no other roll.
 function withAGift(talents) {
-  if (!Object.values(talents).some((v) => v >= 75)) talents[rng.pick(Object.keys(talents))] = rng.int(75, 100);
+  const first = Object.entries(talents).filter(([k]) => !LATER_TALENTS.includes(k));
+  if (!first.some(([, v]) => v >= 75)) talents[rng.pick(first.map(([k]) => k))] = rng.int(75, 100);
   return talents;
 }
 
@@ -147,7 +152,7 @@ function createOnce(opts = {}) {
     id: uid('pc'), firstName, lastName, gender, age: 0, birthYear: year,
     countryId: c.id, city, birthCountryId: c.id,
     stats, hidden, talents: withAGift(inheritTalents(mother, genes, opts.talent)),
-    traits, traitSources: sources, birth: born.map((b) => b.id), conditions: [],
+    traits, traitSources: sources, birth: born.map((b) => b.id),
     appearance,
     education: { stage: 'none', enrolled: false, yearInStage: 0, gpa: 0, effort: 50, absences: 0,
       clique: null, clubs: [], majorId: null, funding: null, housing: 'home', roommateId: null, housingAid: false,
@@ -188,16 +193,14 @@ function createOnce(opts = {}) {
   const before = { ...player.talents };
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {
-    applyMods(player, b);
-    if (b.illness) {
-      const ill = ILLNESS_BY_ID[b.illness];
-      player.conditions.push({ id: ill.id, name: ill.name, severity: ill.severity,
-        chronic: !!ill.chronic, sinceAge: 0, treated: false });
-    }
+    applyMods(player, b); // an illness from birth (weak lungs) goes into the health record (healthAtBirth)
   }
 
   if (opts.birthday) player.birthday = { m: opts.birthday.m, d: opts.birthday.d }; // chosen (a test, or the creator)
   giveBirthday(player); // otherwise a day of the year of its own (engine/birthday.js)
+  // The language of the country they are born in, spoken from the start. A parent's other language is picked up at
+  // home over the years instead (engine/globalLife.js tickHeritage).
+  giveNativeLanguages(player);
 
   // Opening journal
   const an = (job) => `${/^[aeiou]/i.test(job) ? 'an' : 'a'} ${job}`;
@@ -281,12 +284,19 @@ function createOnce(opts = {}) {
   if (seat) dress(seat.dynasty, state);
   // Genomes for the family and the child, and what the child is born with (not yet recognized by anyone).
   healthAtBirth(state, opts.health);
+  // Starting life adopted, or raised by relatives (engine/origins.js): the family just made is the birth family, and the
+  // child is given the family that raises them. Looks, traits and health above came from the birth parents.
+  if (opts.origin && opts.origin !== 'standard' && !seat && !player.royal) {
+    const out = applyOrigin(state, { fam, c, year, origin: opts.origin, journal });
+    if (out?.parents?.length && out.journal) player.flags.moneySense = startingSense(out.parents);
+  }
   // The family's animals were there first: they go on the family's record with the line that introduces them.
   for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
   reconcileAnimals(state);
   player.birthCity = player.city;
   ensureGlobal(state);
   ensureEra(state); // a new life keeps its money in the money of its own years
+  migrateFamilyLife(state); // who the life's parents are, and the brothers and sisters born to them (engine/blended.js)
   settleHood(state); // the family home, in a neighborhood with neighbors (engine/neighborhood.js)
   return state;
 }

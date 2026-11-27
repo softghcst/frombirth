@@ -9,22 +9,68 @@ import { normalize, hash } from './avatar/catalog.js';
 import { ADDED_TALENTS } from './data/talents.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { migrateHealth } from './engine/health/record.js';
+import { migrateContraception } from './engine/health/contraception.js';
 import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
+import { migrateFamilyLife } from './engine/blended.js';
 import { migrateMedicine } from './engine/medicine/core.js';
+import { migrateInvestigations } from './engine/investigations/core.js';
 import { ensureEra, alignWorld } from './engine/eras.js';
 import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
+import { giveBirthday } from './engine/birthday.js';
+import { giveNativeLanguages } from './engine/languages.js';
+import { migrateOrigins } from './engine/origins.js';
 
 export const SCHEMA_VERSION = 2;
-const K_INDEX = 'pathways.index';
-const K_SLOT = 'pathways.slot.';
-const K_GRAVE = 'pathways.graveyard';
-const K_UNDO = 'pathways.undo.';
+const K_INDEX = 'frombirth.index';
+const K_SLOT = 'frombirth.slot.';
+const K_GRAVE = 'frombirth.graveyard';
+const K_UNDO = 'frombirth.undo.';
 /** How many years back "age down" can go. */
 export const UNDO_YEARS = 3;
+
+/**
+ * The game was called Pathways, and kept its data under "pathways." (and "pathways:") keys. Nothing is thrown away:
+ * each old key is carried to its From Birth name ("frombirth."), and the old key is removed only once the new one
+ * holds the data. Where both exist, the lists of saved lives and of graves are merged, and anything else keeps the
+ * newer From Birth value. Safe to run on every load: once carried over, there is nothing left to do.
+ * @returns {number} how many old keys were carried over
+ */
+export function carryOldName(storages = [globalThis.localStorage, globalThis.sessionStorage]) {
+  let moved = 0;
+  const merge = (oldRaw, newRaw, key) => {
+    try {
+      const a = JSON.parse(oldRaw); const b = JSON.parse(newRaw);
+      if (!Array.isArray(a) || !Array.isArray(b)) return null;
+      const id = key === 'index' ? 'slotId' : 'id';
+      const seen = new Set(b.map((x) => x?.[id]));
+      return JSON.stringify([...b, ...a.filter((x) => x?.[id] == null || !seen.has(x[id]))]);
+    } catch { return null; }
+  };
+  for (const st of storages) {
+    try {
+      if (!st) continue;
+      const old = [];
+      for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k?.startsWith('pathways.') || k?.startsWith('pathways:')) old.push(k); }
+      for (const k of old) {
+        const to = `frombirth${k.slice('pathways'.length)}`;
+        const value = st.getItem(k);
+        const have = st.getItem(to);
+        if (have == null) st.setItem(to, value);
+        else if (to === 'frombirth.index' || to === 'frombirth.graveyard') { const m = merge(value, have, to === 'frombirth.index' ? 'index' : 'graves'); if (m) st.setItem(to, m); }
+        // Only once the From Birth key holds it is the old one let go (a full storage keeps both, and tries again).
+        if (st.getItem(to) != null) { st.removeItem(k); moved += 1; }
+      }
+    } catch { /* storage unavailable or full: the old keys stay, and are carried over next time */ }
+  }
+  return moved;
+}
+carryOldName();
+/** (The earlier name for carryOldName: it now carries old data over instead of clearing it.) */
+export const forgetOldName = carryOldName;
 
 function read(key, fallback) {
   try {
@@ -59,6 +105,11 @@ function migrate(state) {
   // Lives saved before orientation, identity and skills existed.
   const pl = state.player;
   pl.orientation ??= 'straight';
+  // A life saved before birthdays were kept was born on January 1. Between turns of the year (a yearly turn, or the
+  // first month of one), it is given a day of its own now; otherwise at its next turn of the year (engine/turns.js).
+  if (!pl.birthday && !(state.month > 0)) giveBirthday(pl);
+  // A life saved before native languages were kept: the language of the country they were born in, spoken fully.
+  if (pl.birthCountryId) giveNativeLanguages(pl);
   pl.skills ??= {};
   pl.flags.bornAs ??= pl.gender;
   pl.flags.gifts ??= Object.entries(pl.potential ?? pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
@@ -69,7 +120,8 @@ function migrate(state) {
     ADDED_TALENTS.forEach((id) => {
       if (who.talents[id] != null) return;
       const roll = (hash(`${who.id}:${id}`) % 1000) / 1000;
-      const lean = id === 'art' ? 0 : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
+      const lean = id === 'art' ? 0 : ['persuasion', 'modeling'].includes(id) ? (who.stats?.charm ?? who.meters?.charm ?? 50) - 50 // the charming ones can talk
+        : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
       who.talents[id] = Math.round(Math.max(0, Math.min(100, 6 + roll * 50 + lean / 4)));
     });
   };
@@ -88,6 +140,8 @@ function migrate(state) {
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
   // Lives saved before the health record: conditions carried over, nothing invented.
   migrateHealth(state);
+  // Contraception (engine/health/contraception.js): made lazily from the old birth-control switch; nothing invented.
+  migrateContraception(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
@@ -143,13 +197,17 @@ function migrate(state) {
   // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
   ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateFamilyLife(state); // parents, step-parents and half-siblings, from what the save already says (engine/blended.js)
   migrateDigital(state);
   // The medical career (engine/medicine): a doctor keeps their job and level; nothing of their training is invented.
   migrateMedicine(state);
+  migrateInvestigations(state);
   // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
   ensureEra(state, { legacy: true });
   // One sports system: a professional career kept under the old separate system becomes the player's sports record.
   if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
+  // Adoption and birth families (engine/origins.js): adopted children get a record of their adoption; nothing is invented.
+  migrateOrigins(state);
   // Neighborhoods: an older life gets the neighborhood it lives in now, with today's neighbors and no invented past.
   try { settleHood(state, { quiet: true }); } catch (e) { console.warn('neighborhood', e); }
   state.schemaVersion = SCHEMA_VERSION;

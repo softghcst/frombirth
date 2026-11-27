@@ -22,6 +22,10 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { makeNpc } from './npcFactory.js';
 import { breakUp, divorce } from './romance.js';
 import { bonds as relationships } from './bonds.js';
+import { storyBeat } from './storyDirector.js';
+import { houseRules, hourText, laterCurfew, earlierCurfew } from './houseRules.js';
+import { groupOf, groupActivity } from './friendGroups.js';
+import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore, askCourtToLookAgain } from './blended.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -55,6 +59,9 @@ const spend = (amount, why) => { const p = player(); if (p.finance.cash < amount
 
 const PARENT = ['parent'];
 const SIBLING = ['sibling'];
+const STEP = ['stepparent'];
+const CARED = ['fosterchild', 'ward', 'stepchild'];
+const STEPSIB = ['stepsibling'];
 /** What a sleepover can be. `if`: only where it makes sense (video games need a television, from 1980). */
 const SLEEPOVER = [
   { id: 'movie', label: 'Movie marathon', text: '{name} slept over and you watched a film, then half of another, and fell asleep on the floor.', memory: 'a movie and a floor full of popcorn.' },
@@ -128,8 +135,14 @@ export const BONDS = [
 
   // ---------- Parents, when you are a teenager ----------
   { id: 'curfew', group: 'ask', roles: PARENT, age: [13, 17], if: () => atHome(), label: 'Ask for a later curfew',
-    run: (n) => (rng.chance(clamp((trustOf(n) - 30) / 70, 0.05, 0.9)) ? (trust(n, 2), mood(4), `${n.firstName} agreed to an hour later. "Break it once and it is ten o'clock again."`)
-      : { text: `${n.firstName} said no. "When I can trust you, we will talk about it."`, tone: 'neutral' }) },
+    run: (n) => {
+      const r = houseRules();
+      const now = r ? hourText(r.curfew) : 'ten';
+      if (r && r.curfew >= 24) return { text: `${n.firstName} laughed. "Midnight is as late as it gets in this house."`, tone: 'neutral' };
+      if (!rng.chance(clamp((trustOf(n) - 30) / 70, 0.05, 0.9))) return { text: `${n.firstName} said no: ${now} it stays. "When I can trust you, we will talk about it."`, tone: 'neutral' };
+      trust(n, 2); mood(4); const h = laterCurfew('asked');
+      return `${n.firstName} agreed: ${h ? hourText(h) : 'an hour later'} from now on. "Break it once and it is ${now} again."`;
+    } },
   { id: 'car', group: 'ask', roles: PARENT, age: [16, 25], if: () => !!player().flags.canDrive && atHome(), label: 'Ask to borrow the car',
     run: (n) => {
       if (!rng.chance(clamp((trustOf(n) - 25) / 70, 0.05, 0.9))) return { text: `${n.firstName} held on to the keys. "Not tonight."`, tone: 'neutral' };
@@ -149,8 +162,8 @@ export const BONDS = [
   { id: 'sneakOut', group: 'conflict', roles: PARENT, age: [13, 17], danger: true, if: () => atHome(), label: 'Sneak out at night',
     run: (n) => {
       hidden('crazy', 2);
-      if (rng.chance(clamp(0.3 + (n.meters.intellect - 50) / 200, 0.15, 0.6))) { trust(n, -20); bump(n, -6); player().flags.groundedYear = store.state.year;
-        return { text: `${n.firstName} was waiting in the kitchen with the light off. You are grounded, and the window is now nailed shut.`, tone: 'bad' }; }
+      if (rng.chance(clamp(0.3 + (n.meters.intellect - 50) / 200, 0.15, 0.6))) { trust(n, -20); bump(n, -6); player().flags.groundedYear = store.state.year; const h = earlierCurfew('sneaked out');
+        return { text: `${n.firstName} was waiting in the kitchen with the light off. You are grounded${h ? `, and home by ${hourText(h)} from now on` : ''}.`, tone: 'bad' }; }
       mood(7); trust(n, -2); return { text: 'You climbed out, met up with friends, and climbed back in before dawn. Nobody knows. Yet.', tone: 'neutral' };
     } },
   { id: 'teach', group: 'together', roles: PARENT, age: [9, 25], label: 'Ask them to teach you something',
@@ -272,6 +285,37 @@ export const BONDS = [
       bump(n, rng.int(4, 8)); remember(n, 'keptTheirSecret', 'You listened, and kept what they told you.');
       return trouble ? `${n.firstName} told you ${trouble}. You promised to keep it to yourself, and you will.` : `${n.firstName} talked about nothing in particular for an hour, then thanked you as if it had been something.`;
     } },
+  // ---------- A child in your care (engine/fostering.js) ----------
+  { id: 'careTime', group: 'together', roles: CARED, age: [21, 120], label: 'Do something together',
+    run: (n) => { bump(n, rng.int(3, 6)); mood(2); return rng.pick([`You and ${n.firstName} went to the park and stayed until the lights came on.`, `${n.firstName} showed you a game. You lost, repeatedly, and ${he(n)} laughed for the first time in a while.`, `You and ${n.firstName} cooked together. It was mostly ${n.firstName}'s idea.`]); } },
+  { id: 'careHomework', group: 'together', roles: CARED, age: [21, 120], if: (n) => n.age >= 6 && n.age <= 17, label: 'Help with homework',
+    run: (n) => { bump(n, rng.int(2, 5)); n.meters.intellect = clamp(n.meters.intellect + 1); return `You sat with ${n.firstName} over homework. ${cap(he(n))} got further than ${he(n)} expected.`; } },
+  { id: 'careFamily', group: 'talk', roles: ['fosterchild', 'ward'], age: [21, 120], label: 'Talk about their family',
+    run: (n) => { bump(n, rng.int(3, 6)); for (const id of n.parentIds ?? []) { const x = npcs()[id]; if (x?.alive) x.meters.relationship = clamp(x.meters.relationship + 2); }
+      return `${n.firstName} talked about home. You listened, and helped ${him(n)} make a card for ${his(n)} family.`; } },
+  // ---------- A blended family (engine/blended.js) ----------
+  { id: 'askLiveWith', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to live with them',
+    run: (n) => { const r = askToLiveWith(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'courtLook', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement() && ['court order', 'agreed in mediation'].includes(blendedArrangement().basis), label: 'Ask the court to look again',
+    run: (n) => { const r = askCourtToLookAgain(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'seeMore', group: 'ask', roles: PARENT, age: [6, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to see them more often',
+    run: (n) => { const r = askToSeeMore(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'stepTime', group: 'together', roles: STEP, age: [3, 120], label: 'Spend time together',
+    run: (n) => { bump(n, rng.int(3, 7)); mood(2); remember(n, 'stepTime', 'Spent an afternoon with you, just the two of you.');
+      return rng.pick([`You and ${n.firstName} went for a long walk and found you had more to say than you expected.`, `${n.firstName} taught you to make something ${he(n)} grew up eating. It was better than you said it was.`, `You watched a game with ${n.firstName}. Neither of you cared who won.`]); } },
+  { id: 'stepSchool', group: 'talk', roles: STEP, age: [6, 17], label: 'Talk about school',
+    run: (n) => { bump(n, rng.int(2, 5)); return `${n.firstName} asked about school, and remembered the names from last time.`; } },
+  { id: 'stepHelp', group: 'ask', roles: STEP, age: [8, 30], label: 'Ask for help with something',
+    run: (n) => (rng.chance(clamp(0.45 + (n.meters.relationship - 40) / 120, 0.15, 0.9)) ? (bump(n, rng.int(4, 8)), trust(n, 3), `${n.firstName} helped, without making a thing of it.`)
+      : { text: `${n.firstName} tried to help. It came out more like advice than you wanted.`, tone: 'neutral' }) },
+  { id: 'stepBoundary', group: 'talk', roles: STEP, age: [10, 120], label: 'Set a boundary',
+    run: (n) => { trust(n, 2); bump(n, rng.chance(0.6) ? 2 : -2); return `You told ${n.firstName}, calmly, what you needed from ${him(n)}. ${cap(he(n))} took it better than you feared.`; } },
+  { id: 'stepSibTime', group: 'together', roles: STEPSIB, age: [3, 120], label: 'Spend time together',
+    run: (n) => { bump(n, rng.int(4, 8)); mood(2); return rng.pick([`You and ${n.firstName} stayed up talking about your parents. You agreed on more than you expected.`, `You and ${n.firstName} found a game you both like.`, `${n.firstName} showed you a song. You pretended not to like it, then played it twice.`]); } },
+  { id: 'stepSibHomework', group: 'together', roles: STEPSIB, age: [7, 18], if: (n) => n.age >= 6 && n.age <= 18, label: 'Help each other with homework',
+    run: (n) => { bump(n, rng.int(3, 6)); player().stats.intellect = clamp(player().stats.intellect + 1); return `You and ${n.firstName} got through the homework together, mostly.`; } },
+  { id: 'stepSibTalk', group: 'conflict', roles: STEPSIB, age: [6, 120], label: 'Talk out a disagreement',
+    run: (n) => { const ok = rng.chance(clamp(0.5 + (n.meters.relationship - 40) / 120, 0.2, 0.9)); bump(n, ok ? 6 : -2); return ok ? `You and ${n.firstName} talked it through. You both said sorry, at about the same time.` : { text: `You and ${n.firstName} did not settle it. Not yet.`, tone: 'neutral' }; } },
   { id: 'teamUp', group: 'together', roles: SIBLING, age: [8, 17], if: (n) => n.age < 25 && mine(PARENT).length > 0, label: 'Team up against your parents',
     run: (n) => { bump(n, rng.int(6, 10)); for (const pa of mine(PARENT)) trust(pa, -3); mood(3);
       return `You and ${n.firstName} put on a united front about the vacation. You lost, but you lost together.`; } },
@@ -321,7 +365,7 @@ export const BONDS = [
       if (rng.chance(0.4)) store.state.pendingEvents.push({ id: rng.pick(SLEEPOVER_SCENES), cast: { pal: n.id } });
       return a.text.replace(/\{name\}/g, n.firstName);
     } },
-  { id: 'askHelp', group: 'ask', roles: FRIEND, age: [6, 120],
+  { id: 'askHelp', group: 'ask', roles: FRIEND, age: [6, 120], label: 'Ask for help',
     options: (n) => {
       const p = player();
       const job = n.life?.job?.careerId && CAREER_BY_ID[n.life.job.careerId];
@@ -402,6 +446,11 @@ export const BONDS = [
       if (good) { mood(7); return opt === 'band' ? `You and ${n.firstName} started a band. Your first gig had forty people, and twelve of them were not related to you.` : `You and ${n.firstName} started it. People actually read it. Watch it. Talk about it.`; }
       mood(3); return { text: `You and ${n.firstName} gave it a real try. It did not take off, but it was the most fun you had all year.`, tone: 'neutral' };
     } },
+  // ---------- A group of friends (engine/friendGroups.js) ----------
+  { id: 'groupHangout', group: 'together', roles: FRIEND, age: [10, 120], if: (n) => !!groupOf(n) && groupOf(n).status === 'together', label: 'Get the whole group together',
+    run: (n) => { const r = groupActivity(n.flags.circle, 'hangout'); return { text: r.text, tone: r.tone }; } },
+  { id: 'groupStudy', group: 'together', roles: FRIEND, age: [10, 25], if: (n) => !!groupOf(n) && groupOf(n).status === 'together' && !!player().education?.enrolled, label: 'Study session with the group',
+    run: (n) => { const r = groupActivity(n.flags.circle, 'study'); return { text: r.text, tone: r.tone }; } },
   { id: 'introduceFriends', group: 'together', roles: FRIEND, age: [8, 120], if: (n) => mine(FRIEND).some((f) => f.id !== n.id && (!n.flags.circle || f.flags.circle !== n.flags.circle)), label: 'Introduce them to your other friends',
     run: (n) => {
       const p = player();
@@ -691,7 +740,8 @@ function godchildFor(sib) {
 
 // ---------- The year, between the player's own actions ----------
 
-const queue = (id, cast) => { const st = store.state; if (!st.pendingEvents.some((x) => x.id === id)) st.pendingEvents.push({ id, cast }); };
+// An affair that has come out is a consequence and always plays; friendship stories are paced (engine/storyDirector.js).
+const queue = (id, cast) => { const st = store.state; if (!st.pendingEvents.some((x) => x.id === id)) storyBeat(id, cast, { source: 'friends', must: id.startsWith('with_affair') }); };
 
 /** An affair that has come out: the player decides what happens (with_affair_*). */
 function affairOut(n, scene) {

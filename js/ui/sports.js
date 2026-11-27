@@ -13,9 +13,10 @@ import * as extras from '../engine/sportsExtras.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
 import * as draft from '../engine/draft.js';
+import * as nations from '../engine/nations.js';
 import * as bb from '../engine/baseball.js';
 import { classOf, eligibility as collegeLeft } from '../engine/college.js';
-import { DIVISIONS } from '../data/sports.js';
+import { DIVISIONS, leagueLabel } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -109,7 +110,6 @@ function sportsSection() {
 function training() {
   const active = sp.activeSports();
   if (!active.length) return empty('You are not playing anything right now.');
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
   return `
     ${active.map((e) => {
     const sport = sportOf(e.id);
@@ -120,7 +120,7 @@ function training() {
       ${kv('Private coach', e.privateCoachId ? `<a href="#" data-coach="${e.privateCoachId}">${esc(sp.coachOf(e.privateCoachId).name)}</a>` : 'None')}
       ${e.mentorId ? kv('Mentor', `<a href="#" data-person="${e.mentorId}">${esc(store.state.npcs[e.mentorId]?.firstName ?? '')}</a>`) : ''}
       ${kv('Fatigue', e.fatigue >= 70 ? 'Worn out' : e.fatigue >= 45 ? 'Tired' : 'Fresh')}
-      <div class="btn-stack" style="margin-top:8px"><button class="btn" data-plan="${e.id}">Change the plan</button><button class="btn" data-extra="${e.id}" ${left > 0 ? '' : 'disabled'}>Extra session</button>
+      <div class="btn-stack" style="margin-top:8px"><button class="btn" data-plan="${e.id}">Change the plan</button><button class="btn" data-extra="${e.id}" ${sp.extraLeft(e.id) > 0 ? "" : "disabled"}>Extra session</button>
         ${e.contractId ? '' : e.privateCoachId ? `<button class="btn" data-dropcoach="${e.id}">Stop the private coaching</button>` : `<button class="btn" data-hirecoach="${e.id}">Hire a private coach</button>`}</div>
     </div>`;
   }).join('')}`;
@@ -175,7 +175,7 @@ function rankings() {
   const a = sp.myAthlete();
   return `
     ${Object.values(a.sports).map((e) => `<div class="card"><h3>${esc(sportOf(e.id).name)}</h3>
-      ${kv('Pathways Rating', `${e.pr} · ${sp.prWord(e.pr)}`)}
+      ${kv('Player Rating', `${e.pr} · ${sp.prWord(e.pr)}`)}
       ${kv('Record', `${e.wins} won · ${e.losses} lost${e.draws ? ` · ${e.draws} drawn` : ''}`)}
       ${kv('Titles', String(e.titles.length))}
       ${Object.entries(e.best ?? {}).map(([k, v]) => { const ev = sportOf(e.id).events?.find((x) => x[0] === k); return ev ? kv(`Best ${ev[1]}`, fmtMark(ev, v)) : ''; }).join('')}
@@ -218,7 +218,7 @@ function draftSection() {
       ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
       ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
       ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
-      ${e.minor ? kv('Minor leagues', `${esc((e.minor.ladder ?? D.minors)[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc(leagueLabel((e.minor.ladder ?? D.minors)[e.minor.level]))}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
       ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
         ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
         ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
@@ -237,13 +237,12 @@ function baseballSection(st, e) {
   const era = C.IP ? (C.ER * 9 / C.IP).toFixed(2) : null;
   return `${label('Baseball: the record')}
     ${R.role ? kv('Role', `${R.role[0].toUpperCase()}${R.role.slice(1)}${R.twoWay ? ', and a hitter: a two-way player' : ''}`) : R.twoWay ? kv('Role', 'A two-way player: hitting and pitching') : ''}
-    ${shown.map((x) => kv(`${x.year} · ${esc(x.level === 'other' ? x.team : x.level)}`, `${x.G ?? x.GP} games · ${esc(bb.lineText(x))}${x.capped ? ' · innings limit' : ''}`)).join('')}
+    ${shown.map((x) => kv(`${x.year} · ${esc(x.level === 'other' ? x.team : leagueLabel(x.level))}`, `${x.G ?? x.GP} games · ${esc(bb.lineText(x))}${x.capped ? ' · innings limit' : ''}`)).join('')}
     ${C.seasons ? kv(`Big league career (${C.seasons} ${C.seasons === 1 ? 'season' : 'seasons'})`, [avg ? `${avg}, ${C.H.toLocaleString('en-US')} hits, ${C.HR} home runs, ${C.RBI.toLocaleString('en-US')} RBI, ${C.SB} stolen bases` : '', era ? `${C.W}–${C.L}, ${C.SV} saves, ${era} ERA, ${C.K.toLocaleString('en-US')} strikeouts` : ''].filter(Boolean).join(' · ')) : ''}
     ${R.allStar.length ? kv('All-Star', `${R.allStar.length} ${R.allStar.length === 1 ? 'time' : 'times'} (${R.allStar.slice(-6).join(', ')})`) : ''}
     ${R.derby.length ? kv('Home Run Derby', `${R.derby.length} ${R.derby.length === 1 ? 'appearance' : 'appearances'}${R.derby.some((x) => x.won) ? `, won ${R.derby.filter((x) => x.won).map((x) => x.year).join(', ')}` : ''}`) : ''}
     ${R.honors.map((x) => kv(String(x.year), esc(x.what))).join('')}
     ${R.feats.map((x) => kv(String(x.year), esc(`${x.what[0].toUpperCase()}${x.what.slice(1)}`))).join('')}
-    ${R.classic.length ? kv('World Baseball Classic', R.classic.map((x) => `${x.year}: ${x.result}`).join(' · ')) : ''}
     ${R.winters.length ? kv('Winter ball', `${R.winters.length} ${R.winters.length === 1 ? 'winter' : 'winters'}, last with ${esc(R.winters.at(-1).team)}${R.winter === 'always' ? ' · every winter' : ''}`) : ''}
     ${k && (R.fortyMan || R.options?.length) ? kv('Roster', `${R.fortyMan ? 'On the 40-man roster' : 'Not on the 40-man roster'}${R.options?.length ? ` · ${R.options.length} of 3 option years used` : ''}${R.rule5 ? ' · a Rule 5 pick: must stay in the big leagues all season' : ''}`) : ''}
     ${k?.optOut || k?.noTrade ? kv('Contract', [k.optOut ? `opt-out in ${k.optOut}` : '', k.noTrade ? 'no-trade clause' : ''].filter(Boolean).join(' · ')) : ''}
@@ -265,7 +264,7 @@ function intlSection(st, e) {
     ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
     ${X.signed && X.english != null ? kv('English', X.english >= 60 ? 'Fluent enough for interviews' : X.english >= 35 ? 'Getting by' : 'A few words') : ''}
     ${X.remit === 'yearly' ? kv('Money home', '15% of your salary each year') : ''}
-    ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
+    ${e.minor?.ladder ? kv('Minor leagues', `${esc(leagueLabel(e.minor.ladder[e.minor.level]))}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
 }
 
 /** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
@@ -339,11 +338,32 @@ function boxingSection() {
     ${b.titles.map((t) => kv(`${t.year}: ${t.weight} title`, esc(t.lost ? `held until ${t.lost}${t.defenses ? `, ${t.defenses} defenses` : ''}` : 'held'))).join('')}
     ${b.fights.slice(-4).reverse().map((f) => kv(`${f.year} · ${f.opp}`, esc(`${f.won ? 'Won' : 'Lost'} ${f.how}${f.title ? ` · ${f.title}` : ''}`))).join('')}`;
 }
-/** The national side at the World Games. */
+/**
+ * Playing for one's country (engine/nations.js): the nation, the World Games (team and individual), the qualifiers and
+ * trials missed, invitations turned down, and the World Baseball Classic.
+ */
 function gamesSection() {
-  const rows = Object.values(sp.myAthlete()?.sports ?? {}).flatMap((e) => (e.gamesTeams ?? []).filter((t) => t.picked).map((t) => ({ ...t, sportId: e.id })));
+  const st = store.state;
+  const cap = (s) => `${s[0].toUpperCase()}${s.slice(1)}`;
+  const cn = (c) => COUNTRIES[c]?.name ?? c;
+  const rows = [];
+  for (const e of Object.values(sp.myAthlete()?.sports ?? {})) {
+    const sport = sportOf(e.id).name;
+    for (const t of e.gamesTeams ?? []) {
+      const what = t.notQualified ? `${cn(t.nation)} did not qualify` : t.declined ? 'Invited; you turned it down' : !t.picked ? 'Not picked for the squad'
+        : `${t.medal ? cap(t.medal) : `Out in the ${String(t.place ?? '').toLowerCase()}`} · ${(t.rounds ?? []).map((r) => `${r.score.join('–')} v ${cn(r.opp)}${r.how}`).join(', ')}`;
+      rows.push([t.year, `${t.year} · ${sport}${t.nation && t.picked && !t.declined ? ` · ${cn(t.nation)}` : ''}`, what]);
+    }
+    for (const id of e.events ?? []) {
+      const ev = st.sports?.events?.[id];
+      if (ev?.games) rows.push([ev.year, `${ev.year} · ${sport}${ev.nation ? ` · ${cn(ev.nation)}` : ''}`, ev.medal ? `${cap(ev.medal)} medal` : /^\d/.test(ev.place) ? `Finished ${ev.place}` : `Out in the ${String(ev.place).toLowerCase()}`]);
+    }
+    for (const y of e.gamesMissed ?? []) rows.push([y, `${y} · ${sport}`, 'Missed the qualifying standard, or turned it down']);
+    for (const c of e.bb?.classic ?? []) rows.push([c.year, `${c.year} · World Baseball Classic${c.nation ? ` · ${cn(c.nation)}` : ''}`, cap(c.result)]);
+  }
   if (!rows.length) return '';
-  return `${label('World Games, with the national side')}${rows.map((t) => kv(`${t.year} · ${sportOf(t.sportId).name}`, esc(`${t.medal ? `${t.medal[0].toUpperCase()}${t.medal.slice(1)}` : `Out in the ${t.place.toLowerCase()}`} · ${t.rounds.map((r) => `${r.score.join('–')} v ${COUNTRIES[r.opp]?.name ?? r.opp}${r.how}`).join(', ')}`))).join('')}`;
+  const nation = nations.nationOf(player());
+  return `${label('For your country')}${kv('You play for', esc(cn(nation)))}${rows.sort((x, y) => y[0] - x[0]).map(([, k, v]) => kv(k, esc(v))).join('')}`;
 }
 
 /** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
@@ -527,11 +547,11 @@ function sportDesk(step) {
   const s = sport.kind === 'team' ? latestSeason(e) : null;
   const table = s ? sp.standings(s) : null;
   const mine = table?.find((x) => x.teamId === s.playerTeamId);
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const left = sp.extraLeft(e.id);
   const ov = sp.overall(e);
   const rows = [];
   if (sport.kind === 'team') rows.push(navRow({ attrs: `data-league="${e.id}"`, label: 'League', sub: s ? `${s.name}: the standings` : 'The table, once your first season is played', ico: 'trophy' }));
-  else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Pathways Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
+  else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Player Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
   if (e.status === 'active') {
     rows.push(navRow({ attrs: `data-practice="${e.id}"`, label: 'Practice', sub: left > 0 ? `Work on one skill · ${left} ${left === 1 ? 'session' : 'sessions'} left this year` : 'Done for this year', ico: 'star' }));
     const fit = sp.fitnessScore(sp.fitnessOf());
@@ -545,7 +565,7 @@ function sportDesk(step) {
   if (e.status === 'active') rows.push(navRow({ attrs: `data-giveup="${e.id}"`, label: 'Stop Playing', sub: 'Your record is kept', ico: 'exit' }));
   return { title: sport.name, sub: `${levelName(e.level)}${org ? ` · ${org.name}` : ''}`, body: `
     <div class="card sd-head"><div class="sd-glyph" aria-hidden="true">${glyph(e.id)}</div><div class="sd-main">
-      <strong>${esc(sp.skillWord(ov))}</strong>${bar(ov)}<small class="muted">Overall ${ov} · Pathways Rating ${e.pr}</small></div></div>
+      <strong>${esc(sp.skillWord(ov))}</strong>${bar(ov)}<small class="muted">Overall ${ov} · Player Rating ${e.pr}</small></div></div>
     ${team && sport.kind === 'team' ? `<button class="card sd-team" data-league="${e.id}"><div class="sd-glyph" aria-hidden="true">${jerseyDot(colorsOf(org))}</div><div class="sd-main">
       <strong>${esc(team.name)}${mine ? ` <span class="muted">(${rank(s, s.playerTeamId, table)}/${table.length})</span>` : ''}</strong>
       ${mine ? `<small>${esc(s.year)}: ${record(mine)} · ${esc(finish(s, s.playerTeamId, table))}</small>` : '<small class="muted">The season is played through the year.</small>'}
@@ -557,7 +577,7 @@ function sportDesk(step) {
 function practiceScreen(step) {
   const e = sp.entryOf(step.params.sportId);
   const sport = sportOf(step.params.sportId);
-  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const left = sp.extraLeft(step.params.sportId);
   const lowest = sport.skills.slice().sort((a, b) => (e.skills[a[0]] ?? 0) - (e.skills[b[0]] ?? 0))[0][0];
   const focus = step.ui.focus ?? lowest;
   return { title: 'Practice', sub: `Work on your ${sport.name.toLowerCase()} skills`, body: `
@@ -629,7 +649,7 @@ function show() {
       <button class="icon-btn" data-x aria-label="Close">✕</button></div>
     ${s.tabs ? `<div class="zoo-tabs" role="tablist">${s.tabs.map(([id, t]) => `<button role="tab" aria-selected="${id === s.tab}" class="${id === s.tab ? 'on' : ''}" data-set="tab:${id}">${esc(t)}</button>`).join('')}</div>` : ''}
     <div class="dyn-body" data-body>${s.body}</div>
-    <div class="btn-stack zoo-foot"><button class="btn" data-back>${esc(backText(nav.under()))}</button></div>`, { dismissable: true, onDismiss: () => { modal = null; nav.clear(); } });
+    <div class="btn-stack zoo-foot"><button class="btn" data-back>${esc(backText(nav.under()))}</button></div>`, { dismissable: true, full: true, onDismiss: () => { modal = null; nav.clear(); } });
   modal.el.classList.add('dyn-modal', 'zoo-modal', 'sport-modal');
   modal.el.dataset.screen = step.screen;
   modal.el.addEventListener('click', onClick);
@@ -764,14 +784,14 @@ export function openAthleticsAt(tabApi, link, back = null) {
   return show();
 }
 
-/** A card for the Pursuits tab. */
+/** A card for the Pursuits tab: playing a sport for fun, for a club or a school, and everything else in My Athletics. */
 export function athleticsCard() {
   const p = player();
   if (p.age < 4) return '';
   const a = sp.myAthlete();
   const active = sp.activeSports();
   const waiting = life.openDecisions().length;
-  return `<div class="card"><h3>My Athletics</h3><p class="muted" style="margin-bottom:10px">${active.length ? esc(active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ')) : a ? 'Not playing right now.' : 'Pick a sport.'}${waiting ? ` · ${waiting} waiting for you` : ''}</p>
-    <button class="btn" data-go="athletics">Open My Athletics</button></div>`;
+  const sub = `${active.length ? active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ') : a ? 'Not playing right now' : 'Play for fun, join a club, train and compete'}${waiting ? ` · ${waiting} waiting for you` : ''}`;
+  return `<div class="nav-group">${navRow({ attrs: 'data-go="athletics"', label: 'Sports', sub, ico: 'trophy' })}</div>`;
 }
 export const internals = { nav, SCREENS, show: () => show(), INJURIES };

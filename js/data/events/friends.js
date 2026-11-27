@@ -1,6 +1,7 @@
 // Friends have their own plans, their own fallings-out, and long memories.
 // What you do here is stored on the friend with mem() and can be read back by
 // later scenes (see stories/musical.js for how memories change outcomes).
+import { AT } from '../workplaces.js';
 import { st, hid, cash, rel, ok, bad, any, chk, need, addNpc, mem, tagNpc, feud, endFeud, when } from './helpers.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
@@ -80,7 +81,7 @@ export default [
     ],
   },
   {
-    id: 'big_night', category: 'commitments collide', ageRange: [15, 19], weight: 3, cooldown: 3,
+    id: 'big_night', workplaces: AT.any, category: 'commitments collide', ageRange: [15, 19], weight: 3, cooldown: 3,
     requires: [need('career.partTime', '!=', false)], cast: { pal: 'friend', manager: 'tag:manager' },
     text: '{pal}\'s first proper gig is on Friday and they have saved you a spot at the front. At four o\'clock {manager} calls: someone has dropped out, and they need you on Friday night.',
     choices: [

@@ -227,6 +227,7 @@ async function extras() {
   page.on('pageerror', (e) => errors.push(`extras: ${e.message}`));
   await page.goto(url);
   await page.waitForSelector('[data-design]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); // straight into the designed life (the globe has its own check)
   const continueModal = async () => { const ok = page.locator('#modal-root [data-ok]').last(); await ok.waitFor(); const t = await page.locator('#modal-root .modal').last().innerText(); await ok.click(); return t; };
   // A life designed to begin in 1850.
   await page.click('[data-design]');
@@ -255,7 +256,7 @@ async function extras() {
   await page.reload();
   await page.click(`[data-load="${s35}"]`);
   await openTab(page, 'pursuits');
-  await openSection(page, 'Radio and television');
+  await openSection(page, 'Things to do');
   check(await page.locator('[data-tune="radio"]').count() === 1 && await page.locator('[data-tune="tv"]').count() === 0, 'in 1935 Pursuits offers the radio, not television');
   await page.click('[data-tune="radio"]');
   await page.locator('#modal-root .choice-btn', { hasText: 'Radio plays' }).click();
@@ -277,7 +278,7 @@ async function extras() {
   if (relative) {
     await page.click(`[data-npc="${relative}"]`);
     await page.waitForSelector('#modal-root [data-act^="with:"]');
-    const groups = await page.locator('#modal-root details.action-group summary').allInnerTexts();
+    const groups = await page.locator('#modal-root .action-group .section-label').allInnerTexts();
     check(groups.some((g) => /together/i.test(g)) && groups.some((g) => /talk/i.test(g)), `a relative's profile groups what you can do (${groups.join(', ')})`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'and fits a phone');
     await page.click('#modal-root [data-close]');

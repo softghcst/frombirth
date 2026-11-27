@@ -13,6 +13,70 @@ const teen = [need('age', '>=', 13)];
 const base = { category: 'neighborhood', queuedOnly: true, hood: true, cooldown: 0, cast: {} };
 
 export default [
+  // ---------- Small everyday moments (data/neighborhoods.js MOMENTS) ----------
+  {
+    ...base, id: 'hood_new_baby', ageRange: [12, 120],
+    text: '{person} and their family have just brought a new baby home. The curtains have been closed for three days.',
+    choices: [
+      { label: 'Leave a cooked meal on their step', outcomes: [any('A casserole and a note: no need to return the dish. {person} told you later it was the first proper meal they had eaten all week.', 'good', hood({ do: 'meet', rel: 44 }), hid('karma', 2))] },
+      { label: 'Knock with a small present', outcomes: [any('A tired, happy face at the door, and a glimpse of a very small person asleep.', 'good', hood({ do: 'meet', rel: 38 }), st('mood', 3))] },
+      { label: 'Keep the noise down for a while', outcomes: [any('Nobody notices, which is the point.', 'neutral', hid('karma', 1))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_big_game', ageRange: [8, 120],
+    text: 'The national team is in the final, and {person} has wheeled a television out onto the front porch for the whole street.',
+    choices: [
+      { label: 'Bring a chair and snacks', outcomes: [any('Thirty neighbors, one television, and a last-minute goal. {person} hugs strangers. So do you.', 'good', hood({ do: 'meet', rel: 42 }), st('mood', 6))] },
+      { label: 'Watch for the first half', outcomes: [any('You catch the first half and the best of the cheering from your kitchen window.', 'neutral', hood({ do: 'meet', rel: 32 }), st('mood', 2))] },
+      { label: 'Close the windows and read', outcomes: [any('The cheering comes through the windows anyway.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_lost_pet', ageRange: [6, 120],
+    text: '{person} has put up posters on every lamppost: their pet has gone missing, and they look like they have not slept.',
+    choices: [
+      { label: 'Help search the gardens and alleys', outcomes: [any('You searched until dark. The next morning {person} knocked to say the animal had turned up in a neighbor\'s shed, and hugged you.', 'good', hood({ do: 'meet', rel: 46 }), hid('karma', 2), st('mood', 3))] },
+      { label: 'Keep an eye out and tell them anything you see', outcomes: [any('You spotted it three days later, sitting on a wall two streets away. {person} could not thank you enough.', 'good', hood({ do: 'meet', rel: 40 }))] },
+      { label: 'Say you hope it turns up', outcomes: [any('{person} nodded and moved on to the next door.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_yard_sale', ageRange: [8, 120],
+    text: '{person} is having a yard sale: the whole driveway covered in lamps, books, records and a box marked "free".',
+    choices: [
+      { label: 'Have a good look, and buy something', outcomes: [any('You came away with something you did not need and are very fond of. {person} told you where every item had come from.', 'good', cash(-10), hood({ do: 'meet', rel: 36 }), st('mood', 3))] },
+      { label: 'Help them run it for an hour', requires: teen, outcomes: [any('You learned to haggle, badly. {person} gave you first pick of the free box.', 'good', hood({ do: 'meet', rel: 42 }))] },
+      { label: 'Walk past with a wave', outcomes: [any('A wave across the lamps and records.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_storm_tree', ageRange: [10, 120],
+    text: 'After a night of wind, a tree is down across {person}\'s drive, and they are standing looking at it with a small saw.',
+    choices: [
+      { label: 'Get your gloves and help', requires: teen, outcomes: [any('It took the morning and two more neighbors. {person} made everyone lunch.', 'good', hood({ do: 'meet', rel: 44 }), st('health', 1), st('mood', 2))] },
+      { label: 'Help them find someone with the right equipment', outcomes: [any('You knew someone who knew someone. The tree was gone by the afternoon.', 'good', hood({ do: 'meet', rel: 38 }))] },
+      { label: 'Leave them to it', outcomes: [any('You heard the saw going all morning.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_locked_out', ageRange: [10, 120],
+    text: '{person} is standing on their step in the rain, patting their pockets. They have locked themselves out.',
+    choices: [
+      { label: 'Invite them in to wait in the dry', outcomes: [any('An hour, a towel and a long conversation later, the locksmith arrived. {person} said you are the reason they did not catch a cold.', 'good', hood({ do: 'meet', rel: 44 }), st('mood', 2))] },
+      { label: 'Help them find a locksmith', outcomes: [any('You found one who could come straight away. {person} was very grateful.', 'neutral', hood({ do: 'meet', rel: 36 }))] },
+      { label: 'Sympathize, and carry on', outcomes: [any('"It happens to everyone," you said. It does.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_book_box', ageRange: [8, 120],
+    text: '{person} has put a little book-swap box on a post at the corner: take a book, leave a book.',
+    choices: [
+      { label: 'Leave a favorite of yours', outcomes: [any('A week later {person} stopped you to say they had read it, and loved it. You have been swapping recommendations since.', 'good', hood({ do: 'meet', rel: 42 }), st('mood', 2))] },
+      { label: 'Take one home', outcomes: [any('You took a battered paperback and read it in two nights.', 'good', st('intellect', 1), st('mood', 1))] },
+      { label: 'Walk on by', outcomes: [any('You noticed it, and meant to come back.', 'neutral')] },
+    ],
+  },
   {
     ...base, id: 'hood_new_neighbors', ageRange: [5, 120],
     text: 'A moving van outside {label}: {family} — {who} — is moving in near you.',

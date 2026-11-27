@@ -32,27 +32,29 @@ const F = (id, name, doctor, after, years, o) => S(id, name, doctor, { kind: 'fe
 
 export const SPECIALTIES = [
   // Primary residencies (entered from medical school)
-  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor'], practice: 'family_clinic', minYear: 1969 }),
+  S('family', 'Family Medicine', 'family physician', { years: 3, play: 'panel', dept: 'family', compete: 0.2, procedures: ['office_minor', 'lc_implant'], practice: 'family_clinic', minYear: 1969 }),
   S('internal', 'Internal Medicine', 'internist', { years: 3, play: 'panel', dept: 'medicine', compete: 0.35, procedures: ['office_minor'], practice: 'internal_clinic' }),
   S('pediatrics', 'Pediatrics', 'pediatrician', { years: 3, play: 'panel', dept: 'pediatrics', compete: 0.3, procedures: ['office_minor'], practice: 'pediatric_clinic' }),
   S('emergency', 'Emergency Medicine', 'emergency physician', { years: 3, play: 'acute', dept: 'emergency', compete: 0.45, procedures: ['er_procedure'], minYear: 1979 }),
   S('gensurg', 'General Surgery', 'general surgeon', { years: 5, play: 'or', dept: 'surgery', surgical: true, compete: 0.6, procedures: ['gs_abdominal', 'gs_hernia', 'office_minor'] }),
   S('ortho', 'Orthopedic Surgery', 'orthopedic surgeon', { years: 5, play: 'or', dept: 'orthopedics', surgical: true, compete: 0.8, procedures: ['or_fracture', 'or_arthroscopy', 'or_joint', 'office_minor'], practice: 'ortho_clinic' }),
   S('neurosurg', 'Neurological Surgery', 'neurosurgeon', { years: 7, play: 'or', dept: 'neurosurgery', surgical: true, compete: 0.9, procedures: ['ns_cranial', 'ns_spine'], minYear: 1920 }),
-  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor'], practice: 'obgyn_clinic' }),
+  S('obgyn', 'Obstetrics and Gynecology', 'obstetrician-gynecologist', { years: 4, play: 'or', dept: 'obgyn', surgical: true, compete: 0.55, procedures: ['ob_delivery', 'ob_cesarean', 'gyn_surgery', 'office_minor', 'lc_iud', 'lc_implant', 'tubal'], practice: 'obgyn_clinic' }),
   S('psychiatry', 'Psychiatry', 'psychiatrist', { years: 4, play: 'panel', dept: 'psychiatry', compete: 0.35, practice: 'psychiatry_practice' }),
   S('dermatology', 'Dermatology', 'dermatologist', { years: 4, play: 'panel', dept: 'dermatology', compete: 0.85, procedures: ['derm_biopsy', 'derm_excision', 'office_minor'], practice: 'dermatology_clinic' }),
   S('neurology', 'Neurology', 'neurologist', { years: 4, play: 'panel', dept: 'neurology', compete: 0.4 }),
   S('anesthesiology', 'Anesthesiology', 'anesthesiologist', { years: 4, play: 'periop', dept: 'anesthesiology', compete: 0.5, procedures: ['anes_care'], minYear: 1940 }),
   S('radiology', 'Diagnostic Radiology', 'radiologist', { years: 5, play: 'reading', dept: 'radiology', compete: 0.6, procedures: ['image_guided'] }),
   S('pathology', 'Pathology', 'pathologist', { years: 4, play: 'reading', dept: 'pathology', compete: 0.3 }),
-  S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'office_minor'], practice: 'eye_clinic' }),
+  S('ophthalmology', 'Ophthalmology', 'ophthalmologist', { years: 4, play: 'or', dept: 'ophthalmology', surgical: true, compete: 0.75, procedures: ['oph_cataract', 'oph_laser', 'office_minor'], practice: 'eye_clinic' }),
   S('ent', 'Otolaryngology (ENT)', 'ENT surgeon', { years: 5, play: 'or', dept: 'ent', surgical: true, compete: 0.75, procedures: ['ent_surgery', 'office_minor'] }),
-  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor'] }),
+  S('urology', 'Urology', 'urologist', { years: 5, play: 'or', dept: 'urology', surgical: true, compete: 0.7, procedures: ['uro_surgery', 'office_minor', 'vasectomy'] }),
   S('pmr', 'Physical Medicine and Rehabilitation', 'physiatrist', { years: 4, play: 'panel', dept: 'rehabilitation', compete: 0.35, minYear: 1947 }),
+  // General practice: a hospital internship, then practice (before residency was the usual route; see ERA.gpEra).
+  S('general', 'General Practice', 'general practitioner', { kind: 'gp', years: 1, play: 'panel', dept: 'family', compete: 0, procedures: ['office_minor', 'ob_delivery'], practice: 'family_clinic', minYear: 1800, maxYear: 1968 }),
   // Integrated surgical residencies (entered straight from medical school, in the US)
   S('ct_integrated', 'Integrated Thoracic Surgery', 'cardiothoracic surgeon', { years: 6, play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.9, grants: 'ctsurg',
-    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'gs_hernia'], minYear: 2008 }),
+    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta', 'gs_hernia'], minYear: 2008 }),
   S('vascular_integrated', 'Integrated Vascular Surgery', 'vascular surgeon', { years: 5, play: 'or', dept: 'vascular', surgical: true, compete: 0.7, grants: 'vascular',
     procedures: ['vs_repair'], minYear: 2007 }),
   S('plastic_integrated', 'Integrated Plastic Surgery', 'plastic surgeon', { years: 6, play: 'or', dept: 'plastic', surgical: true, compete: 0.9, grants: 'plastic',
@@ -71,10 +73,13 @@ export const SPECIALTIES = [
   F('peds_cardiology', 'Pediatric Cardiology', 'pediatric cardiologist', ['pediatrics'], 3, { play: 'panel', dept: 'pediatrics', compete: 0.5 }),
   F('critical_care', 'Critical Care Medicine', 'intensivist', ['anesthesiology', 'emergency', 'internal'], 1, { play: 'acute', dept: 'icu', compete: 0.4, procedures: ['icu_procedure'] }),
   F('pain', 'Pain Medicine', 'pain specialist', ['anesthesiology', 'pmr', 'neurology', 'psychiatry'], 1, { play: 'panel', dept: 'anesthesiology', compete: 0.5, procedures: ['pain_procedure'] }),
+  // Forensic fellowships: the work is for death investigations and the courts (engine/investigations/forensicMed.js).
+  F('forensic_path', 'Forensic Pathology', 'forensic pathologist', ['pathology'], 1, { play: 'reading', dept: 'pathology', compete: 0.3, forensic: 'examiner' }),
+  F('forensic_psych', 'Forensic Psychiatry', 'forensic psychiatrist', ['psychiatry'], 1, { play: 'panel', dept: 'psychiatry', compete: 0.35, forensic: 'evaluator' }),
   F('mfm', 'Maternal-Fetal Medicine', 'maternal-fetal medicine specialist', ['obgyn'], 3, { play: 'panel', dept: 'obgyn', compete: 0.5 }),
   // Surgical fellowships
   F('ctsurg', 'Cardiothoracic Surgery', 'cardiothoracic surgeon', ['gensurg'], 2, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6,
-    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic'], focus: ['cardiac', 'thoracic'], minYear: 1950 }),
+    procedures: ['ct_bypass', 'ct_valve', 'ct_thoracic', 'ct_aorta'], focus: ['cardiac', 'thoracic'], minYear: 1950 }),
   F('ct_heart_transplant', 'Heart Transplantation', 'heart transplant surgeon', ['ctsurg'], 1, { play: 'or', dept: 'cardiothoracic', surgical: true, compete: 0.6, procedures: ['tx_heart'], minYear: 1985 }),
   F('trauma', 'Trauma and Acute Care Surgery', 'trauma surgeon', ['gensurg'], 2, { play: 'or', dept: 'trauma', surgical: true, compete: 0.45,
     procedures: ['tr_emergency', 'icu_procedure'], minYear: 1970 }),
@@ -136,6 +141,7 @@ export const PROCEDURES = [
   P('ct_bypass', 'Coronary artery bypass', 1968, 0.15),
   P('ct_valve', 'Heart valve operation', 1960, 0.18),
   P('ct_thoracic', 'Thoracic (lung) operation', 1940, 0.14),
+  P('ct_aorta', 'Aortic operation', 1955, 0.2),
   P('tx_heart', 'Heart transplant', 1983, 0.3),
   P('tx_kidney', 'Kidney transplant', 1960, 0.15),
   P('tx_liver', 'Liver transplant', 1983, 0.25),
@@ -147,7 +153,14 @@ export const PROCEDURES = [
   P('ob_delivery', 'Attended delivery', 1900, 0.04, { major: false }),
   P('ob_cesarean', 'Cesarean delivery', 1940, 0.08),
   P('gyn_surgery', 'Gynecologic operation', 1920, 0.08),
+  // Contraception (engine/health/contraception.js is the patient's side of the same care): office procedures, and the
+  // permanent methods. Not every physician holds them: family physicians place implants; IUDs are referred to OB-GYN.
+  P('lc_iud', 'IUD placement or removal', 1974, 0.01, { major: false }),
+  P('lc_implant', 'Contraceptive implant placement or removal', 1990, 0.005, { major: false }),
+  P('tubal', 'Tubal sterilization', 1930, 0.03),
+  P('vasectomy', 'Vasectomy', 1925, 0.01, { major: false }),
   P('oph_cataract', 'Cataract operation', 1970, 0.03),
+  P('oph_laser', 'Eye laser treatment', 1975, 0.02, { major: false }),
   P('ent_surgery', 'Ear, nose and throat operation', 1920, 0.07),
   P('uro_surgery', 'Urologic operation', 1930, 0.08),
   P('pod_minor', 'Minor foot procedure', 1960, 0.02, { major: false }),
@@ -179,6 +192,7 @@ export const TESTS = [
   T('endoscopy', 'Endoscopy', 1970, 'scope'),
   T('screening_tool', 'Structured screening questionnaire', 1960, 'talk'),
   T('developmental', 'Developmental assessment', 1950, 'exam'),
+  T('dexa', 'Bone density scan', 1988, 'imaging'),
   T('vascular_doppler', 'Vascular Doppler study', 1975, 'imaging'),
   T('gait', 'Gait and biomechanical assessment', 1950, 'exam'),
 ];
@@ -193,6 +207,10 @@ export const HOSPITAL_KINDS = {
   community: { name: 'Community hospital', teaching: false, fellowships: false, resources: 60, payK: 0.97, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'radiology', 'anesthesiology', 'family', 'icu', 'psychiatry', 'podiatry'] },
   childrens: { name: "Children's hospital", teaching: true, fellowships: true, resources: 85, payK: 1.02, depts: ['pediatrics', 'peds_surgery', 'nicu', 'emergency', 'radiology', 'anesthesiology', 'psychiatry', 'icu'] },
   rural: { name: 'Rural health facility', teaching: false, fellowships: false, resources: 40, payK: 1.08, depts: ['family', 'emergency', 'medicine', 'obgyn'] },
+  government: { name: 'Government hospital', teaching: true, fellowships: false, resources: 70, payK: 0.95, depts: ['emergency', 'medicine', 'surgery', 'orthopedics', 'pediatrics', 'obgyn', 'psychiatry', 'radiology', 'pathology', 'anesthesiology', 'icu', 'family', 'trauma', 'rehabilitation', 'neurology', 'cardiology', 'podiatry'] },
+  public_health: { name: 'Public health service', teaching: false, fellowships: false, resources: 45, payK: 0.92, depts: ['family', 'medicine', 'pediatrics', 'psychiatry', 'obgyn'] },
+  heart: { name: 'Specialty hospital (heart)', teaching: true, fellowships: true, resources: 92, payK: 1.08, depts: ['cardiology', 'cardiothoracic', 'vascular', 'anesthesiology', 'radiology', 'icu'] },
+  bone: { name: 'Specialty hospital (orthopedic)', teaching: true, fellowships: true, resources: 88, payK: 1.06, depts: ['orthopedics', 'rehabilitation', 'podiatry', 'anesthesiology', 'radiology', 'neurosurgery'] },
   clinic: { name: 'Physician group clinic', teaching: false, fellowships: false, resources: 50, payK: 1, depts: ['family', 'medicine', 'pediatrics', 'dermatology', 'psychiatry', 'podiatry', 'cardiology', 'neurology', 'rehabilitation'] },
 };
 
@@ -211,11 +229,15 @@ export const DEPARTMENTS = {
 // so pay runs through the ordinary payroll. Leadership ranks need openings and selection (engine/medicine/careers.js).
 export const RANKS = {
   student: { title: 'Medical student', level: null },
-  resident: { title: 'Resident', level: 0 },
-  chief_resident: { title: 'Chief resident', level: 0 },
-  fellow: { title: 'Fellow', level: 0 },
-  attending: { title: 'Attending physician', level: 1 },
-  senior: { title: 'Senior attending', level: 2 },
+  // In plain words on screen: trainee doctors, then physicians (the US words resident, fellow and attending are not used).
+  resident: { title: 'Trainee doctor', level: 0 },
+  chief_resident: { title: 'Lead trainee doctor', level: 0 },
+  fellow: { title: 'Advanced trainee', level: 0 },
+  attending: { title: 'Physician', level: 1 },
+  experienced: { title: 'Experienced physician', level: 1 },
+  vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
+  ceo: { title: 'Hospital chief executive', level: 3, leader: true },
+  senior: { title: 'Senior physician', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
   chair: { title: 'Department chair', level: 3, leader: true },
@@ -228,7 +250,7 @@ export const RESIDENT_TITLES = ['Intern', 'Junior resident', 'Resident', 'Senior
 // What a physician-owner can open, and who may open it. `needs`: specialties (any) the owner must be
 // qualified in. Figures are game economics (local money is scaled by engine/business.js).
 export const PRACTICE_TYPES = {
-  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal'], demand: 1, equipment: 40000 },
+  family_clinic: { name: 'Family medicine clinic', needs: ['family', 'internal', 'general'], demand: 1, equipment: 40000 },
   internal_clinic: { name: 'Internal medicine practice', needs: ['internal'], demand: 0.95, equipment: 40000 },
   pediatric_clinic: { name: 'Pediatric clinic', needs: ['pediatrics'], demand: 1, equipment: 35000 },
   dermatology_clinic: { name: 'Dermatology clinic', needs: ['dermatology'], demand: 1.15, equipment: 70000 },
@@ -238,6 +260,8 @@ export const PRACTICE_TYPES = {
   cardiology_clinic: { name: 'Cardiology practice', needs: ['cardiology'], demand: 1.1, equipment: 110000 },
   eye_clinic: { name: 'Eye clinic', needs: ['ophthalmology'], demand: 1.05, equipment: 130000 },
   obgyn_clinic: { name: "Women's health practice", needs: ['obgyn', 'mfm'], demand: 1, equipment: 60000 },
+  // A group of physicians in different specialties under one roof: any qualified physician may found one.
+  specialty_group: { name: 'Specialty group practice', needs: 'any', demand: 1.05, equipment: 90000 },
   plastic_clinic: { name: 'Plastic and reconstructive surgery practice', needs: ['plastic', 'plastic_integrated'], demand: 1.1, equipment: 120000 },
 };
 
@@ -248,9 +272,23 @@ export const ERA = {
   residencyMatch: 1952, // a national match for residency places (US); before it, places were offered and accepted directly
   boards: 1930, // specialty board certification becomes usual
   doDegree: 1900, // osteopathic schools exist (full practice rights came state by state, later)
+  doFullRights: 1973, // by about here every US state licensed osteopathic physicians to practice fully; before, they trained largely in their own (community) hospitals
   dpmDegree: 1960, // the podiatric medical degree in its modern form
   womenInMedicine: 1870, // medical schools that admit women (some earlier, many later)
+  womenWidelyAdmitted: 1920,
+  // Before about 1940 most doctors (in the US, and in the game everywhere) did a hospital internship and went into
+  // general practice; residency was for the minority who specialized. General practice as its own route lasts until
+  // family medicine replaces it (1969, the year Family Medicine's residency begins in data/medicine.js).
+  gpEra: 1940, gpUntil: 1969, // by about here most medical schools take women, if often in small numbers
 };
+
+/**
+ * What a hospital of a given year can do, against today's (1). A broad era modifier, not a history:
+ * before antibiotics and blood banking (about 1945) and modern intensive care (about 1960), the same
+ * hospital had far less to work with; resources and the margin for error scale with it.
+ */
+export const ERA_CARE = [[1920, 0.55], [1945, 0.68], [1960, 0.8], [1980, 0.9], [9999, 1]];
+export const eraCare = (y) => ERA_CARE.find(([until]) => y < until)[1];
 
 // ---------- Jurisdictions ----------
 //
@@ -270,18 +308,46 @@ const SIMPLE = { entry: 'direct', schoolYears: 4, degrees: ['MBBS / MD'], exams:
   license: { name: 'medical registration', afterTraining: 1 }, internship: 1, selection: 'Specialty training applications', ownership: 'open', detail: 'simplified', dpm: false, osteopathic: false };
 export const JURISDICTIONS = {
   us: { entry: 'graduate', schoolYears: 4, degrees: ['MD', 'DO'], osteopathic: true, dpm: true,
-    exams: [{ id: 'step1', name: 'USMLE Step 1', year: 2 }, { id: 'step2', name: 'USMLE Step 2 CK', year: 4 }],
-    license: { name: 'USMLE Step 3 and a state medical license', afterTraining: 1 }, internship: 0,
-    selection: 'the residency Match', ownership: 'physician', detail: 'detailed' },
+    // Plain words on screen: the licensing exams by part (the USMLE, from 1992; jurisdictionIn has the names before).
+    exams: [{ id: 'step1', name: 'Licensing exam, part 1', year: 2 }, { id: 'step2', name: 'Licensing exam, part 2', year: 4 }],
+    license: { name: 'Licensing exam, part 3, and a state license', afterTraining: 1 }, internship: 0,
+    selection: 'a national match of trainees to hospitals', ownership: 'physician', detail: 'detailed' },
   ca: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD'], exams: [{ id: 'mccqe1', name: 'MCCQE Part I', year: 4 }],
     license: { name: 'provincial licensure', afterTraining: 2 }, internship: 0, selection: 'the national residency match', ownership: 'physician' },
-  gb: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
+  uk: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
     license: { name: 'full GMC registration', afterTraining: 1 }, internship: 2, selection: 'specialty training recruitment' },
   au: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD / MBBS'], exams: [{ id: 'finals', name: 'Final examinations', year: 4 }],
     license: { name: 'general registration', afterTraining: 1 }, internship: 1, selection: 'specialty college selection' },
+  // Broad shapes only (marked simplified): how long the supervised years after school last before specialty
+  // training, and plain words for registration and selection. No exam names, fees or rules are claimed.
+  in: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'medical registration', afterTraining: 1 }, selection: 'postgraduate entrance examinations' },
+  ph: { ...SIMPLE, entry: 'graduate', degrees: ['MD'], internship: 1, license: { name: 'the physician licensure examination and registration', afterTraining: 1 }, selection: 'residency applications to hospitals' },
+  jp: { ...SIMPLE, degrees: ['MD'], internship: 2, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'the postgraduate training match' },
+  de: { ...SIMPLE, degrees: ['Medical degree (state examination)'], internship: 0, license: { name: 'a full license to practice medicine', afterTraining: 0 }, selection: 'applications to hospitals for specialty training' },
+  fr: { ...SIMPLE, degrees: ['Doctor of Medicine'], internship: 0, license: { name: 'registration with the medical council', afterTraining: 0 }, selection: 'the national ranking examination' },
+  br: { ...SIMPLE, degrees: ['Medical degree'], internship: 0, license: { name: 'registration with the regional medical council', afterTraining: 0 }, selection: 'residency selection examinations' },
+  ng: { ...SIMPLE, degrees: ['MBBS'], internship: 1, license: { name: 'full registration with the medical council', afterTraining: 1 }, selection: 'residency applications to teaching hospitals' },
+  kr: { ...SIMPLE, degrees: ['MD'], internship: 1, license: { name: 'the national medical licensing examination', afterTraining: 0 }, selection: 'residency selection at teaching hospitals' },
+  mx: { ...SIMPLE, degrees: ['Médico cirujano'], internship: 1, license: { name: 'a professional license', afterTraining: 1 }, selection: 'the national residency examination' },
+  za: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration with the health professions council', afterTraining: 2 }, selection: 'registrar post applications' },
+  ie: { ...SIMPLE, degrees: ['MB BCh BAO'], internship: 1, license: { name: 'registration with the medical council', afterTraining: 1 }, selection: 'specialty training applications' },
+  nz: { ...SIMPLE, degrees: ['MBChB'], internship: 2, license: { name: 'registration in a general scope', afterTraining: 1 }, selection: 'specialty college selection' },
   default: SIMPLE,
 };
 export const jurisdiction = (countryId) => JURISDICTIONS[countryId] ?? JURISDICTIONS.default;
+/**
+ * The same, with the exams and the license as they were called in a given year. In the United States the USMLE
+ * began in 1992; from 1916 the National Board examinations (Parts I, II and III) came before it, and before them
+ * a school's own examinations and a state board.
+ */
+export function jurisdictionIn(countryId, y) {
+  const j = jurisdiction(countryId);
+  if (j !== JURISDICTIONS.us || y >= 1992) return j;
+  const placed = y >= ERA.residencyMatch ? {} : { selection: 'places offered by each hospital, and accepted directly' };
+  return y >= 1916
+    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National licensing exam, part 1', year: 2 }, { id: 'step2', name: 'National licensing exam, part 2', year: 4 }], license: { ...j.license, name: 'National licensing exam, part 3, and a state license' } }
+    : { ...j, ...placed, exams: [{ id: 'step1', name: 'Second-year examinations', year: 2 }, { id: 'step2', name: 'Final examinations', year: 4 }], license: { ...j.license, name: 'a state board examination and medical license' } };
+}
 
 /** Premedical activities (before medical school): what each does for an application. */
 export const PREMED = [
@@ -306,6 +372,14 @@ export const ROTATIONS = [
   { id: 'ortho', name: 'Orthopedics (elective)', specialty: 'ortho', shows: 'bones, joints, sports injuries and rehabilitation' },
   { id: 'radiology', name: 'Radiology (elective)', specialty: 'radiology', shows: 'reading the images every other team asks about' },
 ];
+/**
+ * A rotation in the years before its specialty existed, by the name it went by then: an emergency rotation was
+ * the accident ward (emergency medicine from 1979), family medicine was general practice (from 1969).
+ */
+export const ROTATION_BEFORE = {
+  emergency: { name: 'Accident Ward', shows: 'injuries and emergencies as they come through the door, and deciding who is seen first' },
+  family: { name: 'General Practice', specialty: 'general', shows: 'home visits, the surgery, and patients known for years' },
+};
 
 /** The skills a physician builds (0-100). Reputation is built from them, never from survival counts. */
 export const SKILLS = {

@@ -3,7 +3,7 @@ import { rng } from '../rng.js';
 import { randomAppearance as avatarRandom, inheritAppearance as avatarInherit } from '../avatar/inherit.js';
 import { skinDepth } from '../avatar/catalog.js';
 import { clamp } from '../util.js';
-import { ADDED_TALENTS } from '../data/talents.js';
+import { ADDED_TALENTS, LATER_TALENTS } from '../data/talents.js';
 import { TRAITS, TRAIT_BY_ID } from '../data/traits.js';
 import { BIRTH_CONDITIONS } from '../data/birthConditions.js';
 
@@ -36,13 +36,17 @@ export function addedTalents(t, mean, lo = 0, hi = 100, spread = 24, giftChance 
   // Seeded from the game's dice and the talents already drawn: the same life gives the same talents, however it is played.
   let x = Object.values(t).reduce((h, v) => (Math.imul(h ^ (v | 0), 0x9e3779b1) >>> 0), rng.state()) >>> 0;
   const next = () => { x = (x + 0x6D2B79F5) >>> 0; let r = x; r = Math.imul(r ^ (r >>> 15), r | 1); r ^= r + Math.imul(r ^ (r >>> 7), r | 61); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
-  for (const id of ADDED_TALENTS) {
-    if (t[id] != null) continue;
-    const around = mean(id) + (next() + next() + next() - 1.5) / 1.5 * spread;
-    t[id] = Math.round(clamp(around, lo, hi));
-  }
+  const roll = (id) => { if (t[id] == null) t[id] = Math.round(clamp(mean(id) + (next() + next() + next() - 1.5) / 1.5 * spread, lo, hi)); };
+  const first = ADDED_TALENTS.filter((id) => !LATER_TALENTS.includes(id));
+  first.forEach(roll);
   // Now and then a real gift for one of them, as the first six have.
-  if (next() < giftChance) { const id = ADDED_TALENTS[Math.floor(next() * ADDED_TALENTS.length)]; t[id] = Math.max(t[id], 75 + Math.floor(next() * 26)); }
+  if (next() < giftChance) { const id = first[Math.floor(next() * first.length)]; t[id] = Math.max(t[id], 75 + Math.floor(next() * 26)); }
+  // Talents added later still (persuasion) come last, on the same dice, so that every roll before them is unchanged.
+  for (const id of LATER_TALENTS) {
+    const had = t[id] != null;
+    roll(id);
+    if (!had && next() < giftChance / first.length) t[id] = Math.max(t[id], 75 + Math.floor(next() * 26));
+  }
   return t;
 }
 
@@ -121,5 +125,10 @@ export function applyMods(person, def) {
     for (const [k, v] of Object.entries(def[group] ?? {})) {
       person[group][k] = clamp(person[group][k] + v);
     }
+  }
+  // Skills (data/skills.js): what a school or a club teaches, coding, robotics, public speaking. They grow toward 100.
+  for (const [k, v] of Object.entries(def.skills ?? {})) {
+    person.skills ??= {};
+    person.skills[k] = Math.min(100, Math.max(0, (person.skills[k] ?? 0) + v));
   }
 }

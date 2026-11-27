@@ -28,6 +28,17 @@ export default [
     ],
   },
   {
+    // The same call, to a relative who is a lawyer: they can take the case themselves (engine/kinCases.js).
+    id: 'kin_charged_lawyer', category: 'family', ageRange: [21, 120], queuedOnly: true,
+    text: 'A phone call you will remember: {kin} has been charged with {offense}. {bail} They know what you do for a living. They ask if you will defend them.',
+    choices: [
+      { label: 'Defend them yourself', outcomes: [any('You clear your desk and open the file.', 'neutral', j('kin_defend'))] },
+      { label: 'Find them the best lawyer you know, and pay', outcomes: [any('You know exactly who to call.', 'neutral', j('kin_lawyer'))] },
+      { label: 'Be there: post bail if there is any, and sit in court every day', outcomes: [any('You are in the public gallery at every hearing.', 'good', j('kin_court'))] },
+      { label: 'Keep your distance', outcomes: [any('You do not go. You hear about it from others.', 'bad', j('kin_distance'))] },
+    ],
+  },
+  {
     id: 'witness_incident', category: 'everyday', ageRange: [14, 90], cooldown: 8, weight: 0.6,
     text: 'Waiting at a bus stop, you see a man snatch a bag from a woman outside the drugstore and run. You saw his face, for a second or two.',
     choices: [

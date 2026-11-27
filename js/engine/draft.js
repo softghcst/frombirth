@@ -14,7 +14,7 @@
 import { log, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS, draftCountry } from '../data/sports.js';
+import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS, draftCountry, leagueName } from '../data/sports.js';
 import { registerEmployer, employer } from './employers.js';
 import { gradeOf, programs } from './recruiting.js';
 import { eligibility } from './college.js';
@@ -127,7 +127,7 @@ export function eligible(state, e, D = draftOf(state, e.id)) {
   }
 }
 
-/** How the scouts grade the player for the draft: skill, the years still to grow, the season, the level played. */
+/** How the scouts grade the player for the draft: skill, the years still to grow, the season, the level played, and the record (college seasons, titles, awards, scouts' reports; engine/sports.js recordScore). */
 export function draftGrade(state, e) {
   const p = state.player;
   const o = overall(e, p);
@@ -136,7 +136,7 @@ export function draftGrade(state, e) {
   const level = { D1: 2, IVY: -1, D2: -2, NAIA: -3, JUCO: -1, D3: -5 }[e.college?.division] ?? (e.level === 'academy' || e.level === 'elite' ? 1 : 0);
   const r = seeded(`draftGrade/${p.id}/${e.id}/${state.year}`);
   // Baseball: what a summer with wooden bats showed the scouts (engine/baseball.js).
-  return Math.round(o + youth + form + level + (e.draft?.combine?.[state.year] ?? 0) + (e.bb?.wood ?? 0) + r.normal(0, 2));
+  return Math.round(o + youth + form + level + sp.recordScore(e, state) + (e.draft?.combine?.[state.year] ?? 0) + (e.bb?.wood ?? 0) + r.normal(0, 2));
 }
 /** Where a grade goes in a draft: the first pick at the top, a thousand down for an ordinary prospect. */
 export const projectedPick = (grade) => Math.max(1, Math.round(10 ** ((95 - grade) / 14)));
@@ -325,7 +325,7 @@ export function hold(state, e, D = draftOf(state, e.id)) {
   const ready = overall(e, p) >= (asia ? 66 : { baseball: 76, ice_hockey: 70, basketball: 64, american_football: 60 }[e.id] ?? 60);
   if (asia) d.name = `${D.name} draft`;
   life.decide(state, { kind: 'draftSign', sportId: e.id, key: `draftSign/${key}`, orgId: club.id, orgName: club.name, pick, round, deal, how: 'draft',
-    text: `${club.name} drafted you in the ${ordinal(round)} round, ${ordinal(pick)} overall. ${deal.bonus ? `They offer a signing bonus of ${life.fmt(state, deal.bonus)}` : 'They offer'}${deal.twoWay ? ' a two-way contract: their G League team, and the big club when they call you up' : `${deal.bonus ? ' and' : ''} ${deal.years} ${deal.years === 1 ? 'year' : 'years'} at ${life.fmt(state, deal.salary)} a year`}${D.minors.length && D.deal !== 'scale' && !ready ? `, starting in the ${D.minors[0] === 'AHL' ? 'AHL' : D.minors[0] === 'Farm team' ? 'farm team' : D.minors[0] === 'Futures League' ? 'Futures League' : 'minor leagues'}` : ''}.`,
+    text: `${club.name} drafted you in the ${ordinal(round)} round, ${ordinal(pick)} overall. ${deal.bonus ? `They offer a signing bonus of ${life.fmt(state, deal.bonus)}` : 'They offer'}${deal.twoWay ? ' a two-way contract: their G League team, and the big club when they call you up' : `${deal.bonus ? ' and' : ''} ${deal.years} ${deal.years === 1 ? 'year' : 'years'} at ${life.fmt(state, deal.salary)} a year`}${D.minors.length && D.deal !== 'scale' && !ready ? `, starting in the ${D.minors[0] === 'AHL' ? 'AHL' : D.minors[0] === 'Farm team' ? 'farm team' : D.minors[0] === 'Futures League' ? "Korea's minor league" : 'minor leagues'}` : ''}.`,
     options: [{ id: 'sign', label: 'Sign' }, ...(stay ? [{ id: 'stay', label: stay }] : [])] });
   return d;
 }
@@ -336,6 +336,7 @@ function undrafted(state, e, D) {
   const o = overall(e, p);
   const r = seeded(`udfa/${p.id}/${e.id}/${state.year}`);
   if (o < 58 || D.rule === 'hockey') return;
+  if (sp.competitiveYears(e, state) < 1 && !r.chance(0.01)) return; // nobody signs a player they have never seen play
   const lg = topLeague(state, sportOf(e.id), D.div);
   const club = clubOf(state, r.pick(lg.teamIds));
   const asia = ['npb', 'kbo'].includes(D.rule);
@@ -344,7 +345,7 @@ function undrafted(state, e, D) {
     : e.id === 'baseball' ? { bonus: life.money(state, Math.round(r.int(1, 15) * 10000)), salary: life.money(state, 30000), years: 6 }
       : { bonus: life.money(state, r.int(1, 25) * 1000), salary: life.money(state, 900000), years: 3 };
   life.decide(state, { kind: 'draftSign', sportId: e.id, key: `udfa/${e.id}/${state.year}`, orgId: club.id, orgName: club.name, pick: null, round: null, deal, how: 'undrafted',
-    text: `Undrafted, but ${club.name} want you anyway: ${deal.development ? (D.rule === 'npb' ? 'a development contract, a three-digit number on your back and the farm team, until they register you' : 'a contract as a development player, in the Futures League') : deal.gLeague ? 'a place on their G League team, a step from the big club' : `${deal.bonus ? `a ${life.fmt(state, deal.bonus)} signing bonus and ` : ''}a chance to make the team${e.id === 'baseball' ? ' in their minor leagues' : ''}`}.`,
+    text: `Undrafted, but ${club.name} want you anyway: ${deal.development ? (D.rule === 'npb' ? 'a development contract, a three-digit number on your back and the farm team, until they register you' : 'a contract as a development player, in Korea\'s minor league') : deal.gLeague ? 'a place on their development league team, a step from the big club' : `${deal.bonus ? `a ${life.fmt(state, deal.bonus)} signing bonus and ` : ''}a chance to make the team${e.id === 'baseball' ? ' in their minor leagues' : ''}`}.`,
     options: [{ id: 'sign', label: 'Sign as an undrafted free agent' }, { id: 'no', label: 'Say no' }] });
 }
 
@@ -385,7 +386,7 @@ function sign(state, d, e) {
     const start = e.id === 'baseball' ? (p.age < 19 ? (o >= 74 ? 1 : 0) : clamp(Math.round((o - 60) / 5), 1, 3)) : 0;
     toMinors(state, e, org, Math.min(start, ladder.length - 1));
   }
-  return result(true, `You signed with ${org.name}.${e.minor ? ` You start in ${['Practice squad', 'Farm team'].includes(ladder[e.minor.level]) ? `the ${ladder[e.minor.level].toLowerCase()}` : ladder[e.minor.level]}.` : ''}`);
+  return result(true, `You signed with ${org.name}.${e.minor ? ` You start in ${['Practice squad', 'Farm team'].includes(ladder[e.minor.level]) ? `the ${ladder[e.minor.level].toLowerCase()}` : leagueName(ladder[e.minor.level])}.` : ''}`);
 }
 
 /**
@@ -402,13 +403,13 @@ export function toMinors(state, e, club, level, ladder = e.minor?.ladder ?? draf
   const city = r.pick(COUNTRIES[where].cities ?? [club.city]);
   const nick = r.pick(['Bees', 'Mudcats', 'Rivercats', 'Sand Gnats', 'Firebirds', 'Hops', 'Trash Pandas', 'IronPigs', 'Storm Chasers', 'Flying Squirrels', 'Wranglers', 'Admirals']);
   const org = findOrg(state, sport, 'pro', { key: `minor/${club.id}/${name}`, countryId: where, city,
-    name: name === 'Practice squad' ? `${club.name} practice squad` : name === 'Farm team' ? `${club.name} (farm)` : name === 'Futures League' ? `${club.name} Futures` : name === 'Dominican Summer League' ? `DSL ${club.name.split(' ').slice(-1)[0]}` : `${city} ${nick}`,
+    name: name === 'Practice squad' ? `${club.name} practice squad` : name === 'Farm team' ? `${club.name} (farm)` : name === 'Futures League' ? `${club.name} Futures` : name === 'Dominican Summer League' ? `${club.name.split(' ').slice(-1)[0]} Academy` : `${city} ${nick}`,
     tier: 2 + level, strength: -6 - (ladder.length - 1 - level) * 4 });
   org.minorLevel = name; org.parentId = club.id;
   e.minor = { clubId: club.id, level, orgId: org.id, ...(ladder !== draftOf(state, e.id)?.minors ? { ladder } : {}) };
   joinOrg(org, state);
   p.career.salary = life.money(state, { 'Farm team': 40000, 'Futures League': 22000, 'Dominican Summer League': 7000, 'Rookie ball': 26000, 'Single-A': 28000, 'High-A': 30000, 'Double-A': 35000, 'Triple-A': 46000, AHL: 90000, 'G League': 40000, 'Practice squad': 230000 }[name] ?? 30000);
-  log(`${club.name} sent you to ${name === 'Practice squad' ? 'their practice squad' : name === 'Farm team' ? 'their farm team' : `${org.name} (${name})`}.`, 'system', 'neutral');
+  log(`${club.name} sent you to ${name === 'Practice squad' ? 'their practice squad' : name === 'Farm team' ? 'their farm team' : `${org.name} (${leagueName(name)})`}.`, 'system', 'neutral');
 }
 
 /**
@@ -440,7 +441,7 @@ export function minorsYear(state, a, e, sum) {
   // Up a level for a player who is good enough for it and playing well, or plainly too good for where he is.
   if (m.level < ladder.length - 1 && o >= climb(m.level + 1) && ((sum.rating ?? 6) >= 6.4 || o >= climb(m.level + 1) + 2)) {
     toMinors(state, e, club, m.level + 1);
-    sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${ladder[e.minor.level]}.`, sig: 2 });
+    sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${leagueName(ladder[e.minor.level])}.`, sig: 2 });
   } else if (m.level > 0 && o < climb(m.level) - 6 && (sum.rating ?? 6) < 5.8) {
     toMinors(state, e, club, m.level - 1);
   }

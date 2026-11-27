@@ -21,10 +21,12 @@ import { CAREER_BY_ID } from '../../data/careers.js';
 import { localMoney } from '../../util.js';
 import { country } from '../../state.js';
 import { archiveOf } from './legacy.js';
+import { storyBeat } from '../storyDirector.js';
 
 const arcs = () => world().arcs;
 const queued = (id) => store.state.pendingEvents.some((e) => e.id === id);
-const queue = (id, cast = {}) => { store.state.pendingEvents.push({ id, cast }); };
+// Controversy and bullying are about the player's safety: they always play. The rest are paced with every other story.
+const queue = (id, cast = {}) => { storyBeat(id, cast, { source: 'digital', must: ['digital_controversy', 'digital_bullying'].includes(id) }); return true; };
 
 /** Picks this year's digital scene, if any. */
 export function tickStories() {

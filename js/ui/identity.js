@@ -122,7 +122,7 @@ export async function openPractice(api) {
   const id = await pickModal({ title: groups.find((g) => g.id === group).name,
     body: group === 'language' ? 'A language spoken well makes it easier to move to a country where it is used and to find work there, counts with employers anywhere, and helps a leader abroad. Living in a country teaches its language slowly.' : undefined,
     options: groups.find((g) => g.id === group).skills.map((s) => ({ value: s.id, label: s.name, disabled: !!s.tooYoung || s.mastered,
-      sub: s.tooYoung ? `From age ${s.tooYoung}.` : `${s.level}% · ${s.levelName}${s.natural ? ' · you have a gift for this' : ''}` })) });
+      sub: s.native ? 'Your native language.' : `${s.tooYoung ? `From age ${s.tooYoung}.` : `${s.level}% · ${s.levelName}${s.natural ? ' · you have a gift for this' : ''}`}${s.uses ? ` ${s.uses}` : ''}` })) });
   if (!id) return undefined;
   const how = await pickModal({ title: 'How?', options: [
     { value: 'self', label: 'Practice on your own', sub: 'Free.' },

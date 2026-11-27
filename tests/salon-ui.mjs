@@ -29,7 +29,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
-await page.click('[data-random]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
 await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 const setUp = () => page.evaluate(async () => {
@@ -68,7 +68,10 @@ const after = await page.evaluate(async () => { const { store } = await import('
 check(after.cash < before.cash && after.hair !== before.hair && after.tr?.until > 0, 'paying applies the new look and the treatment');
 check(/Look at you/.test(await page.locator('.sv-bubble').innerText()), 'and the stylist admires it');
 await page.click('.sv-reply:has-text("Leave")');
-check(!(await page.locator('.salon-screen').count()), 'leaving closes the salon');
+// After paying, a farewell: the new look, a goodbye under the shop's sign, then back to the game (a tap skips it).
+check(await page.locator('.sv-outro .sv-outro-face svg').count() === 1 && /Looking/.test(await page.locator('.sv-outro-line').innerText()), 'leaving after paying shows the farewell, with the new look');
+await page.waitForTimeout(3200);
+check(!(await page.locator('.salon-screen').count()), 'and then fades back to the game');
 // Leaving part-way pays nothing.
 const before2 = await setUp();
 await page.evaluate(async () => { const { openSalonVisit } = await import('/js/ui/salonVisit.js'); openSalonVisit({ changed() {} }, { intro: false }); });
@@ -97,6 +100,12 @@ const shops = await page.evaluate(async () => {
   document.querySelector('[data-leave]').click();
   return out;
 });
+const doors = await page.evaluate(async () => {
+  const { shopRow } = await import('/js/ui/salonVisit.js');
+  return { him: shopRow({ gender: 'male', city: 'X', countryId: 'us' }), her: shopRow({ gender: 'female', city: 'X', countryId: 'us' }) };
+});
+check(/Barbershop/.test(doors.him) && /nav-row/.test(doors.him) && /sv-pole-row/.test(doors.him) && /data-salon/.test(doors.him), 'the Self tab\'s way in is a Barbershop row, with a barber\'s pole, for a man');
+check(/Beauty Salon/.test(doors.her) && /sv-scissors/.test(doors.her) && !/sv-pole/.test(doors.her), 'and a Beauty Salon row, with scissors, for a woman');
 check(shops.transWoman === 'salon' && shops.transMan === 'barber', `the shop follows the gender lived as (${JSON.stringify(shops)})`);
 check(shops.sub === 'Barbershop' && shops.barberClass && !shops.bulbs && /Grab a chair/.test(shops.hello), 'a man\'s visit is to the barbershop');
 check(shops.barberReplies.includes('Beard grooming') && shops.barberReplies.includes('Eyebrows') && !shops.barberReplies.includes('Makeup'), `the barber offers beard grooming and eyebrows, not makeup (${shops.barberReplies})`);

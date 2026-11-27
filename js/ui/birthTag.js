@@ -135,6 +135,17 @@ export function nameBabyModal(baby, { twinOf } = {}) {
     const p = store.state.player;
     const lasts = surnameChoices(baby, p);
     const pool = COUNTRIES[p.countryId]?.names?.[baby.gender === 'male' ? 'male' : baby.gender === 'female' ? 'female' : Math.random() < 0.5 ? 'male' : 'female'] ?? [baby.firstName];
+    // Ideas come from a shuffled deck of the country's names, each once (a common name is listed more than once in the
+    // country's list, to be drawn more often for strangers; here it is one idea among many), and never a name someone in
+    // the family already has. When the deck runs out, it is shuffled again.
+    const family = new Set([p.firstName, ...Object.values(store.state.npcs).filter((n) => n?.lastName === p.lastName || p.npcIds?.includes(n?.id)).map((n) => n.firstName)]);
+    const unique = [...new Set(pool.map((x) => x.replace(/_/g, ' ')))].filter((x) => !family.has(x));
+    let deck = [];
+    const ideas = () => {
+      if (!deck.length) { deck = [...(unique.length ? unique : [baby.firstName])]; for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; } }
+      const n = deck.pop();
+      return n === q('[data-first]').value && deck.length ? deck.pop() : n;
+    };
     const kind = baby.gender === 'male' ? 'a Boy' : baby.gender === 'female' ? 'a Girl' : 'a Baby';
     const m = openModal(`
       <h2 class="pick-title btag-title">${twinOf ? 'And Another One! ' : ''}It's ${kind}!</h2>
@@ -153,7 +164,7 @@ export function nameBabyModal(baby, { twinOf } = {}) {
     const q = (s) => m.el.querySelector(s);
     const lastNow = () => { const r = m.el.querySelector('input[name="bname-last"]:checked'); return r?.dataset.own != null ? q('[data-ownlast]').value : r?.value ?? ''; };
     const preview = () => { q('[data-preview]').innerHTML = `<span class="btag-ink">${esc(`${q('[data-first]').value.trim()} ${lastNow().trim()}`.trim() || ' ')}</span>`; q('[data-why]').textContent = ''; };
-    q('[data-idea]').addEventListener('click', () => { let n = q('[data-first]').value; for (let i = 0; i < 6 && n === q('[data-first]').value; i++) n = pool[Math.floor(Math.random() * pool.length)].replace(/_/g, ' '); q('[data-first]').value = n; preview(); });
+    q('[data-idea]').addEventListener('click', () => { q('[data-first]').value = ideas(); preview(); });
     m.el.addEventListener('input', (e) => { if (e.target.matches('[data-ownlast]')) q('[data-own]').checked = true; preview(); });
     m.el.addEventListener('change', preview);
     q('[data-ok]').addEventListener('click', () => {
@@ -202,6 +213,48 @@ export function announceMultiples(babies) {
         <div class="announce-line">${esc(info.time)}${apart ? ` · ${babies.length > 2 ? `ALL IN ${apart} MINUTES` : `${apart} MINUTES APART`}` : ''}</div>
       </div>
       <button class="btn primary" data-ok style="width:100%;margin-top:14px">Name Them</button>`, { tone: 'good' });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
+
+/** The day an adopted child came home: a keepsake card with their face, the date, and who welcomed them. */
+export function adoptionCardHtml(child, parents = []) {
+  const a = child.adoptionInfo;
+  const sign = starSign(child.birthday ?? birthdayFromDate(a.date));
+  const face = a.ageThen < 2 ? swaddleHtml(child)
+    : `<div class="adopt-face">${avatarSvg({ age: a.ageThen, gender: child.gender, appearance: child.appearance, seed: child.id, mood: 80, size: 96 })}</div>`;
+  const names = parents.filter(Boolean).map((x) => x.firstName);
+  const by = names.length ? `${names.join(' & ')} ${parents.find(Boolean)?.lastName ?? child.lastName}` : '';
+  const where = `${a.city ? `${a.city}, ` : ''}${COUNTRIES[a.countryId]?.name ?? ''}`;
+  return `<div class="btag btag-mint adopt-card">
+    <div class="btag-holes" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="btag-card adopt-inner">
+      <div class="announce-word adopt-word">Welcome Home</div>
+      <div class="adopt-main">
+        <div class="adopt-left">${face}<div class="adopt-house" aria-hidden="true">🏡</div></div>
+        <div class="btag-fields">
+          <div class="btag-row"><span class="btag-label">Name</span><span class="btag-ink">${esc(`${child.firstName} ${child.lastName}`)}</span></div>
+          <div class="btag-row"><span class="btag-label">Came Home</span><span class="btag-ink">${esc(longDate(a.date))}</span></div>
+          <div class="btag-row"><span class="btag-label">Age</span><span class="btag-ink">${a.ageThen === 0 ? 'A baby' : esc(String(a.ageThen))}</span></div>
+          <div class="btag-row"><span class="btag-label">Star Sign</span><span class="btag-ink">${sign.symbol} ${esc(sign.name)}</span></div>
+          <div class="btag-row"><span class="btag-label">Caseworker</span><span class="btag-ink">${esc(a.caseworker)}</span></div>
+        </div>
+      </div>
+      <p class="btag-ink adopt-note">“${esc(a.note)}”</p>
+      <div class="btag-stamp" style="--tilt:${a.tilt}deg">${esc(a.stamp)}</div>
+    </div>
+    <div class="btag-foot"><strong>${esc(a.agency)}</strong><span>${esc(where)}</span>${by ? `<small>Adopted by ${esc(by)}</small>` : ''}</div>
+  </div>`;
+}
+
+/** Opens an adoption day card. Resolves when it is closed. */
+export function openAdoptionCard(child, { title, parents, button = 'Close' } = {}) {
+  if (!child?.adoptionInfo) return Promise.resolve();
+  return new Promise((resolve) => {
+    const m = openModal(`
+      ${title ? `<h2 class="pick-title btag-title">${esc(title)}</h2>` : ''}
+      ${adoptionCardHtml(child, parents)}
+      <button class="btn primary" data-ok style="width:100%;margin-top:14px">${esc(button)}</button>`, { tone: 'good', dismissable: true, onDismiss: resolve });
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });
 }

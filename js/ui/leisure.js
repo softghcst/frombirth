@@ -8,14 +8,15 @@ import { fmtMoney, theCountry, esc } from '../util.js';
 import { propertyTaxLabel, COUNTRIES } from '../data/countries.js';
 import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
-import * as med from '../engine/medical.js';
+import * as med from '../engine/health/visits.js';
+import { MENTAL_CARE_AGE } from '../engine/health/care.js';
 import * as fun from '../engine/activities.js';
 import { CHARM_ACTIVITIES } from '../data/activities.js';
 import * as clubs from '../engine/clubs.js';
 import { clubTitle } from '../data/clubs.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
-import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
+import { messageModal, pickModal, confirmModal, inputModal, openModal, selectModal } from './modals.js';
 import { openAppearanceEditor } from '../avatar/editor.js';
 import * as money from '../engine/currency.js';
 import * as towns from '../engine/cities.js';
@@ -27,19 +28,25 @@ async function report(api, r) {
 
 export async function seeDoctor(api) {
   const c = country();
+  const p = player();
   const list = med.treatable();
   const k = sys.cover();
+  // A child goes with their parents, who pay; a baby is only taken for what a baby needs. Insurance is an adult's to arrange.
+  const kid = p.age < 18;
+  const price = (n) => (!n ? 'Free' : med.parentsPayCare(p) ? `Your parents pay ${fmtMoney(n, c)}` : fmtMoney(n, c));
   const pick = await pickModal({
     title: 'The doctor',
-    body: `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
+    // The health system in a sentence, and what this patient (or their family) pays of a bill.
+    body: kid ? `${p.age < 16 ? 'Your parents take you. ' : ''}Health care here: ${k.model.name.toLowerCase()}. ${k.model.line} As a child you are covered, and your family pays ${Math.round(k.share * 100)}% of a bill.`
+      : `Health care here: ${k.model.name.toLowerCase()}. ${k.how === k.model.line ? k.how : `${k.model.line} ${k.how}`} You pay ${Math.round(k.share * 100)}% of a bill.`,
     options: [
       ...list.map((x) => ({ value: x.id, label: `Treat your ${x.name.replace(/^an? /, '')}`, disabled: x.seen || !x.affordable || (x.manage && x.managed),
         sub: x.manage && x.managed ? 'Under control. Nothing more to do.' : x.seen ? 'Already seen this year.'
-          : `${x.cost ? fmtMoney(x.cost, c) : 'Free'}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
-      { value: 'checkup', label: 'Have a check-up', sub: `${fmtMoney(med.careCost(200), c)}. Makes illness less likely next year.` },
-      { value: 'therapy', label: 'See a therapist', sub: `${fmtMoney(med.careCost(1200), c)} for a year of sessions. Lifts your mood.` },
-      ...(k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
-      ...(k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
+          : `${x.who ? `${x.who}. ` : ''}${price(x.cost)}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
+      { value: 'checkup', label: 'Have a check-up', sub: `${med.familyDoctorHere() ? `${med.familyDoctorHere()}. ` : ''}${price(med.checkUpPrice())}. Catches things early.` },
+      ...(p.age >= MENTAL_CARE_AGE ? [{ value: 'therapy', label: kid ? 'See a children\'s therapist' : 'See a therapist', sub: 'An assessment first; therapy is planned from there, in My Health.' }] : []),
+      ...(!kid && k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
+      ...(!kid && k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
     ],
   });
   if (!pick) return undefined;
@@ -141,9 +148,19 @@ export async function moveCity(api) {
   const block = towns.moveBlock();
   if (block) return messageModal({ body: block });
   const now = towns.hereCity();
-  const name = await pickModal({ title: 'Move to another city',
-    body: `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`,
-    options: towns.moveOptions().map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
+  const body = `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`;
+  let opts = towns.moveOptions();
+  // A country with many cities (the United States has one in every state): the state first, from a dropdown, then its cities.
+  if (opts.length > 12 && opts.every((k) => k.region)) {
+    const states = [...new Set(opts.map((k) => k.region))].sort((a, b) => a.localeCompare(b));
+    const word = opts[0].regionWord ?? 'Region';
+    const region = await selectModal({ title: 'Move to another city', body, label: word, button: 'Next',
+      options: states.map((r) => { const n = opts.filter((k) => k.region === r).length; return { value: r, label: n > 1 ? `${r} (${n} cities)` : r }; }) });
+    if (!region) return undefined;
+    opts = opts.filter((k) => k.region === region);
+  }
+  const name = await pickModal({ title: 'Move to another city', body,
+    options: opts.map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
   if (!name) return undefined;
   const sure = await confirmModal({ title: `Move to ${name}?`, body: `It costs ${fmtMoney(towns.moveCost(), c)}. Property you own stays where it is.`, yes: 'Move' });
   return sure ? report(api, towns.relocate(name)) : undefined;

@@ -31,7 +31,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
-await page.click('[data-random]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
 await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 // A thirty-year-old in New York with money, a week in Chicago booked by train, a museum day planned.
@@ -58,6 +58,12 @@ if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-bo
 check(/The Plan/.test(before) && /Museum/i.test(before) && !/What you did/i.test(before), 'before leaving it shows the plan, not "What you did"');
 check(/Cancel This Trip/.test(before) && /Your Share/.test(before), 'buttons and labels are capitalized');
 await go.click();
+// The way there first: the journey on a map, home to Chicago (js/ui/journey.js); a tap skips it.
+await page.waitForSelector('.journey-screen', { timeout: 8000 }).catch(() => {});
+check(/Chicago/.test(await page.locator('.journey-head').innerText().catch(() => '')) && await page.locator('.journey-map animateMotion').count() === 1, 'leaving shows the journey there on a map');
+if (process.env.SHOT) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT}/trip-journey.png` }); }
+await page.locator('.journey-screen').click().catch(() => {});
+await page.waitForSelector('.journey-screen', { state: 'detached', timeout: 5000 }).catch(() => {});
 // The trip's moments come first, one card at a time: each a scene with choices; answering moves on.
 let moments = 0;
 for (; moments < 5; moments++) {
@@ -104,6 +110,7 @@ const opts = await page.locator('.gl-modal [data-planfield="payment"] option').a
 check(opts.length === 2 && /^Ask Your/i.test(opts[0]) && /Pay It Yourself/i.test(opts[1]), `the dropdown: ask, or pay it yourself (${opts.join(' / ')})`);
 check(await page.locator('.gl-modal [data-book]').isDisabled() && /first, or pay it yourself/.test(plan), 'nothing is booked before asking');
 check(!/<strong>/.test(plan) && !/\d+%/.test(plan), 'no markup and no percentage shows');
+check(!/\$\{|`/.test(plan) && /Country/.test(plan), "the planner shows its fields, never code (From and to, things to do)");
 await page.locator('.gl-modal [data-askfamily]').click();
 const answer = page.locator('#modal-root .modal', { hasText: kid.who });
 await answer.last().waitFor({ timeout: 5000 }).catch(() => {});

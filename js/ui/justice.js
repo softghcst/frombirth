@@ -281,6 +281,13 @@ async function brief(side, api) {
 async function preside(api) {
   const c = jobs.openBench();
   if (!c) return messageModal({ body: 'Your list is full for this year.' });
+  // Someone the judge knows is in the case: the judge must step aside.
+  const conflict = jobs.recusalFor(c);
+  if (conflict) {
+    const aside = await confirmModal({ title: 'A Conflict', body: `${conflict.name}, ${conflict.why}, is part of this case. A judge who knows someone in a case steps aside, so that nobody can doubt the result.`, yes: 'Step Aside', no: 'Hear It Anyway', danger: false });
+    if (aside) return messageModal({ body: jobs.recuse(c).text, tone: 'good' });
+    jobs.hearAnyway(c);
+  }
   const admit = {};
   for (const r of jobs.rulingsNeeded(c)) {
     if (r.mustExclude) { await messageModal({ eyebrow: 'A ruling', body: `${r.summary} It was obtained unlawfully, and the law here requires it to be left out. You exclude it.` }); continue; }

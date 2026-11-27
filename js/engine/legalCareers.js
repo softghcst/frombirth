@@ -236,7 +236,37 @@ export function openBench() {
   k.appoint(c, opt.tier, opt.npcId);
   c.plea = 'notGuilty';
   k.move(c, 'trial', 'Not guilty. The case goes to trial.');
+  // Now and then someone the judge knows is in the case: a former client, family, a close friend. A judge steps aside.
+  const p = player();
+  const known = Object.values(store.state.npcs).filter((n) => n.alive && (n.flags.formerClientOf === p.id || (p.npcIds.includes(n.id) && ['spouse', 'partner', 'parent', 'child', 'sibling', 'friend'].includes(n.role) && (n.meters?.relationship ?? 0) >= 50)));
+  if (known.length && rng.chance(0.2)) {
+    const n = rng.pick(known);
+    c.conflict = { npcId: n.id, why: n.flags.formerClientOf === p.id ? 'a former client of yours' : n.role === 'friend' ? 'a close friend of yours' : `your ${n.role}` };
+    k.J().people.includes(n.id) || k.J().people.push(n.id);
+  }
   return c;
+}
+
+/** Someone the judge knows in the case, who means the judge must step aside, or null. */
+export const recusalFor = (c) => (c?.conflict && !c.conflict.resolved ? { ...c.conflict, name: k.nameOf(c.conflict.npcId, false) } : null);
+/** Steps aside: another judge takes the case, and the day is not lost. */
+export function recuse(c) {
+  if (!c?.conflict) return result(false, 'There is nothing to step aside from.', 'neutral');
+  c.conflict.resolved = 'recused';
+  c.judgeId = k.pick(k.bench(c.countryId).judges).id;
+  acts().preside = false;
+  if (player().law) player().law.rep.integrity = clamp(player().law.rep.integrity + 2);
+  k.runToEnd(c);
+  return result(true, `You stepped aside: ${k.nameOf(c.conflict.npcId, false)} is ${c.conflict.why}. ${k.nameOf(c.judgeId, false)} took the case.`, 'good');
+}
+/** Hears a case despite a conflict: judicial misconduct, and a ground of appeal for whoever loses. */
+export function hearAnyway(c) {
+  if (!c?.conflict) return;
+  c.conflict.resolved = 'heard';
+  const L = player().law;
+  if (L) { L.rep.integrity = clamp(L.rep.integrity - 10); L.misconduct = (L.misconduct ?? 0) + 1; }
+  adjustPerformance(-8);
+  log('You heard a case you should have stepped aside from. The judicial conduct board will hear of it.', 'system', 'bad');
 }
 
 /** Evidence the judge must rule on: unlawfully obtained items, and whether the law leaves any choice. */

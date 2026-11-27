@@ -148,6 +148,22 @@ export const DISAGREEMENTS = {
   rules: { name: 'The building rules', text: 'whether {who} is allowed to keep bikes in the stairwell', blocks: ['building'] },
 };
 
+/**
+ * Small everyday moments on the street, each about a real neighbor (and none that the everyday scenes already tell,
+ * like a parcel at the wrong door or a power cut): one scene each, so the ten-year gap between the
+ * same scene (engine/neighborhood.js) keeps them from coming round again. `from`: the year it can happen; `blocks`:
+ * the kinds of street it belongs to; `pet`: the neighbor needs a pet.
+ */
+export const MOMENTS = {
+  baby: { scene: 'hood_new_baby' },
+  biggame: { scene: 'hood_big_game', from: 1960 },
+  lostpet: { scene: 'hood_lost_pet', pet: true },
+  yardsale: { scene: 'hood_yard_sale', from: 1950, blocks: ['street', 'lane'] },
+  storm: { scene: 'hood_storm_tree', blocks: ['street', 'lane'] },
+  lockedout: { scene: 'hood_locked_out' },
+  bookbox: { scene: 'hood_book_box', from: 1995 },
+};
+
 /** What neighbors are into: shared interests make friends. `from`: the year it exists. */
 export const INTERESTS = [['gardening', 'gardening'], ['cooking', 'cooking'], ['music', 'music'], ['books', 'books'], ['sport', 'sport'], ['animals', 'animals'],
   ['history', 'local history'], ['crafts', 'making things'], ['film', 'films', 1910], ['games', 'video games', 1980], ['cycling', 'cycling', 1890], ['chess', 'chess']];

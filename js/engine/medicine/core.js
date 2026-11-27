@@ -21,6 +21,8 @@ import { clamp } from '../../util.js';
 import { store, player, log, milestone } from '../../state.js';
 import { recordEvent } from '../chronicle.js';
 import { SKILLS, SPECIALTY_BY_ID, qualifiesAs } from '../../data/medicine.js';
+import { storyBeat } from '../storyDirector.js';
+import { addGifts } from '../aptitudes.js';
 
 export const VERSION = 1;
 export const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -52,7 +54,10 @@ function blank() {
 
 /** The physician's record, made if it is not there. */
 export function M(p = player()) {
-  p.medicine ??= blank();
+  if (!p.medicine) { // a gift for science, acting or art (engine/aptitudes.js)
+    p.medicine = blank();
+    addGifts(p.medicine.skills, 'medicine', p);
+  }
   const m = p.medicine;
   const fresh = blank();
   for (const [k, v] of Object.entries(fresh)) if (m[k] === undefined) m[k] = v;
@@ -163,7 +168,67 @@ export function migrateMedicine(state) {
       }
     } finally { store.state = save; }
   }
+  // A medical drama setting chosen before there was one for the whole life becomes the life's own.
+  if (p.medicine?.drama && p.medicine.drama !== 'balanced' && !state.settings?.drama) (state.settings ??= {}).drama = p.medicine.drama;
   if (p.medicine) p.medicine.v = VERSION;
   state.medicine.v = VERSION;
   return state;
+}
+
+// ---------- Across generations ----------
+
+/**
+ * What the family remembers of a physician's career (the Family Archive): the training, the
+ * hospitals, the highest post, the practices. Nothing about any patient.
+ */
+export function physicianSummary(p) {
+  const m = p?.medicine;
+  if (!m || (!m.completed.length && !m.school?.graduated && !m.legacy)) return null;
+  const jobs = (p.career?.history ?? []).filter((h) => ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(h.careerId));
+  const hospitals = [...new Set([...m.completed.map((c) => c.hospital), ...jobs.map((h) => h.employer)].filter(Boolean))];
+  const hospitalIds = [...new Set([...m.completed.map((c) => c.hospitalId), ...jobs.map((h) => h.employerId), m.job?.hospitalId].filter(Boolean))];
+  const ranks = ['attending', 'senior', 'director', 'chief', 'chair', 'cmo'];
+  return {
+    route: m.route, school: m.school?.name ?? null,
+    trained: m.completed.map((c) => ({ specialtyId: c.specialtyId, name: specialtyName(c.specialtyId), from: c.from, to: c.to, hospital: c.hospital ?? null, chief: !!c.chief })),
+    as: qualified(m).map((id) => SPECIALTY_BY_ID[id]?.doctor).filter(Boolean),
+    boards: m.boards.filter((b) => b.passed).map((b) => specialtyName(b.specialtyId)),
+    years: m.experience.years, patients: m.experience.cases, hospitals, hospitalIds,
+    topRank: m.topRank ?? (m.job ? m.job.rank : null), topTitle: m.topTitle ?? (m.job ? p.career?.title : null),
+    practices: (p.businesses ?? []).filter((b) => b.medical).map((b) => b.name), legacy: !!m.legacy,
+    rankOrder: ranks,
+  };
+}
+
+const MEDICAL_JOB = /physician|surgeon|doctor|psychiatrist|podiatrist|resident|pediatrician|cardiologist|neurologist|dermatologist|radiologist|anesthesiologist|obstetrician|internist/i;
+
+/**
+ * Family in medicine: a living parent or grandparent who practices (or practiced), or an ancestor
+ * whose medical career is in the Family Archive. The nearest one, for scenes and premed help.
+ */
+export function medicalFamily(p = player(), state = store.state) {
+  const kin = (p.npcIds ?? []).map((id) => state.npcs[id]).filter((n) => n?.alive && ['parent', 'grandparent'].includes(n.role)
+    && (['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) || MEDICAL_JOB.test(n.occupation ?? '')));
+  const near = kin.sort((a, b) => (a.role === 'parent' ? 0 : 1) - (b.role === 'parent' ? 0 : 1))[0];
+  if (near) return { name: near.firstName, npcId: near.id, role: near.role, alive: near.alive, what: near.occupation || 'a doctor', archived: false };
+  const anc = Object.values(state.archive?.people ?? {}).filter((a) => a.medicine).sort((a, b) => (b.died ?? 0) - (a.died ?? 0))[0];
+  if (anc) return { name: anc.firstName, npcId: null, role: 'ancestor', alive: false, what: anc.medicine.as?.[0] ?? 'a doctor', archived: true, archiveId: anc.id };
+  return null;
+}
+
+/** An ancestor in the Family Archive who worked at this hospital, if any. */
+export function ancestorAt(hospitalId, state = store.state) {
+  return Object.values(state.archive?.people ?? {}).find((a) => a.medicine?.hospitalIds?.includes(hospitalId)) ?? null;
+}
+
+/**
+ * A story beat of the medical career, told once in a life (the medical school interview, Match Day,
+ * the first night on call). Queued by the engine at the moment it is true; never repeated.
+ */
+export function storyOnce(id, cast = {}, m = M(), o = {}) {
+  if (m.scenes[`story:${id}`] || (id === 'med_school_interview' && player().flags.medInterviewed)) return false;
+  m.scenes[`story:${id}`] = year();
+  // A once-in-a-life moment (Match Day, the first night on call) always plays; the Story Director's yearly beats are paced.
+  storyBeat(id, cast, { source: 'medicine', must: o.must ?? true, weight: o.weight ?? 1 });
+  return true;
 }

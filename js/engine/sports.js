@@ -6,7 +6,7 @@
 //   athletes      one record per person who has played, keyed by their id; it is never deleted. The player's is made
 //                 when they first take up a sport. Each record holds, per sport, that sport's own skills (separate from
 //                 the character's general talents), a ceiling for each skill that comes from their talent, the level
-//                 they play at, their club and team, their coach, their training plan, their Pathways Rating, and
+//                 they play at, their club and team, their coach, their training plan, their Player Rating, and
 //                 every season and event they took part in, by id.
 //   orgs          clubs, academies, school teams, university programs, professional clubs and leagues. They persist:
 //                 the same club is there next year with the same name, coach and rivals.
@@ -31,6 +31,10 @@ import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
 import { seeded, hash, teamGame, tennisMatch, rallyMatch, bout, mark, better, fmtMark, judged, golfRound, prChange, prOfSkill, edge } from './sportsPlay.js';
+import { conditionIdsOf } from './health/ailments.js';
+
+/** Leagues named for real ones get a name of their own (data/sports.js, LEAGUE_NAMES). */
+const MINOR_LEAGUE_TITLES = { 'Dominican Summer League': 'Caribbean Academy League', 'Futures League': 'Korea Minor League', 'G League': 'Development League' };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const fullName = (x) => `${x.firstName} ${x.lastName}`.trim();
@@ -115,8 +119,8 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
 const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
-/** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
-export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || (p.conditions ?? []).some((c) => /wheelchair|paraly|spinal/.test(c.id));
+/** Whether the person uses a wheelchair. From Birth has no wider disability system: this is the one marker the sports engine reads. */
+export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || conditionIdsOf(p).some((id) => /wheelchair|paraly|spinal/.test(id));
 
 /** Saves from before this engine: a school athlete's record becomes an athletic profile, conservatively. */
 function migrate(state) {
@@ -229,6 +233,50 @@ export function profile(state = store.state) {
 }
 
 /** How good someone is at a sport overall, 0–100: their skills (weighted by position), and their body and head on the day. */
+// ---------- The record: what scouts, drafts and clubs go by ----------
+//
+// A player is judged on what they have done, not only on what they could do: the years they have played the sport
+// competitively (for a school, a club, an academy, a university, their country or a professional club; playing for
+// fun does not count), the seasons in college, the titles and awards. Someone who has never played it competitively
+// almost never turns professional, however gifted.
+
+const COMPETITIVE = ['school', 'club', 'academy', 'college', 'elite', 'pro'];
+/** Years the sport has been played competitively. */
+export function competitiveYears(e, state = store.state) {
+  if (!e) return 0;
+  const legacy = e.legacySeasons ?? 0;
+  const h = [...(e.history ?? [])].sort((x, y) => x.year - y.year);
+  if (!h.length) return (COMPETITIVE.includes(e.level) ? e.seasonsPlayed ?? 0 : 0) + legacy;
+  const years = new Set();
+  h.forEach((x, i) => {
+    if (!COMPETITIVE.includes(x.level)) return;
+    const next = h[i + 1]?.year;
+    const end = next != null ? Math.max(x.year, next - 1) : e.status === 'active' ? state.year : e.retiredYear ?? x.year;
+    for (let y = x.year; y <= end; y++) years.add(y);
+  });
+  if (e.schoolTeamId) years.add(state.year); // a club player who also plays for the school
+  return Math.min(years.size, (e.seasonsPlayed ?? 0) + 1) + legacy;
+}
+/** The chance a club, a tour or a job takes a player on, against their record: about one in a hundred with none. */
+export const recordOdds = (years) => (years >= 2 ? 1 : years === 1 ? 0.3 : 0.01);
+/**
+ * The record, as scouts weigh it: years played, college seasons, titles, awards, and the pro scouts who came to watch.
+ * Roughly −15 for someone who has never played competitively, 0 for an ordinary two years, up to about +12.
+ */
+export function recordScore(e, state = store.state) {
+  const years = competitiveYears(e, state);
+  if (years === 0) return -15;
+  const college = Math.min(4, e.college?.played?.length ?? 0) * 1.2;
+  const titles = Math.min(3, e.titles?.length ?? 0);
+  const awards = Math.min(4, e.awards?.length ?? 0) * 0.8;
+  const long = Math.min(3, Math.max(0, years - 2)) * 0.3;
+  const scouts = Math.min(3, Object.keys(e.scouted ?? {}).length) * 0.7;
+  return Math.round(((years === 1 ? -4 : 0) + college + titles + awards + long + scouts) * 10) / 10;
+}
+/** The player's best record in any sport, for a job that hires athletes. */
+export const bestCompetitiveYears = (state = store.state) =>
+  Math.max(0, ...Object.values(ensure(state).athletes?.[state.player.id]?.sports ?? {}).map((e) => competitiveYears(e, state)));
+
 export function overall(e, p = player(), position = e.position) {
   const sport = sportOf(e.id);
   const pos = sport.positions?.find((x) => x[0] === position);
@@ -243,7 +291,7 @@ const meanSkill = (e) => Object.values(e.skills).reduce((s, v) => s + v, 0) / Ma
 
 /** A plain description of a skill value. */
 export const skillWord = (v) => (v >= 90 ? 'World class' : v >= 80 ? 'Elite' : v >= 68 ? 'Advanced' : v >= 52 ? 'Competitive' : v >= 36 ? 'Developing' : v >= 20 ? 'Learning' : 'Beginner');
-/** The Pathways Rating as a band. */
+/** The Player Rating as a band. */
 export const prWord = (pr) => (pr >= 1900 ? 'World elite' : pr >= 1650 ? 'International' : pr >= 1450 ? 'National' : pr >= 1250 ? 'Regional' : pr >= 1050 ? 'Club' : 'Recreational');
 
 // ---------- What can be played, where and when ----------
@@ -279,6 +327,8 @@ export const hasCollegeSport = (sport, countryId = player().countryId) => sport.
 
 // ---------- Taking up and giving up a sport ----------
 
+/** Two sports at most, so each gets real attention (and real progress). */
+export const MAX_SPORTS = 2;
 export function takeUp(sportId, state = store.state) {
   const p = state.player;
   const ok = canPlay(sportId, p, state);
@@ -287,7 +337,7 @@ export function takeUp(sportId, state = store.state) {
   const sport = sportOf(sportId);
   let e = a.sports[sportId];
   if (e?.status === 'active') return result(false, `You already play ${sport.name.toLowerCase()}.`, 'neutral');
-  if (activeSports(p.id, state).length >= 3) return result(false, 'You already play three sports. Give one up first.', 'neutral');
+  if (activeSports(p.id, state).length >= MAX_SPORTS) return result(false, `You already play ${MAX_SPORTS === 2 ? 'two' : MAX_SPORTS} sports. Give one up first: there is only so much of you to go round.`, 'neutral');
   if (e) fillEntry(state, p, e);
   if (e) {
     // Back after a break: remembered, so the comeback can be told when the first season back is played.
@@ -390,7 +440,7 @@ export function trainFitness(focus, state = store.state) {
   const d = Math.max(1, Math.round(6 * ageFactor(p.age) * room));
   f[focus] = Math.min(95, f[focus] + d);
   p.stats.health = clamp(p.stats.health + 1);
-  for (const e of activeSports(p.id, state)) e.fatigue = clamp(e.fatigue + 4);
+  for (const e of activeSports(p.id, state)) e.fatigue = clamp(e.fatigue + 2);
   const name = FITNESS.find((x) => x[0] === focus)[1].toLowerCase();
   const text = { strength: 'Weights, squats and a sore morning after. You are stronger for it.', cardio: 'Intervals until your lungs burn. Your stamina is better for it.',
     flexibility: 'Stretching and mobility work. You move more freely.', balance: 'Single-leg drills and core work. You are steadier on your feet.' }[focus];
@@ -435,7 +485,7 @@ function trainYear(state, p, a, e) {
   const cq = (coach ? 0.7 + coach.quality / 200 : 0.65) + (own && club ? 0.05 : 0) + (e.mentorId ? 0.05 : 0);
   const disc = 0.8 + val(p, 'hidden.discipline') / 250;
   const injured = a.injuries.some((x) => x.sportId === e.id && x.status === 'out');
-  const base = 5.5 * hoursFactor(e.plan.hours) * ageFactor(p.age) * cq * disc * plan.k * (injured ? 0.35 : 1) * (0.6 + a.motivation / 160);
+  const base = 6.3 * hoursFactor(e.plan.hours) * ageFactor(p.age) * cq * disc * plan.k * (injured ? 0.35 : 1) * (0.6 + a.motivation / 160);
   const r = seeded(`train/${a.id}/${e.id}/${state.year}`);
   const moved = {};
   for (const [k] of sport.skills) {
@@ -459,10 +509,23 @@ function trainYear(state, p, a, e) {
 }
 
 /**
- * An extra session between years: a few hours on one skill. Three a year at most, and each one adds to how tired
- * the player is. There is no way to click past the limit.
+ * Extra sessions between years, on one skill of one sport. Each sport has its own: putting work into one never uses up
+ * another's. How many depends on how tired the player is, not on a count: each session adds to fatigue, and once
+ * they are worn out (FATIGUE_LIMIT) the rest has to wait. Fresh legs, more sessions; up to EXTRA_PER_YEAR in a sport.
+ * Near the top of a skill, a young player's hard work still pushes what their body allows up a little.
  */
-export const EXTRA_PER_YEAR = 3;
+export const EXTRA_PER_YEAR = 8;
+export const FATIGUE_LIMIT = 80;
+const EXTRA_FATIGUE = 7;
+/** Extra sessions left this year in this sport, for showing. */
+export function extraLeft(sportId, state = store.state) {
+  const S = ensure(state);
+  const e = entryOf(sportId, state.player.id, state);
+  if (!e) return 0;
+  const used = S.acts.year === state.year ? (S.acts.extraBy?.[sportId] ?? 0) : 0;
+  const byFatigue = Math.max(0, Math.ceil((FATIGUE_LIMIT - e.fatigue) / EXTRA_FATIGUE));
+  return Math.max(0, Math.min(EXTRA_PER_YEAR - used, byFatigue));
+}
 export function extraSession(sportId, skill, state = store.state) {
   const S = ensure(state);
   const p = state.player;
@@ -470,15 +533,25 @@ export function extraSession(sportId, skill, state = store.state) {
   if (!e || e.status !== 'active') return result(false, 'You do not play that.', 'neutral');
   if (!e.skills[skill] && e.skills[skill] !== 0) return result(false, 'That is not part of this sport.', 'neutral');
   if (S.acts.year !== state.year) S.acts = { year: state.year, extra: 0 };
-  if (S.acts.extra >= EXTRA_PER_YEAR) return result(false, `You have put in ${EXTRA_PER_YEAR} extra sessions this year already. The rest has to wait for next year.`, 'neutral');
   if (myAthlete(state).injuries.some((x) => x.sportId === sportId && x.status === 'out')) return result(false, 'Not while you are injured. Follow the rehab plan.', 'neutral');
-  S.acts.extra += 1;
+  if (!extraLeft(sportId, state)) {
+    return result(false, e.fatigue >= FATIGUE_LIMIT - EXTRA_FATIGUE ? 'You are worn out. Rest now: more work this year would only get you hurt.' : `You have put in ${EXTRA_PER_YEAR} extra sessions this year already. The rest has to wait for next year.`, 'neutral');
+  }
+  S.acts.extraBy ??= {};
+  S.acts.extraBy[sportId] = (S.acts.extraBy[sportId] ?? 0) + 1;
+  S.acts.extra = (S.acts.extra ?? 0) + 1;
   const room = Math.max(0, e.ceiling[skill] - e.skills[skill]) / Math.max(1, e.ceiling[skill]);
-  const d = Math.round(3 * ageFactor(p.age) * room * 10) / 10;
+  let raised = false;
+  // At the top of what they can do, a young player's work still moves the top a little.
+  if (room < 0.15 && p.age < 30 && e.ceiling[skill] < 99) { e.ceiling[skill] = Math.min(99, Math.round((e.ceiling[skill] + 0.8) * 10) / 10); raised = true; }
+  const room2 = Math.max(0, e.ceiling[skill] - e.skills[skill]) / Math.max(1, e.ceiling[skill]);
+  const d = Math.round(Math.max(raised ? 0.4 : 0, 4 * ageFactor(p.age) * room2) * 10) / 10;
   e.skills[skill] = Math.min(e.ceiling[skill], Math.round((e.skills[skill] + d) * 10) / 10);
-  e.fatigue = clamp(e.fatigue + 8);
+  e.fatigue = clamp(e.fatigue + EXTRA_FATIGUE);
   const name = sportOf(sportId).skills.find((x) => x[0] === skill)[1].toLowerCase();
-  const text = d >= 0.5 ? `You put in an extra session on your ${name}. It is coming along.` : `You put in an extra session on your ${name}. There is not much more to get from it: you are near what your body allows.`;
+  const text = d >= 0.5 ? `You put in an extra session on your ${name}. It is coming along.`
+    : raised ? `You put in an extra session on your ${name}. You are close to the top of it now: every bit is hard won, but it still moves.`
+      : `You put in an extra session on your ${name}. There is not much more to get from it: you are near what your body allows.`;
   log(text);
   return result(true, text, 'neutral');
 }
@@ -753,6 +826,7 @@ export function leaveClub(sportId, state = store.state) {
   const org = orgOf(e.orgId, state);
   if (org.kind === 'school') return result(false, 'Leave the school team from your school activities.', 'neutral');
   const scholarship = org.kind === 'college' && (state.player.education.aidParts ?? []).some((x) => x.kind === 'athletic');
+  if (org.key?.startsWith('uniclub/')) e.uniClub = null; // off the university's club until they try out again
   leaveOrg(e, state, 'left');
   joinOrg(rec(state, sportOf(sportId)), state, { quiet: true });
   const text = `You left ${org.name}.${scholarship ? ' The athletic scholarship goes with it: from next year you pay that part of the tuition.' : ''}`;
@@ -769,7 +843,14 @@ export function schoolSportId(name, countryId) {
   return { soccer: 'soccer', 'american football': 'american_football', basketball: 'basketball', baseball: 'baseball', softball: 'softball',
     'track and field': 'track', athletics: 'track', swimming: 'swimming', tennis: 'tennis', volleyball: 'volleyball', 'ice hockey': 'ice_hockey',
     rugby: 'rugby', cricket: 'cricket', badminton: 'badminton', judo: 'martial_arts', taekwondo: 'martial_arts', wrestling: 'wrestling',
-    golf: 'golf', pickleball: 'pickleball' }[n] ?? null;
+    golf: 'golf', pickleball: 'pickleball', 'table tennis': 'table_tennis', 'cross country': 'running', cycling: 'cycling', gymnastics: 'gymnastics',
+    'figure skating': 'figure_skating', 'martial arts': 'martial_arts', karate: 'martial_arts', boxing: 'boxing' }[n] ?? null;
+}
+/** What a school calls a registry sport (soccer is football outside North America, track is athletics). */
+export function schoolSportName(id, countryId) {
+  const na = ['us', 'ca'].includes(countryId);
+  return { soccer: na ? 'soccer' : 'football', american_football: 'American football', track: na ? 'track and field' : 'athletics', running: 'cross country',
+    ice_hockey: 'ice hockey', table_tennis: 'table tennis', figure_skating: 'figure skating', martial_arts: 'martial arts' }[id] ?? (sportOf(id)?.name ?? id).toLowerCase();
 }
 /**
  * A season with the school team, played through the engine: the school's team, its coach, its league and its record are
@@ -848,7 +929,7 @@ function leagueFor(state, org, team) {
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
     lg = { id, key, kind: 'league', level: org.level, div: org.div ?? null, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
       // A college league is a conference within the program's division.
-      name: /League$/.test(org.minorLevel ?? '') ? org.minorLevel : org.minorLevel === 'Farm team' ? r.pick(['Eastern League', 'Western League']) : org.minorLevel ? `${org.minorLevel === 'Practice squad' ? 'Practice' : org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+      name: /League$/.test(org.minorLevel ?? '') ? (MINOR_LEAGUE_TITLES[org.minorLevel] ?? org.minorLevel) : org.minorLevel === 'Farm team' ? r.pick(['Eastern League', 'Western League']) : org.minorLevel ? `${{ 'Practice squad': 'Practice', AHL: 'Hockey' }[org.minorLevel] ?? org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.

@@ -32,7 +32,7 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
     const file = new URL(`assets/${p.file}`, root);
     if (!existsSync(file)) { check(false, `missing file ${p.file}`); continue; }
     const svg = readFileSync(file, 'utf8');
-    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
+    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-frombirth="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
     if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
     if (folder === 'heads') {
       // No straight edge runs across a head: two pieces of a path meeting edge to edge show as a hairline across the
@@ -98,7 +98,7 @@ const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).fl
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), ...[CUR.PRISON, CUR.GRADUATION.outfit].filter(Boolean), ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
-for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
+for (const h of AVATAR_MANIFEST.hair) if (!/^hair_(baby|kid)_/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
 // 3. Colors that saves store by id.
 const SHIPPED = {
@@ -129,7 +129,7 @@ for (const [label, saved] of Object.entries(cases)) {
 }
 const fromV2 = normalize(v2, 'x');
 check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_12_sculpted'
-  && fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
+  && !fromV2.style.glasses && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or marks (its glasses go: they are being redrawn)');
 // The old facial hair is gone: a beard in an old save is dropped, and no one is drawn with one. Beards come back only
 // as new artwork (assets/avatars/facial_hair/), chosen at the barbershop (style.beard).
 check(!('facialHair' in fromV2.style) && !('facialHair' in normalize({ v: 3, inherited: {}, style: { facialHair: 'facial_hair_04_bushy_full_beard' } }, 'y').style), 'an old save still has facial hair');
@@ -536,7 +536,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[DEPTH.espresso]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
   for (const id of ['lips_17', 'lips_18', 'lips_20', 'lips_21', 'lips_5']) check(!readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('--lip-upper'), `the expression ${id} has been parted`);
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
-  check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');
+  const { lipShade } = await import('../js/avatar/catalog.js');
+  check(red === lipShade(CATALOG.lipColor[0].id, 3), 'lipstick chosen by a man is not worn, in the shade for his skin');
+  // Every lipstick has a shade for every skin, deeper on deeper skin, and a nude is never paler than the skin it is on.
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255); };
+  for (const c of CATALOG.lipColor) check(lum(lipShade(c.id, 0)) >= lum(lipShade(c.id, 16)), `${c.id} is not deeper on deeper skin`);
+  for (const t of SKIN_TONES) check(lum(lipShade('nude', t.depth)) < lum(t.hex), `nude is paler than ${t.id} skin: it would look ashy`);
   check(resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'female', { child: true }).colors.lip !== CATALOG.lipColor[0].hex, 'a child wears lipstick');
   const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_4' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
@@ -848,6 +853,23 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
     const bf = BABY_FIT[id];
     check(bf ? out.includes(`scale(${bf.sx} ${bf.sy})`) && bf.sx >= 0.9 && bf.sx <= 1.15 && bf.sy >= 0.9 && bf.sy <= 1.15
       : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the head (${JSON.stringify(bf)})`);
+  }
+}
+
+const { KID_HAIR_FIT: KID_FIT } = await import('../js/avatar/kidHairFit.js');
+// Kid hair, by gender and texture, drawn on the kid template: worn from 7 to 13 only, placed as drawn, in the kid's own hair color.
+{
+  for (const [sex, byTex] of Object.entries(CUR.KID_HAIR)) for (const [tex, ids] of Object.entries(byTex)) for (const id of ids) {
+    check(PART_BY_ID[id]?.tags?.age === 'kid', `${id} exists, as a kid's hair`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(svg.includes('var(--hair-color'), `${id} takes the kid's hair color`);
+    const look = { ...resolveLook({ v: 3, inherited: { hairTexture: tex } }, 'kh', sex), kidDrawnHair: id };
+    const at = (age) => dressFor(look, { age, gender: sex }).hair;
+    check(at(10) === id && at(5) !== id && at(16) !== id, `${id} is a kid's (${sex}, ${tex}): worn at 10, not at 5 or 16`);
+    const kf = KID_FIT[id];
+    const out = characterAvatarSvg(look, { age: 10, gender: sex });
+    check(kf ? out.includes(`scale(${kf.sx} ${kf.sy})`) && kf.sx >= 0.9 && kf.sx <= 1.15 && kf.sy >= 0.9 && kf.sy <= 1.15
+      : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the kid head (${JSON.stringify(kf)})`);
   }
 }
 

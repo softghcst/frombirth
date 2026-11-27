@@ -96,6 +96,8 @@ function findOrFound(kindId, stage, city, countryId) {
  *  (a school with entry by talent only). */
 export function feeFor(kind, p = player()) {
   if (!kind.fee) return 0;
+  // A school with aid by need (the gifted school): a family that could not pay the fee pays nothing.
+  if (kind.aid === 'need' && wealthTier() === 'poor') return 0;
   const sch = scholarshipFor(kind, p);
   return Math.round(kind.fee * (1 - (sch?.off ?? 0)));
 }
@@ -115,7 +117,7 @@ export function barred(kind, stage, p = player(), sponsored = false) {
   if (kind.from && SCHOOL.indexOf(stage) < SCHOOL.indexOf(kind.from)) return 'Not for children this young.';
   if (kind.needs?.royal && !(p.royal && !p.royal.waiting)) return 'Only for the royal family.';
   if (kind.needs?.wealth === 'rich' && tier !== 'rich' && !sponsored) return 'The fees are beyond your family.';
-  if (kind.needs?.entry && val(p, kind.needs.entry.path) < kind.needs.entry.min) return kind.id === 'selective' ? 'You would not pass the entrance test.' : 'You would not get through the audition or trial.';
+  if (kind.needs?.entry && val(p, kind.needs.entry.path) < kind.needs.entry.min) return kind.id === 'selective' || kind.needs.entry.test ? (kind.id === 'gifted' ? 'You would not get through the assessment.' : 'You would not pass the entrance test.') : 'You would not get through the audition or trial.';
   // The fees, less any scholarship for an exceptional audition, against what the family can pay.
   const fee = feeFor(kind, p);
   if (!sponsored && fee > FEE_CAP[tier]) return fee >= 5000 ? `The fees (${fmtMoney(localMoney(fee, country()), country())} a year) are beyond your family, unless an audition is exceptional.` : 'Even small fees are too much at home just now.';
@@ -142,6 +144,10 @@ function parentsChoose(stage) {
   if (ok('private') && rng.chance(0.45)) return 'private';
   if (ok('arts') && rng.chance(0.35)) return 'arts';
   if (ok('sports') && rng.chance(0.3)) return 'sports';
+  // A very bright child, or one already building and coding, or one who argues every point: a school made for them.
+  if (ok('gifted') && rng.chance(0.5)) return 'gifted';
+  if (ok('stem') && rng.chance(0.4)) return 'stem';
+  if (ok('law') && rng.chance(0.2)) return 'law';
   if (ok('selective') && rng.chance(0.5)) return 'selective';
   if (ok('religious') && rng.chance(0.14)) return 'religious';
   if (stage === 'elementary' && rng.chance(0.03)) return 'home';
@@ -333,7 +339,7 @@ export function choices() {
   if (!atSchool(p) || p.age < 11 || e.choseAt === e.stage) return [];
   const now = school();
   return SCHOOL_KINDS.filter((k) => k.id !== now?.kind && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, why: barred(k, e.stage, p),
-    fee: k.fee ? `${fmtMoney(localMoney(feeFor(k, p), country()), country())} a year, paid by your family${scholarshipFor(k, p) ? ` (with ${scholarshipFor(k, p).name}; the full fee is ${fmtMoney(localMoney(k.fee, country()), country())})` : ''}.` : 'No fees.' }));
+    fee: k.fee && k.aid === 'need' && !feeFor(k, p) ? `No fees for your family: the school's aid covers the ${fmtMoney(localMoney(k.fee, country()), country())} a year.` : k.fee ? `${fmtMoney(localMoney(feeFor(k, p), country()), country())} a year, paid by your family${scholarshipFor(k, p) ? ` (with ${scholarshipFor(k, p).name}; the full fee is ${fmtMoney(localMoney(k.fee, country()), country())})` : ''}.` : 'No fees.' }));
 }
 /** The player asks to change schools. Parents usually agree if it can be done; once per stage. */
 export function askToMove(kindId) {

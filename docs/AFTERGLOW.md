@@ -1,6 +1,6 @@
 # Afterglow
 
-The look of Pathways: warm lilac paper and plum ink by day, deep plum by night, with a peach
+The look of From Birth: warm lilac paper and plum ink by day, deep plum by night, with a peach
 "Age up" button at the heart of every life.
 
 ## Where it lives
@@ -14,9 +14,9 @@ The look of Pathways: warm lilac paper and plum ink by day, deep plum by night, 
 - `css/components.css`: buttons, navigation rows, meters, journal entries, memory cards, cards and
   rows; an "Afterglow layer" at the end brings the older screen-specific rules into the theme.
 - `css/modals.css`: dialogs, scene choices and outcomes.
-- `js/theme.js`: Light, Dark or System, kept in `localStorage` under `pathways.theme`, apart from any
+- `js/theme.js`: Light, Dark or System, kept in `localStorage` under `frombirth.theme`, apart from any
   life. `index.html` applies it before the first paint. Settings → Appearance changes it.
-- `js/ui/kit.js`: the Pathways mark, outline icons, `navRow()` and `navGroup()`.
+- `js/ui/kit.js`: the From Birth mark, outline icons, `navRow()` and `navGroup()`.
 - `js/ui/memories.js`: scrapbook cards for life's big days.
 
 ## Type

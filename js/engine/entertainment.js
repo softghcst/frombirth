@@ -37,6 +37,11 @@ import { seeded } from './sportsPlay.js';
 import { CHOREOGRAPHER } from '../data/dance.js';
 import { choreoRecord } from './dance.js';
 import { canFit } from './worklife.js';
+import { claim as claimSpecial } from './specialCareer.js';
+import { pressWrite } from './journalism.js';
+
+/** Which special career a part belongs to: dance ensemble parts and choreography are a dancer's work, the rest an actor's. */
+const careerOfRole = (r) => (['dance_ensemble', 'choreographer'].includes(r?.kind) ? 'dance' : 'acting');
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
@@ -49,7 +54,8 @@ export function ent(state = store.state) {
 }
 const nextId = (prefix) => `${prefix}_${(ent().seq += 1).toString(36)}`;
 export const production = (id) => ent().productions[id] ?? null;
-export const org = (id) => ent().orgs[id] ?? null;
+// An outlet in the press is a newsroom (engine/journalism.js): one press world for every career.
+export const org = (id) => ent().orgs[id] ?? store.state.newsroom?.outlets?.[id] ?? null;
 
 /** The player's own working records, made if missing. */
 export function workOf(p = player()) {
@@ -149,7 +155,7 @@ export function orgsOf(countryId) {
     makeOrg('agency', countryId, big, 'top');
     makeOrg('agency', countryId, big, 'mid');
     makeOrg('agency', countryId, rng.pick(cities), 'small');
-    for (let i = 0; i < 3; i++) makeOrg('outlet', countryId, big, 'outlet');
+    // (The entertainment press is the country's national press: engine/journalism.js nationalPress.)
     // Agents work at agencies; each is a person with their own cut, their own pull, a standard, and clients.
     // The best-known working actors are with the leading agencies.
     const actors = pool(countryId).filter((n) => !n.flags.star.agentId).sort((a, b) => (b.flags.star.fame ?? 0) - (a.flags.star.fame ?? 0));
@@ -334,12 +340,15 @@ function fitParts(p) {
   const credits = proCredits(p);
   const reachable = (prod) => TIERS[prod.tier].minCredits <= credits || (f.agent && TIERS[prod.tier].minCredits <= 2);
   const fits = (r) => p.age >= r.ages[0] - 2 && p.age <= r.ages[1] + 4;
+  // A choreographer is hired on top-level dancing, and a child's part is for a child: neither is work the player can go
+  // for just by being the right age, so neither counts toward the parts that suit them, and neither is re-aged.
+  const forAnyone = (r) => r.kind !== 'choreographer' && !(r.kind === 'child' && p.age >= 16);
   const open = [];
   for (const prod of Object.values(ent().productions)) {
     if (prod.status !== 'casting' || prod.countryId !== p.countryId || !reachable(prod)) continue;
     if (prod.tier === 'community' && prod.city !== p.city) continue;
     if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) continue;
-    for (const r of prod.cast) if (r.open && !r.who) open.push({ prod, r });
+    for (const r of prod.cast) if (r.open && !r.who && forAnyone(r)) open.push({ prod, r });
   }
   const want = 4;
   let have = open.filter((x) => fits(x.r)).length;
@@ -455,6 +464,7 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   if (f.applied[key]) return result(false, 'You have already auditioned for this part.', 'neutral');
   const why = whyNot(prod, r, p);
   if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial(careerOfRole(r)); if (sc) return result(false, sc, 'neutral'); }
   const cost = prep === 'coach' ? K(600) : 0;
   if (p.finance.cash < cost) return result(false, `A coach would cost ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;
@@ -558,6 +568,7 @@ export function sign(contractId) {
   const prod = production(c.productionId);
   const r = prod.cast[c.idx];
   if (r.who || prod.status !== 'casting') { c.status = 'withdrawn'; return result(false, 'The part has gone to someone else.', 'neutral'); }
+  { const sc = claimSpecial(careerOfRole(r)); if (sc) return result(false, sc, 'neutral'); }
   const clash = scheduleClash(prod, p);
   if (clash) return result(false, clash, 'neutral');
   // The contract's own hours (a child's are shorter); a performer may work below the usual working age, and a young
@@ -788,8 +799,16 @@ export function article(o) {
   const p = player();
   const E = ent();
   const prod = o.productionId ? production(o.productionId) : null;
-  const outlets = orgsOf(prod?.countryId ?? p.countryId).filter((x) => x.kind === 'outlet');
-  const a = { id: nextId('art'), outletId: o.outletId ?? rng.pick(outlets)?.id ?? null, year: year(), kind: o.kind, productionId: o.productionId ?? null, about: o.about ?? null,
+  const countryId = prod?.countryId ?? p.countryId;
+  // One press world: the article is written by a real reporter at a real outlet, and kept in the press archive. This
+  // list keeps what the entertainment screens need (how it was reported, whether it is true, any correction).
+  const prefer = { celeb: ['tabloid', 'magazine'], rumor: ['tabloid', 'magazine'], review: ['magazine', 'national'], award: ['network', 'magazine'], nomination: ['magazine', 'network'],
+    interview: ['magazine', 'network'], event: ['magazine', 'tabloid'], feature: ['magazine', 'national'], correction: null }[o.kind] ?? ['magazine', 'national'];
+  const given = o.outletId && org(o.outletId);
+  const about = o.about === 'player' ? p.id : o.about ?? null;
+  const pub = pressWrite({ countryId, outletId: given?.kind && !E.orgs[o.outletId] ? o.outletId : null, prefer: prefer ?? ['magazine'], headline: o.text, aboutId: about, kind: o.kind, beat: 'entertainment',
+    accuracy: o.accuracy ?? 'verified', truth: o.true ?? true, links: { ...(o.productionId ? { productionId: o.productionId } : {}) } });
+  const a = { id: nextId('art'), outletId: pub?.outletId ?? o.outletId ?? null, pubId: pub?.id ?? null, year: year(), kind: o.kind, productionId: o.productionId ?? null, about: o.about ?? null,
     text: o.text, accuracy: o.accuracy ?? 'verified', true: o.true ?? true, corrected: false };
   if (prod) prod.keep = prod.keep || (prod.cast.some((r) => r.who === 'player'));
   E.articles.push(a);

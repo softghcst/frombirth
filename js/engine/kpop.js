@@ -25,7 +25,11 @@ import { levelOf } from './skills.js';
 import { gain, regard, fameOf } from './fame.js';
 import { hasRecord } from './records.js';
 import { rightToLive } from './citizenship.js';
-import { addCondition, cureCondition } from './health.js';
+import { addCondition, cureCondition } from './health/ailments.js';
+import { claim as claimSpecial, release as releaseSpecial } from './specialCareer.js';
+import { ailmentsOf, conditionIdsOf } from './health/ailments.js';
+/** What idol life wears down: exhaustion and a dance injury (ailments), and depression or anxiety (the health record). */
+const idolStrain = (p) => conditionIdsOf(p).filter((id) => ['exhaustion', 'dance_injury', 'mdd', 'gad'].includes(id)).map((id) => ({ id }));
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -61,7 +65,10 @@ export function skillsOf(who = 'player') {
   const i = idolOf(p);
   const korean = p.birthCountryId === 'kr' ? 100 : Math.round(p.skills?.korean ?? 0);
   return { vocal: Math.round(p.talents.singing ?? 0), dance: Math.round(p.talents.dance ?? 0), rap: Math.round(Math.max(levelOf('rap'), (p.talents.music ?? 0) * 0.3)),
-    stage: Math.round(i.stage), camera: Math.round(i.camera * 0.7 + (p.stats.charm ?? 50) * 0.3), media: Math.round(levelOf('public_speaking') * 0.7 + (p.stats.charm ?? 50) * 0.3), korean };
+    // An actor's presence carries onto the stage and in front of a camera; a gift for persuasion, into an interview.
+    stage: Math.round(Math.max(i.stage, i.stage * 0.7 + (p.talents.acting ?? 0) * 0.3)),
+    camera: Math.round(i.camera * 0.7 + Math.max(p.stats.charm ?? 50, p.talents.acting ?? 0) * 0.3),
+    media: Math.round(levelOf('public_speaking') * 0.7 + Math.max(p.stats.charm ?? 50, p.talents.persuasion ?? 0) * 0.3), korean };
 }
 function raise(who, area, by) {
   if (by <= 0) return;
@@ -175,16 +182,16 @@ export function auditions() {
 /** Why the player cannot apply to an audition, or ''. */
 export function whyNotApply(au, p = player()) {
   const i = idolOf(p);
-  if (!available()) return 'There is no idol industry yet.';
-  if (au.status !== 'open' || au.year !== year()) return 'This call has closed.';
-  if (p.age < au.ages[0] || p.age > au.ages[1]) return `This audition is for ages ${au.ages[0]} to ${au.ages[1]}.`;
-  if (au.lineup !== 'any' && au.lineup !== p.gender) return `This audition is for a ${au.lineup === 'female' ? 'girl' : 'boy'} group project.`;
-  if (au.places !== 'worldwide' && !au.places.includes(p.countryId)) return `This is an in-person audition in ${COUNTRIES[au.places[0]].name}.`;
-  if (i.apps.some((id) => K().apps[id]?.auditionId === au.id)) return 'You have already applied to this one.';
-  if (i.traineeId && K().contracts[i.traineeId]?.status === 'active') return 'You are already a trainee.';
-  if (i.groupId && K().groups[i.groupId]?.status !== 'disbanded' && idolMember(p)) return 'You are already in a group.';
-  if (i.acts.apps >= 3) return 'You have applied to three auditions this year; that is enough to prepare properly for.';
-  if (p.legal.incarceration) return 'Not from a cell.';
+  if (!available()) return 'No idol industry yet';
+  if (au.status !== 'open' || au.year !== year()) return 'This call has closed';
+  if (p.age < au.ages[0] || p.age > au.ages[1]) return `For ages ${au.ages[0]} to ${au.ages[1]}`;
+  if (au.lineup !== 'any' && au.lineup !== p.gender) return `For a ${au.lineup === 'female' ? 'girl' : 'boy'} group`;
+  if (au.places !== 'worldwide' && !au.places.includes(p.countryId)) return `In person, in ${COUNTRIES[au.places[0]].name}`;
+  if (i.apps.some((id) => K().apps[id]?.auditionId === au.id)) return 'You applied already';
+  if (i.traineeId && K().contracts[i.traineeId]?.status === 'active') return 'You are a trainee already';
+  if (i.groupId && K().groups[i.groupId]?.status !== 'disbanded' && idolMember(p)) return 'You are in a group already';
+  if (i.acts.apps >= 3) return 'Three auditions a year is enough';
+  if (p.legal.incarceration) return 'Not from a cell';
   return '';
 }
 const idolMember = (p = player()) => { const g = K().groups[idolOf(p).groupId]; return g && g.members.some((m) => m.who === 'player' && m.to == null); };
@@ -222,6 +229,7 @@ export function apply(auditionId, category) {
   if (!au) return result(false, 'No such audition.', 'neutral');
   const why = whyNotApply(au, p);
   if (why) return result(false, why, 'neutral');
+  { const sc = claimSpecial('kpop'); if (sc) return result(false, sc, 'neutral'); }
   if (!au.categories.includes(category)) return result(false, 'That is not a category this audition takes.', 'neutral');
   const i = idolOf(p);
   i.acts.apps += 1;
@@ -406,6 +414,7 @@ export function leaveTraining() {
   t.contract.ended = { year: year(), by: 'trainee', how: 'notice' };
   endTraineeLife(p, t.agency, 'left');
   note(`Left the trainee program at ${t.agency.name}.`);
+  if (!p.idol?.groupId) releaseSpecial('kpop');
   return result(true, `You give notice and leave ${t.agency.name}. The friends come with you; the schedule does not.`, 'neutral');
 }
 function endTraineeLife(p, a, how) {
@@ -1775,11 +1784,11 @@ function yearExtras(p, lived, lines) {
 function healthRecord(kind) {
   const p = player();
   const i = idolOf(p);
-  const idolConds = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id));
+  const idolConds = idolStrain(p);
   if (kind !== 'health') return;
   if (!idolConds.length && p.stats.health < 60) addCondition('exhaustion');
-  i.hiatus.conditions = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id)).map((c) => c.id);
-  for (const c of p.conditions ?? []) if (i.hiatus.conditions.includes(c.id)) c.treated = true; // care while on the break
+  i.hiatus.conditions = idolStrain(p).map((c) => c.id);
+  for (const c of ailmentsOf(p)) if (i.hiatus.conditions.includes(c.id)) c.treated = true; // care while on the break
 }
 function healthReturn() {
   const p = player();
@@ -2522,13 +2531,13 @@ export function legacyRoutes(p = player()) {
 }
 export function whyNotLegacy(agencyId, p = player()) {
   const i = idolOf(p);
-  if (!legacyRoutes(p).some((o) => o.agencyId === agencyId)) return 'No one in your family was with this agency.';
-  if (p.age < 12 || p.age > 23) return 'The agency sees family members between twelve and twenty-three.';
-  if (trainee(p)) return 'You are already a trainee.';
-  if (myGroup(p)) return 'You are already in a group.';
-  if (i.acts.did[`legacy:${agencyId}`]) return 'Once a year.';
-  if (i.acts.apps >= 3) return 'You have applied to three auditions this year; that is enough to prepare properly for.';
-  if (p.legal?.incarceration) return 'Not from a cell.';
+  if (!legacyRoutes(p).some((o) => o.agencyId === agencyId)) return 'No family history with this agency';
+  if (p.age < 12 || p.age > 23) return 'For ages 12 to 23';
+  if (trainee(p)) return 'You are a trainee already';
+  if (myGroup(p)) return 'You are in a group already';
+  if (i.acts.did[`legacy:${agencyId}`]) return 'Once a year';
+  if (i.acts.apps >= 3) return 'Three auditions a year is enough';
+  if (p.legal?.incarceration) return 'Not from a cell';
   return '';
 }
 /** A private audition at a parent's (or grandparent's) agency: no open call, straight to the callback and assessment. */

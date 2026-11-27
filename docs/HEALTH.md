@@ -1,7 +1,7 @@
 # Health, mental health, disability and accessibility
 
 How the health engine is built, where its content comes from, and what has
-not been reviewed. Pathways is a game. Nothing in it is medical advice, and it
+not been reviewed. From Birth is a game. Nothing in it is medical advice, and it
 never shows doses or tells a player how to take, combine or stop a medicine.
 
 ## Clinical review status
@@ -79,10 +79,11 @@ chance of having a condition.
 | `js/ui/health/hub.js` | My Health, the Treatment Journey and the DBT Journey |
 | `js/data/events/health.js` | scenes driven by the health record |
 | `tests/health.mjs` | the checks, including both required vertical slices |
+| `js/engine/health/contraception.js` | contraception and family planning: see docs/CONTRACEPTION.md |
 
 ### The care calendar
 
-The rest of Pathways moves a year at a time. Health care moves a week at a
+The rest of From Birth moves a year at a time. Health care moves a week at a
 time inside the year: a medicine is reviewed after a few weeks, and a skills
 group meets every week. A date is an absolute week (`year × 52 + week`).
 "Let the weeks pass" in My Health moves the calendar on to the next

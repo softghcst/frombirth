@@ -38,14 +38,14 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   await page.evaluate(() => { document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); });
   // My Fame: a long page. Scrolled to the bottom, the ✕ is still there, and closes it.
-  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; p.age = 20; p.birthYear = store.state.year - 20; (await import('/js/ui/fame.js')).openFame({ changed() {}, rerender() {} }); });
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; p.age = 20; p.birthYear = store.state.year - 20; (await import('/js/ui/fame.js')).openFame({ changed() {}, rerender() {} }, null, { career: 'acting' }); });
   await page.waitForTimeout(250);
-  check(await page.locator('#modal-root .modal-back').count() === 1, `${label}: My Fame has a Back button`);
-  check(await inView(page), `${label}: it is on screen when My Fame opens`);
+  check(await page.locator('#modal-root .modal-back').count() === 1, `${label}: a career page has a Back button`);
+  check(await inView(page), `${label}: it is on screen when a career page opens`);
   await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); m.scrollTop = m.scrollHeight; });
   await page.waitForTimeout(150);
   check(await inView(page), `${label}: and still on screen at the bottom of the page`);
@@ -86,8 +86,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (await row.count()) {
     await page.evaluate(() => document.querySelector('[data-npc]').click()); await page.waitForTimeout(300);
     check(await page.locator('#modal-root .modal-back').count() === 1 && await inView(page), `${label}: a person's profile has a Back button in view`);
-    const groups = await page.evaluate(() => ({ all: document.querySelectorAll('#modal-root details.action-group').length, open: document.querySelectorAll('#modal-root details.action-group[open]').length }));
-    check(groups.all >= 2 && groups.open === 1, `${label}: a profile's actions are in groups, one open (${groups.all} groups, ${groups.open} open)`);
+    const groups = await page.evaluate(() => ({ all: document.querySelectorAll('#modal-root .action-group').length, full: !!document.querySelector('#modal-root .modal-full'), folded: document.querySelectorAll('#modal-root details.action-group').length }));
+    check(groups.all >= 2 && groups.full && !groups.folded, `${label}: a profile is a page of its own, its actions under headings, nothing folded (${JSON.stringify(groups)})`);
     await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); m.scrollTop = m.scrollHeight; });
     await page.waitForTimeout(120);
     check(await inView(page), `${label}: and still in view at the bottom of their profile`);

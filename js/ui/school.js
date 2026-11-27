@@ -1,6 +1,9 @@
 // School, as a book: where the player is at school and how they are doing in
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
+import { graduationNotice } from './graduation.js';
+import { summerOptions, goToSummer, askForRecommendation } from '../engine/summer.js';
+import { titleCase } from './titles.js';
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { fitBars, fitBar } from './fitBars.js';
@@ -12,7 +15,7 @@ import { roleLabel } from '../engine/relationships.js';
 import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { openModal, pickModal, messageModal, confirmModal } from './modals.js';
-import { store } from '../state.js';
+import { store, livingNpcs } from '../state.js';
 import * as edu from '../engine/education.js';
 import * as cliques from '../engine/cliques.js';
 import { navRow, icon } from './kit.js';
@@ -109,7 +112,8 @@ function pageActivitiesHub() {
   const row = (attr, label, sub, ico) => navRow({ attrs: attr, label, sub, ico });
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
-    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : 'Try out for the team', SPORT_ICON)).join('')}
+    <div class="nav-group">${sports.slice(0, 6).map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : 'Try out for the team', SPORT_ICON)).join('')}
+    ${sports.length > 6 ? row('data-team-more', 'More sports teams', `${sports.length - 6} more: ${sports.slice(6, 9).map(sportName).join(', ')}…`, SPORT_ICON) : ''}
     ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try-out${c.blurb ? ` · ${c.blurb}` : ''}`, 'star')).join('')}</div>
     ${outsideSchool()}`;
 }
@@ -120,12 +124,15 @@ function pageActivitiesHub() {
  */
 function outsideSchool() {
   const p = player();
-  if (p.age < 6 || p.legal.incarceration) return '';
+  if (p.age < 6 || p.age > clubLife.CLUB_AGE_LIMIT || p.legal.incarceration) return '';
   const mine = clubLife.memberships();
   return `<div class="section-label">Outside School</div>
     <div class="nav-group">${mine.map((m) => navRow({ attrs: `data-outclub="${esc(m.id)}"`, label: clubTitle(m.club), sub: m.rankName === 'Member' ? `Member${m.years ? ` · ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName, ico: 'people' })).join('')}
       ${navRow({ attrs: 'data-outclub="find"', label: 'Find a Club or Class', sub: 'The scouts, a running club, pottery and more, near home', ico: 'compass' })}</div>`;
 }
+
+/** The people who could write a college recommendation: a club's coach, director or adviser, and teachers. */
+const recommenders = () => livingNpcs().filter((n) => ['coach', 'director', 'adviser', 'teacher'].includes(n.flags.tag));
 
 /** Your class: the teacher(s) and classmates, how you get on, and a tap to spend time with any of them. */
 function pageClass(v) {
@@ -165,6 +172,11 @@ export function openSchool(onChange) {
     if (teen) add('dance', 'School dance', 'Once a year', 'star');
     if (e.enrolled && e.stage === 'high') add('party', 'House party', 'Throw one while your parents are away', 'star');
     if (e.enrolled && p.age <= 18) add('nurse', 'Nurse', 'Visit the school nurse', 'health');
+    // A child far ahead of their class: moving up a year, or finishing early for college.
+    if (!edu.skipBlock(p)) add('skipgrade', 'Skip a Grade', 'You are far ahead of your class: ask to move up a year', 'star', 'peach');
+    if (!edu.earlyCollegeBlock(p)) add('early', 'Start College Early', 'Finish school now, years ahead of your friends', 'school', 'peach');
+    if (summerOptions(p).length) add('summer', 'Summer Programs', p.flags.summer?.age === p.age ? 'Done for this year' : 'Camps and competitions', 'star');
+    if (e.enrolled && p.age >= 15 && recommenders().length) add('rec', 'Ask for a Recommendation', 'A letter from a coach or teacher, for college', 'letter');
     add('history', 'Your school years', 'Every school, and what you left with', 'archive');
     return `${v.school ? `<div class="card"><h3>${esc(v.school.kind === 'home' ? 'Taught at home' : v.school.name)}</h3>
         <p class="muted" style="margin:0 0 6px">${esc(v.kind.name)} · ${esc(v.stageName)}, year ${v.year}</p>
@@ -195,7 +207,7 @@ export function openSchool(onChange) {
     const go = t.closest('[data-go]')?.dataset.go;
     if (go === 'move') {
       const kind = await pickModal({ title: 'Change schools', cancel: 'Never mind', body: 'Ask your family. They decide, and your friends stay your friends.',
-        options: sch.choices().map((k) => ({ value: k.id, label: k.name, sub: k.why || `${k.blurb} ${k.fee}`, disabled: !!k.why })) });
+        options: sch.choices().map((k) => ({ value: k.id, label: titleCase(k.name), sub: k.why || `${k.blurb} ${k.fee}`, disabled: !!k.why })) });
       return kind ? say(sch.askToMove(kind)) : undefined;
     }
     if (go === 'dance') return say(cliques.schoolDance());
@@ -214,6 +226,22 @@ export function openSchool(onChange) {
       return undefined;
     }
     if (go === 'nurse') return say(cliques.nurse());
+    if (go === 'skipgrade') return say(edu.skipGrade());
+    if (go === 'rec') return say(askForRecommendation(recommenders()));
+    if (go === 'summer') {
+      const pick = await pickModal({ title: 'Summer Programs', body: 'One a summer. Camps teach; competitions are placed in, and wins count on college applications.',
+        options: summerOptions(player()).map((o) => ({ value: o.id, label: `${o.emoji} ${o.name}${o.level ? ` (${o.level} level)` : ''}`, sub: o.why || `${o.blurb}${o.cost && player().age >= 18 ? ` ${fmtMoney(o.cost, country())}.` : ''}`, disabled: !!o.why })) });
+      if (pick) return say(goToSummer(pick));
+      return;
+    }
+    if (go === 'early') {
+      const r = edu.startCollegeEarly();
+      if (!r.ok) return say(r);
+      onChange?.();
+      m.close();
+      // The diploma, early: the graduation card, and from it the university planner (ui/graduation.js).
+      return graduationNotice({ changed: () => onChange?.() });
+    }
     if (go) { stack.push(go); return draw(); }
     const act = t.closest('[data-do]')?.dataset.do;
     if (act === 'study') return say(edu.studyHard());
@@ -240,7 +268,13 @@ export function openSchool(onChange) {
     }
     const out = t.closest('[data-outclub]')?.dataset.outclub;
     if (out) { await openClubs({ changed: () => onChange?.() }, out); return draw(true); }
-    const team = t.closest('[data-team]')?.dataset.team;
+    let team = t.closest('[data-team]')?.dataset.team;
+    if (t.closest('[data-team-more]')) {
+      const e = player().education; const a = life.activities();
+      const more = life.sportsHere().filter((x) => !(e.clubs.includes('sports_team') && x === (a.sport ?? ''))).slice(6);
+      team = await pickModal({ title: 'Sports teams', cancel: 'Never mind', body: 'Every sport the school plays.', options: more.map((x) => ({ value: x, label: `${cap(sportName(x))} team` })) });
+      if (!team) return undefined;
+    }
     if (team) {
       const e = player().education;
       if (e.clubs.includes('sports_team')) { life.setSport(team); return say({ ok: true, text: `You switched to the ${sportName(team)} team.`, tone: 'good' }); }

@@ -136,7 +136,7 @@ for (const [name, r] of Object.entries(traced)) {
   const old = read(name);
   const keep = (attr) => (old.match(new RegExp(`${attr}="[^"]*"`)) || [''])[0];
   const attrs = ['data-shared-neck', 'data-face-chin'].map(keep).filter(Boolean).join(' ');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1" ${attrs} ${MARK} data-outline-chin="${baseChin}">`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-frombirth="1" ${attrs} ${MARK} data-outline-chin="${baseChin}">`
     + `<g id="art"><path style="fill:#23140f" fill-rule="evenodd" d="${r.sil}"/>`
     + `<path id="skin" style="fill:var(--skin-color,#da965e)" fill-rule="evenodd" d="${r.skin}"/></g></svg>`;
   writeFileSync(file(name), svg);

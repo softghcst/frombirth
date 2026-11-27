@@ -271,7 +271,6 @@ export function baseballYear(state, a, e, sum) {
     sp.say(state, `Before rejoining ${club.name} you went on a rehab assignment: a week of games with their minor league team, on a pitch count, to see that ${back.type === 'ucl' ? 'the elbow' : 'it'} holds.`, 'neutral', { screen: 'hub', id: 'health' });
   }
   winterBall(state, e, R, o, club);
-  classic(state, e, R, o);
   amateur(state, e, R, o, org);
   abroad(state, a, e, o, org, kx);
   void sum;
@@ -302,24 +301,6 @@ function playWinter(state, e, R) {
   R.winters.push({ year: state.year, league: B.winter[p.countryId], team, pay, champion });
   sp.say(state, `Winter ball with ${team}: ${life.fmt(state, pay)}${champion ? ', and the league title' : ''}.`, 'good', { screen: 'sport', id: e.id });
   return { team, pay, r, o };
-}
-
-/** The World Baseball Classic: the country's professionals, every few years. */
-function classic(state, e, R, o) {
-  const p = state.player;
-  if (!classicYear(state.year) || e.level !== 'pro' || R.classic.some((x) => x.year === state.year)) return;
-  const strong = B.classicStrong.includes(p.countryId);
-  if (o < (strong ? 80 : 64)) return;
-  const r = seeded(`classic/${p.countryId}/${state.year}`);
-  const roll = r.next() * (strong ? 1 : 3.5) - (o - 80) / 200;
-  const res = roll < 0.12 ? 'champions' : roll < 0.25 ? 'runners-up' : roll < 0.5 ? 'semifinalists' : roll < 1.1 ? 'out in the quarterfinals' : 'out in the pool round';
-  R.classic.push({ year: state.year, result: res });
-  e.caps = (e.caps ?? 0) + r.int(3, 7);
-  const text = `The World Baseball Classic ${state.year}: you played for ${COUNTRIES[p.countryId].name}, ${res}.`;
-  sp.say(state, text, res === 'champions' ? 'good' : 'neutral', { screen: 'sport', id: e.id });
-  sp.moment(state, { type: 'national', sportId: e.id, text: `Played for ${COUNTRIES[p.countryId].name} at the World Baseball Classic${res === 'champions' ? ', and won it' : ''}.`, sig: res === 'champions' ? 3 : 2 });
-  if (res === 'champions') milestone(`Won the World Baseball Classic with ${COUNTRIES[p.countryId].name}.`, 'career');
-  gain({ audience: 'sports', amount: res === 'champions' ? 8 : 3, reach: 0.6, lasting: 0.4, why: 'the World Baseball Classic' }, p);
 }
 
 /** Before the draft: a summer league with wooden bats for college players, and an adviser for the draft itself. */

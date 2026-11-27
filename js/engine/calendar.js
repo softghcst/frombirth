@@ -17,8 +17,8 @@ const put = (type, ids) => { for (const id of ids.split(' ')) CLIMATE[id] = type
 put('north', 'us uk ca de fr jp kr it es se ie cn pt nl pl tr ch no dk gr ru ua ma be mc ad at hr cz ee fi hu ro rs sk dz tn ge ir lb sy af kz mn tw hk il');
 put('south', 'au nz za ar cl uy py');
 put('tropicNorth', 'mx cu do jm ht pr bs bz cr sv gt ni pa ph ng gh ve et');
-put('tropicSouth', 'br bo pe zw ao pg ws id');
-put('equator', 'ec co ke ug cd sg my gy');
+put('tropicSouth', 'br bo pe zw ao pg ws id fj pf mu');
+put('equator', 'ec co ke ug cd sg my gy mv sc');
 put('monsoon', 'in pk bd np th vn');
 put('desert', 'eg ae sa kw qa jo iq dj aw');
 export const climateOf = (countryId) => CLIMATE[countryId] ?? 'north';
@@ -69,7 +69,7 @@ export const DARK_WINTERS = new Set('uk ie ca se no fi dk ee ru de nl be pl'.spl
 
 /** The month the school year starts (0 = January), where the player lives. Most of the north: September. */
 const SCHOOL_START = { jp: 3, kr: 2, au: 1, nz: 1, za: 0, br: 1, ar: 2, cl: 2, uy: 2, py: 1, bo: 1, pe: 2, in: 5, pk: 7, bd: 0, np: 3, ph: 5, th: 4,
-  id: 6, my: 2, sg: 0, ke: 0, ug: 1, zw: 0, ao: 1, cr: 1, co: 1, pa: 2, sv: 0, gt: 0, ni: 1, pg: 1, ws: 1, af: 2 };
+  id: 6, my: 2, sg: 0, ke: 0, ug: 1, zw: 0, ao: 1, cr: 1, co: 1, pa: 2, sv: 0, gt: 0, ni: 1, pg: 1, ws: 1, af: 2, fj: 0, mv: 0, mu: 0, sc: 0, pf: 7 };
 export const schoolStart = (countryId) => SCHOOL_START[countryId] ?? 8;
 /** The months of the year's big exams: the end of the school year, the few months before it starts again. */
 export const examMonths = (countryId) => [4, 3, 2].map((k) => (schoolStart(countryId) - k + 12) % 12);

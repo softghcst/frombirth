@@ -1,5 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
+import { tickLaw } from './lawPractice.js';
 import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickHair } from './salon.js';
@@ -13,6 +14,11 @@ import { tickSports } from './sportsLife.js';
 import { tickDisasters } from './disasters.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
+import { tickBlended } from './blended.js';
+import { tickFostering } from './fostering.js';
+import { tickCallbacks } from './callbacks.js';
+import { tickFriendGroups } from './friendGroups.js';
+import { tickIndependence } from './independence.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
 import { tickEstate } from './estateReview.js';
@@ -58,8 +64,9 @@ import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
-import { tickHealth } from './health.js';
+import { tickHealth } from './health/ailments.js';
 import { finishCareYear, healthYear } from './health/index.js';
+import { closeYear as closeContraceptionYear } from './health/contraception.js';
 import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';
 import { snapshot } from './yearSummary.js';
@@ -75,9 +82,13 @@ import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
+import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
+import { tickJournalism, pressRequestYear } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
+import { directYear, yearSteps } from './storyDirector.js';
+import { tickOrigins } from './origins.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -102,18 +113,27 @@ export const YEARLY = [
   ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
+  ['blended', tickBlended], // parents who separate, a parent's new partner, step- and half-siblings (engine/blended.js)
+  ['fostering', tickFostering], // a foster carer's application, placements and their reviews (engine/fostering.js)
+  ['origins', tickOrigins], // adoption and birth families: the birth family's own year, what the player learns, one revelation at most (engine/origins.js)
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
+  ['friendGroups', tickFriendGroups], // groups of friends: forming at school, people leaving, outlasting school (engine/friendGroups.js)
   ['children', () => booked('childcare', 'Your children', tickChildren)],
   ['npcLives', tickLives],
+  ['callbacks', tickCallbacks], // someone from the past, back because of something that really happened (engine/callbacks.js)
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
   ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)
+  ['investigations', () => booked('salary', 'Investigations: training, ranks and cases', tickInvestigations)],
+  ['journalism', () => { for (const line of tickJournalism(player())) log(line, 'system', 'neutral'); }],
+  ['press requests', () => { pressRequestYear(player()); }], // a reporter asks the player about their own work (engine/journalism.js) // the newsroom's year: complaints, promotions, prizes, assignments (engine/journalism.js) // police, detectives, federal agents, private investigators (engine/investigations)
   ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
   ['insurance', () => booked('insurance', 'Insurance premiums', tickInsurance)],
+  ['independence', tickIndependence], // a lease that has ended returns its deposit (engine/independence.js)
   ['finance', tickFinance], ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
   ['illness', () => booked('health', 'Health', tickHealth)],
   ['health', () => booked('health', 'Health care', () => healthYear(player()))],
@@ -150,6 +170,7 @@ export const YEARLY = [
   ['local', () => { for (const n of tickLocal()) log(n.text, 'system', n.tone); }],
   ['activism', tickActivism],
   ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
+  ['law', () => booked('legal', 'Legal practice', () => tickLaw())], // law school terms, cases and a lawyer's opportunities (engine/lawPractice.js)
   ['care', () => booked('auto', 'Who looks after you', checkCare)],
   ['neighborhood', () => { hood.openYear(); hoodLife.syncBusinesses(); hoodLife.neighborsAsCustomers(); }], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
   ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care
@@ -167,6 +188,7 @@ export const YEARLY = [
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
+  ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];
@@ -179,12 +201,15 @@ const DEADLY = new Set(['career', 'vehicles']);
  */
 export function runYearSteps(state = store.state) {
   const marks = (state.yearMarks ??= {});
-  for (const [id, step] of YEARLY) {
-    if (marks[id] === state.year) continue;
-    marks[id] = state.year;
-    const death = step();
-    if (DEADLY.has(id) && death) return death;
-  }
+  yearSteps.on = true;
+  try {
+    for (const [id, step] of YEARLY) {
+      if (marks[id] === state.year) continue;
+      marks[id] = state.year;
+      const death = step();
+      if (DEADLY.has(id) && death) return death;
+    }
+  } finally { yearSteps.on = false; }
   return null;
 }
 
@@ -201,6 +226,8 @@ export function advanceYear() {
   const planLines = booked('auto', 'Your plans for the year', () => livePlans(p));
   // The care calendar runs out the weeks left in this year before it turns.
   booked('health', 'Health care through the year', () => finishCareYear(p));
+  // Contraception: the months left in the year, then the year's pregnancy risk from what was in place each month.
+  booked('health', 'Birth control', () => closeContraceptionYear(p));
   // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
   if (p.travel) closeYear();
   finishYear(); // the year just lived: traditions nobody organized, invitations nobody answered (engine/moments.js)

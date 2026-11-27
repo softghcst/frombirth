@@ -20,8 +20,10 @@ import { CLUB_BY_ID } from '../data/schools.js';
 import { LEAVING_AGE } from '../data/education.js';
 import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLUB_INTEREST, SUBJECT_BY_ID } from '../data/education.js';
 import * as sch from './schooling.js';
-import { schoolSeason } from './sports.js';
+import { schoolSeason, schoolSportId, schoolSportName } from './sports.js';
+import { SPORTS_LIST, playedIn } from '../data/sports.js';
 import { idolOf } from './kpop.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -33,7 +35,7 @@ function pend(id, cast) {
   const words = { ...(cast.words ?? {}) };
   for (const [k, v] of Object.entries(cast)) { const n = typeof v === 'string' ? store.state.npcs[v] : null; if (n && !(k in words)) words[k] = n.firstName; }
   (player().education.sceneAt ??= {})[id] = player().age;
-  store.state.pendingEvents.push({ id, cast: { ...cast, words } });
+  storyBeat(id, { ...cast, words }, { source: 'school' });
 }
 /** Whether a scene has been used too recently to come up again. */
 const fresh = (id, years = 3) => player().age - (player().education.sceneAt?.[id] ?? -99) >= years;
@@ -75,7 +77,19 @@ export function standingWord(p = player()) {
 const lifeOf = (id) => { const e = player().education; e.clubLife ??= {}; return (e.clubLife[id] ??= { since: player().age, standing: 12, role: 'member', record: [] }); };
 /** What the leader of a club is called. */
 export const leaderTitle = (id) => ({ sport: 'Captain', stage: 'Company lead', council: 'President', press: 'Editor' })[CLUB_KIND[id]] ?? 'President';
-export const sportsHere = () => SPORTS[player().countryId] ?? SPORTS.default;
+/**
+ * The sports the school plays: every sport the country plays at all (data/sports.js PLAYED_IN), the country's own
+ * favorites first (data/education.js SPORTS, which also names the local sports the registry does not keep, such as
+ * netball, hurling or kabaddi).
+ */
+export function sportsHere() {
+  const c = player().countryId;
+  const fav = SPORTS[c] ?? SPORTS.default;
+  const seen = new Set(fav.map((n) => schoolSportId(n, c) ?? n));
+  const rest = SPORTS_LIST.filter((s) => !s.adaptive && s.kind !== 'fitness' && playedIn(s.id, c) && !seen.has(s.id))
+    .map((s) => schoolSportName(s.id, c)).sort();
+  return [...fav, ...rest];
+}
 export function setSport(name) {
   if (!sportsHere().includes(name)) return result(false, 'That is not played here.', 'neutral');
   player().education.sport = name;

@@ -23,8 +23,10 @@ import { ORGS, ORG_BY_ID, MAX_ORGS, LOADS, MAJOR_GROUP, HABITS, EMPLOYERS, DEGRE
 import { PLAYS } from '../data/education.js';
 import { makeNpc } from './npcFactory.js';
 import { uniOf, firstInFamily } from './university.js';
+import { workEdge } from './aptitudes.js';
 import { unbank, defend as defendThesis } from './adulted.js';
 import { legislativePosting, servedIntern } from './edlegacy.js';
+import { storyBeat } from './storyDirector.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const onCampus = (p = player()) => p.education.enrolled && ['university', 'community'].includes(p.education.stage);
@@ -190,7 +192,18 @@ function orgsYear() {
     life.standing = Math.round(clamp(life.standing + 12 + (skill - 50) / 5 + rng.int(-3, 4)));
     if (o.dues) p.finance.cash = Math.max(0, p.finance.cash - localMoney(o.dues, country()));
     if (o.polExp) p.counters.polExp = Math.min(40, (p.counters.polExp ?? 0) + o.polExp);
-    if (o.yearly) for (const [group, vals] of Object.entries(o.yearly)) for (const [k, v] of Object.entries(vals)) p[group][k] = clamp((p[group][k] ?? 0) + v);
+    if (o.yearly) for (const [group, vals] of Object.entries(o.yearly)) for (const [k, v] of Object.entries(vals)) (p[group] ??= {})[k] = clamp((p[group][k] ?? 0) + v);
+    // A team that competes (a hackathon, an engineering challenge, moot court): a place now and then, kept as an award.
+    if (o.contest) {
+      const mine = Object.entries(o.contest.paths).reduce((t, [path, w]) => t + val(p, path) * w, 0) + (life.standing - 30) / 6 + rng.around(0, 9);
+      const place = mine >= 86 ? 1 : mine >= 76 ? 2 : mine >= 70 ? 3 : 0;
+      if (place) {
+        const word = ['', 'won', 'came second in', 'came third in'][place];
+        (p.flags.awards ??= []).push({ name: `${['', '1st place', '2nd place', '3rd place'][place]}, ${o.contest.name}`, place, kind: o.id, level: 2, year: p.age, age: p.age, college: true });
+        log(`Your ${o.name.toLowerCase()} team ${word} the ${o.contest.name}.`, 'system', 'good');
+        if (place === 1) milestone(`Won the ${o.contest.name} with the ${o.name.toLowerCase()}.`, 'education');
+      }
+    }
     for (const n of livingNpcs()) if (n.flags.org === id) { n.meters.relationship = Math.round(clamp(n.meters.relationship + rng.int(0, 5))); n.lastInteractionAge = p.age; }
     if (o.stage) {
       // The society's show: cast on merit, like any other.
@@ -203,7 +216,7 @@ function orgsYear() {
     }
     if (life.role === 'member' && life.standing >= 55 && c.electionAt !== p.age && !finished() && rng.chance(0.5)) {
       c.electionAt = p.age;
-      store.state.pendingEvents.push({ id: 'campus_election', cast: { org: id, words: { org: o.name.toLowerCase(), post: o.leader.toLowerCase() } } });
+      storyBeat('campus_election', { org: id, words: { org: o.name.toLowerCase(), post: o.leader.toLowerCase() } }, { source: 'school' });
     }
   }
 }
@@ -242,10 +255,16 @@ function internRaw(post) {
   const u = uniOf(e.schoolId);
   const led = Object.values(c.orgs).some((o) => o.role === 'leader');
   const before = (p.flags.internships ?? []).length;
-  return ((post.sought ? 0.12 : 0.4) + ((e.gpa || 2.5) - 2.6) * 0.28 + (led ? 0.1 : 0) + (p.flags.profRec ? 0.15 : 0) + ((u?.rep ?? 55) - 55) / 300 + (u?.perk === 'network' ? 0.06 : 0) + Math.min(0.15, before * 0.1) + (p.stats.charm - 50) / 400);
+  // What the student can already do for that kind of work (coding for tech, robotics for engineering, speaking for law),
+  // and a team or a win that shows it.
+  const career = CAREERS.find((x) => x.id === post.careerId);
+  const edge = career ? workEdge(career, p) * 0.22 : 0;
+  const team = ['hackathon', 'engineering_team', 'moot_court', 'prelaw'].some((id) => c.orgs[id]) ? 0.05 : 0;
+  const wins = Math.min(0.1, (p.flags.awards ?? []).filter((a) => a.college).length * 0.04);
+  return ((post.sought ? 0.12 : 0.4) + edge + team + wins + ((e.gpa || 2.5) - 2.6) * 0.28 + (led ? 0.1 : 0) + (p.flags.profRec ? 0.15 : 0) + ((u?.rep ?? 55) - 55) / 300 + (u?.perk === 'network' ? 0.06 : 0) + Math.min(0.15, before * 0.1) + (p.stats.charm - 50) / 400);
 }
 /** How likely an application is to succeed. */
-function internChance(post) { return clamp(internRaw(post), 0.03, 0.93); }
+export function internChance(post) { return clamp(internRaw(post), 0.03, 0.93); }
 /** An internship as two bars: your record (marks first), and the record that makes it an even call. */
 export function internBars(post) {
   const gpa = player().education.gpa || 2.5;
@@ -346,7 +365,7 @@ export function tickCampus(yearMark) {
     fleshRoommate(mate);
     mate.meters.relationship = Math.round(clamp(mate.meters.relationship + mate.flags.suits + rng.int(-2, 3)));
     mate.lastInteractionAge = p.age;
-    if (mate.meters.relationship < 55 && c.clashAt !== p.age - 1 && !finished() && rng.chance(0.3)) { c.clashAt = p.age; store.state.pendingEvents.push({ id: 'roommate_clash', cast: { mate: mate.id, words: { mate: mate.firstName, habit: habitOf(mate).clash } } }); }
+    if (mate.meters.relationship < 55 && c.clashAt !== p.age - 1 && !finished() && rng.chance(0.3)) { c.clashAt = p.age; storyBeat('roommate_clash', { mate: mate.id, words: { mate: mate.firstName, habit: habitOf(mate).clash } }, { source: 'school' }); }
     else if (mate.meters.relationship >= 75 && !mate.flags.close) { mate.flags.close = true; log(`Somewhere in the last year ${mate.firstName} stopped being your roommate and became one of your closest friends.`, 'system', 'good'); }
   } else if (e.housing === 'dorm' && !mate) { const n = assignRoommate(); log(`You have a new roommate: ${n.firstName} ${n.lastName}, who ${habitOf(n).line}.`); }
   // Standing: a bad year is a warning before it is anything worse.

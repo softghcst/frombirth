@@ -69,7 +69,7 @@ export default [
     ],
   },
   {
-    id: 'hot_tip', category: 'money', ageRange: [20, 75], cooldown: 8, cast: { mate: 'coworker' },
+    id: 'hot_tip', workplaces: ['office', 'firm'], category: 'money', ageRange: [20, 75], cooldown: 8, cast: { mate: 'coworker' },
     requires: [need('cashBase', '>=', 3000)],
     text: '{mate} leans over the partition: a friend of a friend works at a company that is "about to be bought". Put in {$3000} this week, they say, and thank them at Christmas.',
     choices: [

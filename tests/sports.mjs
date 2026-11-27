@@ -21,7 +21,7 @@ const { weeklyLoad } = await import('../js/engine/worklife.js');
 const { aid } = await import('../js/engine/admissions.js');
 const { profile: applicant, catalog } = await import('../js/engine/university.js');
 const { SPORTS_LIST, SPORTS, PLANS, INJURIES } = await import('../js/data/sports.js');
-const { ILLNESS_BY_ID } = await import('../js/data/illnesses.js');
+const { ILLNESS_BY_ID } = await import('../js/data/health/ailments.js');
 const { CATEGORIES } = await import('../js/data/money.js');
 const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
@@ -101,15 +101,15 @@ function grownTo(age, countryId, city) {
   check(!sp.canPlay('soccer').ok, 'a four-year-old cannot start soccer');
   years(3);
   const talentBefore = p.talents.sports;
-  check(sp.takeUp('soccer').ok && sp.takeUp('tennis').ok && sp.takeUp('pickleball').ok, 'three sports can be taken up');
-  check(!sp.takeUp('golf').ok, 'a fourth cannot');
+  check(sp.takeUp('soccer').ok && sp.takeUp('tennis').ok, 'two sports can be taken up');
+  check(!sp.takeUp('pickleball').ok && !sp.takeUp('golf').ok, 'a third cannot: two get real attention');
   const e = sp.entryOf('soccer');
   check(e && Object.keys(e.skills).length === 6 && p.talents.sports === talentBefore, 'soccer has its own six skills; the general talent is untouched');
   check(Object.entries(e.skills).every(([k, v]) => v <= e.ceiling[k]), 'every skill starts below its ceiling');
   check(sp.entryOf('tennis').skills.serve !== undefined && sp.entryOf('tennis').skills.shooting === undefined, 'a tennis player\'s skills are tennis skills');
   const coach = sp.coachOf(e.coachId);
   check(coach && S().npcs[coach.id]?.role === 'coach' && p.npcIds.includes(coach.id), 'the coach is a real person the player knows');
-  check(weeklyLoad(p).rows.some((r) => r.kind === 'sport' && r.hours === 6), 'training takes hours out of the week');
+  check(weeklyLoad(p).rows.some((r) => r.kind === 'sport' && r.hours === 4), 'training takes hours out of the week');
   // History: a year before a sport existed.
   const was = S().year;
   S().year = 1950;
@@ -147,8 +147,8 @@ function grownTo(age, countryId, city) {
   years(6);
   const e = sp.entryOf('soccer');
   sp.myAthlete().injuries = [];
-  let n = 0; for (let i = 0; i < 10; i++) if (sp.extraSession('soccer', 'passing').ok) n++;
-  check(n === sp.EXTRA_PER_YEAR, `extra sessions stop at ${sp.EXTRA_PER_YEAR} a year (${n})`);
+  let n = 0; for (let i = 0; i < 20; i++) if (sp.extraSession('soccer', 'passing').ok) n++;
+  check(n >= 3 && n <= sp.EXTRA_PER_YEAR && !sp.extraLeft('soccer'), `extra sessions go on while there is energy for them, then stop (${n})`);
   for (const k of Object.keys(e.skills)) e.skills[k] = e.ceiling[k];
   e.plan = { type: 'technical', hours: 18 }; e.fatigue = 0; sp.internals.trainYear(S(), P(), sp.myAthlete(), e);
   check(Object.entries(e.skills).every(([k, v]) => v <= e.ceiling[k]), 'no skill goes past its ceiling, however hard the training');
@@ -254,15 +254,15 @@ let soccerLife;
   for (let i = 0; i < 60 && !inj && p.alive; i++) { if (e.status !== 'active') e.status = 'active'; e.fatigue = 95; e.plan.hours = 18; advanceYear(); quiet(); inj = a.injuries.find((x) => x.status === 'out'); }
   check(!p.alive || !!inj, 'a worn-out player gets hurt sooner or later');
   if (inj) {
-    check(p.conditions.some((c) => c.id === `sport_${inj.type}`), 'the injury is in the health record');
+    check(p.health.ailments.some((c) => c.id === `sport_${inj.type}`), 'the injury is in the health record');
     const d = life.openDecisions().find((x) => x.kind === 'rehab' && x.injuryId === inj.id);
     check(!!d, 'a rehab plan is asked for');
     p.finance.cash = 1e7;
     if (d) life.answer(d.id, 'physio');
-    check(inj.status === 'out' && p.conditions.some((c) => c.id === `sport_${inj.type}`), 'choosing a plan heals nothing by itself');
+    check(inj.status === 'out' && p.health.ailments.some((c) => c.id === `sport_${inj.type}`), 'choosing a plan heals nothing by itself');
     for (let i = 0; i < 6 && inj.status === 'out'; i++) { advanceYear(); quiet(); answerAll(); }
     const again = sp.myAthlete().injuries.some((x) => x.status === 'out' && x.type === inj.type);
-    check(inj.status === 'healed' && p.conditions.some((c) => c.id === `sport_${inj.type}`) === again, 'it heals over time, and leaves the health record when it does (unless the same injury has come back)');
+    check(inj.status === 'healed' && p.health.ailments.some((c) => c.id === `sport_${inj.type}`) === again, 'it heals over time, and leaves the health record when it does (unless the same injury has come back)');
     check(life.audit().every((x) => !/injury/.test(x)), 'the injury record and the health record agree');
   }
   section('injuries: in the health record, rehab over time, nothing instant');
@@ -342,6 +342,7 @@ let soccerLife;
   const p = grownTo(17); p.talents.sports = 95; sp.takeUp('tennis');
   const e = sp.entryOf('tennis'); for (const k of Object.keys(e.skills)) { e.ceiling[k] = 92; e.skills[k] = 85; }
   e.pr = 1500;
+  e.history.push({ year: store.state.year - 3, level: 'club', name: 'a tennis club' }); e.seasonsPlayed = 3; // a record: years of club tennis
   advanceYear(); quiet();
   const d = life.openDecisions().find((x) => x.kind === 'turnPro');
   check(!!d, 'a high rating opens the way to turning professional on tour');

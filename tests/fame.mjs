@@ -23,7 +23,7 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'uk', age = 22) => {
-  do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId: id, ...(id === 'us' ? { city: 'New York' } : {}) }); } while (store.state.player.royal); // a US life in a showbiz city: the US has a city in every state
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = false; p.education.enrolled = false; p.education.stage = 'none';
   p.legal.record = []; p.stats.health = 85; p.stats.charm = 65; p.finance.cash = 50000;
@@ -78,7 +78,9 @@ section('profile: audiences, countries, attention and legacy are separate; old s
 // 3. The world.
 p = life();
 const orgs = ent.orgsOf('uk');
-check(['studio', 'network', 'theater', 'community', 'agency', 'outlet'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theaters, community companies, agencies and press');
+check(['studio', 'network', 'theater', 'community', 'agency'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theaters, community companies and agencies');
+{ const jn = await import('../js/engine/journalism.js'); const press = jn.nationalPress('uk');
+  check(press.some((o) => o.kind === 'magazine') && press.some((o) => o.kind === 'tabloid') && !orgs.some((o) => o.kind === 'outlet'), 'and its press is the national press (one press world), not outlets of its own'); }
 check(ent.orgsOf('uk').length === orgs.length && ent.orgsOf('uk')[0].id === orgs[0].id, 'and keeps them: they are not remade');
 const pool = ent.pool('uk');
 check(pool.length >= 30 && ent.pool('uk')[0].id === pool[0].id, 'working actors are persistent people');

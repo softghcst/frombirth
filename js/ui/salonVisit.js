@@ -10,6 +10,7 @@ import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import * as salon from '../engine/salon.js';
 import { player, country } from '../state.js';
 import { fmtMoney } from '../util.js';
+import { navRow } from './kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const pickBy = (list, key) => list[hash(key) % list.length];
@@ -24,16 +25,26 @@ const BARBERS = ['Marcus', 'Dre', 'Luis', 'Tony', 'Kofi', 'Sal', 'Jay', 'Omar', 
  */
 export const shopFor = (p) => (p.gender === 'male' ? 'barber' : 'salon');
 export const shopLabel = (p) => (shopFor(p) === 'barber' ? 'Barbershop' : 'Beauty Salon');
+/** The shop near the player: one name per city, the same each visit. */
+export const shopName = (p) => pickBy(shopFor(p) === 'barber' ? BARBERSHOPS : SALONS, `${p.city ?? ''}:${p.countryId}`);
 
-/** The salon's sign: scissors crossed over a hair dryer, in a round badge. */
+/** The salon's sign: a pair of open scissors, pink-handled, in a round badge with a sparkle or two. */
 const LOGO = `<svg class="sv-logo-art" viewBox="0 0 120 120" aria-hidden="true">
   <circle cx="60" cy="60" r="56" fill="#FFE3EC" stroke="#23140f" stroke-width="4"/>
-  <circle cx="60" cy="60" r="46" fill="none" stroke="#F59B7A" stroke-width="3" stroke-dasharray="4 6"/>
-  <g class="sv-dryer"><path d="M30 52c0-11 9-19 21-19h14c6 0 10 5 10 11s-4 11-10 11H51c-12 0-21-1-21-3z" fill="#7956A0" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M44 55l-5 26c-1 4 2 7 6 7h3c3 0 5-2 6-5l3-28" fill="#7956A0" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
-    <path d="M75 39h9M75 45h11M75 51h9" stroke="#23140f" stroke-width="3" stroke-linecap="round"/></g>
-  <g class="sv-scissors"><g class="sv-blade-a"><path d="M58 64l30 22" stroke="#23140f" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="88" r="8" fill="#FFB699" stroke="#23140f" stroke-width="3.5"/><path d="M56 82l8-10" stroke="#23140f" stroke-width="4"/></g>
-    <g class="sv-blade-b"><path d="M58 86l30-22" stroke="#23140f" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="62" r="8" fill="#FFB699" stroke="#23140f" stroke-width="3.5"/></g></g>
+  <circle cx="60" cy="60" r="47" fill="none" stroke="#F59B7A" stroke-width="3" stroke-dasharray="4 6"/>
+  <g class="sv-scissors">
+    <g class="sv-blade-a"><g transform="rotate(-22 60 62)">
+      <path d="M60 64V82" stroke="#23140f" stroke-width="9" stroke-linecap="round"/><path d="M60 64V82" stroke="#F28CA8" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="95" r="11" fill="#F28CA8" stroke="#23140f" stroke-width="3.5"/><circle cx="60" cy="95" r="5" fill="#FFE3EC" stroke="#23140f" stroke-width="2.5"/>
+      <path d="M54.5 64L58 14Q60 10 62 14L65.5 64Z" fill="#E3E9EF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M60 58L60.6 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".8"/></g></g>
+    <g class="sv-blade-b"><g transform="rotate(22 60 62)">
+      <path d="M60 64V82" stroke="#23140f" stroke-width="9" stroke-linecap="round"/><path d="M60 64V82" stroke="#F28CA8" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="95" r="11" fill="#F28CA8" stroke="#23140f" stroke-width="3.5"/><circle cx="60" cy="95" r="5" fill="#FFE3EC" stroke="#23140f" stroke-width="2.5"/>
+      <path d="M54.5 64L58 14Q60 10 62 14L65.5 64Z" fill="#E3E9EF" stroke="#23140f" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M60 58L60.6 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity=".8"/></g></g>
+    <circle cx="60" cy="62" r="4.5" fill="#D8B25A" stroke="#23140f" stroke-width="2.5"/></g>
+  <g fill="#FFFFFF" stroke="#23140f" stroke-width="2" stroke-linejoin="round"><path d="M28 34l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M92 30l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z"/></g>
 </svg>`;
 
 /** The salon, drawn in the game's style: a striped wall, shelves of products, a plant, and the mirror's frame of bulbs. */
@@ -114,11 +125,23 @@ const BULBS = (() => {
   return `<div class="sv-bulbs" aria-hidden="true">${at.map(([x, y]) => `<i style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%"></i>`).join('')}</div>`;
 })();
 
+/**
+ * The way in, first on the Self tab: an ordinary row, its picture the shop's own badge (scissors for the salon, a
+ * barber's pole for the barbershop). Carries data-salon, which opens the visit.
+ */
+export function shopRow(p) {
+  const barber = shopFor(p) === 'barber';
+  const badge = (barber ? BARBER_LOGO : LOGO).replace('class="sv-logo-art"', `class="shop-badge${barber ? ' shop-badge-barber' : ''}"`)
+    .replace(/id="sv-pole-logo"/, 'id="sv-pole-row"').replace(/url\(#sv-pole-logo\)/, 'url(#sv-pole-row)');
+  return navRow({ attrs: 'data-salon', label: shopLabel(p), art: badge,
+    sub: shopName(p) });
+}
+
 export function openSalonVisit(api, { intro = true } = {}) {
   const p = player();
   const c = country();
   const barber = shopFor(p) === 'barber';
-  const name = pickBy(barber ? BARBERSHOPS : SALONS, `${p.city ?? ''}:${p.countryId}`);
+  const name = shopName(p);
   const stylist = pickBy(barber ? BARBERS : STYLISTS, `${p.id}:${p.city ?? ''}`);
   const stylistGender = barber ? 'male' : hash(stylist) % 3 === 0 ? 'male' : 'female';
   const stylistLook = normalize({}, `stylist:${stylist}:${p.city ?? ''}`);
@@ -172,6 +195,27 @@ export function openSalonVisit(api, { intro = true } = {}) {
   let editor = null;
 
   function close() { root.remove(); }
+  let paid = false;
+
+  /**
+   * After paying, on the way out: the new look in a round frame with sparkles, a goodbye under the shop's sign, then
+   * a fade back to the game. A tap skips it; with reduced motion it is shown still, briefly.
+   */
+  function outro() {
+    const face = avatarSvg({ appearance: draft, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, mood: 92, viewBox: '86 120 340 340', label: 'Your new look' });
+    root.innerHTML = `<div class="sv-outro${reduced ? ' sv-still' : ''}" data-outro role="button" tabindex="0" aria-label="Back to your life">
+      <div class="sv-outro-sign">${barber ? BARBER_LOGO : LOGO}<span>${esc(name)}</span></div>
+      <div class="sv-outro-frame"><div class="sv-outro-face">${face}</div>${reduced ? '' : '<div class="sv-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>'}</div>
+      <p class="sv-outro-line">${esc(barber ? `Looking sharp, ${p.firstName}!` : `Looking gorgeous, ${p.firstName}!`)}</p>
+      <p class="sv-outro-sub">${esc(`${stylist} waves you off. See you next time!`)}</p></div>`;
+    const el = root.querySelector('[data-outro]');
+    let done = false;
+    const finish = () => { if (!done) { done = true; close(); } };
+    el.onclick = finish;
+    el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') finish(); };
+    el.focus?.();
+    setTimeout(finish, reduced ? 1200 : 2700);
+  }
 
   /** The scene: the room, the mirror with the player in it, and below, the stylist's bubble and the replies. */
   function scene({ line, replies = [], body = '', sparkle = false }) {
@@ -191,7 +235,7 @@ export function openSalonVisit(api, { intro = true } = {}) {
           <p class="sv-bill muted" data-bill>${esc(bill())}</p>
         </div>
       </div>`;
-    root.querySelector('[data-leave]').onclick = close;
+    root.querySelector('[data-leave]').onclick = paid ? outro : close;
     root.querySelectorAll('[data-reply]').forEach((b) => { b.onclick = () => replies[Number(b.dataset.reply)].go(); });
   }
 
@@ -245,11 +289,12 @@ export function openSalonVisit(api, { intro = true } = {}) {
       return;
     }
     api?.changed?.();
+    paid = true;
     draft = cloneAppearance(normalize(player().appearance, p.id));
     const tr = draft.style.treatment;
     scene({ sparkle: !reduced,
       line: `${say.paid} ${tr ? `Your hair will be ${hairTextureOf(draft)} for the next ${tr.years} years. ` : ''}Come back anytime.`,
-      replies: [{ label: barber ? 'Leave the barbershop' : 'Leave the salon', primary: true, go: close }] });
+      replies: [{ label: barber ? 'Leave the barbershop' : 'Leave the salon', primary: true, go: outro }] });
   }
 
   function goodbye() {

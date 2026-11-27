@@ -83,7 +83,7 @@ export function biologicalParents(person) {
     return { mother: gp.find((x) => sexOf(x) === 'female') ?? null, father: gp.find((x) => sexOf(x) === 'male') ?? null };
   }
   // Brothers and sisters share the player's parents (half-siblings share one).
-  if (person?.role === 'sibling') {
+  if (person?.role === 'sibling' && !person.flags?.adoptiveSibling && !person.flags?.birthKin) {
     const bio = mine('parent').filter(isBiological);
     const keep = person.flags?.half ? bio.filter((x) => x.id === person.flags.half) : bio;
     return { mother: keep.find((x) => sexOf(x) === 'female') ?? null, father: keep.find((x) => sexOf(x) === 'male') ?? null };
@@ -95,7 +95,8 @@ export function biologicalParents(person) {
   return { mother: known.find((x) => sexOf(x) === 'female') ?? null, father: known.find((x) => sexOf(x) === 'male') ?? null };
 }
 
-export const isBiological = (n) => !n.adopted && !n.flags?.step && !/^Step/.test(n.flags?.title ?? '');
+// Adoptive parents, guardians and the relatives who raise a child are their family, not their genes (engine/origins.js).
+export const isBiological = (n) => !n.adopted && !n.flags?.step && !n.flags?.adoptiveParent && !n.flags?.guardian && !n.flags?.kinCarer && !/^Step/.test(n.flags?.title ?? '');
 
 /**
  * Anyone's genome. Worked out once and kept; for someone whose parents are
@@ -147,7 +148,28 @@ export function bornWith(genome, id) {
     const L = Math.sqrt(h2) * (h2 ? liability(genome, def.id) : 0) + Math.sqrt(1 - h2) * r.normal();
     if (L > probit(1 - def.onset.prevalence)) out.push(def.id);
   }
-  for (const [key, gene] of Object.entries(GENES)) if (affected(genome, key, r)) out.push(gene.condition);
+  const genes = [];
+  for (const [key, gene] of Object.entries(GENES)) if (affected(genome, key, r)) genes.push(gene.condition);
+  // Kept in the order they were found; inherited single-gene conditions are kept first when some must go.
+  const kept = fewer([...genes, ...out]);
+  return [...out, ...genes].filter((id) => kept.includes(id));
+}
+
+/** Learning differences: reading, numbers, handwriting, language. */
+const LEARNING = ['dyslexia', 'dyscalculia', 'dysgraphia', 'dld'];
+/**
+ * Keeps what one person is born with to a believable handful: at most one learning difference, two developmental
+ * conditions and three in all. Inherited single-gene conditions come first, so families still match.
+ */
+export function fewer(ids) {
+  const out = [];
+  for (const id of [...new Set(ids)]) {
+    const def = CONDITION_BY_ID[id];
+    if (LEARNING.includes(id) && out.some((x) => LEARNING.includes(x))) continue;
+    if (def?.group === 'neurodev' && out.filter((x) => CONDITION_BY_ID[x]?.group === 'neurodev').length >= 2) continue;
+    if (out.length >= 3) break;
+    out.push(id);
+  }
   return out;
 }
 

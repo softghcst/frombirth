@@ -455,7 +455,7 @@ export function nameIn(def, year) {
   return name;
 }
 
-/** Old event ids (data/illnesses.js) that are now part of this catalog. */
+/** Old event ids (data/health/ailments.js) that are now part of this catalog. */
 export const LEGACY_IDS = { depression: 'mdd', anxiety: 'gad', asthma: 'asthma', high_bp: 'hypertension', diabetes: 'type2_diabetes', heart_disease: 'heart_disease', cancer: 'cancer', back_pain: 'back_pain' };
 /** Physical conditions moved over from the older list: an event that brings one on means a doctor has found it. */
 export const PHYSICAL_LEGACY = ['asthma', 'hypertension', 'type2_diabetes', 'heart_disease', 'cancer', 'back_pain'];

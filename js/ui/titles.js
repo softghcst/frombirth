@@ -4,7 +4,7 @@
 
 /** Short words left in lower case inside a title, unless they start or end it. */
 const SMALL = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'as', 'at', 'by', 'in', 'of', 'on',
-  'to', 'up', 'via', 'vs', 'vs.', 'per', 'from', 'with', 'into', 'onto', 'off', 'over', 'out']);
+  'to', 'up', 'via', 'vs', 'vs.', 'v', 'v.', 'per', 'from', 'with', 'into', 'onto', 'off', 'over', 'out']); // 'v.': The State v. Morgan Hale
 
 const upFirst = (w) => w.replace(/^([^\p{L}]*)(\p{Ll})/u, (_, pre, c) => pre + c.toUpperCase());
 
@@ -13,7 +13,7 @@ export function titleCase(text) {
   const parts = String(text ?? '').split(/(\s+)/);
   const words = parts.map((p, i) => (i % 2 ? null : p)).filter((p) => p && /\p{L}/u.test(p));
   const first = words[0];
-  const last = words.at(-1);
+  const last = parts.filter((p, i) => !(i % 2) && p).at(-1); // the last word, even a number: "Term 1 of 6" keeps its small "of"
   let afterBreak = false;
   return parts.map((p, i) => {
     if (i % 2 || !p) return p;

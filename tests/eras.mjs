@@ -72,13 +72,13 @@ section('Transitions');
   const s = createLife({ countryId: 'us' });
   delete s.era;
   const cash = s.player.finance.cash;
-  mem.set(`pathways.slot.${s.slotId}`, JSON.stringify(s));
+  mem.set(`frombirth.slot.${s.slotId}`, JSON.stringify(s));
   const back = save.loadGame(s.slotId);
   check(back.era.money === 'era' && back.year === s.year && back.player.finance.cash === cash && back.player.age === s.player.age, 'a present-day save loads unchanged, as a modern life');
   // A life saved before eras, already in the past: keeps today's money.
   const old = createLife({ countryId: 'us', year: 1950 });
   delete old.era;
-  mem.set(`pathways.slot.${old.slotId}`, JSON.stringify(old));
+  mem.set(`frombirth.slot.${old.slotId}`, JSON.stringify(old));
   const b2 = save.loadGame(old.slotId);
   check(b2.era.money === 'modern', 'a past life saved before eras keeps today\'s money, so its fortune is not rewritten');
   const again = JSON.stringify(ensureEra(b2, { legacy: true }));
@@ -208,7 +208,7 @@ section('Money');
 {
   const old = createLife({ countryId: 'fr', year: 1960 });
   delete old.era;
-  mem.set(`pathways.slot.${old.slotId}`, JSON.stringify(old));
+  mem.set(`frombirth.slot.${old.slotId}`, JSON.stringify(old));
   const back = save.loadGame(old.slotId);
   store.state = back;
   const { alignWorld } = await import('../js/engine/eras.js');
@@ -322,7 +322,7 @@ section('Health');
 {
   const { mortalityChance } = await import('../js/engine/death.js');
   const { ensureLife } = await import('../js/engine/npcLives.js');
-  const med = await import('../js/engine/medical.js');
+  const med = await import('../js/engine/health/visits.js');
   const at = (year) => { store.state.year = year; H.syncWorld(year); };
   life({ born: 1900, age: 0 });
   at(1900);
@@ -354,12 +354,16 @@ section('Health');
   check(H.treatmentIn('flu', 1930).chance < H.treatmentIn('flu', 1950).chance, 'infections were harder to treat before antibiotics');
   check(H.treatmentIn('cancer', 2026).chance === 1 && H.treatmentIn('depression', 2026).chance === 1, 'today\'s treatments are as before');
   const r = life({ born: 1880, age: 35 });
-  r.conditions.push({ id: 'diabetes', name: 'diabetes', severity: 40, chronic: true, sinceAge: 30, treated: false });
   r.finance.cash = 1e6;
-  const t = med.treatable().find((x) => x.id === 'diabetes');
-  check(t && t.limited && !t.manage, 'in 1915 a doctor can do little for diabetes, and the screen says so');
-  med.seeDoctor('diabetes');
-  check(!r.conditions.find((c) => c.id === 'diabetes').treated, 'and it cannot be brought under control');
+  // One health record: diabetes from a scene is a long-term condition in it, and in 1915 there is no medicine for it.
+  const { addCondition } = await import('../js/engine/health/ailments.js');
+  const rules = await import('../js/engine/health/rules.js');
+  const { MED_BY_ID } = await import('../js/data/health/medications.js');
+  addCondition('diabetes', r);
+  check(r.health.conditions.some((c) => c.conditionId === 'type2_diabetes') && !rules.medAvailable(MED_BY_ID.metformin, 1915), 'in 1915 diabetes goes into the health record, with no medicine for it yet');
+  addCondition('flu', r);
+  const t = med.treatable().find((x) => x.id === 'flu');
+  check(t && t.limited, 'in 1915 a doctor can do less for the flu (no antibiotics), and the screen says so');
   check(!med.surgeryOptions().some((s) => s.id === 'lipo') && /no such thing/.test(med.therapy().text) === false, 'no liposuction in 1915; talking therapy existed by then');
   // Outcomes do not change on reload: the dice are saved with the life.
   const s = life({ born: 1910, age: 30 });
@@ -367,7 +371,7 @@ section('Health');
   const slot = store.state.slotId;
   // A life that ends with no heir is taken off the saved lives; keep the file to load it again (as a player could
   // with a copy of their save).
-  const key = `pathways.slot.${slot}`;
+  const key = `frombirth.slot.${slot}`;
   const kept = localStorage.getItem(key);
   grow(10);
   const first = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;

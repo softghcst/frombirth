@@ -16,6 +16,8 @@ import { gain, regard } from './fame.js';
 import { registerEmployer } from './employers.js';
 import { makeNpc } from './npcFactory.js';
 import { rollTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
+import { claim as claimSpecial } from './specialCareer.js';
+import { modelLook } from './conditions.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -68,7 +70,7 @@ export const booker = (o) => (o?.bookerId ? store.state.npcs[o.bookerId] : null)
 export const agencyTerms = (p = player()) => { const m = p.fame?.model; return m?.agencyId ? m.terms ?? null : null; };
 
 /** How a model reads in a casting: presence, and how they carry themselves. */
-export const look = (p = player()) => Math.round(clamp(p.stats.charm * 0.6 + p.stats.health * 0.2 + (p.talents.dance ?? 50) * 0.2 - Math.max(0, p.age - 28) * 1.2));
+export const look = (p = player()) => modelLook(p); // engine/conditions.js: the gift for modeling above all
 const book = (m) => m.portfolio.reduce((s, x) => s + x.prestige, 0);
 
 /** Agencies that would take the player on, best first. */
@@ -167,6 +169,7 @@ export function attendCasting(id, approach = null) {
   const c = castings(p).find((x) => x.id === id);
   if (!c || c.status !== 'open') return result(false, 'That casting has gone.', 'neutral');
   if (m.castings.went >= 3) return result(false, 'You have been to all the castings you can this year.', 'neutral');
+  { const sc = claimSpecial('modeling'); if (sc) return result(false, sc, 'neutral'); }
   m.castings.went += 1;
   const ag = ent().orgs[m.agencyId];
   const odds = castingOdds(c, approach, p);

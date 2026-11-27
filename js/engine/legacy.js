@@ -2,7 +2,9 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { SKILL_BY_ID } from '../data/skills.js';
 import { giveBirthday, yearSpan } from './birthday.js';
+import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
 import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
@@ -37,8 +39,11 @@ import { heirHealth, legacySummary } from './health/index.js';
 import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
+import { legacySummary as investigatorLegacy } from './investigations/index.js';
+import { physicianSummary } from './medicine/core.js';
 import { handOver as handOverSports } from './sportsLife.js';
 import { rate as fxRate } from './currency.js';
+import { handOverNewsroom } from './journalism.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -149,11 +154,18 @@ function newRoles(old, h) {
       else if (n.role === 'sibling') role = 'relative';
       else if (n.role === 'inlaw') role = 'inlaw';
       else if (n.role === 'grandchild' || n.role === 'greatgrandchild') role = 'niece';
+      // A blended family (engine/blended.js): the spouse's child is a half-sibling where they share a parent with the
+      // heir, otherwise a step-sibling; the old life's step-relatives stay where they were close.
+      else if (n.role === 'stepchild') { const shared = (n.parentIds ?? []).find((id) => parents.has(id)); role = shared ? 'sibling' : 'stepsibling'; if (shared) n.flags.half = shared; }
+      else if ((n.role === 'stepparent' || n.role === 'stepsibling') && n.meters.relationship >= 45) role = 'relative';
+      // Children raised in the household in foster care or as a ward: family in all but law, where they were close.
+      else if ((['fosterchild', 'ward'].includes(n.role) || n.flags.formerPlacement) && n.meters.relationship >= 55) role = 'friend';
     } else { // the heir is a grandchild
       if (parents.has(n.id)) role = 'parent';
       else if (n.role === 'grandchild') role = sharesParent(n) ? 'sibling' : 'relative';
       else if (n.role === 'child') role = 'relative';
       else if (n.role === 'spouse') role = 'grandparent';
+      else if (n.role === 'stepchild' && n.meters.relationship >= 45) role = 'relative';
     }
     // The dead are kept only where the family tree would miss them.
     if (role && !n.alive && !['parent', 'grandparent', 'sibling', 'child'].includes(role)) role = null;
@@ -191,6 +203,8 @@ export function continueAs(npcId) {
   ensureLife(h);
   const L = h.life;
   settleAnimals(old); // already done when the life ended; this covers lives that ended before animals had a record
+  // A carer who dies: children placed with them go back to the agency (engine/fostering.js). The record says so.
+  for (const pl of op.fostering?.placements ?? []) if (pl.status === 'active') { pl.status = 'ended'; pl.end = old.year; pl.outcome = 'The carer died; the agency found another home.'; }
   const roles = newRoles(old, h);
   const lost = h.role === 'child' ? byGender(op, 'father', 'mother', 'parent') : byGender(op, 'grandfather', 'grandmother', 'grandparent');
 
@@ -214,11 +228,18 @@ export function continueAs(npcId) {
       delete n.life;
       n.flags.title = was === 'grandchild' ? 'Cousin' : byGender(n, 'Uncle', 'Aunt', 'Parent\'s sibling');
     }
+    // Step-relatives and those raised in care, by what they are to the heir now.
+    if (role === 'relative' && was === 'stepparent') n.flags.title = byGender(n, 'Step-grandfather', 'Step-grandmother', 'Step-grandparent');
+    if (role === 'relative' && (was === 'stepsibling' || was === 'stepchild')) n.flags.title = byGender(n, 'Step-uncle', 'Step-aunt', 'Step-relative');
+    if (role === 'friend' && (was === 'fosterchild' || was === 'ward' || n.flags.formerPlacement)) { n.flags.title = 'Grew up in your family, in care'; delete n.flags.placementId; ensureLife(n); }
+    if (role === 'stepsibling') { n.flags.stepVia = (n.parentIds ?? [])[0] ?? null; ensureLife(n); }
     if (role === 'niece' && was === 'greatgrandchild') n.flags.title = byGender(n, 'Great-nephew', 'Great-niece', 'Sibling\'s grandchild');
     if (role === 'spouse') { n.marriedAtAge = Math.max(18, h.age - (L.together ?? 0)); n.prenup = false; }
     if (role === 'ex') n.flags.wasSpouse = true;
     if (['spouse', 'partner', 'ex'].includes(role)) { delete n.flags.partnerOf; delete n.flags.married; delete n.flags.former; }
     if (role === 'child') n.parentIds = (n.parentIds ?? []).filter((x) => x !== h.id);
+    // The old life's children kept only their other parent (engine/children.js): the one who has died is a parent too.
+    if (role === 'sibling' && was === 'child' && h.role === 'child') { n.parentIds = [...new Set([...(n.parentIds ?? []), ancestor.id])]; if (n.flags.half === true) n.flags.half = ancestor.id; }
     npcs[id] = n;
   }
 
@@ -287,11 +308,24 @@ export function continueAs(npcId) {
   // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
   next.canon = old.canon ?? { events: [] };
   next.archive = old.archive ?? { people: {} };
+  // The newsrooms, what was published, and a family publication carry on (engine/journalism.js).
+  handOverNewsroom(old, next, player);
+  // The city's hospitals keep what they are; a physician's patient files are confidential and are not inherited.
+  // The agencies, offices, laboratories and the cases they keep go on; an investigator's public career joins the family's legacy.
+  // A descendant inherits no powers and no access to case files: only what was public (engine/investigations/index.js legacySummary).
+  if (old.investigations || op.investigator) {
+    const was = investigatorLegacy(op);
+    next.investigations = { ...(old.investigations ?? {}), legacies: [...(old.investigations?.legacies ?? []), ...(was ? [{ ...was, id: op.id, died: old.year }] : [])] };
+  }
+  if (old.medicine) next.medicine = { v: old.medicine.v, seq: old.medicine.seq ?? 0, hospitals: old.medicine.hospitals ?? {}, programs: old.medicine.programs ?? {}, schools: old.medicine.schools ?? {}, patients: {}, cases: {}, episodes: {} };
   giveBirthday(player); // the heir's own birthday: their years now turn on it (engine/birthday.js)
+  // The heir grew up speaking their birth country's language.
+  giveNativeLanguages(player);
   next.today = yearSpan(next).start;
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
-    languages: Object.entries(op.skills ?? {}).filter(([k, v]) => ['spanish', 'french', 'japanese', 'mandarin', 'german', 'korean', 'portuguese', 'arabic', 'sign_language'].includes(k) && v >= 40).map(([k]) => k) } });
+    medicine: physicianSummary(op), // a physician's career, never their patients (engine/medicine/core.js)
+    languages: Object.entries(op.skills ?? {}).filter(([k, v]) => SKILL_BY_ID[k]?.group === 'language' && v >= 40).map(([k]) => k) } });
   player.archiveParents = [archiveIdOf(op)];
   store.state = next;
   heirHealth(next, h);

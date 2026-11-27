@@ -44,6 +44,13 @@ export const PROFESSIONS = {
   audiologist: { name: 'Audiologist', title: '', from: 1946, career: 'Audiologist', diagnoses: ['sensory'], only: ['deaf', 'hearing_loss'], prescribes: [], qual: 'Audiology degree' },
   ent: { name: 'Ear, nose and throat surgeon', title: 'Dr.', from: 1870, career: 'Surgeon', diagnoses: ['sensory'], only: ['deaf', 'hearing_loss'], prescribes: [], qual: 'Medical degree, ENT training' },
   ophthalmologist: { name: 'Ophthalmologist', title: 'Dr.', from: 1850, career: 'Ophthalmologist', diagnoses: ['sensory', 'genetic'], only: ['blind', 'low_vision', 'lhon', 'color_vision'], prescribes: [], qual: 'Medical degree, ophthalmology training' },
+  // Reproductive health care (engine/health/contraception.js; scope of each in data/health/contraception.js PROVIDER_SCOPE).
+  obgyn: { name: 'Obstetrician-gynecologist', title: 'Dr.', from: 1900, career: 'Obstetrician-gynecologist', diagnoses: [], prescribes: ['contraceptive'], qual: 'Medical degree, obstetrics and gynecology training' },
+  urologist: { name: 'Urologist', title: 'Dr.', from: 1900, career: 'Surgeon', diagnoses: [], prescribes: [], qual: 'Medical degree, urology training' },
+  nurse_practitioner: { name: 'Nurse practitioner', title: '', from: 1965, career: 'Nurse', diagnoses: [], prescribes: ['contraceptive'], qual: 'Nursing degree, advanced practice training' },
+  physician_assistant: { name: 'Physician assistant', title: '', from: 1967, career: 'Physician assistant', diagnoses: [], prescribes: ['contraceptive'], qual: 'Physician assistant degree' },
+  midwife: { name: 'Midwife', title: '', from: 1800, career: 'Midwife', diagnoses: [], prescribes: ['contraceptive'], qual: 'Midwifery training' },
+  sexual_health_nurse: { name: 'Sexual health nurse', title: '', from: 1920, career: 'Nurse', diagnoses: [], prescribes: ['contraceptive'], qual: 'Nursing degree, sexual and reproductive health training' },
   optometrist: { name: 'Optometrist', title: '', from: 1900, career: 'Optometrist', diagnoses: ['sensory', 'genetic'], only: ['low_vision', 'color_vision'], prescribes: [], qual: 'Optometry degree' },
 };
 
@@ -67,11 +74,17 @@ export const FACILITIES = [
   { id: 'psychiatry', name: (city) => `${city} Psychiatry Clinic`, kind: 'Psychiatry practice', from: 1900, public: false,
     staff: ['psychiatrist'], services: ['assessment', 'prescribing'], access: 0.6, fee: 1.5 },
   { id: 'hospital', name: (city) => `${city} General Hospital`, kind: 'Hospital', from: 1800, public: true,
-    staff: ['doctor', 'neurologist', 'pediatrician', 'ophthalmologist', 'ent', 'audiologist', 'cardiologist', 'oncologist'], services: ['assessment', 'prescribing', 'specialist', 'admission'], access: 0.9 },
+    staff: ['doctor', 'neurologist', 'pediatrician', 'ophthalmologist', 'ent', 'audiologist', 'cardiologist', 'oncologist', 'obgyn', 'urologist'], services: ['assessment', 'prescribing', 'specialist', 'admission', 'reproductive'], access: 0.9 },
   { id: 'rehab', name: (city) => `${city} Rehabilitation Center`, kind: 'Rehabilitation center', from: 1945, public: true,
     staff: ['physiotherapist', 'occupational_therapist', 'speech_therapist'], services: ['therapy'], access: 1 },
   { id: 'learning', name: (city) => `${city} Learning Support Service`, kind: 'Educational assessment service', from: 1950, public: true,
     staff: ['educational_psychologist', 'specialist_teacher'], services: ['assessment', 'therapy'], access: 0.8 },
+  // Reproductive health: a public sexual health service (family planning clinics date from the 1920s) and a private
+  // women's health practice. Both only see reproductive health care (services: 'reproductive').
+  { id: 'sexual_health', name: (city) => `${city} Sexual Health Clinic`, kind: 'Sexual and reproductive health service', from: 1921, public: true,
+    staff: ['sexual_health_nurse', 'nurse_practitioner', 'gp'], services: ['reproductive'], access: 0.9, fee: 0.6 },
+  { id: 'womens', name: (city) => `${city} Women's Health Practice`, kind: 'Obstetrics and gynecology practice', from: 1900, public: false,
+    staff: ['obgyn', 'nurse_practitioner', 'midwife'], services: ['reproductive'], access: 0.8, fee: 1.3 },
   { id: 'community', name: (city) => `${city} Community Center`, kind: 'Community organization', from: 1900, public: true,
     staff: [], services: ['peer'], access: 0.9 },
 ];

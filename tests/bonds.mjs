@@ -454,7 +454,7 @@ section('trips: paid once, may go badly, may be declined');
   b.arc.complicated = { year: S().year, choice: 'honest' };
   // A child at home, and a child with the other.
   const { newborn } = await import('../js/engine/children.js');
-  const kidsBefore = Object.values(S().npcs).filter((n) => n.role === 'child').length;
+  const kidsBefore = Object.values(S().npcs).filter((n) => n.role === 'child' && !n.birthInfo).length; // (a baby born in these years has a birth tag; counted apart)
   const { makeNpc: mk } = await import('../js/engine/npcFactory.js');
   const add = (parent, name) => { const k = mk({ role: 'child', countryId: p.countryId, age: 0, relationship: 80 }); k.firstName = name; k.parentIds = [parent.id]; S().npcs[k.id] = k; p.npcIds.push(k.id); return k; };
   void newborn;
@@ -469,13 +469,23 @@ section('trips: paid once, may go badly, may be declined');
   other.meters.relationship = 90; b.acts = {};
   year(); year();
   check((p.finance.support ?? []).filter((x) => x.childId === away.id).length === 1, 'one obligation, not one a year');
-  check(bonds.halfSiblings(home, away) && !bonds.halfSiblings(home, home) && Object.values(S().npcs).filter((n) => n.role === 'child').length === kidsBefore + 2, 'the two children are half-siblings, each one person');
+  check(bonds.halfSiblings(home, away) && !bonds.halfSiblings(home, home) && Object.values(S().npcs).filter((n) => n.role === 'child' && !n.birthInfo).length === kidsBefore + 2, 'the two children are half-siblings, each one person');
   check(bonds.knowsOfChild(away, other.id) && !bonds.knowsOfChild(away, wife.id) && bonds.knowsOfChild(home, wife.id), 'the spouse has not been told about a child of a relationship they do not know of');
   if (wife.role === 'spouse' && wife.alive && other.alive && b.status === 'active') { bonds.confess(wife.id); check(bonds.knowsOfChild(away, wife.id), 'and knows once they have been told'); }
   check(away.role === 'child' && S().npcs[away.id] === away && away.parentIds.includes(other.id), 'whatever becomes of the adults, the child is the same child');
   const { roleLabel } = await import('../js/engine/relationships.js');
   const sib = person('sibling', 20); sib.flags.half = true;
   check(/^Half-/.test(roleLabel(sib)), 'a half-sibling is called one');
+  // A best friend who became a partner, then a wife, is called that; titles still name a stepparent.
+  const bff = person('friend', 30); bff.gender = 'female'; bff.flags.title = 'Best friend';
+  check(roleLabel(bff) === 'Best friend', 'a best friend is called one');
+  bff.role = 'partner'; check(roleLabel(bff) === 'Girlfriend', `a best friend who became a girlfriend is called one (${roleLabel(bff)})`);
+  bff.flags.engaged = true; check(roleLabel(bff) === 'Fiancée', `engaged, a fiancée (${roleLabel(bff)})`);
+  const groom = person('friend', 30); groom.gender = 'male'; groom.flags.title = 'Roommate'; groom.role = 'partner'; groom.flags.engaged = true;
+  check(roleLabel(groom) === 'Fiancé', `and a roommate who became a fiancé is called one (${roleLabel(groom)})`);
+  bff.flags.engaged = false;
+  bff.role = 'spouse'; check(roleLabel(bff) === 'Wife', `and, married, a wife (${roleLabel(bff)})`);
+  const step = person('parent', 50); step.flags.title = 'Stepmother'; check(roleLabel(step) === 'Stepmother', 'a stepmother is still called one');
 }
 section('children across households: where they live, support owed once and yearly, half-siblings, who has been told');
 

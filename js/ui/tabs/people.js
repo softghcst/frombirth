@@ -1,6 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
-import { openBirthTag } from '../birthTag.js';
+import { openBirthTag, openAdoptionCard } from '../birthTag.js';
+import { canTagOlder, olderBirthInfo } from '../../engine/birthTag.js';
 import * as hoodUi from '../neighborhood.js';
 import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
@@ -15,6 +16,7 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openWedding, planHoneymoon } from '../weddingPlanner.js';
 import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
@@ -39,15 +41,19 @@ import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
+import * as fostering from '../../engine/fostering.js';
+import { friendGroups as friendGroupsOf } from '../../engine/friendGroups.js';
+import { openFostering } from '../fostering.js';
+import { originsRow, openOrigins } from '../origins.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
+const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 /** Roles always shown at the top of People. */
-const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
-  ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Children and grandchildren', ['child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild']],
+  ['Family', ['parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
   // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
@@ -56,12 +62,22 @@ const GROUPS = [
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
   ['Your care team', ['clinician']],
-  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
+  ['Others', ['ex', 'fosterfamily', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 export const portrait = (npc) => (npc.role === 'pet'
   ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank, npc.flags.royal?.consort, player().royal?.countryId), label: npc.firstName })}</div>`);
+
+/** The people a child was adopted by, as they were on the day. */
+const adoptiveParents = (child) => (child.adoptionInfo?.by ?? []).map((id) => (id === player().id ? player() : store.state.npcs[id])).filter(Boolean);
+/** Adopts a child and, when it goes through, shows the day they came home. */
+async function adoptAndWelcome(api) {
+  const r = kids.adopt();
+  await report(api, r);
+  const child = r.childId ? store.state.npcs[r.childId] : null;
+  if (child?.adoptionInfo) { child.flags.adoptionCard = 'seen'; api.changed(); await openAdoptionCard(child, { title: `Welcome Home, ${child.firstName}!`, parents: adoptiveParents(child), button: `Hello, ${child.firstName}` }); }
+}
 
 async function report(api, r) {
   api.changed();
@@ -129,8 +145,6 @@ async function proposeTo(api, npc) {
 }
 
 async function planWedding(api, npc) {
-  const c = country();
-  const cash = player().finance.cash;
   if (npc.flags.royal) {
     // A royal match is not planned by the couple: the palace decides whether it happens at all.
     const ask = await confirmModal({ title: 'Ask the palace for consent?',
@@ -155,30 +169,14 @@ async function planWedding(api, npc) {
     const go = await confirmModal({ title: 'Leave the royal family?', body: `By the law of your house, a princess who marries outside it gives up her title and her place in the family. If you marry ${npc.firstName}, you will be a private citizen.`, yes: 'I understand', no: 'Not yet' });
     if (!go) return;
   }
-  const wedding = await pickModal({
-    title: 'Plan the wedding',
-    options: love.WEDDINGS.map((w) => {
-      const cost = localMoney(w.cost, c);
-      return { value: w.id, label: w.name, sub: fmtMoney(cost, c), disabled: cash < cost };
-    }),
-  });
-  if (!wedding) return;
-  let prenup = await confirmModal({
-    title: 'Ask for a prenup?',
-    body: `Without one, a divorce splits everything down the middle. Asking will sting ${npc.firstName} a little, and they may refuse.`,
-    yes: 'Ask for a prenup', no: 'No prenup',
-  });
-  if (prenup) {
-    const answer = love.askForPrenup(npc.id);
-    api.changed();
-    await messageModal({ body: answer.text, tone: answer.tone });
-    prenup = answer.ok;
-    if (!prenup) {
-      const goOn = await confirmModal({ title: 'Marry without a prenup?', body: `${npc.firstName} will not sign. You can marry anyway, or put the wedding on hold.`, yes: 'Marry anyway', no: 'Put it on hold' });
-      if (!goOn) return;
-    }
-  }
-  await report(api, love.marry(npc.id, wedding, prenup));
+  // The wedding is planned with a wedding planner, piece by piece, and then it happens; or, with those scenes turned off
+  // in Settings, on one page with a "Just married!" card (js/ui/weddingPlanner.js).
+  const r = await openWedding(api, npc);
+  api.changed();
+  // Off on the honeymoon booked with the wedding: the journey, the trip, the postcard (js/ui/globalLife.js goOnTrip).
+  if (r?.honeymoonTrip) { const { goOnTrip } = await import('../globalLife.js'); await goOnTrip(api, r.honeymoonTrip); api.changed(); }
+  // With the scenes turned off, the honeymoon is planned after, in the trip planner.
+  else if (r?.married && r.honeymoon) await planHoneymoon(api, npc, { cruise: r.honeymoon === 'cruise' });
 }
 
 async function fileForDivorce(api, npc) {
@@ -299,8 +297,9 @@ function grouped(actions) {
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    const open = shown++ < 1;
-    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
+    shown++;
+    // Each group is a plain heading with its buttons under it: nothing to unfold on a page of its own.
+    return `<section class="action-group"><div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}${a.why ? ' has-why' : ''}" data-act="${a.id}" ${a.done || a.why ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}${a.why ? `<small>${esc(a.why)}</small>` : ''}</button>`).join('')}</div></section>`;
   }).join('');
 }
 
@@ -380,8 +379,11 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
-    ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
-    ...(npc.birthInfo ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    // A method in place (an implant, an IUD, a pill, a permanent method) greys it out, with why underneath.
+    ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby', why: kids.tryBlockedBy() }] : []),
+    ...(kids.ivfOpen(npc) ? [{ id: 'ivf', label: `Try IVF (${fmtMoney(kids.ivfPrice(), country())})`, group: 'love', why: kids.tryBlockedBy({ ivf: true }) }] : []),
+    ...(npc.birthInfo || canTagOlder(npc) ? [{ id: 'birthTag', label: 'Their birth tag' }] : []),
+    ...(npc.adoptionInfo ? [{ id: 'adoptionCard', label: 'Their adoption day card' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
@@ -412,7 +414,7 @@ export function openNpc(npc, api, back, o = {}) {
     ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
-    </div>`, { dismissable: true, onDismiss: () => back?.() });
+    </div>`, { dismissable: true, full: true, title: `${npc.firstName}${isPet ? '' : ` ${npc.lastName}`}`, onDismiss: () => back?.() });
 
   modal.el.addEventListener('click', async (e) => {
     if (e.target.closest('[data-close]')) { modal.close(); return back?.(); }
@@ -425,16 +427,18 @@ export function openNpc(npc, api, back, o = {}) {
       wedding: () => planWedding(api, npc),
       divorce: () => fileForDivorce(api, npc),
       rename: () => rename(api, npc),
-      birthTag: () => openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [player(), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      birthTag: () => olderBirthInfo(npc) && openBirthTag(npc, { title: `${npc.firstName}'s Birth Tag`, parents: [...(npc.role === 'child' ? [player()] : []), ...(npc.parentIds ?? []).map((id) => store.state.npcs[id])].filter(Boolean).slice(0, 2) }),
+      adoptionCard: () => openAdoptionCard(npc, { title: `${npc.firstName}'s Adoption Day`, parents: adoptiveParents(npc) }),
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
-      hookUp: () => report(api, love.hookUp(npc.id)),
+      hookUp: async () => { await report(api, love.hookUp(npc.id)); if (store.state.pendingEvents.length) await api.pending?.(); },
       askCasual: () => report(api, bonds.propose(npc.id, 'casual')),
       askFwb: () => report(api, bonds.propose(npc.id, 'fwb')),
       askSecret: () => report(api, bonds.propose(npc.id, 'secret')),
       askOneNight: () => report(api, bonds.propose(npc.id, 'onenight')),
       bondTime: () => report(api, bonds.spendTime(npc.id)),
-      bondIntimate: () => report(api, bonds.intimate(npc.id)),
+      // A decision the night brought (emergency contraception after a broken condom) is asked now, while it can help.
+      bondIntimate: async () => { await report(api, bonds.intimate(npc.id)); if (store.state.pendingEvents.length) await api.pending?.(); },
       bondGift: () => romanticGift(api, npc),
       bondTrip: () => tripWith(api, npc),
       bondTransfer: () => makeOver(api, npc),
@@ -445,8 +449,9 @@ export function openNpc(npc, api, back, o = {}) {
       bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),
       bondEnd: () => report(api, bonds.end(npc.id)),
       bondConfess: () => report(api, bonds.confess(npc.id)),
-      bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
+      bondControl: async () => { const { openHealth } = await import('../health/hub.js'); openHealth(api, { section: 'repro', page: 'bc' }); },
       baby: () => report(api, kids.tryForBaby(npc.id)),
+      ivf: () => report(api, kids.tryIvf(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
       encourageCare: () => report(api, encourageCare(npc.id)),
       goWithCare: () => report(api, goWithCare(npc.id)),
@@ -507,6 +512,22 @@ zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 sportsUi.connect({ openPerson: openNpc });
 hoodUi.connect({ openPerson: openNpc });
 
+/** Your groups of friends: who is in each, since when, and what has happened to them (engine/friendGroups.js). */
+function openFriendGroups(api) {
+  const gs = friendGroupsOf().sort((a, b) => (a.status === b.status ? b.formed - a.formed : a.status === 'together' ? -1 : 1));
+  const body = gs.map((g) => `<div class="card" style="margin-top:10px"><h3>${esc(g.name)}</h3>
+    <p class="muted">${g.status === 'together' ? `Together since ${g.formed}` : `${g.formed}, drifted apart`}${g.school ? ` · from ${esc(g.school)}` : ''}${g.at === 'after school' ? ' · still going after school' : ''}</p>
+    ${g.members.map((id) => store.state.npcs[id]).filter(Boolean).map((n) => `<button class="row" data-gnpc="${n.id}"><div class="main"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(rel.roleLabel(n))} · age ${n.age}</small></div></button>`).join('')}
+    ${g.history.length ? `<details class="more"><summary>What happened</summary>${g.history.slice(-8).reverse().map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}</details>` : ''}</div>`).join('');
+  const m = openModal(`<h2>Friend groups</h2>${body}<button class="btn" data-close style="margin-top:14px;width:100%">Close</button>`, { dismissable: true });
+  m.el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) return m.close();
+    const id = e.target.closest('[data-gnpc]')?.dataset.gnpc;
+    if (id) { m.close(); return openNpc(store.state.npcs[id], api); }
+    return undefined;
+  });
+}
+
 /** Look for Love and Adopt a Child, for the Self tab: what you can start yourself. Greyed, with why, until open. */
 export function loveFamilyGroup() {
   const c = country();
@@ -516,15 +537,19 @@ export function loveFamilyGroup() {
   else if (!love.partner()) rows.push(lockedRow('Look for Love', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now', 'heart'));
   if (kids.canAdopt()) rows.push(navRow({ attrs: 'data-lovefam="adopt"', label: 'Adopt a Child', sub: fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), ico: 'child' }));
   else rows.push(lockedRow('Adopt a Child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large', 'child'));
+  // Foster and kinship care (engine/fostering.js): open to look at from 21; applying needs a home of your own.
+  if (pp.age >= 21) rows.push(navRow({ attrs: 'data-lovefam="foster"', label: 'Fostering', sub: fostering.activePlacements().length ? `${fostering.activePlacements().length} living with you` : fostering.fostering().status === 'approved' ? 'Approved carer' : 'Give a child a home for a while', ico: 'child' }));
+  else rows.push(lockedRow('Fostering', fromAge(pp.age, 21), 'child'));
   return navGroup(rows, 'Love and Family');
 }
 
 /** Opens what a Love and Family row starts. */
 export async function openLoveFamily(id, api) {
   if (id === 'love') return lookForLove(api);
+  if (id === 'foster') return openFostering(api);
   if (id === 'adopt') {
     const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-    if (yes) return report(api, kids.adopt());
+    if (yes) return adoptAndWelcome(api);
   }
   return undefined;
 }
@@ -547,6 +572,7 @@ export default {
     // Look for Love and Adopt a Child are on the Self tab (loveFamilyGroup), with your own plans, not here among your people.
     const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
+    { const gs = friendGroupsOf(); if (gs.length) more.unshift(['groups', 'Friend groups', gs.filter((g) => g.status === 'together').map((g) => g.name).join(', ') || 'Groups you were part of', 'people']); }
 
     const row = (n) => `
       <button class="row rel-card" data-npc="${n.id}">
@@ -573,15 +599,17 @@ export default {
         if (rest.length <= 4) return groups(list);
         return `${groups(near)}<details class="more people-more"><summary>Others you know <small class="muted">(${rest.length})</small></summary>${groups(rest, [['Friends', ['friend']], ...GROUPS.filter(([t]) => t !== 'Friends'), ['School', ['classmate']]])}</details>`;
       })() : '<p class="empty">There is nobody in your life right now.</p>'}
-      ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
+      ${navGroup([...nav([...more, ...top, ...keep]), ...[originsRow()].filter(Boolean)], 'More')}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
       if (id === 'moments') return openMoments(api);
+      if (id === 'origins') return openOrigins(api, (npc) => openNpc(npc, api));
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
+      if (id === 'groups') return openFriendGroups(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
@@ -590,7 +618,7 @@ export default {
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
-        if (yes) return report(api, kids.adopt());
+        if (yes) return adoptAndWelcome(api);
       }
       return undefined;
     };

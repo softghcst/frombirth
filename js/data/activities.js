@@ -6,20 +6,17 @@
  * manage: true means it cannot be cured, only kept under control (most of
  * its yearly harm goes away for as long as you stay on treatment).
  */
+/**
+ * What a doctor's visit for an ailment costs (before cover) and how likely it is to work. Long-term conditions
+ * (asthma, diabetes, heart disease, depression and the rest) are not here: they are the Health Engine's, with
+ * diagnoses, care plans, medicines and therapy (engine/health/).
+ */
 export const TREATMENTS = {
   flu: { cost: 80, chance: 0.95 },
   ear_infection: { cost: 80, chance: 0.95 },
   broken_arm: { cost: 1500, chance: 0.95 },
   acne: { cost: 300, chance: 0.7 },
-  asthma: { cost: 400, chance: 0.9, manage: true },
-  anxiety: { cost: 900, chance: 0.6 },
-  depression: { cost: 900, chance: 0.6 },
-  back_pain: { cost: 1200, chance: 0.5 },
-  high_bp: { cost: 500, chance: 0.9, manage: true },
-  diabetes: { cost: 900, chance: 0.9, manage: true },
   broken_hip: { cost: 12000, chance: 0.8 },
-  heart_disease: { cost: 25000, chance: 0.75, manage: true },
-  cancer: { cost: 60000, chance: 0.55 },
   botched_surgery: { cost: 9000, chance: 0.7 },
 };
 /** Where health care is public, patients pay this share of the cost. */
@@ -85,9 +82,10 @@ export const HOLIDAYS = [
   { id: 'adventure', kind: 'getaway', name: 'A trekking adventure', cost: 7000, mood: 12, health: 4, risky: 0.06 },
   { id: 'world', kind: 'getaway', name: 'A month going round the world', cost: 22000, mood: 18, intellect: 3, charm: 2 },
 
-  { id: 'disneyland', kind: 'park', name: 'Three days at Disneyland, California', cost: 2800, mood: 12, kids: 14, home: 'us', farMult: 1.7 },
-  { id: 'disney_world', kind: 'park', name: 'A week at Walt Disney World, Florida', cost: 6000, mood: 15, kids: 18, home: 'us', farMult: 1.5 },
-  { id: 'universal', kind: 'park', name: 'Four days at Universal Studios', cost: 3600, mood: 13, kids: 13, home: 'us', farMult: 1.6, thrill: true },
+  // The parks are invented (ids kept: they are saved). Real parks' names are their owners' trademarks.
+  { id: 'disneyland', kind: 'park', name: 'Three days at Wonderhaven, the famous theme park in California', cost: 2800, mood: 12, kids: 14, home: 'us', farMult: 1.7 },
+  { id: 'disney_world', kind: 'park', name: 'A week at Wonderhaven Resort, the theme park kingdom in Florida', cost: 6000, mood: 15, kids: 18, home: 'us', farMult: 1.5 },
+  { id: 'universal', kind: 'park', name: 'Four days at Reelworld Studios, the movie theme park', cost: 3600, mood: 13, kids: 13, home: 'us', farMult: 1.6, thrill: true },
   { id: 'local_park', kind: 'park', name: 'A weekend at the nearest theme park', cost: 600, mood: 7, kids: 8 },
 
   { id: 'cruise_week', kind: 'cruise', name: 'A week\'s cruise', cost: 3800, mood: 11, health: 1, kids: 7 },

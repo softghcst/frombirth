@@ -4,6 +4,7 @@
 // outcome, or ''. Also queues the scenes that come from the state of things
 // rather than from chance (a relationship at work being noticed; a child
 // asking about the player's job).
+import { childMoneyChoice } from './childEarnings.js';
 import { rng } from '../rng.js';
 import { coupleChoice } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
@@ -15,6 +16,7 @@ import { career as careerState, workLaw } from './worklife.js';
 import { fire } from './career.js';
 import { openBusinesses } from './business.js';
 import { remember } from './conditions.js';
+import { storyBeat } from './storyDirector.js';
 
 /** The business a scene is about: the player's largest. */
 const mainBusiness = () => [...openBusinesses()].sort((a, b) => (b.last?.revenue ?? 0) - (a.last?.revenue ?? 0))[0];
@@ -37,6 +39,7 @@ export function workChoice(value, cast = {}) {
   const [key, a, b] = String(value).split(':');
   const npc = (k) => store.state.npcs[cast[k]];
   switch (key) {
+    case 'childMoney': return childMoneyChoice(a);
     case 'bonus': {
       if (!c.careerId) return '';
       const amount = Math.round(c.salary * Number(a ?? 0.06));
@@ -153,7 +156,7 @@ export function queueWorkScenes() {
   const c = careerState();
   const state = store.state;
   const recent = (id, yrs) => state.eventHistory.some((h) => h.id === id && p.age - h.lastAge < yrs);
-  const push = (id, cast) => { state.pendingEvents.push({ id, cast }); return true; };
+  const push = (id, cast) => { storyBeat(id, cast, { source: id === 'kid_asks_work' ? 'family' : 'work' }, state); return true; };
   if (p.legal.incarceration) return false;
   // Together with someone at the same employer, and nobody has been told.
   const love = partnerAtWork();

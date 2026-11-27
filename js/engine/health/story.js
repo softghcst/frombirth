@@ -23,6 +23,9 @@ import { serviceOptions, seekAssessment } from './care.js';
 import { requestAccommodation } from './access.js';
 import { kinCareYear, kinAdmitted } from './kincare.js';
 import { admit } from './hospital.js';
+import { maybeFamilyPatient } from '../medicine/healthLink.js';
+import { storyBeat } from '../storyDirector.js';
+import { kinAilmentYear, kinAilmentChoice } from './kinAilments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -126,6 +129,7 @@ export function tickPeopleHealth(p = player()) {
     h.last = n.age;
     const g = genomeOf(n);
     kinCareYear(n);
+    kinAilmentYear(n, storyBeat); // the flu, a broken arm, a broken hip: the same ailments as the player's (engine/health/kinAilments.js)
     const queue = (id, cast) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast }); };
     // A child of the player's begins to show a difference present from birth: their parent notices first.
     if (n.role === 'child' && n.age < 18) {
@@ -155,9 +159,11 @@ export function tickPeopleHealth(p = player()) {
         c.sharedAt = store.state.year;
         if (!store.state.pendingEvents.some((e) => e.id === 'loved_one_shares')) store.state.pendingEvents.push({ id: 'loved_one_shares', cast: { who: n.id } });
         n.flags.sharedHealth = def.id;
+        maybeFamilyPatient(n, c, storyBeat); // a physician in the family: help them to the right colleague (engine/medicine/healthLink.js)
       } else if (diagnosed && !MENTAL.includes(def.group) && n.meters.relationship >= 40) {
         c.shared = true;
         log(`${n.firstName} tells you they have been diagnosed with ${nameIn(def, store.state.year)}.`, 'system', 'neutral');
+        maybeFamilyPatient(n, c, storyBeat);
         // And it comes as news, with their face: "Your mother has been diagnosed with cancer."
         const t = DX_NOTICE[def.id] ?? DX_NOTICE.default;
         queue('kin_diagnosed', { who: n.id, words: { role: roleWord(n), cond: nameIn(def, store.state.year).toLowerCase(), emoji: t[0], title: t[1] ?? cap(nameIn(def, store.state.year)) } });
@@ -320,6 +326,7 @@ export function healthEffect(v, ctx = {}) {
       return '';
     }
     case 'admit': admit(v.reason, {}, p); return '';
+    case 'kinAilment': return kinAilmentChoice(v.how, store.state.npcs[ctx.cast?.[v.with]], ctx.cast?.words?.ailmentId);
     case 'accommodate': {
       const r = requestAccommodation(v.setting, v.type, v.need, p);
       return r.ok ? '' : r.text;

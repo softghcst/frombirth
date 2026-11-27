@@ -7,7 +7,7 @@ import { mountAppearanceEditor } from './editor.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
 
-const KEY = 'pathways.avatarLab';
+const KEY = 'frombirth.avatarLab';
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);

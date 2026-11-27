@@ -12,12 +12,12 @@ const career = await import('../js/engine/career.js');
 const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { die } = await import('../js/engine/death.js');
 const { makeNpc } = await import('../js/engine/npcFactory.js');
-const { ILLNESSES } = await import('../js/data/illnesses.js');
+const { ILLNESSES } = await import('../js/data/health/ailments.js');
 const edu = await import('../js/engine/education.js');
 const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
 const fam = await import('../js/engine/sportsFamily.js');
-const { tickHealth } = await import('../js/engine/health.js');
+const { tickHealth } = await import('../js/engine/health/ailments.js');
 const ui = await import('../js/ui/sports.js');
 
 rng.seed(20261118);
@@ -125,6 +125,7 @@ caseOf('an injury keeps the player out of their own games, playoffs included', (
 
 caseOf('turning professional is asked again after "not now", and asked of an heir', () => {
   grownTo(18, 'us', 'Chicago', able); sp.takeUp('tennis'); const e = sp.entryOf('tennis'); maxOut(e, 80);
+  e.history.push({ year: S().year - 3, level: 'club', name: 'a tennis club' }); e.seasonsPlayed = 3; // years of club tennis behind them
   let asked = 0;
   for (let i = 0; i < 3; i++) { e.pr = Math.max(e.pr, 1500); advanceYear(); S().pendingEvents = []; for (const d of life.openDecisions()) { if (d.kind === 'turnPro') asked++; life.answer(d.id, 'no'); } }
   check(asked >= 2, `asked in more than one year (${asked})`);
@@ -219,7 +220,7 @@ caseOf('a professional in one sport cannot simply switch to another', () => {
   const forced = life.internals.ANSWERS().turnPro(S(), { sportId: 'golf' }, 'yes');
   check(!forced.ok && golf.level !== 'pro' && !golf.proYear, 'and cannot, even when answering yes');
   const club = life.internals.signPro(S(), { sportId: 'soccer', orgId: 'nobody', salary: 1000, years: 2, level: 0 });
-  check(!club.ok && !sp.entryOf('soccer').contractId, 'no club signs them for another sport either');
+  check(!club.ok && !sp.entryOf('soccer')?.contractId, 'no club signs them for another sport either');
   // Retiring from tennis: two seasons away, then golf is open.
   life.retire('tennis');
   check(/seasons away/.test(sp.proLock('golf')), `just retired: not yet (${sp.proLock('golf')})`);

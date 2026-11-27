@@ -74,7 +74,7 @@ export const EYE_MATCH = {
 };
 export const LIP_MATCH = {
   male: { lips_4: 'lips_masc_04', lips_6: 'lips_masc_14', lips_7: 'lips_masc_09', lips_11: 'lips_masc_03', lips_14: 'lips_masc_13' },
-  female: { lips_masc_02: 'lips_8', lips_masc_03: 'lips_11', lips_masc_04: 'lips_4', lips_masc_06: 'lips_10', lips_masc_07: 'lips_14',
+  female: { lips_masc_01: 'lips_8', lips_masc_05: 'lips_21', lips_masc_08: 'lips_8', lips_masc_02: 'lips_8', lips_masc_03: 'lips_11', lips_masc_04: 'lips_4', lips_masc_06: 'lips_10', lips_masc_07: 'lips_14',
     lips_masc_09: 'lips_7', lips_masc_10: 'lips_8', lips_masc_11: 'lips_9', lips_masc_12: 'lips_8', lips_masc_13: 'lips_14', lips_masc_14: 'lips_6' },
 };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
@@ -240,8 +240,20 @@ export const ELDER_HAIR = { female: [], male: [] };
  * and placed as drawn. Being redrawn: until styles are added here, a baby has no hair drawn.
  */
 export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fringe', 'hair_baby_straight_02_side_swoop', 'hair_baby_straight_03_fuzzy_crop'], wavy: ['hair_baby_wavy_01_wave_on_top', 'hair_baby_wavy_02_tousled', 'hair_baby_wavy_03_side_ripple'], curly: ['hair_baby_curly_01_curl_fringe', 'hair_baby_curly_02_soft_curls', 'hair_baby_curly_03_curl_tuft'], coily: ['hair_baby_coily_01_afro', 'hair_baby_coily_02_tiny_coils', 'hair_baby_coily_03_little_puff'] };
+/**
+ * Hair drawn for the kid head (7 to 13), on assets/clothes_templates/kid_hair_template.png: by gender, then by hair
+ * texture. A kid wears one that suits their texture (seeded, so it stays the same through childhood); while a list is
+ * empty they wear the older styles, as before.
+ */
+export const KID_HAIR = {
+  female: { straight: ['hair_kid_girl_straight_01_blunt_bangs', 'hair_kid_girl_straight_02_ponytail', 'hair_kid_girl_straight_03_bob_headband', 'hair_kid_girl_straight_04_space_buns'], wavy: ['hair_kid_girl_wavy_05_side_braid', 'hair_kid_girl_wavy_06_half_up_bow', 'hair_kid_girl_wavy_07_dutch_braids', 'hair_kid_girl_wavy_08_pigtails'], curly: ['hair_kid_girl_curly_09_pineapple', 'hair_kid_girl_curly_10_ringlets', 'hair_kid_girl_curly_11_puff_pigtails'], coily: ['hair_kid_girl_coily_12_afro_puffs', 'hair_kid_girl_coily_13_box_braids_bun', 'hair_kid_girl_coily_14_afro_headband', 'hair_kid_girl_coily_15_bantu_knots'] },
+  male: { straight: ['hair_kid_boy_straight_01_quiff', 'hair_kid_boy_straight_02_swept', 'hair_kid_boy_straight_03_side_fringe', 'hair_kid_boy_straight_04_buzz'], wavy: ['hair_kid_boy_wavy_05_surfer', 'hair_kid_boy_wavy_06_curtain_bangs', 'hair_kid_boy_wavy_07_textured_crop', 'hair_kid_boy_wavy_08_side_part'], curly: ['hair_kid_boy_curly_09_curly_top', 'hair_kid_boy_curly_10_curly_mop', 'hair_kid_boy_curly_11_frohawk'], coily: ['hair_kid_boy_coily_12_short_afro', 'hair_kid_boy_coily_13_high_top', 'hair_kid_boy_coily_14_sponge_twists', 'hair_kid_boy_coily_15_cornrows'] },
+};
 
-export const KID_OUTFITS = { any: [], female: [], male: [] };
+export const KID_OUTFITS = { any: [],
+  female: ['outfit_kid_16_girl_rainbow_tee', 'outfit_kid_17_girl_striped_top', 'outfit_kid_18_girl_denim_jacket', 'outfit_kid_19_girl_cat_hoodie', 'outfit_kid_20_girl_strawberry_sweatshirt', 'outfit_kid_21_girl_gingham_dress', 'outfit_kid_22_girl_cardigan_dress', 'outfit_kid_23_girl_daisy_top', 'outfit_kid_24_girl_overall_dress', 'outfit_kid_25_girl_party_dress',
+    'outfit_kid_26_girl_hearts_sweater', 'outfit_kid_27_girl_butterfly_tee', 'outfit_kid_28_girl_ballet_wrap', 'outfit_kid_29_girl_bunny_hoodie', 'outfit_kid_30_girl_peasant_top'],
+  male: ['outfit_kid_31_boy_track_jacket', 'outfit_kid_32_boy_puffer_jacket', 'outfit_kid_33_boy_rocket_sweatshirt', 'outfit_kid_34_boy_shark_hoodie', 'outfit_kid_35_boy_soccer_jersey', 'outfit_kid_36_boy_school_uniform', 'outfit_kid_37_boy_lightning_tee', 'outfit_kid_38_boy_raincoat', 'outfit_kid_39_boy_sweater_vest', 'outfit_kid_40_boy_basketball_tank', 'outfit_kid_41_boy_denim_hoodie', 'outfit_kid_42_boy_dino_tee', 'outfit_kid_43_boy_plaid_flannel', 'outfit_kid_44_boy_striped_longsleeve', 'outfit_kid_45_boy_polo'] };
 
 export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],

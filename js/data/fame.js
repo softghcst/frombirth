@@ -69,15 +69,15 @@ export const ROLE_KINDS = {
   lead: { name: 'Lead', fee: 1, weight: 1, field: 1.4 },
   supporting: { name: 'Supporting', fee: 0.45, weight: 0.55, field: 1 },
   featured: { name: 'Featured', fee: 0.2, weight: 0.3, field: 0.8 },
-  guest: { name: 'Guest role', fee: 0.12, weight: 0.2, field: 0.8 },
+  guest: { name: 'Guest Role', fee: 0.12, weight: 0.2, field: 0.8 },
   ensemble: { name: 'Ensemble', fee: 0.25, weight: 0.15, field: 0.7 },
   understudy: { name: 'Understudy', fee: 0.3, weight: 0.1, field: 0.7 },
   swing: { name: 'Swing', fee: 0.28, weight: 0.08, field: 0.6 },
   background: { name: 'Background', fee: 0.03, weight: 0.02, field: 0.5 },
-  voice_lead: { name: 'Lead voice', fee: 0.5, weight: 0.4, field: 1.2 },
-  spokesperson: { name: 'On-screen spokesperson', fee: 0.6, weight: 0.1, field: 1 },
-  child: { name: 'Child part', fee: 0.15, weight: 0.3, field: 1 },
-  dance_ensemble: { name: 'Dance ensemble', fee: 0.22, weight: 0.08, field: 0.9 },
+  voice_lead: { name: 'Lead Voice', fee: 0.5, weight: 0.4, field: 1.2 },
+  spokesperson: { name: 'On-Screen Spokesperson', fee: 0.6, weight: 0.1, field: 1 },
+  child: { name: 'Child Part', fee: 0.15, weight: 0.3, field: 1 },
+  dance_ensemble: { name: 'Dance Ensemble', fee: 0.22, weight: 0.08, field: 0.9 },
   choreographer: { name: 'Choreographer', fee: 0.6, weight: 0.2, field: 0.6 },
 };
 /** Parts judged on something other than the production's usual skills: a dance ensemble is cast on dancing. */
@@ -250,7 +250,11 @@ export const MUSIC_GENRES = ['pop', 'rock', 'folk', 'hip-hop', 'R&B', 'electroni
 export const BAND_WORDS = { a: ['Paper', 'Velvet', 'Northern', 'Midnight', 'Glass', 'Copper', 'Electric', 'Quiet', 'Wild', 'Silver', 'Hollow', 'Lucky'], b: ['Foxes', 'Lanterns', 'Tides', 'Satellites', 'Harbors', 'Ravens', 'Engines', 'Orchards', 'Strangers', 'Signals', 'Comets', 'Wolves'] };
 export const SONG_WORDS = { a: ['Slow', 'Golden', 'Late', 'Paper', 'Borrowed', 'Burning', 'Little', 'Wide', 'Blue', 'Summer', 'Last', 'Neon'], b: ['Hearts', 'Rooms', 'Rivers', 'Lights', 'Letters', 'Roads', 'Mornings', 'Windows', 'Ghosts', 'Promises', 'Streets', 'Skies'] };
 /** Kinds of release: how many songs, and what recording costs (base units) without a label. */
-export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Album', songs: 10, cost: 18000 } };
+export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Studio album', songs: 10, cost: 18000 },
+  // A live album: the act on stage, recorded on a good night (an act people come to see). A compilation: the best of what is out already.
+  live: { name: 'Live album', songs: 12, cost: 8000, sales: 0.6 }, compilation: { name: 'Compilation', songs: 14, cost: 4000, sales: 0.45 } };
+/** Record sales certifications, by units sold (as the common thresholds go): the highest earned is shown. */
+export const CERTIFICATIONS = [['Diamond', 10000000], ['Double Platinum', 2000000], ['Platinum', 1000000], ['Gold', 500000]];
 /** Venues by size. capacity per show; price per ticket (base units); cost per show (crew, travel, hall). */
 export const VENUES = {
   bar: { name: 'Bars and pubs', capacity: 120, price: 10, cost: 300, fans: 0 },

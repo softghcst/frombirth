@@ -5,7 +5,7 @@ import { player, country } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
 import * as pol from '../engine/politics.js';
 import { meterHtml } from './meter.js';
-import { messageModal, pickModal, confirmModal } from './modals.js';
+import { messageModal, pickModal, confirmModal, openModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
 import { openCabinet, lawFlow, budgetFlow, governButtons, foreignFlow, regionalLawFlow } from './government.js';
@@ -178,4 +178,18 @@ export async function politicsAction(id, api) {
     if (sure) return report(api, pol.resign());
   }
   return undefined;
+}
+
+/** Politics as a page of its own (a special career), the whole screen: the same card, its buttons answered here. */
+export function openPolitics(api) {
+  const modal = openModal('<div data-politics></div>', { dismissable: true, full: true, title: 'Politics' });
+  const root = modal.el.querySelector('[data-politics]');
+  const render = () => { root.innerHTML = politicsCard() || '<p class="empty">Politics opens at 14.</p>'; };
+  const here = { ...api, changed: () => { api.changed?.(); if (root.isConnected) render(); } };
+  root.addEventListener('click', (ev) => {
+    const pol = ev.target.closest('[data-pol]')?.dataset.pol;
+    if (pol) politicsAction(pol, here);
+  });
+  render();
+  return modal;
 }

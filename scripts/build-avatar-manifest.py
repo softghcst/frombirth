@@ -11,7 +11,7 @@ Run it from the repository root whenever parts are added:
     python3 scripts/build-avatar-manifest.py packs/new.zip   # unpack a pack first (nested zips too)
     python3 scripts/build-avatar-manifest.py --force         # re-measure everything (only on untouched sources)
 
-Standard library only. A processed file carries data-pathways="1" on its
+Standard library only. A processed file carries data-frombirth="1" on its
 <svg> element and is skipped on later runs, so running it twice is safe.
 
 How placement works. The artwork arrives on canvases of every size, each
@@ -466,6 +466,10 @@ FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|heir|royal|prince|princess|quee
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
 
 
+# Kid hairstyles with faded sides (a buzz cut, a high top, a curly top or frohawk with faded sides).
+FADED_KID_HAIR = re.compile(r'^hair_kid_.*(buzz|high_top|curly_top|frohawk|fade|twists|textured_crop)')
+
+
 def recolour(folder, name, elements):
     var = RECOLOUR.get(folder)
     if not var or (folder == 'clothes' and FIXED_OUTFITS.search(name)):
@@ -483,6 +487,8 @@ def recolour(folder, name, elements):
     # Outlines are never recoloured. In hair and brows the darkest of several tones is the outline, however dark or light it is.
     browns = [c for c in weights if not is_white(c)]
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
+    if folder == 'hair' and re.match(r'hair_(baby|kid)_', name):  # drawn in a mid brown on a child template: its dark tones are the outline
+        candidates = {c: w for c, w in candidates.items() if lum(c) >= INK}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
         candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
@@ -493,7 +499,7 @@ def recolour(folder, name, elements):
     lm = max(lum(main), 0.01)
     mapping = {main: f'var(--{var},{main})'}
     for c in candidates:
-        if folder == 'hair' and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
+        if folder == 'hair' and not name.startswith('hair_kid_') and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
             mapping[c] = f'var(--skin-color,{c})'  # scalp showing at a parting or hairline
             continue
         if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:
@@ -506,7 +512,10 @@ def recolour(folder, name, elements):
                 mapping[c] = f'var(--lip-upper,{mapping[c]})'
         else:
             p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
-            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
+            # On a faded kid's cut the lighter tones at the sides are skin showing through short hair: they blend toward
+            # the kid's own skin, not toward white (which read as a grey streak on dark hair).
+            toward = 'var(--skin-color,#fff)' if folder == 'hair' and FADED_KID_HAIR.search(name) else '#fff'
+            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,{toward})'
     for e in elements:
         if e['fill'] in mapping:
             e['paint'] = mapping[e['fill']]
@@ -631,7 +640,7 @@ def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
     # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
     # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
-    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and name.startswith('hair_baby_'))) and vb:
+    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and re.match(r'hair_(baby|kid)_', name))) and vb:
         s = 512 / vb[2]
         transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
         return 'as drawn on the child template'
@@ -1005,7 +1014,7 @@ def fill_teeth():
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
-        if 'data-teeth="1"' in text or 'data-pathways="1"' not in text:
+        if 'data-teeth="1"' in text or 'data-frombirth="1"' not in text:
             continue
         m = re.search(r' d="([^"]*)"', text)
         subs, cur = [], []
@@ -1020,7 +1029,7 @@ def fill_teeth():
         # The outline's inner edge is the opening of the mouth: the biggest shape inside the outer one.
         inner = max(subs[1:], key=lambda sp: abs(poly_area(flatten(sp)[0])) if flatten(sp) else 0)
         white = f'<path style="fill:#ffffff" d="{path_d(inner)}"/>'
-        text = text.replace('<g id="art">', '<g id="art">' + white, 1).replace('data-pathways="1"', 'data-pathways="1" data-teeth="1"', 1)
+        text = text.replace('<g id="art">', '<g id="art">' + white, 1).replace('data-frombirth="1"', 'data-frombirth="1" data-teeth="1"', 1)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
@@ -1044,7 +1053,7 @@ def thin_outline():
             continue
         text = open(path, encoding='utf-8').read()
         mark = f'data-thinned="{fmt(skin)}/{fmt(lips)}"'
-        if mark in text or 'data-pathways="1"' not in text:
+        if mark in text or 'data-frombirth="1"' not in text:
             continue
         # Undo earlier attempts.
         text = re.sub(r';stroke:(var\(--lip-upper,)?var\(--lip-color,#[0-9a-f]+\)\)?;stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
@@ -1058,7 +1067,7 @@ def thin_outline():
         text = text[:m.start()] + outline + trim + text[m.end():]
         text = re.sub(r'style="fill:(var\(--lip-color,#[0-9a-f]+\))"',
                       lambda q: f'style="fill:{q.group(1)};stroke:{q.group(1)};stroke-width:{fmt(lips)};stroke-linejoin:round"', text)
-        text = text.replace('data-pathways="1"', f'data-pathways="1" {mark}', 1)
+        text = text.replace('data-frombirth="1"', f'data-frombirth="1" {mark}', 1)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
@@ -1083,7 +1092,7 @@ def split_lip_tones():
             continue
         path = os.path.join(folder, f)
         text = open(path, encoding='utf-8').read()
-        if 'data-lip-tones="1"' in text or 'data-pathways="1"' not in text:
+        if 'data-lip-tones="1"' in text or 'data-frombirth="1"' not in text:
             continue
         found = list(lip.finditer(text))
         shapes = []  # (the path it is in, its commands)
@@ -1118,7 +1127,7 @@ def split_lip_tones():
         else:
             m = shapes[upper][0]
             text = text[:m.start()] + paint(upper, up) + text[m.end():]
-        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lip-tones="1"', 1)
+        text = text.replace('data-frombirth="1"', 'data-frombirth="1" data-lip-tones="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)
         done.append(f[:-4])
@@ -1138,7 +1147,7 @@ def weigh_lines(folder='noses', recolor=True):
     for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
         path = os.path.join(d, f)
         text = open(path, encoding='utf-8').read()
-        if not f.endswith('.svg') or 'data-lines="1"' in text or 'data-pathways="1"' not in text:
+        if not f.endswith('.svg') or 'data-lines="1"' in text or 'data-frombirth="1"' not in text:
             continue
         ink = ';stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
         fill = (lambda h: f'var(--line-ink,{h})') if recolor else (lambda h: h)
@@ -1147,7 +1156,7 @@ def weigh_lines(folder='noses', recolor=True):
         # that a stroke would blot.
         lines = set(dark) if recolor else set(dark[:1])
         text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:{fill(m.group(1))}{ink}"' if m.group(1) in lines else m.group(0), text)
-        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lines="1"', 1)
+        text = text.replace('data-frombirth="1"', 'data-frombirth="1" data-lines="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)
         done.append(f[:-4])
@@ -1194,7 +1203,7 @@ def soften_creases():
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
-        if 'data-pathways="1"' not in text or 'data-crease-removed="1"' in text:
+        if 'data-frombirth="1"' not in text or 'data-crease-removed="1"' in text:
             continue
         if drop is None and CREASE_PATH.search(text):
             continue  # (a softened crease is only ever taken out from the original file)
@@ -1242,7 +1251,7 @@ def soften_creases():
             kept = f'<path style="{m.group(1)}"{m.group(2)} d="{path_d(rest)}"/>' if rest else ''
             text = text[:m.start()] + kept + creases + text[m.end():]
         if drop is None:
-            text = text.replace('data-pathways="1"', 'data-pathways="1" data-crease-removed="1"', 1)
+            text = text.replace('data-frombirth="1"', 'data-frombirth="1" data-crease-removed="1"', 1)
         open(path, 'w', encoding='utf-8').write(text)
         done[name] = drop
     return done
@@ -1256,13 +1265,13 @@ def refit_hair():
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
-        if 'data-refit="1"' in text or 'data-pathways="1"' not in text:
+        if 'data-refit="1"' in text or 'data-frombirth="1"' not in text:
             continue
 
         def move(m):
             cmds = [(c, [(256 + sx * (v - 256) + dx) if i % 2 == 0 else (FACE['top'] + sy * (v - FACE['top']) + dy) for i, v in enumerate(a)]) for c, a in parse_path(m.group(1))]
             return f' d="{path_d(cmds)}"'
-        text = re.sub(r' d="([^"]*)"', move, text).replace('data-pathways="1"', 'data-pathways="1" data-refit="1"', 1)
+        text = re.sub(r' d="([^"]*)"', move, text).replace('data-frombirth="1"', 'data-frombirth="1" data-refit="1"', 1)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
@@ -1287,7 +1296,7 @@ def remove_specks(folder='hair', pad=6, share=0.004):
             continue
         path = os.path.join(d, f)
         text = open(path, encoding='utf-8').read()
-        if 'data-pathways="1"' not in text:
+        if 'data-frombirth="1"' not in text:
             continue
         paths = [m for m in re.finditer(r' d="([^"]*)"', text)]
         subs = []  # (path index, subpath commands, box)
@@ -1356,13 +1365,15 @@ def path_d(cmds):
 
 def process(path, folder, force=False):
     text = open(path, encoding='utf-8').read()
-    if 'data-pathways="1"' in text and not force:
+    if 'data-frombirth="1"' in text and not force:
         return None
     vb, elements = read_svg(text)
     name = os.path.basename(path)[:-4]
     notes = []
     # Solid white backgrounds, and the white "sticker" outline some packs put round a garment.
-    box = bbox_of(elements)
+    # Not on parts drawn on a template (children's clothes, baby hair): their background is already transparent, and a
+    # white garment would be taken for one.
+    box = None if re.match(r'(outfit_(baby|kid)_|hair_(baby|kid)_)', os.path.basename(path)) else bbox_of(elements)
     if box:
         bw, bh = box[2] - box[0], box[3] - box[1]
         full = lambda e: (lambda b: b and (b[2] - b[0]) >= bw * 0.9 and (b[3] - b[1]) >= bh * 0.9)(bbox_of([e]))
@@ -1407,7 +1418,7 @@ def process(path, folder, force=False):
         stroke = f';stroke:{e["stroke"]};stroke-width:5;stroke-linejoin:round' if e.get('stroke') else ''
         paths.append(f'<path{role} style="fill:{paint}{stroke}"{extra} d="{path_d(e["cmds"])}"/>')
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" '
-           f'data-pathways="1"{' data-as-drawn="1"' if as_drawn else ''} data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
+           f'data-frombirth="1"{' data-as-drawn="1"' if as_drawn else ''} data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
            f'<g id="art">{"".join(paths)}</g></svg>\n')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(svg)
@@ -1432,6 +1443,8 @@ def tags_for(folder, name):
             t['gender'] = HAIR_GENDER[name]
         if 'baby' in parts:
             t['age'] = 'baby'
+        if name.startswith('hair_kid_'):
+            t['age'] = 'kid'
         for length in ('short', 'medium', 'long', 'updo'):
             if length in parts:
                 t['length'] = length
@@ -1470,9 +1483,9 @@ def label(name):
     if name.startswith('hair_updo'):
         length = 'Up'
     text = ' '.join(words)
-    if name.startswith('hair_baby') or (name.startswith('head_00')):
+    if re.match(r'hair_(baby|kid)_', name) or (name.startswith('head_00')):
         text = text or name
-    if name.startswith('hair') and not name.startswith('hair_baby'):
+    if name.startswith('hair') and not re.match(r'hair_(baby|kid)_', name):
         # Two packs share their numbering; the second continues from 17 so every name is different.
         text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
     elif parts[0] == 'lips' and text == 'masc' and number is not None:

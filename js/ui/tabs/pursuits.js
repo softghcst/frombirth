@@ -155,6 +155,8 @@ export default {
       const things = fun.activityOptions();
       // An after-school club is one of the clubs and classes (below), not a second list of its own.
       const grow = kidLife.childActivities().filter((a) => a.id !== 'club');
+      // The radio and the television are just more things to do, with the rest.
+      const tunes = bc.broadcastOptions();
       const jobs = kidLife.smallJobs();
       const safety = loveStories.teenSafety();
       const money = p.age >= 5 && p.age <= 17;
@@ -179,10 +181,11 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
-        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
+        ${!p.legal.incarceration ? athleticsCard() : ''}
+        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents: music, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
         ${/* At school, every club (the school's and those outside it) is under School › Activities: not here as well. */ ''}
-        ${inSchool ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
-        ${!inSchool && p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
+        ${inSchool || p.age > clubLife.CLUB_AGE_LIMIT ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
+        ${!inSchool && p.age >= 6 && p.age <= clubLife.CLUB_AGE_LIMIT && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
           <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(clubTitle(m.club))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
             <button class="btn primary" data-club="find">Find a Club or Class</button></div>
@@ -194,10 +197,12 @@ export default {
           <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm} · each once a year</p>
           <div class="btn-stack">${things.filter((a) => a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
-        ${grow.length || things.some((a) => !a.charm) || p.age >= 3 ? `<div class="card"><h3>Things to do</h3>
+        ${grow.length || things.some((a) => !a.charm) || tunes.length || p.age >= 3 ? `<div class="card"><h3>Things to do</h3>
           ${grow.length ? `<p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
-          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>` : ''}
-          ${things.some((a) => !a.charm) ? `<div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>` : ''}
+          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${a.suits && !a.done ? '★ ' : ''}${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>
+          ${grow.some((a) => a.suits && !a.done) ? '<p class="muted" style="margin-top:6px">★ suits who you are.</p>' : ''}` : ''}
+          ${things.some((a) => !a.charm) || tunes.length ? `<div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}${tunes.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}</div>` : ''}
+          ${p.age >= 16 ? tunes.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}" style="margin-top:6px;width:100%">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}
           ${p.age >= 3 && !p.legal.incarceration ? '<button class="btn" data-go="neighborhoodActs" style="margin-top:6px;width:100%">Around the neighborhood</button>' : ''}
         </div>` : ''}
         ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Riding', jailed || fromAge(p.age, 6))}
@@ -206,7 +211,6 @@ export default {
         ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? '' : lock('Photocards', jailed || fromAge(p.age, 8) || 'Photocards begin in 1999')}
         ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
           sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
-        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
         ${p.age >= 6 ? '' : lock('Digital Life', fromAge(p.age, 6))}
         ${digitalCard()}
         <div class="section-label">Where you live</div>

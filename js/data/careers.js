@@ -86,7 +86,7 @@ const BASE_CAREERS = [
       { flag: 'stringer', bonus: 0.25 }],
     levels: L(['Junior reporter', 30, 40, 2], ['Reporter', 44, 60, 3], ['Senior reporter', 65, 88, 4], ['Editor', 95, 140, 5], ['Editor-in-chief', 150, 230, 0]) },
   { id: 'police', name: 'Police', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
-    req: { degree: 'high', minAge: 19, stats: { 'stats.health': 55 }, cleanRecord: true },
+    req: { degree: 'high', minAge: 19, stats: { 'stats.health': 55 }, cleanRecord: true }, pensionAfter: 25,
     levels: L(['Police officer', 44, 58, 4], ['Sergeant', 62, 78, 5], ['Lieutenant', 82, 100, 5], ['Chief of police', 115, 160, 0]) },
   { id: 'office', name: 'Office administration', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
     req: { degree: 'high' }, doors: [{ flag: 'internship', bonus: 0.2 }],
@@ -145,11 +145,15 @@ const BASE_CAREERS = [
       ['Principal performer', 80, 130, 4, { tripleThreat: 78 }], ['Leading performer', 160, 320, 0, { tripleThreat: 88 }]) },
   // Children and teenagers can work as actors around school. At 18 they age
   // out, and what they did opens doors into screen acting (see tickCareer).
-  { id: 'child_actor', name: 'Child acting', category: 'performing', type: 'freelance', hire: 'audition', stress: 1,
-    skill: 'talents.acting', req: { minAge: 5, maxAge: 17, stats: { 'talents.acting': 35 } }, fame: { from: 2, label: 'Child actor' },
-    agesOut: 18, schoolCost: 0.06,
-    levels: L(['Child extra', 1, 4, 1], ['Advert and bit-part actor', 6, 18, 2, { 'talents.acting': 48 }],
-      ['Child actor', 30, 90, 2, { 'talents.acting': 60 }], ['Child star', 150, 600, 0, { 'talents.acting': 74 }]) },
+  // From 13 the same work is a teenager's (teenTitles). Casting looks for a gift (giftFor): a child without one is
+  // rarely called back, and one with it comes on faster on set. A parent signs for a child and manages the pay until
+  // 18 (engine/childEarnings.js); the pay itself is modest, most of it from a few days' work a year.
+  { id: 'child_actor', name: 'Child and teen acting', category: 'performing', type: 'freelance', hire: 'audition', stress: 1,
+    skill: 'talents.acting', req: { minAge: 5, maxAge: 17, stats: { 'talents.acting': 35 } }, fame: { from: 2, label: 'Child actor', teen: 'Teen actor' },
+    agesOut: 18, schoolCost: 0.06, giftFor: 'acting', needsParent: true,
+    teenTitles: ['Teen extra', 'Commercial and bit-part actor', 'Teen actor', 'Teen star'],
+    levels: L(['Child extra', 0.5, 2, 1], ['Advert and bit-part actor', 3, 10, 2, { 'talents.acting': 48 }],
+      ['Child actor', 15, 50, 2, { 'talents.acting': 60 }], ['Child star', 60, 250, 0, { 'talents.acting': 74 }]) },
   { id: 'actor', name: 'Screen acting', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
     skill: 'talents.acting', req: { minAge: 16, stats: { 'talents.acting': 50 } }, fame: { from: 1, label: 'Actor' },
     doors: [{ flag: 'childStar', guaranteed: true, level: 2, text: 'Everyone grew up watching you. A lead is yours for the asking.' },

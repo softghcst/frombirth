@@ -1,4 +1,4 @@
-# Pathways
+# From Birth
 
 A text life simulation. One life, one year at a time.
 
@@ -32,7 +32,7 @@ the seeded sequence instead of drawing a fresh seed from the clock, and a failur
 fresh dice each run instead, and shake out checks that only pass for some lives:
 
 ```bash
-PATHWAYS_RANDOM=1 node scripts/test-all.mjs
+FROMBIRTH_RANDOM=1 node scripts/test-all.mjs
 ```
 
 `node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
@@ -55,6 +55,16 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
 node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
+node tests/graduation-ui.mjs  # browser: the graduation card after high school and university, and where each next step leads
+node tests/blended-families.mjs    # parents who separate, care arrangements, step-parents, step- and half-siblings, reload
+node tests/independence.mjs        # moving out (lease, deposit once, roommate) and back home; age of majority by country
+node tests/fostering.mjs           # foster and kinship care, reviews, reunification, guardianship vs adoption
+node tests/marriage.mjs            # dating, moving in, engagement, real wedding guests, step-children, divorce, the law
+node tests/teen-life.mjs           # classmates, homecoming, a date who can say no, curfews, friends after graduation
+node tests/family-time-steps.mjs   # the family systems come out the same in 3-, 6- and 12-month turns
+node tests/living-families-ui.mjs  # browser: moving out, fostering and the step-family on a phone and desktop
+node tests/family-heirs.mjs        # continuing as an heir in a blended family: step-, half- and full siblings, people raised in care
+node tests/callbacks.mjs           # people from the past come back only with real shared history, once, in any turn length
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
@@ -93,6 +103,7 @@ node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenari
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/inheritance.mjs     # estate and inheritance tax: worked examples, and every country's scale
+node tests/sharecard.mjs       # the shareable obituary card: its facts, its words, a self-contained portrait
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
@@ -107,6 +118,8 @@ node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medi
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/job-search.mjs      # finding ordinary work: this year's short list of openings, and the job recruiter (three looks a year)
+node tests/job-search-ui.mjs   # browser: Find work on a phone and desktop (the recruiter card, three looks then no more, the list)
 node tests/dance.mjs           # a dancer's life: BFA/BA in dance, gigs from commercials to tours and TV, competitions, dance ensemble parts
 node tests/stage-difficulty.mjs # the major stage is very hard to reach: odds by skill, what a BFA in musical theater adds, agents
 node tests/child-stage.mjs     # the child stage path: lessons from 6, children's parts up to the major stage, children against children, the work permit, a theater childhood counted at 18
@@ -121,6 +134,7 @@ node tests/together.mjs        # what you can do with the people in your life, b
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
+node tests/investigations.mjs  # police, detectives, federal agents and private investigators: agencies, the academy, cases on the justice records, the laboratory, warrants, prosecutors and courts, cold cases, 3/6/12-month turns (docs/INVESTIGATIONS.md)
 node tests/global-life.mjs     # travel, passports, borders, relocation, children born abroad, generations; the three vertical slices (SEED=n to vary)
 node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
 node tests/eras.mjs            # Historical Eras: careers, money and currencies, laws, schooling, health and events by era; lives born 1800–today; a German family 1900 → today
@@ -131,6 +145,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 
 ```bash
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
+node tests/investigations-ui.mjs # My Investigations and a case file, at phone and desktop widths
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
@@ -140,7 +155,7 @@ node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at
 
 People → **My Moments** lists what this year holds: birthdays, school dances and proms, family occasions,
 holidays, the family's traditions, invitations and evenings with friends. Choose one and it happens at once;
-Age Up keeps the traditions nobody organized. No calendar: Pathways is still lived a year at a time.
+Age Up keeps the traditions nobody organized. No calendar: From Birth is still lived a year at a time.
 Details: [docs/MOMENTS.md](docs/MOMENTS.md).
 
 ## Money
@@ -193,7 +208,7 @@ are modeled in full; the other twenty-odd sports use shared scoring for goals, p
 strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow toward a
 fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
 real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
-and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+and champions are counted from completed games only. Clubs, leagues and the Player Rating (PR) are invented.
 
 Above recreational play, women and men compete in their own divisions: separate clubs' teams, leagues, tours and
 events, with names and teammates to match. Women's professional play starts in its own years (later than men's in
@@ -432,7 +447,7 @@ to a stable replacement instead of breaking.
 
 ## The world
 
-Pathways has 103 places to live: the 102 on the reference list (16 in North America, 11 in South America, 28 in Europe,
+From Birth has 103 places to live: the 102 on the reference list (16 in North America, 11 in South America, 28 in Europe,
 13 in Africa, 12 under "Middle East", 18 in Asia, 4 in Oceania) and Ghana. Not all are sovereign states, and the game
 says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
 jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school
@@ -627,6 +642,11 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
 United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
+
+**Sharing a life.** The obituary's *Share this life* button makes a 1080×1350 picture of the gravestone: the face, name,
+years, epitaph, cause of death, the two most telling milestones, home, work, net worth and family, and a link back to the
+game (`js/ui/shareCard.js`). Where the device has a share sheet it opens it; otherwise the picture is saved, and a short
+text can be copied. It uses only what the obituary already shows: private milestones stay private.
 
 **Estate and inheritance tax** (`js/engine/inheritance.js`, rules in `js/data/inheritance.js`) depends on who inherits. Some
 countries tax the estate as a whole before it is shared (the United States above USD 15 million, the United Kingdom at 40% above

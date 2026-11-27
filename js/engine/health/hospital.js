@@ -62,6 +62,8 @@ export function admit(reason, o = {}, p = player()) {
     planned: `You go into ${f.name} for ${how.label}, as planned.`,
     voluntary: `You accept a short stay at ${f.name}: a ward where people can look after you while things settle.`,
   }[a.kind], 'system', a.kind === 'emergency' ? 'bad' : 'neutral');
+  // A physician admitted to their own hospital is looked after by colleagues (engine/medicine/healthLink.js: the same place).
+  if (f.employerId && p.career?.employerId === f.employerId) log(`It is strange to be a patient where you work. ${doc ? `${doc.firstName} ${doc.lastName}, a colleague,` : 'Your colleagues'} look after you, and the nurses pretend not to notice your notes.`, 'system', 'neutral');
   // Appointments and sessions wait for you; nothing counts as missed while you are in.
   const h = healthOf(p);
   for (const ap of h.appointments) if (ap.status === 'booked' && ap.wk < a.endWk) ap.wk = a.endWk;
@@ -104,9 +106,9 @@ export function rehabProgress(course, engage, p = player()) {
   goal.metWk = now(p);
   course.history.push({ wk: now(p), text: `Rehabilitation goal reached: ${goal.text.toLowerCase()}.` });
   healthMilestone(`Reached a rehabilitation goal: ${goal.text.toLowerCase()}.`, { type: 'rehab', id: `${course.id}:${goal.id}` }, p, { shareable: true });
-  // A broken hip from the older illness list heals for good once the goals are met.
+  // A broken hip (an ailment) heals for good once the goals are met.
   if (course.rehabSet === 'hip' && course.rehabGoals.every((g) => g.metWk)) {
-    p.conditions = p.conditions.filter((c) => c.id !== 'broken_hip');
+    healthOf(p).ailments = (healthOf(p).ailments ?? []).filter((c) => c.id !== 'broken_hip');
     log('Your hip has healed, and you are getting about on your own again.', 'system', 'good');
   }
   return goal;
