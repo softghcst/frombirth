@@ -135,8 +135,8 @@ export function openLandingPage() {
     const m = openModal('<div data-landingpick></div>', { dismissable: true, title: 'Landing Page', onDismiss: () => resolve() });
     const root = m.el.querySelector('[data-landingpick]');
     const thumb = (id) => (id === 'auto'
-      ? '<span class="lpk-thumb lpk-auto"><span style="background-image:url(./assets/branding/hero_afterglow.svg)"></span><span style="background-image:url(./assets/branding/hero_midnight.svg)"></span></span>'
-      : `<span class="lpk-thumb" style="background-image:url(./assets/branding/hero_${id}.svg)"></span>`);
+      ? '<span class="lpk-thumb lpk-auto"><span style="background-image:url(./assets/branding/hero_afterglow-thumb.webp)"></span><span style="background-image:url(./assets/branding/hero_midnight-thumb.webp)"></span></span>'
+      : `<span class="lpk-thumb" style="background-image:url(./assets/branding/hero_${id}-thumb.webp)"></span>`);
     const render = () => {
       const now = getLanding();
       root.innerHTML = `<h2 style="margin:0 0 6px">Landing Page</h2>

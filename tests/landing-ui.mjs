@@ -57,7 +57,7 @@ for (const id of ['afterglow', 'midnight', 'daydream']) {
   await toTitle(page);
   check(await look(page) === id, `${id}: the landing page is drawn as ${id}`);
   const hero = await page.evaluate(() => getComputedStyle(document.querySelector('.lp-hero'), '::before').backgroundImage);
-  check(new RegExp(`hero_${id}\\.svg`).test(hero), `${id}: its own scenery is behind the logo`);
+  check(new RegExp(`hero_${id}\\.webp`).test(hero), `${id}: its own scenery is behind the logo`);
   const logo = await page.evaluate(() => { const i = document.querySelector('.lp-logo'); return { src: i.getAttribute('src'), alt: i.alt, ok: i.complete && i.naturalWidth > 0, w: i.getBoundingClientRect().width }; });
   check(/from_birth_logo/.test(logo.src) && logo.alt === 'From Birth' && logo.ok && logo.w >= 120 && logo.w <= 182, `${id}: the official logo, phone-sized (${logo.w})`);
   check(await page.locator('.lp-card [data-load]').count() === 1 && /Age 7/.test(await page.locator('.lp-card').first().innerText()), `${id}: the saved life is shown, with its age`);

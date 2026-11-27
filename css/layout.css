@@ -151,39 +151,47 @@
 
 /* ---------- The landing page (js/ui/screens/title.js) ----------
    Three appearances share one layout: Afterglow, Midnight and Daydream (js/landing.js). Each sets its own colors
-   here; the scenery behind the logo is a separate drawing (assets/branding/hero_*.svg) that fades into the page. */
+   here; the scenery behind the logo is the supplied art (assets/branding/hero_*), apart from every button and word. */
 .title-screen[data-landing] {
   --lp-round: "Nunito", var(--sans);
   background: var(--lp-bg); color: var(--lp-text);
   padding: 0 20px calc(28px + var(--safe-bottom));
 }
 .title-screen[data-landing="afterglow"] {
-  --lp-bg: #FFF0E4; --lp-surface: #FFF7F0; --lp-primary: #80549A; --lp-primary-ink: #FFFFFF; --lp-secondary: #F6A38F; --lp-secondary-ink: #39213F;
-  --lp-text: #39213F; --lp-muted: #795C7F; --lp-border: #CAA9C9; --lp-tint: #FBE2D6; --lp-sky: #B996DC; --lp-hero: url("../assets/branding/hero_afterglow.svg");
+  --lp-bg: #FDEBDE; --lp-surface: #FFF7F0; --lp-primary: #80549A; --lp-primary-ink: #FFFFFF; --lp-secondary: #F6A38F; --lp-secondary-ink: #39213F;
+  --lp-text: #39213F; --lp-muted: #795C7F; --lp-border: #CAA9C9; --lp-tint: #FBE2D6; --lp-sky: #C898D6; --lp-hero: url("../assets/branding/hero_afterglow.webp");
 }
 .title-screen[data-landing="midnight"] {
-  --lp-bg: #241B35; --lp-surface: #392849; --lp-primary: #765397; --lp-primary-ink: #FFF3E6; --lp-secondary: #96547A; --lp-secondary-ink: #FFF3E6;
-  --lp-text: #FFF3E6; --lp-muted: #C3ACD5; --lp-border: #986FB3; --lp-tint: #4A3463; --lp-sky: #1B1229; --lp-hero: url("../assets/branding/hero_midnight.svg");
+  --lp-bg: #291842; --lp-surface: #392849; --lp-primary: #765397; --lp-primary-ink: #FFF3E6; --lp-secondary: #96547A; --lp-secondary-ink: #FFF3E6;
+  --lp-text: #FFF3E6; --lp-muted: #C3ACD5; --lp-border: #986FB3; --lp-tint: #4A3463; --lp-sky: #2B0A4E; --lp-hero: url("../assets/branding/hero_midnight.webp");
 }
 .title-screen[data-landing="daydream"] {
-  --lp-bg: #FFF6F0; --lp-surface: #FFFAF6; --lp-primary: #8965AC; --lp-primary-ink: #FFFFFF; --lp-secondary: #E6A8C3; --lp-secondary-ink: #36203F;
-  --lp-text: #36203F; --lp-muted: #785D89; --lp-border: #C4A8D1; --lp-tint: #EFE4F7; --lp-sky: #B3A2F0; --lp-hero: url("../assets/branding/hero_daydream.svg");
+  --lp-bg: #FDF3EE; --lp-surface: #FFFAF6; --lp-primary: #8965AC; --lp-primary-ink: #FFFFFF; --lp-secondary: #E6A8C3; --lp-secondary-ink: #36203F;
+  --lp-text: #36203F; --lp-muted: #785D89; --lp-border: #C4A8D1; --lp-tint: #EFE4F7; --lp-sky: #C0B5FC; --lp-hero: url("../assets/branding/hero_daydream.webp");
 }
-/* The page around the column, and the strip above it on a phone with a notch, match the scene. */
-body:has(.title-screen[data-landing]) { background-image: var(--lp-page); }
-body:has(.title-screen[data-landing="afterglow"]) { --lp-page: linear-gradient(#B996DC 0, #FFC9AE 320px, #FFF0E4 420px); }
-body:has(.title-screen[data-landing="midnight"]) { --lp-page: linear-gradient(#1B1229 0, #241B35 420px); }
-body:has(.title-screen[data-landing="daydream"]) { --lp-page: linear-gradient(#B3A2F0 0, #EDE4FA 320px, #FFF6F0 420px); }
+/* The hero art (assets/branding/hero_*.png, served as WebP): at least 600px wide on a phone (so its clouds show at the
+   sides) and the full width of the screen when that is wider, never stretched. Its bottom edge is the page color
+   (sampled from the art), so it ends without a seam. The page around the column on a wide screen shows the same
+   art at the same size and place, and the strip above a phone's notch takes the sky's top color. */
+.title-screen[data-landing] { --lp-art-w: max(100vw, 600px); }
+body:has(.title-screen[data-landing]) { --lp-art-w: max(100vw, 600px);
+  /* (Longhands, so the theme's own page color stays set underneath.) */
+  background-image: var(--lp-hero), linear-gradient(var(--lp-sky) 0, var(--lp-sky) env(safe-area-inset-top, 0px), var(--lp-bg) env(safe-area-inset-top, 0px));
+  background-position: center env(safe-area-inset-top, 0px), 0 0; background-size: var(--lp-art-w) auto, 100% 100%; background-repeat: no-repeat; }
+body:has(.title-screen[data-landing="afterglow"]) { --lp-hero: url("../assets/branding/hero_afterglow.webp"); --lp-sky: #C898D6; --lp-bg: #FDEBDE; }
+body:has(.title-screen[data-landing="midnight"]) { --lp-hero: url("../assets/branding/hero_midnight.webp"); --lp-sky: #2B0A4E; --lp-bg: #291842; }
+body:has(.title-screen[data-landing="daydream"]) { --lp-hero: url("../assets/branding/hero_daydream.webp"); --lp-sky: #C0B5FC; --lp-bg: #FDF3EE; }
 
 .lp-hero { position: relative; margin: 0 -20px; padding: 18px 20px 6px; text-align: center; isolation: isolate; }
-.lp-hero::before { content: ""; position: absolute; inset: 0 0 -40px; z-index: -1; background: var(--lp-hero) center bottom / cover no-repeat, var(--lp-sky);
-  -webkit-mask-image: linear-gradient(#000 62%, transparent); mask-image: linear-gradient(#000 62%, transparent); }
+.lp-hero::before { content: ""; position: absolute; top: 0; left: 50%; width: var(--lp-art-w); height: calc(var(--lp-art-w) / 1.5); transform: translateX(-50%); z-index: -1;
+  background: linear-gradient(transparent 82%, var(--lp-bg)), var(--lp-hero) center top / 100% auto no-repeat, var(--lp-bg); pointer-events: none; }
 .lp-logo-h { margin: 0; line-height: 0; }
 .lp-logo { display: block; width: clamp(140px, 42vw, 180px); height: auto; aspect-ratio: 1123 / 1401; margin: 0 auto; }
 @media (min-width: 600px) { .lp-logo { width: 200px; } }
 @media (max-height: 640px) { .lp-logo { width: 128px; } }
 .lp-tagline { margin: 10px 0 0; font-family: var(--lp-round); font-weight: 800; font-size: 1.08rem; letter-spacing: .005em; color: var(--lp-text); }
 
+.lp-actions, .lp-section, .title-screen[data-landing] .sync-line { position: relative; z-index: 1; }
 .lp-actions { max-width: 460px; margin: 18px auto 0; display: grid; gap: 12px; }
 .lp-btn { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 8px 18px; border-radius: 18px; border: 0; cursor: pointer;
   font-family: var(--lp-round); font-weight: 800; font-size: 1.22rem; letter-spacing: .005em; text-align: left; transition: transform .1s ease, filter .15s ease; }
