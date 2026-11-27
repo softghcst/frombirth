@@ -30,7 +30,7 @@ import { recordEvent } from './chronicle.js';
 import { houseApart, homeAgain, syncHousehold } from './neighborhood.js';
 import { bioParentIdsOf, legalParentIdsOf, livesApart } from './kinship.js';
 import { COUNTRIES } from '../data/countries.js';
-import { disputed, openCustodyCase, tickFamilyCourt, setSupport, paySupport, hearChild } from './familyCourt.js';
+import { disputed, openCustodyCase, tickFamilyCourt, tickAppeals, setSupport, paySupport, hearChild, askForReview } from './familyCourt.js';
 
 /** This file's dice: keyed to the life, the year and what is being decided (engine/keyedDice.js), never the game's own. */
 let rng = keyedDice('family');
@@ -206,6 +206,7 @@ function upkeep(p) {
   } else if (other && !other.alive) { a.ended = year; a.history.push({ year, why: 'a parent died' }); }
   if (a.ended) return;
   tickFamilyCourt(a, swapHome); // a case waiting on mediation or a judge is settled, once
+  tickAppeals(a, swapHome); // an appeal, or a request to look again, is decided a year on
   paySupport(a); // the year's child support, from one household to the other
 }
 
@@ -239,6 +240,18 @@ function swapHome(a, toParent, why) {
   if (from) { from.flags.livesApart = true; houseApart(store.state, from.id, from.city ?? player().city, 'the child moved'); }
   homeAgain(store.state, toParent.id);
   player().city = toParent.city ?? player().city;
+}
+
+/** From twelve, asks the court to look again at a decision, to live mainly with this parent. */
+export function askCourtToLookAgain(parentId) {
+  const p = player();
+  const n = npc(parentId);
+  if (p.age < 12) return result(false, 'You are too young to ask the court yourself.', 'neutral');
+  if (!n || arrangement()?.otherId !== n.id) return result(false, 'You already live with them.', 'neutral');
+  const r = askForReview(p.id, `${p.firstName}, now ${p.age}, asked to live mainly with ${n.firstName}`);
+  const c = r.ok ? (store.state.justice?.family ? Object.values(store.state.justice.family).filter((x) => x.childId === p.id).at(-1) : null) : null;
+  if (c) c.reviews.at(-1).wish = n.id;
+  return result(r.ok, r.text, r.tone);
 }
 
 /** Asks to see the other parent more often: a step up the schedule. */

@@ -16,6 +16,7 @@
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
+import { courtsFor } from '../data/justice.js';
 import { recordEvent } from './chronicle.js';
 import { storyBeat } from './storyDirector.js';
 import { keyedDice, onOwnDice } from './keyedDice.js';
@@ -99,6 +100,9 @@ export function tickFamilyCourt(arrangement, swapHome) {
   else arrangement.history.push({ year: S().year, primaryId: best.id, schedule, why: settled ? 'agreed in mediation' : 'court order' });
   log(`${how}: you will live mainly with ${best.firstName}${schedule === 'shared' ? ', and half the time with each of them' : ''}.${c.heard?.wish === best.id ? ' They listened to you.' : ''}`, 'system', 'neutral');
   recordEvent({ key: `court:${c.id}`, type: 'family_court', title: settled ? 'Your parents agreed where you would live' : 'A court decided where you would live', people: c.parents, significance: 2, privacy: 'private', caseId: c.id });
+  // The parent it went against may appeal a judge's decision: more often when there is a ground, and they are close.
+  const lost = [a, b].find((n) => n.id !== best.id);
+  if (!settled && lost && d.chance((grounds(c).length ? 0.5 : 0.12) * (lost.meters.relationship >= 65 ? 1.3 : 1))) appealDecision(c, lost.id);
   return c;
 }
 
@@ -131,3 +135,77 @@ export function paySupport(arrangement) {
   return paid;
 }
 
+
+// ---------- Appeals and second looks ----------
+//
+// A decision can be appealed once, by the parent it went against, to the country's appeal court: it looks at how the
+// first court decided, not at the family afresh, and mostly agrees with it. Separately, when things change (the child
+// is older and asks, a parent has moved), either side can ask the family court to look again; it will, a year on.
+//   case.appeal = { by, year, court, grounds, outcome: null|'upheld'|'overturned', decided }
+//   case.reviews = [{ by, year, why, outcome: null|'unchanged'|'changed', decided }]
+
+/** The grounds a decision could be appealed on, as the record shows them (none, most of the time). */
+function grounds(c) {
+  const g = [];
+  if (c.heard?.age >= 12 && c.heard.wish && c.decision?.primaryId !== c.heard.wish) g.push('the court did not follow what a child of twelve or more said');
+  if (c.decision?.by === 'judge' && !c.heard && player().age >= 10) g.push('the child was not heard');
+  return g;
+}
+
+/** The parent a decision went against appeals it (an NPC's choice, at the time of the decision). */
+export function appealDecision(c, byId) {
+  if (!c?.decision || c.appeal || c.decision.by !== 'judge') return null;
+  c.appeal = { by: byId, year: S().year, court: courtsFor(c.countryId).appeal, grounds: grounds(c), outcome: null };
+  c.history.push({ year: S().year, text: `${npc(byId)?.firstName ?? 'A parent'} appealed to ${c.appeal.court}${c.appeal.grounds.length ? `: ${c.appeal.grounds.join('; ')}` : ''}.` });
+  log(`${npc(byId)?.firstName ?? 'One of your parents'} has appealed the decision about where you live. It will take a year.`, 'system', 'neutral');
+  return c.appeal;
+}
+
+/** Asks the family court to look again because things have changed. The child can ask from twelve. */
+export function askForReview(byId, why) {
+  const p = player();
+  const c = familyCases(p).filter((x) => x.stage === 'decided').at(-1);
+  if (!c) return { ok: false, text: 'There is no court decision to look at again.', tone: 'neutral' };
+  if (S().year - (c.decision.year ?? c.year) < 1) return { ok: false, text: 'The decision is too new: the court will not look again within the year.', tone: 'neutral' };
+  if ((c.reviews ?? []).some((r) => r.outcome == null)) return { ok: false, text: 'The court is already looking at it again.', tone: 'neutral' };
+  if (p.age >= 18) return { ok: false, text: 'You are grown: where you live is yours to decide.', tone: 'neutral' };
+  (c.reviews ??= []).push({ by: byId, year: S().year, why, outcome: null });
+  c.history.push({ year: S().year, text: `The court was asked to look again: ${why}.` });
+  return { ok: true, text: `The court will look at it again. It takes a while; you will hear within the year.`, tone: 'neutral' };
+}
+
+/** Once a year: appeals and second looks that are waiting are decided. */
+export function tickAppeals(arrangement, swapHome) {
+  const p = player();
+  for (const c of familyCases(p)) {
+    const d = dice(`appeal/${c.id}`);
+    if (c.appeal && c.appeal.outcome == null && S().year > c.appeal.year) {
+      // An appeal court overturns rarely, and only on a real ground.
+      const overturn = c.appeal.grounds.length && d.chance(0.45);
+      c.appeal.outcome = overturn ? 'overturned' : 'upheld';
+      c.appeal.decided = S().year;
+      c.history.push({ year: S().year, text: `${c.appeal.court} ${overturn ? 'overturned the decision' : 'upheld the decision'}.` });
+      if (overturn && p.age < 18) {
+        const to = npc(c.appeal.by);
+        if (to?.alive && arrangement.primaryId !== to.id) swapHome(arrangement, to, 'appeal');
+        c.decision = { ...c.decision, primaryId: to?.id ?? c.decision.primaryId, by: 'appeal', year: S().year };
+      }
+      log(overturn ? `The appeal court overturned the decision: you will live mainly with ${npc(c.appeal.by)?.firstName}.` : 'The appeal court upheld the decision. Where you live stays as it is.', 'system', 'neutral');
+      recordEvent({ key: `court:appeal:${c.id}`, type: 'family_court', title: overturn ? 'An appeal changed where you lived' : 'An appeal was turned down', people: c.parents, significance: 1, privacy: 'private', caseId: c.id });
+    }
+    for (const r of c.reviews ?? []) {
+      if (r.outcome != null || S().year <= r.year) continue;
+      // A child of fourteen or more who asks, or a parent who has moved close again, is listened to; most often things stay.
+      const asked = r.by === p.id;
+      const want = asked ? r.wish : r.by;
+      const target = npc(want);
+      const chance = asked ? (p.age >= 14 ? 0.6 : 0.35) : 0.25;
+      const change = !!target?.alive && target.id !== arrangement.primaryId && d.chance(chance) && p.age < 18;
+      r.outcome = change ? 'changed' : 'unchanged';
+      r.decided = S().year;
+      c.history.push({ year: S().year, text: change ? `On a second look, the court changed it: ${p.firstName} lives mainly with ${target.firstName}.` : 'On a second look, the court left it as it was.' });
+      if (change) { swapHome(arrangement, target, 'court review'); c.decision = { ...c.decision, primaryId: target.id, by: 'review', year: S().year }; }
+      log(change ? `The court looked again, and agreed: you will live mainly with ${target.firstName}.` : 'The court looked again, and left things as they are.', 'system', 'neutral');
+    }
+  }
+}

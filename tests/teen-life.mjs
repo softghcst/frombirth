@@ -84,6 +84,43 @@ store.state = (await (async () => store.state)());
   check(R.houseRules(q).curfew === rules.curfew && R.houseRules(q).history.length >= 2, 'and it is kept, with its history');
 }
 
+// A group of friends at school: formed from real friends, kept as a record, changing as people do.
+{
+  const G = await import('../js/engine/friendGroups.js');
+  const q = teen(14);
+  const close = people().filter((n) => n.role === 'classmate').slice(0, 4);
+  for (const n of close) { n.meters.relationship = 80; delete n.flags.circle; }
+  let g = null;
+  for (let i = 0; i < 6 && !G.activeGroups(q).some((x) => x.from === 'school'); i++) { for (const n of close) { n.meters.relationship = 80; n.lastInteractionAge = q.age; } year(); }
+  g = G.activeGroups(q).find((x) => x.from === 'school');
+  check(!!g && g.members.length >= 3 && g.members.every((id) => store.state.npcs[id]), 'a group of real friends forms at school');
+  check(g && g.name && g.formed && g.history.length >= 1, `with a name, a year and a history (${g?.name})`);
+  const one = store.state.npcs[g.members[0]];
+  const act = T.doBond(one.id, 'groupHangout');
+  check(act.ok && g.history.some((h) => /whole group/.test(h.text)), 'the whole group can get together');
+  // Someone moves abroad: they leave the group, still a friend.
+  const mover = store.state.npcs[g.members.at(-1)]; mover.flags.abroad = true;
+  year();
+  check(!g.members.includes(mover.id) && g.history.some((h) => /moved abroad/.test(h.text)) && q.npcIds.includes(mover.id), 'someone who moves abroad leaves the group, but not the player\'s life');
+}
+
+// A part-time job interview: one question, three answers; a good one helps.
+{
+  const P = await import('../js/engine/partTime.js');
+  teen(16, 'us');
+  const iv = P.interviewFor('cafe');
+  check(iv.question && iv.answers.length === 3 && new Set(iv.answers.map((a) => a.id)).size === 3, 'the café asks one question, with three answers');
+  const best = '0'; const worst = '2';
+  let good = 0; let bad = 0;
+  for (let i = 0; i < 30; i++) {
+    const q = teen(16, 'us'); q.stats.charm = 50; q.hidden.discipline = 50;
+    if (P.takeJob('cafe', best).ok) good++;
+    const q2 = teen(16, 'us'); q2.stats.charm = 50; q2.hidden.discipline = 50;
+    if (P.takeJob('cafe', worst).ok) bad++;
+  }
+  check(good > bad, `a good answer gets hired more often than a poor one (${good} vs ${bad} of 30)`);
+}
+
 // Teen work follows the law of the place.
 {
   teen(13, 'de');

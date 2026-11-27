@@ -181,7 +181,7 @@ check([...startIds].every((id) => back.npcs[id]), 'everyone from the start of th
   const C = await import('../js/engine/familyCourt.js');
   const { J } = await import('../js/engine/cases.js');
   const [m, d] = [of('parent').find((n) => n.gender === 'female'), of('parent').find((n) => n.gender === 'male')];
-  d.income = 60000; d.savings = 10000; m.savings = 5000;
+  d.income = 60000; d.savings = 10000; m.savings = 5000; d.meters.relationship = 50; // not close enough for shared care: support is due
   B.separateParents(m, d, { court: true });
   const arr = q.family.arrangement;
   const c = C.openFamilyCase(q);
@@ -207,6 +207,38 @@ check([...startIds].every((id) => back.npcs[id]), 'everyone from the start of th
   for (const n of Object.values(rich.npcs)) if (n.id === d.id) { n.savings = 1e9; n.wealth = 100; n.meters.money = 100; }
   year();
   check(rich.player.family.arrangement.primaryId === decided.primary, 'a rich parent does not win by being rich: the same decision');
+}
+
+// ---------- 4c. An appeal, and asking the court to look again ----------
+{
+  const q = child(13);
+  const C = await import('../js/engine/familyCourt.js');
+  const [m, d] = [of('parent').find((n) => n.gender === 'female'), of('parent').find((n) => n.gender === 'male')];
+  m.meters.relationship = 80; d.meters.relationship = 80;
+  B.separateParents(m, d, { court: true });
+  const c = C.openFamilyCase(q);
+  c.heard = { wish: d.id, age: 13 };
+  store.state.pendingEvents = [];
+  year();
+  // Whatever was decided, make it a judge's decision that went against what the child said, so there is a ground.
+  c.decision.by = 'judge'; c.decision.primaryId = m.id;
+  if (q.family.arrangement.primaryId !== m.id) { q.family.arrangement.primaryId = m.id; q.family.arrangement.otherId = d.id; m.flags.livesApart = false; d.flags.livesApart = true; }
+  delete c.appeal;
+  const ap = C.appealDecision(c, d.id);
+  check(ap && ap.court && ap.grounds.length === 1 && /twelve/.test(ap.grounds[0]), `an appeal, to the appeal court, on a real ground (${ap?.grounds})`);
+  check(!C.appealDecision(c, d.id) || c.appeal === ap, 'appealed once');
+  year();
+  check(['upheld', 'overturned'].includes(c.appeal.outcome), `decided a year on (${c.appeal.outcome})`);
+  check(c.appeal.outcome === 'upheld' ? q.family.arrangement.primaryId === m.id : q.family.arrangement.primaryId === d.id, 'and the arrangement follows the appeal court');
+  // At fourteen, the child asks the court to look again.
+  const other = store.state.npcs[q.family.arrangement.otherId];
+  const asked = B.askCourtToLookAgain(other.id);
+  check(asked.ok, `a teenager can ask the court to look again (${asked.text})`);
+  check(!B.askCourtToLookAgain(other.id).ok, 'once at a time');
+  year();
+  const rv = C.familyCases(q)[0].reviews.at(-1);
+  check(['changed', 'unchanged'].includes(rv.outcome), `the court looked again (${rv.outcome})`);
+  check(rv.outcome === 'changed' ? q.family.arrangement.primaryId === other.id : q.family.arrangement.primaryId !== other.id, 'and where the child lives follows it');
 }
 
 // ---------- 5. Old saves: brothers and sisters without parent links ----------

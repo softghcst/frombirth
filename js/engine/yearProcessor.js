@@ -17,6 +17,7 @@ import { tickFamily } from './familyGen.js';
 import { tickBlended } from './blended.js';
 import { tickFostering } from './fostering.js';
 import { tickCallbacks } from './callbacks.js';
+import { tickFriendGroups } from './friendGroups.js';
 import { tickIndependence } from './independence.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
@@ -116,6 +117,7 @@ export const YEARLY = [
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
+  ['friendGroups', tickFriendGroups], // groups of friends: forming at school, people leaving, outlasting school (engine/friendGroups.js)
   ['children', () => booked('childcare', 'Your children', tickChildren)],
   ['npcLives', tickLives],
   ['callbacks', tickCallbacks], // someone from the past, back because of something that really happened (engine/callbacks.js)

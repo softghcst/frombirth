@@ -49,7 +49,7 @@ function youngAdult(age = 19, countryId = 'us', year0 = null) {
   check(/18/.test(I.moveOutBlock(p)), `a seventeen-year-old in the US cannot sign a lease (${I.moveOutBlock(p)})`);
   const k = youngAdult(18, 'kr');
   check(I.leaseAge('kr') === 19 && /19/.test(I.moveOutBlock(k)), 'in South Korea, adulthood begins at 19');
-  const j = youngAdult(19, 'jp', 1995);
+  const j = youngAdult(19, 'jp', 1995); j.countryId = 'jp'; // (a family may have emigrated on the way to nineteen)
   check(I.leaseAge('jp') === 20 && !!I.moveOutBlock(j), 'in Japan before 2022, at 20');
 }
 
@@ -94,6 +94,8 @@ check(q.player.finance.cash === afterYear.cash, `four quarters cost what one yea
 check(deposits(q.player).length === 1 && I.currentLease(q.player)?.id === lease.id, 'and the lease and deposit are the same');
 
 // Moving back home: the family agrees (they are close); the lease ends; the deposit comes back once.
+// (The family home has to have room: a family that has filled a small flat is given a house here, so the slice can go on.)
+{ const room = I.familyHomeRoom(); if (room && room.living + 1 > room.sleeps) { const Hm = N.hoods(); Hm.homes[Hm.hhs[Hm.family].home].t = 'house'; } }
 let back = { ok: false };
 for (let i = 0; i < 6 && !back.ok; i++) { for (const n of parents) n.meters.relationship = 95; back = I.moveBackHome(); }
 check(back.ok, `moving back home works when the family agrees (${back.text})`);

@@ -24,7 +24,8 @@ import { breakUp, divorce } from './romance.js';
 import { bonds as relationships } from './bonds.js';
 import { storyBeat } from './storyDirector.js';
 import { houseRules, hourText, laterCurfew, earlierCurfew } from './houseRules.js';
-import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore } from './blended.js';
+import { groupOf, groupActivity } from './friendGroups.js';
+import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore, askCourtToLookAgain } from './blended.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -295,6 +296,8 @@ export const BONDS = [
   // ---------- A blended family (engine/blended.js) ----------
   { id: 'askLiveWith', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to live with them',
     run: (n) => { const r = askToLiveWith(n.id); return { text: r.text, tone: r.tone }; } },
+  { id: 'courtLook', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement() && ['court order', 'agreed in mediation'].includes(blendedArrangement().basis), label: 'Ask the court to look again',
+    run: (n) => { const r = askCourtToLookAgain(n.id); return { text: r.text, tone: r.tone }; } },
   { id: 'seeMore', group: 'ask', roles: PARENT, age: [6, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to see them more often',
     run: (n) => { const r = askToSeeMore(n.id); return { text: r.text, tone: r.tone }; } },
   { id: 'stepTime', group: 'together', roles: STEP, age: [3, 120], label: 'Spend time together',
@@ -443,6 +446,11 @@ export const BONDS = [
       if (good) { mood(7); return opt === 'band' ? `You and ${n.firstName} started a band. Your first gig had forty people, and twelve of them were not related to you.` : `You and ${n.firstName} started it. People actually read it. Watch it. Talk about it.`; }
       mood(3); return { text: `You and ${n.firstName} gave it a real try. It did not take off, but it was the most fun you had all year.`, tone: 'neutral' };
     } },
+  // ---------- A group of friends (engine/friendGroups.js) ----------
+  { id: 'groupHangout', group: 'together', roles: FRIEND, age: [10, 120], if: (n) => !!groupOf(n) && groupOf(n).status === 'together', label: 'Get the whole group together',
+    run: (n) => { const r = groupActivity(n.flags.circle, 'hangout'); return { text: r.text, tone: r.tone }; } },
+  { id: 'groupStudy', group: 'together', roles: FRIEND, age: [10, 25], if: (n) => !!groupOf(n) && groupOf(n).status === 'together' && !!player().education?.enrolled, label: 'Study session with the group',
+    run: (n) => { const r = groupActivity(n.flags.circle, 'study'); return { text: r.text, tone: r.tone }; } },
   { id: 'introduceFriends', group: 'together', roles: FRIEND, age: [8, 120], if: (n) => mine(FRIEND).some((f) => f.id !== n.id && (!n.flags.circle || f.flags.circle !== n.flags.circle)), label: 'Introduce them to your other friends',
     run: (n) => {
       const p = player();

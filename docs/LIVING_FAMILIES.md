@@ -14,7 +14,9 @@ is a second family graph, household engine or clock.
 | Foster care, kinship care, guardianship, adoption from care | `js/engine/fostering.js`, `js/ui/fostering.js` |
 | Wedding guests and who came | `js/engine/weddingGuests.js` |
 | House rules (curfew) | `js/engine/houseRules.js` |
-| Family court (custody cases) and child support after a separation | `js/engine/familyCourt.js` |
+| Family court (custody cases, appeals, second looks) and child support after a separation | `js/engine/familyCourt.js` |
+| Friend groups as records (forming at school, changing, outlasting school) | `js/engine/friendGroups.js` |
+| Part-time job interviews | `js/engine/partTime.js` (`interviewFor`), `js/ui/interview.js` |
 | People from the past, back because of real shared history | `js/engine/callbacks.js`, `js/data/events/callbacks.js` |
 | Dice of their own for the new systems | `js/engine/keyedDice.js` |
 | Scenes | `js/data/events/blended.js`, `independence.js`, `fostering.js` |
@@ -65,9 +67,15 @@ happens plays exactly as it did before.
 - Callbacks: a former foster child's wedding, an old roommate's job lead, a lapsed school friend, a former step-parent at
   a milestone birthday, a step-sibling's wedding. Only with the history behind them, once per person, keyed dice.
 
+- Appeals: a judge's custody decision can be appealed once, by the parent it went against, to the appeal court, which
+  overturns only on a real ground (a child of twelve or more not followed, a child not heard). From twelve the child can
+  ask the court to look again a year after a decision; from fourteen it listens more.
+- Friend groups are records (`player.friendGroups`): teenagers at school fall in with a group of close friends; members
+  join, move away, drift; the group can outlast school. Group hang-outs and study sessions; a Friend groups screen.
+- Part-time jobs have an interview: one question by the kind of work, three answers; a good one helps, a poor one hurts.
+
 ## Not built yet
 
 - Starting a new life already in foster care or raised by a grandparent by choice (it happens today only when no parent
   can care for the child, `engine/guardianship.js`).
-- Appeals of a custody decision; a lawyer player taking on the family's own case.
-- Friend groups as their own records for teenagers (cliques and adult circles exist); a teen job interview.
+- A lawyer player taking on their own family's custody case.

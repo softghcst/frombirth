@@ -129,7 +129,7 @@ section('each role offers what suits the ages of both people');
   const never = B.BONDS.map((b) => b.id).filter((id) => !seen.has(`with:${id}`));
   // A step-family's actions (and asking a parent who lives apart) need a blended family, which these lives rarely have:
   // tests/blended-families.mjs plays those.
-  const FAMILY_SHAPED = new Set(['askLiveWith', 'seeMore', 'stepTime', 'stepSchool', 'stepHelp', 'stepBoundary', 'stepSibTime', 'stepSibHomework', 'stepSibTalk', 'careTime', 'careHomework', 'careFamily']);
+  const FAMILY_SHAPED = new Set(['groupHangout', 'groupStudy', 'askLiveWith', 'seeMore', 'courtLook', 'stepTime', 'stepSchool', 'stepHelp', 'stepBoundary', 'stepSibTime', 'stepSibHomework', 'stepSibTalk', 'careTime', 'careHomework', 'careFamily']);
   check(never.filter((id) => !id.startsWith('godchild') && !FAMILY_SHAPED.has(id)).length <= 9, `almost every action was reached by these lives (${runs} runs; not reached: ${never.join(', ') || 'none'})`);
 }
 section('every action runs with every option, says something sensible, keeps meters in range, and happens once a year');
