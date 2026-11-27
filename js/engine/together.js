@@ -23,6 +23,7 @@ import { makeNpc } from './npcFactory.js';
 import { breakUp, divorce } from './romance.js';
 import { bonds as relationships } from './bonds.js';
 import { storyBeat } from './storyDirector.js';
+import { houseRules, hourText, laterCurfew, earlierCurfew } from './houseRules.js';
 import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore } from './blended.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -133,8 +134,14 @@ export const BONDS = [
 
   // ---------- Parents, when you are a teenager ----------
   { id: 'curfew', group: 'ask', roles: PARENT, age: [13, 17], if: () => atHome(), label: 'Ask for a later curfew',
-    run: (n) => (rng.chance(clamp((trustOf(n) - 30) / 70, 0.05, 0.9)) ? (trust(n, 2), mood(4), `${n.firstName} agreed to an hour later. "Break it once and it is ten o'clock again."`)
-      : { text: `${n.firstName} said no. "When I can trust you, we will talk about it."`, tone: 'neutral' }) },
+    run: (n) => {
+      const r = houseRules();
+      const now = r ? hourText(r.curfew) : 'ten';
+      if (r && r.curfew >= 24) return { text: `${n.firstName} laughed. "Midnight is as late as it gets in this house."`, tone: 'neutral' };
+      if (!rng.chance(clamp((trustOf(n) - 30) / 70, 0.05, 0.9))) return { text: `${n.firstName} said no: ${now} it stays. "When I can trust you, we will talk about it."`, tone: 'neutral' };
+      trust(n, 2); mood(4); const h = laterCurfew('asked');
+      return `${n.firstName} agreed: ${h ? hourText(h) : 'an hour later'} from now on. "Break it once and it is ${now} again."`;
+    } },
   { id: 'car', group: 'ask', roles: PARENT, age: [16, 25], if: () => !!player().flags.canDrive && atHome(), label: 'Ask to borrow the car',
     run: (n) => {
       if (!rng.chance(clamp((trustOf(n) - 25) / 70, 0.05, 0.9))) return { text: `${n.firstName} held on to the keys. "Not tonight."`, tone: 'neutral' };
@@ -154,8 +161,8 @@ export const BONDS = [
   { id: 'sneakOut', group: 'conflict', roles: PARENT, age: [13, 17], danger: true, if: () => atHome(), label: 'Sneak out at night',
     run: (n) => {
       hidden('crazy', 2);
-      if (rng.chance(clamp(0.3 + (n.meters.intellect - 50) / 200, 0.15, 0.6))) { trust(n, -20); bump(n, -6); player().flags.groundedYear = store.state.year;
-        return { text: `${n.firstName} was waiting in the kitchen with the light off. You are grounded, and the window is now nailed shut.`, tone: 'bad' }; }
+      if (rng.chance(clamp(0.3 + (n.meters.intellect - 50) / 200, 0.15, 0.6))) { trust(n, -20); bump(n, -6); player().flags.groundedYear = store.state.year; const h = earlierCurfew('sneaked out');
+        return { text: `${n.firstName} was waiting in the kitchen with the light off. You are grounded${h ? `, and home by ${hourText(h)} from now on` : ''}.`, tone: 'bad' }; }
       mood(7); trust(n, -2); return { text: 'You climbed out, met up with friends, and climbed back in before dawn. Nobody knows. Yet.', tone: 'neutral' };
     } },
   { id: 'teach', group: 'together', roles: PARENT, age: [9, 25], label: 'Ask them to teach you something',
