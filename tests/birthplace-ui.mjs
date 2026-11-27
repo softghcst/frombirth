@@ -54,7 +54,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.selectOption('#f-region', 'Hokkaido'); await page.waitForTimeout(80);
   const hk = (await page.locator('#f-city option').allInnerTexts()).slice(1);
   check(hk.includes('Sapporo') && hk.includes('Hakodate') && hk.length === 2, `${label}: then Hokkaido's cities (${hk})`);
-  for (const [id, word] of [['uk', 'Country'], ['fr', 'Region'], ['ca', 'Province'], ['au', 'State'], ['ng', 'State'], ['pk', 'Province'], ['ph', 'Region'], ['eg', 'Governorate'], ['kr', 'Province'], ['it', 'Region'], ['es', 'Region'], ['tr', 'Province'], ['cn', 'Province'], ['in', 'State'], ['br', 'State'], ['ru', 'Region'], ['id', 'Province'], ['mx', 'State'], ['de', 'State']]) {
+  for (const [id, word] of [['uk', 'Country'], ['fr', 'Region'], ['ca', 'Province'], ['au', 'State'], ['ng', 'State'], ['pk', 'Province'], ['ph', 'Region'], ['eg', 'Governorate'], ['kr', 'Province'], ['it', 'Region'], ['es', 'Region'], ['tr', 'Province'], ['ar', 'Province'], ['co', 'Department'], ['vn', 'Province'], ['th', 'Province'], ['pl', 'Voivodeship'], ['za', 'Province'], ['cn', 'Province'], ['in', 'State'], ['br', 'State'], ['ru', 'Region'], ['id', 'Province'], ['mx', 'State'], ['de', 'State']]) {
     await page.selectOption('#f-country', id); await page.waitForTimeout(60);
     check(await shown('#f-region') && new RegExp(word).test(await page.locator('[data-region-label]').innerText()), `${label}: ${id} asks for the ${word.toLowerCase()} first`);
   }
