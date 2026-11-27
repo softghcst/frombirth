@@ -502,7 +502,11 @@ def build(style, force=False):
     front = os.path.join(PNG_DIR, f'{style}.png')
     back = os.path.join(PNG_DIR, f'{style}_back.png')
     out = os.path.join(RAW, f'{style}.svg')
-    newest = max(os.path.getmtime(p) for p in (front, back) if os.path.exists(p))
+    # A style may also be drawn separately for any face (assets/hair_png/heads/<style>/<head>.png, on that face's own
+    # template in assets/hair_templates/faces/): that face then wears its own drawing as drawn, not one fitted to it.
+    own_dir = os.path.join(PNG_DIR, 'heads', style)
+    owns = {f[:-4]: os.path.join(own_dir, f) for f in sorted(os.listdir(own_dir)) if f.endswith('.png')} if os.path.isdir(own_dir) else {}
+    newest = max(os.path.getmtime(p) for p in (front, back, *owns.values()) if os.path.exists(p))
     if not force and os.path.exists(out) and os.path.getmtime(out) > newest:
         return None
     print(f'{style}:')
@@ -544,11 +548,20 @@ def build(style, force=False):
         head, lobe_y, shoulder_y, neck_y = head_in_base(polys, warp)
         # On a narrower (or wider) jaw than the one it was drawn beside, the lengths are brought in (or out) to it.
         # Only ever in: on a wider jaw the hair stays where it was drawn and falls in front of the extra cheek (regions()).
-        left, right = (np.maximum(d, 0) for d in jaw_shift(drawn_head, head, drawn_lobe, lobe_y)) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
-        hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
-        hmask = squeeze(fmask, left, right)
-        bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
-        svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name, None if name == base_name else drawn_head)
+        if name in owns and name != base_name:
+            # Drawn for this face: traced as it is, on this face (every adult head shares the frame, so no fitting).
+            oparts, omask, ostats = trace(owns[name])
+            if 'data-crown="bare"' not in tags:
+                oparts, omask = cover_crown(oparts, omask, head)
+            bm, brest = emit(bparts) if bparts else ([], [])
+            svg = hair_svg(style, tags, oparts, omask, head, lobe_y, shoulder_y, neck_y, bm + brest, name)
+            print(f'  {name}: its own drawing, {ostats}')
+        else:
+            left, right = (np.maximum(d, 0) for d in jaw_shift(drawn_head, head, drawn_lobe, lobe_y)) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
+            hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
+            hmask = squeeze(fmask, left, right)
+            bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
+            svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name, None if name == base_name else drawn_head)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
