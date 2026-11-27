@@ -37,6 +37,13 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const S = () => store.state;
 const npcOf = (id) => S().npcs[id];
 const nm = (n) => `${n.firstName} ${n.lastName}`;
+const they = (n) => (n?.gender === 'male' ? 'he' : n?.gender === 'female' ? 'she' : 'they');
+const their = (n) => (n?.gender === 'male' ? 'his' : n?.gender === 'female' ? 'her' : 'their');
+const theirs = (n) => (n?.gender === 'male' ? 'his' : n?.gender === 'female' ? 'hers' : 'theirs');
+const themself = (n) => (n?.gender === 'male' ? 'himself' : n?.gender === 'female' ? 'herself' : 'themselves');
+const article = (word) => (/^[aeiou]/i.test(word) ? 'an' : 'a');
+/** One of a few lines, the same all year: an action done every year does not read the same every time. */
+const vary = (key, lines) => lines[Math.floor(seeded(`${key}:${S().year}`) * lines.length)];
 
 /** A number in [0, 1) from a key: the same every time, and none of the game's dice. */
 export function seeded(key) {
@@ -183,7 +190,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
   const reasonsFor = (when, ok = () => true) => Object.fromEntries(Object.entries(REASONS).filter(([k, r]) => r.when.includes(when) && ok(k)).map(([k, r]) => [k, r.weight]));
   const giveMotherAge = (reason) => { const [a, b] = REASONS[reason].mother; if (mother.age < a || mother.age > b) mother.age = rng.int(a, b); };
   // Older brothers and sisters can be no older than their mother allows.
-  const keepSiblings = () => { fam.siblings = fam.siblings.filter((s) => s.flags.twin || s.age <= mother.age - 16); };
+  const keepSiblings = () => { for (const s of fam.siblings) if (!s.flags.twin && s.age > mother.age - 16) delete state.npcs[s.id]; fam.siblings = fam.siblings.filter((s) => s.flags.twin || s.age <= mother.age - 16); };
 
   const accessSeed = rng.next();
   const contactSeed = rng.next();
@@ -248,6 +255,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
       status: 'final', birthCountryId: c.id, birthCity: p.city, birthState: stateHere(c.id, p.city), jurisdiction: c.id, contact: 'open', accessSeed, telling: 'early',
       birthName: null, legalName: { first: p.firstName, last: p.lastName } });
     o.self = { recordId: rec.id, aware: false, awareAge: rng.int(3, 5), telling: 'early', facts: {}, people: {}, curiosity: 'none', done: {} };
+    for (const id of known) o.contacts[id] = { status: 'open', since: year, history: [{ year, what: 'Family: in touch from the start.' }] };
     o.parentsKnow = { [rec.id]: { people: { [mother.id]: 'named', ...(father && !fatherUnidentified ? { [father.id]: 'named' } : {}) } } };
     const who = carers.map((g) => g.firstName).join(' and ');
     const what = carers[0].flags.title === 'Grandmother' || carers[0].flags.title === 'Grandfather' ? `your ${carers.length > 1 ? 'grandparents' : carers[0].flags.title.toLowerCase()}` : `your ${carers.map((g) => g.flags.title.toLowerCase()).join(' and ')}`;
@@ -261,7 +269,9 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
     const reason = pickW(reasonsFor('birth'), rng.next());
     giveMotherAge(reason); keepSiblings();
     const contact = pickW(contactShares('birth', year), contactSeed);
-    const lastName = rng.pick(c.names.last);
+    const taken = new Set([mother, father, ...fam.siblings, ...fam.grandparents].filter(Boolean).map((n) => n.lastName));
+    let lastName = rng.pick(c.names.last);
+    for (let i = 0; i < 12 && taken.has(lastName); i++) lastName = rng.pick(c.names.last);
     const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, mother.firstName, ...fam.siblings.map((s) => s.firstName)] }), c, year, stateHere(c.id, p.city) ?? accessSeed, rng.next());
     // A twin is placed with you; a twin generated for the adoptive family is not real.
     const fakeTwin = adopt.siblings.find((s) => s.flags.twin);
@@ -287,7 +297,9 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
     p.npcIds = [...household, ...adopt.pets].map((n) => n.id);
     p.flags.parentsStatus = adopt.status;
     // The child's name: the adoptive family's surname, and the first name they chose. A name from the birth mother, if she gave one, is in the file.
-    const birthName = rng.chance(0.5) ? { first: rng.pick(c.names[p.gender] ?? c.names.female), last: mother.lastName } : null;
+    const familyFirst = new Set([mother, father, ...fam.siblings, ...fam.grandparents].filter(Boolean).map((n) => n.firstName));
+    const names = (c.names[p.gender] ?? c.names.female).filter((x) => !familyFirst.has(x));
+    const birthName = rng.chance(0.5) && names.length ? { first: rng.pick(names), last: mother.lastName } : null;
     const bornAs = p.lastName;
     p.lastName = surnameFor(c.id, lastName, p.gender);
     if (journal[0]) journal[0].text = journal[0].text.replace(` ${p.firstName} ${bornAs}.`, ` ${p.firstName} ${p.lastName}.`);
@@ -318,7 +330,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
   // Adopted during childhood: life begins with the birth family, and the adoption comes, when it comes, as a real event.
   const single = !father || fam.status === 'single';
   const reason = pickW(reasonsFor('childhood', (k) => k !== 'parent_died' || single), rng.next());
-  giveMotherAge(reason); keepSiblings();
+  // (No age is changed here: the birth family is the family the opening lines already describe.)
   const placementAge = rng.int(2, 7);
   for (const n of [mother, ...(father ? [father] : [])]) giveKinFlags(n, n === mother ? 'mother' : 'father', p.id);
   if (father) father.flags.unidentified = false;
@@ -343,7 +355,7 @@ function finish(state, rec, household, lines, journal, bioIds) {
   // The opening lines about "your mother" and "your father" were about the birth family: they are replaced.
   const FAMILY_LINE = /^(Your (mother|father) is |Your parents are no longer together|Your father is not in the picture|Your family (is|does) |You are a twin|You have an older |You have \d+ living grandparent|Your (mother|father) came to |The family .+ sniffs you)/;
   const keep = journal.filter((e, i) => i === 0 || !FAMILY_LINE.test(e.text));
-  for (const e of keep) e.text = e.text.replace(/^You have your (mother|father)'s (.+) nature\.$/, 'You have a $2 nature.');
+  for (const e of keep) e.text = e.text.replace(/^You have your (mother|father)'s (.+) nature\.$/, (_, who, trait) => `You have ${article(trait)} ${trait} nature.`);
   journal.splice(0, journal.length, keep[0], ...lines, ...keep.slice(1));
   state.npcs = state.npcs ?? {};
   for (const id of bioIds) if (state.npcs[id] && !p.npcIds.includes(id)) state.npcs[id].lastInteractionAge = -1;
@@ -383,8 +395,11 @@ export function obcLaw(rec, year = S().year) {
   const st = birthStateOf(rec);
   const law = st && stateObc(st, year);
   if (!law) return null;
-  const name = Object.values(CITY_ROWS.us).find((v) => v.regionId === st)?.region ?? st;
-  return { ...law, state: st, name, note: US_STATE_LAW[st].note, disputed: !!US_STATE_LAW[st].disputed };
+  const region = Object.values(CITY_ROWS.us).find((v) => v.regionId === st)?.region ?? st;
+  const name = region === 'District of Columbia' ? 'the District of Columbia' : region;
+  // The note describes the state's law as it stands today: it is shown only once that law is in force in the year being lived.
+  const latest = !US_STATE_LAW[st].obc.some(([from]) => from > year);
+  return { ...law, state: st, name, note: latest ? US_STATE_LAW[st].note : '', disputed: latest && !!US_STATE_LAW[st].disputed };
 }
 /** Where the family lives now: the US state whose adoption law applies to them. */
 const stateHere = (countryId, city) => (countryId === 'us' ? regionOf('us', city) : null);
@@ -499,7 +514,9 @@ function place(rec) {
     if (carer) { carer.alive = false; carer.flags.diedYear = state.year; carer.flags.cause = causeFor(carer); log(`Your ${carer.gender === 'male' ? 'father' : 'mother'} ${carer.firstName} died, at ${carer.age}, of ${carer.flags.cause}.`, 'system', 'bad'); }
   }
   if (rec.reason === 'health') for (const n of birth.filter((x) => x.flags.birthKin === 'mother')) n.meters.health = Math.min(n.meters.health, rng.int(25, 45));
-  const lastName = rng.pick(c.names.last);
+  const taken = new Set(birthKin(state).map((n) => n.lastName));
+  let lastName = rng.pick(c.names.last);
+  for (let i = 0; i < 12 && taken.has(lastName); i++) lastName = rng.pick(c.names.last);
   const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, ...p.npcIds.map((id) => npcOf(id)?.firstName).filter(Boolean)] }), c, state.year, stateHere(c.id, p.city) ?? rec.accessSeed, rng.next());
   adopt.siblings = adopt.siblings.filter((s) => !s.flags.twin);
   const parents = [adopt.mother, adopt.father].filter(Boolean);
@@ -553,7 +570,7 @@ function becomeAware(rec) {
   self.aware = true;
   self.awareYear = state.year;
   self.awareAgeActual = p.age;
-  learn('adopted', rec.kind === 'kinship' ? `You know that ${carersLabel(rec)} raise you, and why your birth mother lives apart.` : 'You know you were adopted.');
+  learn('adopted', rec.kind === 'kinship' ? `You know that ${parentWords(rec).parents} ${parentWords(rec).raise} you, and why your birth mother lives apart.` : 'You know you were adopted.');
   // What the parents have shared from the start, in an open arrangement: who your birth mother is.
   const pk = state.origins.parentsKnow?.[rec.id]?.people ?? {};
   if (rec.contact === 'open' || rec.kind === 'kinship') for (const [id, lvl] of Object.entries(pk)) learnPerson(id, lvl);
@@ -565,13 +582,27 @@ function becomeAware(rec) {
   }
   const late = self.telling === 'late' && rec.kind !== 'childhood';
   const id = rec.kind === 'childhood' ? null : late ? 'org_learn_late' : 'org_story';
-  if (id) storyBeat(id, { words: { parents: parentsLabel(rec) } }, { source: 'origins', must: true });
+  if (id) storyBeat(id, { words: parentWords(rec) }, { source: 'origins', must: true });
   state.origins.told[id ?? 'aware'] = state.year;
   if (late) self.curiosity = 'mild';
 }
 
-const carersLabel = (rec) => (rec.carerIds ?? rec.adoptiveParentIds).map(npcOf).filter(Boolean).map((n) => n.firstName).join(' and ') || 'your family';
 const parentsLabel = (rec) => rec.adoptiveParentIds.concat(rec.guardianIds ?? []).map(npcOf).filter(Boolean).map((n) => n.firstName).join(' and ') || 'your parents';
+/**
+ * The words for the people who raise the player, agreeing with one parent or two: "Grace tells you", "Grace and Daniel
+ * tell you". Scenes use them as tokens ({parents} {tell} you; {They} {have}); the engine's own lines use them directly.
+ */
+export function parentWords(rec) {
+  const people = (rec.kind === 'kinship' ? rec.carerIds ?? rec.adoptiveParentIds : rec.adoptiveParentIds.concat(rec.guardianIds ?? [])).map(npcOf).filter(Boolean);
+  const one = people.length === 1 ? people[0] : null;
+  const verbs = ['sit', 'tell', 'ask', 'put', 'answer', 'say', 'let', 'try', 'remember', 'know', 'want', 'raise', 'think'];
+  const w = { parents: people.map((n) => n.firstName).join(' and ') || 'your parents' };
+  for (const v of verbs) w[v] = one ? (v === 'try' ? 'tries' : `${v}s`) : v;
+  Object.assign(w, one ? { are: 'is', have: 'has', were: 'was', they: they(one), them: one.gender === 'male' ? 'him' : one.gender === 'female' ? 'her' : 'them', their: their(one) }
+    : { are: 'are', have: 'have', were: 'were', they: 'they', them: 'them', their: 'their' });
+  w.They = cap(w.they); w.Their = cap(w.their); w.forks = one ? '' : 's';
+  return w;
+}
 
 /** Open and mediated arrangements are kept up quietly, and can lapse; nothing is said every year. */
 function keepArrangement(rec) {
@@ -581,6 +612,8 @@ function keepArrangement(rec) {
     const k = state.origins.contacts[id];
     const n = npcOf(id);
     if (!k || !['open', 'mediated'].includes(k.status)) continue;
+    // Someone already part of the player's life is in touch the ordinary way: closeness rises and fades with the relationship.
+    if (n?.alive && state.player.npcIds.includes(id)) continue;
     if (!n?.alive) { k.status = 'ended'; k.history.push({ year, what: 'Contact ended.' }); continue; }
     if ((n.flags.openness ?? 50) < 35 && rng.chance(0.15)) {
       k.status = 'lapsed'; k.history.push({ year, what: k.status === 'open' ? 'The visits stopped.' : 'The letters stopped coming.' });
@@ -618,10 +651,20 @@ function addRequest(kind, extra = {}) {
 const open = (kind) => S().origins.search.requests.find((r) => r.kind === kind && !r.done);
 const lastOf = (kind) => S().origins.search.requests.filter((r) => r.kind === kind).at(-1) ?? null;
 
-/** Queues a result to be told: at the turn of the year, one a year. */
+/** Whether a result would tell the player anything they do not know. */
+function holdsNews(item) {
+  if (item.contact || item.offer) return true;
+  if ((item.learn ?? []).some(([key]) => !knowsFact(key))) return true;
+  return Object.entries(item.people ?? {}).some(([id, lvl]) => LEVELS.indexOf(lvl) > LEVELS.indexOf(knowLevel(id) ?? ''));
+}
+/**
+ * Queues a result to be told: at the turn of the year, one a year. A reply marked `quiet` that holds nothing new (the
+ * same certificate again, an agency with no news) is written in the journal instead, so it never holds up real news.
+ */
 function inbox(item) {
   const o = S().origins;
   if (o.inbox.some((x) => x.key === item.key) || o.told[item.key]) return false;
+  if (item.quiet && !holdsNews(item)) { o.told[item.key] = S().year; log(item.quiet === true ? item.words?.what ?? '' : item.quiet, 'system', 'neutral'); return false; }
   o.inbox.push({ ...item, year: S().year });
   return true;
 }
@@ -646,7 +689,7 @@ function recordsAnswer(rec, r) {
   const mother = npcOf(rec.birthParentIds.find((id) => npcOf(id)?.flags.birthKin === 'mother'));
   const father = npcOf(rec.birthParentIds.find((id) => npcOf(id)?.flags.birthKin === 'father'));
   const learnFacts = [['reason', REASONS[rec.reason]?.known], ['birthplace', `You were born in ${rec.birthCity}, ${COUNTRIES[rec.birthCountryId]?.name}.`]];
-  if (mother) learnFacts.push(['mother:age', `Your birth mother was ${mother.age - (S().year - rec.placementYear) + (rec.placementAge ?? 0)} when you were born.`]);
+  if (mother) learnFacts.push(['mother:age', `Your birth mother was ${mother.age - (S().year - S().player.birthYear)} when you were born.`]);
   const people = {};
   let text;
   const withheld = mother && access === 'conditional' && (mother.flags.openness ?? 50) < 25;
@@ -662,14 +705,21 @@ function recordsAnswer(rec, r) {
   } else {
     text = `The records are sealed in ${obcLaw(rec, r.made)?.name ?? (COUNTRIES[rec.jurisdiction] ? theCountry(COUNTRIES[rec.jurisdiction].name) : null) ?? 'this jurisdiction'}. You are sent the non-identifying background in your file, and told that names can be shared only through an intermediary, a registry where both sides agree, or a court.`;
   }
-  inbox({ key: `records:${r.id}`, scene: 'org_agency', words: { what: text }, learn: learnFacts.filter(([, t]) => t), people });
+  if (access === 'open' || (access === 'conditional' && !withheld)) r.certificate = true;
+  inbox({ key: `records:${r.id}`, scene: 'org_agency', words: { what: text }, learn: learnFacts.filter(([, t]) => t), people, quiet: 'The records office replies: nothing in your file has changed since you last asked.' });
 }
 
 /** An intermediary looks for the birth mother (and the father, if the file names him) and asks them first. */
+/** Who an intermediary could still look for: a parent in the file, not known to have died, not already in touch or refused. */
+function intermediaryTargets(rec) {
+  const o = S().origins;
+  return rec.birthParentIds.map(npcOf).filter((n) => n && (n.flags.birthKin === 'mother' || rec.fatherNamed)
+    && !knowsFact(`died:${n.id}`) && !S().player.npcIds.includes(n.id)
+    && (!o.contacts[n.id] || ['none', 'time'].includes(o.contacts[n.id].status)) && !(o.contacts[n.id]?.retry > S().year));
+}
 function intermediaryAnswer(rec, r) {
-  const targets = rec.birthParentIds.map(npcOf).filter((n) => n && (n.flags.birthKin === 'mother' || rec.fatherNamed));
-  const n = targets.find((x) => !S().origins.contacts[x.id] || ['none', 'time'].includes(S().origins.contacts[x.id].status)) ?? null;
-  if (!n) { inbox({ key: `intermediary:${r.id}`, scene: 'org_agency', words: { what: 'The intermediary writes back: there is nobody in your file they can look for that you have not already found.' } }); return; }
+  const n = intermediaryTargets(rec)[0] ?? null;
+  if (!n) { log('The intermediary writes back: there is nobody in your file left for them to look for.', 'system', 'neutral'); return; }
   if (!n.alive) {
     inbox({ key: `intermediary:${r.id}`, scene: 'org_unanswered', cast: {}, words: { what: `The intermediary found your ${kinWord(n.flags.birthKin, n.gender).toLowerCase()}, ${nm(n)}, in the records: ${n.gender === 'male' ? 'he' : 'she'} died in ${n.flags.diedYear}, at ${n.age}.` },
       learn: [[`died:${n.id}`, `${nm(n)} died in ${n.flags.diedYear}.`]], people: { [n.id]: 'named' } });
@@ -706,7 +756,11 @@ function answerFor(rec, n, channel, key) {
   const year = S().year;
   const o = S().origins;
   const k = (o.contacts[n.id] ??= { status: 'none', history: [] });
-  const kind = answerKind(n, channel, year);
+  if (['letters', 'agreed', 'contact', 'open', 'noContact'].includes(k.status) || S().player.npcIds.includes(n.id)) return;
+  let kind = answerKind(n, channel, year);
+  // Asked for time twice already: a third time is a no, for now. Being asked again and again is not easier for anyone.
+  if (kind === 'time' && (k.times ?? 0) >= 2) kind = 'declined';
+  if (kind === 'time') k.times = (k.times ?? 0) + 1;
   const who = knowLevel(n.id) && knowLevel(n.id) !== 'exists' ? n.firstName : `your ${kinWord(n.flags.birthKin, n.gender).toLowerCase()}`;
   const sentence = n.flags.originSentence && !n.flags.originSentence.released;
   k.answered = { year, kind, channel };
@@ -722,10 +776,12 @@ function answerFor(rec, n, channel, key) {
     inbox({ key, scene: 'org_letter', cast: { them: n.id }, words: { how: channelWords(channel) }, learn: facts, people });
   } else if (kind === 'time') {
     k.status = 'time'; k.retry = year + 2; k.history.push({ year, what: `${nm(n)} asked for time.` });
-    inbox({ key, scene: 'org_privacy', cast: { them: n.id }, words: { what: `${cap(who)} has been found, and is not ready. ${n.gender === 'male' ? 'He' : 'She'} asked for time, and did not say no.` }, learn: facts, people: { [n.id]: 'named' } });
+    inbox({ key, scene: 'org_privacy', cast: { them: n.id }, words: { what: k.times > 1 ? `${cap(who)} is still not ready, and says so gently. ${cap(they(n))} asked for more time.` : `${cap(who)} has been found, and is not ready. ${cap(they(n))} asked for time, and did not say no.` }, learn: facts, people: { [n.id]: 'named' } });
   } else if (kind === 'declined') {
+    const before = k.declines ?? 0;
+    k.declines = before + 1;
     k.status = 'declined'; k.retry = year + 5; k.history.push({ year, what: `${nm(n)} declined contact.` });
-    inbox({ key, scene: 'org_privacy', cast: { them: n.id }, words: { what: `${cap(who)} has been found, and has declined contact for now. The message passed on is short and not unkind.` }, learn: facts, people: { [n.id]: 'named' } });
+    inbox({ key, scene: 'org_privacy', cast: { them: n.id }, words: { what: before ? `${cap(who)} has answered again, and the answer is still no. ${cap(they(n))} wishes you well, and asks you to let it rest.` : `${cap(who)} has been found, and has declined contact for now. The message passed on is short and not unkind.` }, learn: facts, people: { [n.id]: 'named' } });
   } else if (kind === 'disputes') {
     k.status = 'disputed'; k.history.push({ year, what: `${nm(n)} disputed the information in the file.` });
     inbox({ key, scene: 'org_complicated', cast: { them: n.id }, words: { what: `${nm(n)} says the file is wrong: ${n.gender === 'male' ? 'he' : 'she'} does not believe ${n.gender === 'male' ? 'he is' : 'she is'} your ${kinWord(n.flags.birthKin, n.gender).toLowerCase()}.` }, people: { [n.id]: 'named' } });
@@ -735,7 +791,7 @@ function answerFor(rec, n, channel, key) {
   }
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-const channelWords = (ch) => ({ intermediary: 'through the intermediary', registry: 'through the registry', dna: 'through the DNA service\'s messages', agency: 'through the agency', direct: 'by a letter forwarded through a tracing service', open: 'as always', reach: 'in their own words' }[ch] ?? 'through the agency');
+const channelWords = (ch) => ({ intermediary: 'through the intermediary', registry: 'through the registry', dna: 'through the DNA service\'s messages', agency: 'through the agency', direct: 'through a tracing service', open: 'as always', reach: 'in their own words' }[ch] ?? 'through the agency');
 
 function contactAnswer(rec, r) {
   const n = npcOf(r.target);
@@ -746,10 +802,10 @@ function contactAnswer(rec, r) {
 
 function agencyLetterAnswer(rec, r) {
   const mother = npcOf(rec.birthParentIds.find((id) => npcOf(id)?.flags.birthKin === 'mother'));
-  if (!mother?.alive) { inbox({ key: `agency:${r.id}`, scene: 'org_agency', words: { what: 'The agency writes back: they have no current way to reach your birth mother, and your letter stays on file in case she ever asks.' } }); return; }
+  if (!mother?.alive) { log('The agency writes back: they have no current way to reach your birth mother. Your letter stays on file.', 'system', 'neutral'); return; }
   // The letter goes on file; if she has kept in touch with the agency, it is passed on.
   if ((mother.flags.openness ?? 50) >= 55 || mother.flags.registered) answerFor(rec, mother, 'agency', `agency:${r.id}`);
-  else inbox({ key: `agency:${r.id}`, scene: 'org_agency', words: { what: 'The agency writes back: your letter is on file. They have not heard from your birth mother in years, and will pass it on if she gets in touch.' } });
+  else log('The agency writes back: your letter is on file. They have not heard from your birth mother in years, and will pass it on if she gets in touch.', 'system', 'neutral');
 }
 
 /** A registry match needs both people to have registered; a DNA match needs both to have tested. */
@@ -762,7 +818,7 @@ function passiveMatches(rec) {
   for (const n of birthKin(state)) {
     if (!n.alive || p.npcIds.includes(n.id)) continue;
     const k = state.origins.contacts[n.id];
-    if (k && !['none', 'time'].includes(k.status)) continue;
+    if ((k && k.status !== 'none') || knows(n.id, 'located')) continue; // already found, asked, or reachable: a match would add nothing
     if (regAt && n.flags.registered && n.age >= 18 && state.year > regAt) {
       if (inbox({ key: `registry:${n.id}`, scene: 'org_match', cast: { them: n.id }, words: { how: 'The registry writes: someone registered as your birth relative has asked to be found too.', rel: kinWord(n.flags.birthKin, n.gender).toLowerCase() },
         people: { [n.id]: 'named' }, learn: [[`match:${n.id}`, `A registry match: ${nm(n)}, your ${kinWord(n.flags.birthKin, n.gender).toLowerCase()}.`]], offer: { id: n.id, channel: 'registry' } })) break;
@@ -845,9 +901,9 @@ function reflect(rec) {
   const beat = (id, cast = {}, key = id) => { o.told[key] = state.year; storyBeat(id, cast, { source: 'origins', weight: 1 }); return true; };
   const yearsSince = (id) => state.year - (o.told[id] ?? -99);
   if (yearsSince('org_story') < 2 && yearsSince('org_learn_late') < 2) return false;
-  if (p.age >= 7 && p.age <= 12 && once('org_question') && r < 0.3) return beat('org_question', { words: { parents: parentsLabel(rec) } });
-  if (p.age >= 6 && p.age <= 14 && once('org_photo') && r < (rec.contact === 'open' || rec.contact === 'mediated' ? 0.35 : 0.15)) return beat('org_photo', { words: { photo: photoWords(rec) } });
-  if (p.age >= 13 && p.age <= 17 && once('org_conversation') && r < 0.3) return beat('org_conversation', { words: { parents: parentsLabel(rec) } });
+  if (p.age >= 7 && p.age <= 12 && once('org_question') && r < 0.3) return beat('org_question', { words: parentWords(rec) });
+  if (p.age >= 6 && p.age <= 14 && once('org_photo') && r < (rec.contact === 'open' || rec.contact === 'mediated' ? 0.35 : 0.15)) return beat('org_photo', { words: { ...parentWords(rec), photo: photoWords(rec) } });
+  if (p.age >= 13 && p.age <= 17 && once('org_conversation') && r < 0.3) return beat('org_conversation', { words: parentWords(rec) });
   if (p.age >= 18 && p.age <= 30 && once('org_should') && o.search.status === 'none' && r < (['mild', 'exploring'].includes(self.curiosity) ? 0.4 : 0.12)) return beat('org_should');
   // Years of searching with nothing found.
   if (o.search.status === 'active' && state.year - (o.search.since ?? state.year) >= 6 && once('org_unanswered') && !birthKin(state).some((n) => knows(n.id, 'named')) && r < 0.5) return beat('org_unanswered', { words: { what: 'Six years of letters, forms and waiting, and no answer that leads anywhere.' } }, 'org_unanswered');
@@ -900,10 +956,17 @@ export function originActions() {
   const s = state.origins.search;
   add('review', 'Review Available Information', 'What you hold, and what is on file', '');
   const obcAge = obcLaw(rec)?.minAge ?? RECORDS_AGE;
-  add('records', 'Request Eligible Records', recordsLine(rec), elig.why || (p.age < obcAge ? `From age ${obcAge} in ${obcLaw(rec).name}` : '') || (open('records') ? 'Waiting for an answer' : lastOf('records') && state.year - lastOf('records').made < 5 ? 'Asked recently: the law may change in time' : ''));
-  add('agency', 'Contact the Adoption Agency', 'Leave a letter on file, or ask for news', elig.why || (rec.kind === 'kinship' ? 'There was no agency' : open('agencyLetter') ? 'Waiting for an answer' : once('agency')));
+  const haveCertificate = s.requests.some((r) => r.kind === 'records' && r.certificate);
+  add('records', 'Request Eligible Records', recordsLine(rec), elig.why || (p.age < obcAge ? `From age ${obcAge} in ${obcLaw(rec).name}` : '') || (haveCertificate ? 'You have your original birth certificate' : open('records') ? 'Waiting for an answer' : lastOf('records') && state.year - lastOf('records').made < 5 ? 'Asked recently: the law may change in time' : ''));
+  // The agency can pass a letter to a birth mother it may still be able to reach: not one already in your life, or one who has died.
+  const mumK = mother && state.origins.contacts[mother.id];
+  const agencyWhy = rec.kind === 'kinship' ? 'There was no agency'
+    : mother && (knowsFact(`died:${mother.id}`) || (knows(mother.id, 'met') && !mother.alive)) ? 'Your birth mother has died'
+      : mother && (p.npcIds.includes(mother.id) || ['open', 'mediated', 'contact', 'letters', 'agreed'].includes(mumK?.status)) ? 'You are already in touch with your birth mother'
+        : open('agencyLetter') ? 'Waiting for an answer' : lastOf('agencyLetter') && state.year - lastOf('agencyLetter').made < 3 ? 'Wrote recently' : '';
+  add('agency', 'Contact the Adoption Agency', 'Leave a letter on file, or ask for news', elig.why || agencyWhy);
   add('registry', 'Join a Reunion Registry', 'A match only if they register too', elig.why || (!serviceOpen('registry', rec) ? 'Not available here yet' : self.registered ? `Registered in ${self.registered}` : ''));
-  add('intermediary', 'Ask an Authorized Intermediary', 'They find and ask, confidentially', elig.why || (!serviceOpen('intermediary', rec) ? 'Not available here yet' : open('intermediary') ? 'Already looking' : lastOf('intermediary') && state.year - lastOf('intermediary').made < 3 ? 'Asked recently' : ''));
+  add('intermediary', 'Ask an Authorized Intermediary', 'They find and ask, confidentially', elig.why || (!serviceOpen('intermediary', rec) ? 'Not available here yet' : open('intermediary') ? 'Already looking' : !intermediaryTargets(rec).length ? 'Nobody in your file left to look for' : lastOf('intermediary') && state.year - lastOf('intermediary').made < 3 ? 'Asked recently' : ''));
   add('public', 'Explore Public Records', 'For someone you can already name', elig.why || (namedKin().length ? once('public') : 'You need a name first'));
   add('dna', 'Take a DNA Test', 'Relatives who have tested, with how sure the match is', elig.why || (!serviceOpen('dna', rec) ? 'Not available yet' : self.dnaTested ? `Tested in ${self.dnaTested}` : ''));
   if (s.status === 'active') add('pause', 'Pause the Search', 'Take a break: nothing is lost', '');
@@ -947,25 +1010,30 @@ export function doOriginAction(id) {
     }
     case 'askStory': {
       markDone(id);
-      learn('story', rec.kind === 'kinship' ? `${carersLabel(rec)} told you how you came to live with them.` : `${parentsLabel(rec)} told you about the day you came home.`);
+      const w = parentWords(rec);
+      if (knowsFact('story')) { bumpParents(1); p.stats.mood = clamp(p.stats.mood + 1); return result(true, vary(`${p.id}:story`, [`${w.parents} ${w.tell} the story again, the way ${w.they} always ${w.they === 'they' ? 'do' : 'does'}. You know the words by now, and you like hearing them.`, `You ask for the story again. This time ${w.parents} ${w.remember} a detail never mentioned before: the song on the radio on the way home.`, `${w.parents} ${w.tell} it again, a little differently each time. You notice which parts never change.`]), 'good'); }
+      learn('story', rec.kind === 'kinship' ? `${w.parents} told you how you came to live with ${w.them}.` : `${w.parents} told you about the day you came home.`);
       bumpParents(2);
       p.stats.mood = clamp(p.stats.mood + 2);
       const placed = rec.placementAge ? `when you were ${rec.placementAge}` : 'when you were a few days old';
-      return result(true, rec.kind === 'kinship' ? `${carersLabel(rec)} tell you how you came to live with them, and how much they wanted you to.` : `${parentsLabel(rec)} tell you about the day you came home, ${placed}: the drive, the car seat they could not work out, how small you were.`, 'good');
+      return result(true, rec.kind === 'kinship' ? `${w.parents} ${w.tell} you how you came to live with ${w.them}, and how much ${w.they} wanted you to.` : `${w.parents} ${w.tell} you about the day you came home, ${placed}: the drive, the car seat nobody could work out, how small you were.`, 'good');
     }
     case 'photos': {
       markDone(id);
       p.stats.mood = clamp(p.stats.mood + 2);
       if ((rec.contact === 'open' || rec.contact === 'mediated' || rec.contactWas) && mother) { learnPerson(mother.id, pk[mother.id] ?? 'first'); learn('photo', 'You have seen a photograph of your birth mother.'); return result(true, `Among the albums is a photograph of your birth mother${knows(mother.id, 'first') ? `, ${mother.firstName}` : ''}, holding you. You look for your own face in hers.`, 'good'); }
-      return result(true, 'Baby pictures: you in a hospital blanket, you at your first birthday covered in cake. Your parents have a story for every one.', 'good');
+      return result(true, vary(`${p.id}:photos`, ['Baby pictures: you in a hospital blanket, you at your first birthday covered in cake. Your parents have a story for every one.', 'The albums again: your first day at school, a holiday where it rained every day, a haircut nobody admits to.', 'You find one you had never seen: the whole family on the front steps, everyone squinting into the sun.']), 'good');
     }
     case 'askBirth': {
       markDone(id);
       const limited = self.telling === 'limited' && p.age < 16;
       const told = [];
       if (p.age >= 9 && !limited && learn('reason', REASONS[rec.reason]?.known ?? 'Little is written down about why.')) told.push(REASONS[rec.reason]?.known);
-      else if (p.age < 9) told.push(rec.kind === 'kinship' ? 'Your birth mother could not look after a baby then, and the family made sure you were looked after.' : 'Your birth mother could not take care of a baby when you were born, and wanted you to have a family.');
-      if (mother && p.age >= 12 && !limited && learn('mother:age', `Your birth mother was ${mother.age - (state.year - rec.placementYear) + (rec.placementAge ?? 0)} when you were born.`)) told.push(`She was ${mother.age - (state.year - rec.placementYear) + (rec.placementAge ?? 0)} when you were born.`);
+      else if (p.age < 9) told.push(rec.kind === 'kinship' ? 'Your birth mother could not look after a baby then, and the family made sure you were looked after.'
+        : rec.kind === 'childhood' ? 'Your first family could not keep taking care of you, and wanted you to grow up in a family that could.'
+          : 'Your birth mother could not take care of a baby when you were born, and wanted you to have a family.');
+      const ageAtBirth = mother && mother.age - (state.year - p.birthYear);
+      if (mother && p.age >= 12 && !limited && learn('mother:age', `Your birth mother was ${ageAtBirth} when you were born.`)) told.push(`Your birth mother was ${ageAtBirth} when you were born.`);
       for (const [nid, lvl] of Object.entries(pk)) {
         const n = npcOf(nid);
         const minAge = lvl === 'named' ? (rec.kind === 'kinship' ? 4 : 8) : 10;
@@ -975,10 +1043,12 @@ export function doOriginAction(id) {
       if (!rec.birthParentIds.length) told.push('Your parents were told very little; the file was short.');
       bumpParents(parents[0]?.flags.originsStance === 'uneasy' ? 0 : 1);
       if (self.curiosity === 'none') self.curiosity = 'mild';
-      return result(true, told.length ? `${parentsLabel(rec)} tell you what they know. ${told.join(' ')}` : `${parentsLabel(rec)} have told you everything they know already. Some of it is simply not known.`, 'neutral');
+      const pw = parentWords(rec);
+      return result(true, told.length ? `${pw.parents} ${pw.tell} you what ${pw.they} ${pw.know}. ${told.join(' ')}` : `${pw.parents} ${pw.have} told you everything ${pw.they} ${pw.know} already. Some of it is simply not known.`, 'neutral');
     }
     case 'heritage': {
       markDone(id);
+      if (knowsFact('birthplace')) return result(true, vary(`${p.id}:heritage`, [`You read about ${rec.birthCity} again: its history, its food, the way people there talk.`, `You look up ${rec.birthCity} on a map, and then at photographs of its streets. One day, maybe.`, `You think about ${rec.birthCity} for a while. It is part of your story, wherever you live.`]), 'neutral');
       learn('birthplace', `You were born in ${rec.birthCity}, ${COUNTRIES[rec.birthCountryId]?.name}.`);
       return result(true, `You were born in ${rec.birthCity}, ${COUNTRIES[rec.birthCountryId]?.name}${rec.birthCountryId === p.countryId ? ', the same country your family lives in' : ''}. You look at it on a map for a long time.`, 'neutral');
     }
@@ -1026,7 +1096,7 @@ export function doOriginAction(id) {
       for (const n of namedKin()) {
         if (!n.alive && learn(`died:${n.id}`, `${nm(n)} died in ${n.flags.diedYear}.`)) found.push(`a death notice for ${nm(n)}, ${n.flags.diedYear}`);
         else if (n.alive && n.flags.abroad && learn(`abroad:${n.id}`, `${nm(n)} lives in ${COUNTRIES[n.flags.abroad]?.name}.`)) found.push(`that ${n.firstName} moved abroad`);
-        else if (n.alive && learnPerson(n.id, 'located')) found.push(`${n.firstName} in a public listing for ${n.flags.city ?? COUNTRIES[n.bornIn ?? p.countryId]?.name}`);
+        else if (n.alive && learnPerson(n.id, 'located')) found.push(`${n.firstName} in a public listing for ${n.flags.city ?? rec.birthCity ?? COUNTRIES[n.bornIn ?? p.countryId]?.name}`);
       }
       return result(true, found.length ? `In the public records you find ${found.join('; ')}. No address: only enough to know where to send a letter through the proper channel.` : 'You search the public records. Nothing new turns up.', 'neutral');
     }
@@ -1055,7 +1125,8 @@ export function relativeActions(npcId) {
   const add = (id, label, why = '') => out.push({ id, label, why });
   const minor = p.age < RECORDS_AGE;
   if (!n.alive) return out;
-  const st = k?.status ?? 'none';
+  // Someone already part of the player's life (a birth mother in a family arrangement, a sibling adopted with them) is in touch.
+  const st = p.npcIds.includes(npcId) && !['contact', 'faded', 'open', 'letters', 'agreed'].includes(k?.status) ? 'contact' : k?.status ?? 'none';
   if (k?.boundary === 'break' || k?.boundary === 'noContact') { add('resume', k.boundary === 'noContact' ? 'Lift Your No-Contact Boundary' : 'End the Break'); return out; }
   if (['contact', 'letters', 'agreed', 'open', 'faded'].includes(st)) {
     if (st === 'letters') add('letter', 'Write a Letter', doneThisYear(`letter:${npcId}`) ? 'Written this year' : '');
@@ -1067,7 +1138,9 @@ export function relativeActions(npcId) {
   if (st === 'noContact' || k?.theirs === 'noContact') { add('request', 'Request Contact', 'They asked for no contact'); return out; }
   if (minor) { add('request', 'Request Contact', `From age ${RECORDS_AGE}`); return out; }
   const channel = offer?.channel ?? (knows(npcId, 'located') ? 'direct' : null);
-  const waiting = state.origins.search.requests.some((r) => r.kind === 'contact' && r.target === npcId && !r.done);
+  // Waiting: a request not yet answered, or an answer about them still to be told.
+  const waiting = state.origins.search.requests.some((r) => r.kind === 'contact' && r.target === npcId && !r.done)
+    || state.origins.inbox.some((x) => x.cast?.them === npcId || x.contact === npcId || x.offer?.id === npcId || Object.keys(x.people ?? {}).includes(npcId) && /^(contact|intermediary|agency):/.test(x.key));
   const why = waiting ? 'Waiting for an answer' : !channel ? 'No safe way to reach them yet: try an intermediary or the registry' : (k?.retry && state.year < k.retry) ? `They asked for time: from ${k.retry}` : '';
   add('request', `Request Contact${channel ? ` (${channelWords(channel)})` : ''}`, why);
   return out;
@@ -1089,7 +1162,8 @@ export function doRelativeAction(npcId, id) {
       addRequest('contact', { target: npcId, channel });
       k.status = k.status === 'time' || k.status === 'declined' ? k.status : 'requested';
       k.history.push({ year, what: `You asked for contact ${channelWords(channel)}.` });
-      return result(true, `Your request goes ${channelWords(channel)}. ${knownName(n) === nm(n) ? n.firstName : 'They'} will decide for themselves; the answer comes when it comes.`, 'neutral');
+      const who = knowLevel(npcId) === 'exists' ? 'They' : n.firstName;
+      return result(true, `Your request goes ${channelWords(channel)}. ${who} will decide for ${who === 'They' ? 'themselves' : themself(n)}; the answer comes when it comes.`, 'neutral');
     }
     case 'letter': {
       markDone(`letter:${npcId}`);
@@ -1097,7 +1171,7 @@ export function doRelativeAction(npcId, id) {
       k.history.push({ year, what: 'You wrote a letter.' });
       const back = seeded(`${npcId}:${year}:letter`) * 100 < (n.flags.openness ?? 50) + 20;
       if (back) k.history.push({ year, what: `${n.firstName} wrote back.` });
-      return result(true, back ? `You write about your life, and ${n.firstName} writes back about theirs.` : `You write about your life. ${n.firstName} has not written back yet.`, 'neutral');
+      return result(true, back ? `You write about your life, and ${n.firstName} writes back about ${theirs(n)}.` : `You write about your life. ${n.firstName} has not written back yet.`, 'neutral');
     }
     case 'history': {
       markDone(`history:${npcId}`);
@@ -1111,7 +1185,7 @@ export function doRelativeAction(npcId, id) {
       for (const g of birthKin().filter((x) => x.flags.birthKin === 'grandparent')) if (learnPerson(g.id, 'first')) { facts.push(`There is a grandparent, ${g.firstName}${g.alive ? '' : ', no longer living'}.`); break; }
       n.meters.relationship = clamp(n.meters.relationship + 3);
       if (facts.length) learn('siblings', 'Your birth family has told you about its people.');
-      return result(true, facts.length ? facts.join(' ') : `${n.firstName} tells you stories about the family: who looks like whom, who could never sing.`, 'neutral');
+      return result(true, facts.length ? facts.join(' ') : vary(`${npcId}:history`, [`${n.firstName} tells you stories about the family: who looks like whom, who could never sing.`, `${n.firstName} shows you old photographs, and tells you who everyone is. One of them has your hands.`, `${n.firstName} tells you about the town the family comes from, and the house nobody lives in now.`]), 'neutral');
     }
     case 'reconnect': {
       markDone(`reconnect:${npcId}`);
@@ -1207,7 +1281,8 @@ export function originsChoice(value, cast = {}) {
       const start = i === 0 ? 30 : i === 1 ? 22 : 15;
       if (fit < 28 && i !== 2) {
         joinLife(n, Math.max(8, start - 10));
-        inbox({ key: `complicated:${n.id}`, scene: 'org_complicated', cast: { them: n.id }, words: { what: `The first meeting with ${n.firstName} does not go the way either of you hoped. There are long silences, and one thing said that should not have been.` } });
+        storyBeat('org_complicated', { them: n.id, words: { what: `The first meeting with ${n.firstName} does not go the way either of you hoped. There are long silences, and one thing said that should not have been.`, key: `complicated:${n.id}` } }, { source: 'origins', must: true });
+        state.origins.told[`complicated:${n.id}`] = year;
         return 'It is harder than you expected.';
       }
       joinLife(n, start + Math.round(fit / 3));
@@ -1307,10 +1382,10 @@ export function originsView(state = S()) {
 /** What a state's law means for this adoptee, in a sentence, with where it comes from. */
 function lawWords(law, age) {
   const since = law.since ? ` since ${law.since}` : '';
-  const what = { open: `In ${law.name}, adult adoptees can get their original birth certificate${law.minAge !== 18 ? ` from age ${law.minAge}` : ''}${since}.`,
-    conditional: `In ${law.name}, original birth certificates are open${since}, with conditions: a birth parent may have their name withheld, or it depends on the year.`,
+  const what = { open: `In ${law.name}, adult adoptees ${law.since ? 'have been able to get' : 'can get'} their original birth certificate${law.minAge !== 18 ? ` from age ${law.minAge}` : ''}${since}.`,
+    conditional: `In ${law.name}, original birth certificates ${law.since ? `have been open${since}` : 'are open'}, with conditions: a birth parent may have their name withheld, or it depends on the year.`,
     restricted: `In ${law.name}, original birth certificates are sealed: names come only through an intermediary, a registry where both agree, or a court.` }[law.kind];
-  return `${what} ${law.note}${law.disputed ? ' (Sources disagree about this state.)' : ''}${age < law.minAge ? ` You can ask from ${law.minAge}; until then, your parents can help.` : ''}`;
+  return `${what}${law.note ? ` ${law.note}` : ''}${law.disputed ? ' (Sources disagree about this state.)' : ''}${age < law.minAge ? ` You can ask from ${law.minAge}; until then, your parents can help.` : ''}`;
 }
 function contactLabel(k) {
   if (!k) return '';

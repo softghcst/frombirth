@@ -36,6 +36,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const opts = await page.locator('#f-origin option').allInnerTexts();
   check(['Standard family', 'Adopted at birth', 'Adopted during childhood', 'Raised by relatives', 'Surprise me'].every((o) => opts.some((x) => x.toLowerCase() === o.toLowerCase())), `${label}: the designer offers the family origins (${opts})`);
   await page.selectOption('#f-country', 'us'); await page.waitForTimeout(60);
+  // A state where adult adoptees can ask at 18 (Alabama waits until 19, Louisiana 24): Oregon.
+  await page.selectOption('#f-region', 'Oregon'); await page.waitForTimeout(60); await page.selectOption('#f-city', 'Portland');
   await page.fill('#f-year', '2000');
   await page.selectOption('#f-origin', 'birth');
   check(/newborn/.test(await page.locator('[data-origin-note]').innerText()), `${label}: the choice is explained`);
