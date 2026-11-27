@@ -16,7 +16,7 @@ import { TRAIT_BY_ID } from '../../data/traits.js';
 import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
-import { confirmModal } from '../modals.js';
+import { confirmModal, pickModal, messageModal } from '../modals.js';
 import * as med from '../../engine/health/visits.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 import * as salon from '../../engine/salon.js';
@@ -30,6 +30,40 @@ import { loveFamilyGroup, openLoveFamily } from './people.js';
 import { ailmentsOf } from '../../engine/health/ailments.js';
 import { healthOf, presentConditions, diagnosisFor } from '../../engine/health/record.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
+import * as goals from '../../engine/goals.js';
+import { GOAL_GROUPS } from '../../data/goals.js';
+
+// ---------- Life goals (engine/goals.js) ----------
+
+/** The Life goal card: the goal, its four steps, and what finished goals have left you. */
+function goalCard(p) {
+  if (!goals.goalsOpen(p)) return '';
+  const g = goals.currentGoal(p);
+  const steps = g ? goals.stepsOf(g.id, p) : [];
+  const done = goals.finished(p);
+  const kept = goals.badges(p);
+  const sub = g ? `${g.name}: ${steps.filter((x) => x.done).length} of ${steps.length}` : done.length ? `${done.length} achieved` : '';
+  return `<div class="card"${sub ? ` data-row-sub="${esc(sub)}"` : ''}><h3>Life goal</h3>
+    ${g ? `<p style="margin:0 0 6px"><span aria-hidden="true">${g.icon}</span> <strong>${esc(g.name)}</strong> · <span class="muted">${esc(g.blurb)}</span></p>
+      ${steps.map((st) => `<div class="kv"><span>${st.done ? '✓' : '○'} ${esc(st.text)}</span><span>${st.done ? `at ${st.age}` : ''}</span></div>`).join('')}
+      <p class="muted" style="margin:6px 0 0">Reward: ${esc(g.reward.name)}. ${esc(g.reward.desc)}</p>`
+      : '<p class="muted" style="margin:0">Something to work toward, with a reward at the end that stays with you.</p>'}
+    ${done.length ? `<div class="section-label">Achieved</div>${done.map((f) => `<div class="kv"><span>${f.goal?.icon ?? ''} ${esc(f.goal?.name ?? f.id)}</span><span>at ${f.age}</span></div>`).join('')}` : ''}
+    ${kept.length ? `<div class="section-label">What they left you</div>${kept.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
+    <div class="btn-stack" style="margin-top:10px"><button class="btn ${g ? '' : 'primary'}" data-goal>${g ? 'Change goal' : 'Choose a life goal'}</button></div></div>`;
+}
+async function chooseGoalFlow(api) {
+  const group = await pickModal({ title: 'A life goal', body: 'One at a time. Switching keeps what you have reached on each.',
+    options: GOAL_GROUPS.map(([id, name]) => ({ value: id, label: name, sub: id === 'life' ? 'A family, a fortune, the world, a craft' : id === 'career' ? 'The top of a field: medicine, law, office, stage' : 'A great love, a long one, or many' })) });
+  if (!group) return;
+  const list = goals.choices().filter((x) => x.goal.group === group);
+  const id = await pickModal({ title: GOAL_GROUPS.find(([g]) => g === group)[1], options: list.map((x) => ({ value: x.goal.id, label: `${x.goal.icon} ${x.goal.name}`, disabled: x.finished || x.current,
+    sub: x.finished ? 'Achieved.' : x.current ? 'Your goal now.' : `${x.goal.blurb}${x.reached ? ` ${x.reached} of ${x.goal.steps.length} steps already reached.` : ''} Reward: ${x.goal.reward.name}.` })) });
+  if (!id) return;
+  const r = goals.chooseGoal(id);
+  api.changed?.();
+  await messageModal({ body: r.text, tone: r.tone });
+}
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -102,6 +136,7 @@ export default {
       <div class="card"><h3>The world</h3>
         <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
         <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
+      ${goalCard(p)}
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       ${loveFamilyGroup()}
       ${navGroup([
@@ -116,6 +151,7 @@ export default {
     el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
+    el.querySelectorAll('[data-goal]').forEach((b) => { b.onclick = () => chooseGoalFlow(api); });
     el.querySelector('[data-mytag]').onclick = async () => { const p = player(); playerBirthInfo(p); api.changed?.(); await openBirthTag(p, { title: 'Your Birth Tag', parents: p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'parent').slice(0, 2) }); };
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = () => openSalonVisit(api);  // the visit: js/ui/salonVisit.js

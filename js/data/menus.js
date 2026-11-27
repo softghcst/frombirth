@@ -98,6 +98,7 @@ export const MENU_RULES = [
   [/^the world$/i, '🌐', 'Every country, and how it lives'],
   [/^world news$/i, '📰', 'What is happening'],
   [/^milestones$/i, '🏆', 'The big moments of your life'],
+  [/^life goal$/i, '🎯', 'Something to work toward, and what it leaves you'],
   [/^settings$/i, '⚙️', 'Time per turn, drama and more'],
   [/^save and quit$/i, '💾', 'Back to the title screen'],
   [/crown|royal/i, '👑', 'Your place in the royal family'],

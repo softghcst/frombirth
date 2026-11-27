@@ -91,6 +91,7 @@ import { directYear, yearSteps } from './storyDirector.js';
 import { tickOrigins } from './origins.js';
 import { tickTraits } from './traits.js';
 import { tickLifeStage } from './lifeStages.js';
+import { tickGoals } from './goals.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -194,6 +195,7 @@ export const YEARLY = [
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
+  ['goals', tickGoals], // life goals: the steps reached this year (engine/goals.js)
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];
 const DEADLY = new Set(['career', 'vehicles']);

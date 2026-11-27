@@ -6,6 +6,7 @@
 import { store, player, log, milestone } from '../state.js';
 import { TRAITS, TRAIT_BY_ID, MAX_TRAITS } from '../data/traits.js';
 import { applyMods } from './genetics.js';
+import { BADGE_BY_ID } from '../data/goals.js';
 
 /** Whether someone (the player, by default) has a trait. */
 export const hasTrait = (id, p = player()) => !!p?.traits?.includes(id);
@@ -14,16 +15,18 @@ export const oppositeOf = (id) => TRAIT_BY_ID[id]?.opposite ?? TRAITS.find((t) =
 /** Whether these traits clash: two that are opposites. */
 export const clashes = (id, list) => list.some((x) => oppositeOf(x) === id || oppositeOf(id) === x);
 
-/** Product of a multiplying effect (keys ending in K) across someone's traits: 1 when none has it. */
+/** Everything that shapes someone's effects: their traits, and the rewards of life goals they finished (data/goals.js). */
+const shapers = (p) => [...(p?.traits ?? []).map((id) => TRAIT_BY_ID[id]), ...(p?.goals?.badges ?? []).map((id) => BADGE_BY_ID[id])].filter(Boolean);
+/** Product of a multiplying effect (keys ending in K) across someone's traits and rewards: 1 when none has it. */
 export function traitK(key, p = player()) {
   let k = 1;
-  for (const id of p?.traits ?? []) { const v = TRAIT_BY_ID[id]?.effects?.[key]; if (v != null) k *= v; }
+  for (const t of shapers(p)) { const v = t.effects?.[key]; if (v != null) k *= v; }
   return k;
 }
-/** Sum of an adding effect across someone's traits: 0 when none has it. */
+/** Sum of an adding effect across someone's traits and rewards: 0 when none has it. */
 export function traitAdd(key, p = player()) {
   let n = 0;
-  for (const id of p?.traits ?? []) n += TRAIT_BY_ID[id]?.effects?.[key] ?? 0;
+  for (const t of shapers(p)) n += t.effects?.[key] ?? 0;
   return n;
 }
 
@@ -80,7 +83,7 @@ export function traitWeight(ev, p = player()) {
  */
 export function tickTraits() {
   const p = player();
-  if (!p?.alive || !p.traits?.length) return;
+  if (!p?.alive || !(p.traits?.length || p.goals?.badges?.length)) return;
   const state = store.state;
   const live = Object.values(state.npcs).filter((n) => n.alive && p.npcIds.includes(n.id));
   let d = traitAdd('yearMood', p);
