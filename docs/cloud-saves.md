@@ -37,7 +37,7 @@ a menu may have a slightly different name from the one below.
    with a link to click first, and Supabase's built-in email only sends a few
    an hour.)
 3. Open **Authentication → URL Configuration**:
-   - **Site URL:** `https://softghcst.github.io/pathways/`
+   - **Site URL:** `https://softghcst.github.io/frombirth/`
    - Under **Redirect URLs**, add the same address.
 
    This is where "Forgot your password?" links send people back to.
