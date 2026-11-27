@@ -58,7 +58,19 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.evaluate(async () => { document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); const { store } = await import('/js/state.js'); const special = await import('/js/engine/specialCareer.js'); special.leave(); store.notify(); });
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="self"]').click()); await page.waitForTimeout(150);
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
-  check(await page.locator('.sec-row[data-act^="sc:"]').count() === 0 && await page.locator('.sec-row[data-sec="Work"]').count() === 1, `${label}: without one, Work opens the job as before`);
+  check(await page.locator('.sec-row[data-act^="sc:"]').count() === 0, `${label}: without one, no special career row`);
+  const youLabel = () => page.evaluate(() => [...document.querySelectorAll('.section-label')].some((x) => /^you$/i.test(x.innerText.trim())));
+  const workRow = () => page.locator('.sec-row[data-sec="Work"]').first();
+  // Out of work: nothing at the top for a job that is not there.
+  const unemployed = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return !store.state.player.career.careerId; });
+  if (unemployed) check(!(await workRow().isVisible().catch(() => false)) || !/Performance/.test(await workRow().innerText()), `${label}: unemployed, no job row with a bar`);
+  // A job: it is the first row, named for the job, with how it is going as a bar.
+  await page.evaluate(async () => { const { store } = await import('/js/state.js'); const career = await import('/js/engine/career.js'); const { CAREERS } = await import('/js/data/careers.js'); career.hire(CAREERS.find((c) => c.id === 'retail') ?? CAREERS[0], 0, 60, 'test'); store.notify(); });
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="self"]').click()); await page.waitForTimeout(150);
+  await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
+  const title = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return store.state.player.career.title; });
+  const first = page.locator('.sec-row:visible').first();
+  check(await youLabel() && (await first.getAttribute('data-sec')) === 'Work' && new RegExp(title, 'i').test(await first.innerText()) && await first.locator('.nr-bar[aria-label="Performance"]').count() === 1, `${label}: a job is the first row under You, named "${title}", with a performance bar`);
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();
 }

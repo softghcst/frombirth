@@ -6,6 +6,7 @@
 import { esc } from '../util.js';
 import { icon, rowTile } from './kit.js';
 import { menuInfo } from '../data/menus.js';
+import { band } from './meter.js';
 
 /** Icons for section titles, by the first word or phrase that matches. */
 const ICONS = [
@@ -25,8 +26,10 @@ function titleOf(card) {
 }
 
 // `menu` names the row for its picture when the label is the player's own (a job title).
-const rowInner = (title, sub, alert, menu = title) => `${rowTile(menu, iconFor(menu))}
-  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${(sub || menuInfo(menu)?.desc) ? `<small>${esc(sub || menuInfo(menu).desc)}</small>` : ''}</span>
+// `bar` ([name, 0-100]) draws a small meter under the name in place of a line of text: how the job is going.
+const rowInner = (title, sub, alert, menu = title, bar = null) => `${rowTile(menu, iconFor(menu))}
+  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${bar ? `<span class="nr-bar" role="meter" aria-label="${esc(bar[0])}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(bar[1])}"><small>${esc(bar[0])}</small><span class="track"><span class="fill ${band(bar[1])}" style="width:${Math.round(bar[1])}%"></span></span></span>`
+    : (sub || menuInfo(menu)?.desc) ? `<small>${esc(sub || menuInfo(menu).desc)}</small>` : ''}</span>
   ${alert ? '<span class="nr-dot" aria-hidden="true"></span>' : ''}${icon('chevron', 'nr-chev')}`;
 
 /** Sections inside sections are named by their path: "Work › Politics". */
@@ -68,14 +71,21 @@ function build(container, prefix) {
       const go = document.createElement('button');
       go.className = 'nav-row sec-row';
       go.dataset.act = card.dataset.direct;
-      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', card.dataset.directDot === '1', card.dataset.directMenu || undefined);
+      // How the job is going, as a bar, unless something there is waiting for the player (then that is said instead).
+      const dot = card.dataset.directDot === '1';
+      const bar = !dot && card.dataset.rowBar ? [card.dataset.rowBarName ?? '', Number(card.dataset.rowBar)] : null;
+      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', dot, card.dataset.directMenu || undefined, bar);
       card.before(go);
     }
     const row = document.createElement('button');
     row.className = 'nav-row sec-row';
     row.dataset.sec = key;
     // A section with something waiting for the player (its main action is highlighted) gets a dot.
-    row.innerHTML = rowInner(card.dataset.direct ? 'Job Details' : title, card.dataset.direct ? 'Pay, history and the people you work with' : '', !!card.querySelector('.btn.primary:not([disabled]), .btn.peach:not([disabled])'));
+    // A card may name its row for the player (a job title), with a bar or a line of its own, and keep its section key.
+    const d = card.dataset;
+    const bar = d.rowBar ? [d.rowBarName ?? '', Number(d.rowBar)] : null;
+    row.innerHTML = d.direct ? rowInner('Job Details', 'Pay, history and the people you work with', false, 'Work')
+      : rowInner(d.rowTitle || title, d.rowSub ?? '', !!card.querySelector('.btn.primary:not([disabled]), .btn.peach:not([disabled])'), d.rowMenu || title, bar);
     card.before(row);
     card.classList.add('sec-body');
     card.dataset.secBody = key;

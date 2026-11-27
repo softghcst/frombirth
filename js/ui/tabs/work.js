@@ -562,12 +562,23 @@ export default {
       ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
 
+    // "You": what the player is in now, the job first, so it is one tap away; then the week, then school while enrolled.
+    // Without a job, the job's row is not there: past jobs and contacts wait further down, and school too once left.
+    const own = ownCareer(p, work);
+    const employed = !!(own || career.currentCareer() || k.partTime || k.retired);
+    const workMore = `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`;
+    let jobCard = careerCard();
+    if (own) jobCard = jobCard.replace('<div class="card info-card"', `<div class="card info-card" data-direct="${esc(own.act)}" data-direct-title="${esc(own.title)}" data-direct-sub="${esc(own.sub)}" data-direct-menu="${esc(own.menu ?? '')}"${own.dot ? ' data-direct-dot="1"' : ''}`);
+    jobCard = jobCard.replace(/<\/div>\s*$/, () => `${btns(jobOnly, workMore)}</div>`);
+    const showJob = employed || jobOnly.length || workMore;
+    const enrolled = e.enrolled || sch.atSchool(p) || medStudy;
+    const schoolCard = `<div class="card info-card" ${enrolled ? '' : 'data-row-title="Education" data-row-sub="Courses, degrees and your record" '}data-row-menu="School"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>`;
+    const week = commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : '';
+    const you = `${employed ? jobCard : ''}${week}${enrolled ? schoolCard : ''}`;
     el.innerHTML = `
-      <div class="section-label">You</div>
-      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
-      ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${(() => { const d = ownCareer(p, work); const c0 = careerCard(); return d ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="${esc(d.act)}" data-direct-title="${esc(d.title)}" data-direct-sub="${esc(d.sub)}" data-direct-menu="${esc(d.menu ?? '')}"${d.dot ? ' data-direct-dot="1"' : ''}>`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${you ? `<div class="section-label">You</div>${you}` : ''}
       ${findWork(p, work)}
+      ${enrolled && (employed || !showJob) ? '' : `<div class="section-label">More</div>${enrolled ? '' : schoolCard}${!employed && showJob ? jobCard : ''}`}
       ${specialCareers(p, work)}`;
 
     el.onclick = (ev) => {

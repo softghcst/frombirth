@@ -67,7 +67,13 @@ export function careerCard() {
   }
   const fameRow = fame > 0 || cur?.fame
     ? `<div style="margin-top:10px">${meterHtml('Fame', fame, true)}</div>` : '';
-  return `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('briefcase')}</span><h3>Work</h3></div>${body}${fameRow}</div>`;
+  // On the Work tab the row is named for the job, with how it is going under it; the section is still "Work".
+  const row = cur ? { title: k.title || cur.name, bar: k.performance, barName: 'Performance' }
+    : k.partTime ? { title: k.partTime.title, sub: `Part-time · ${fmtMoney(k.partTime.salary, c)} a year` }
+      : k.retired ? { title: 'Retired', sub: `Pension: ${fmtMoney(k.pensionPerYear, c)} a year` }
+        : { title: 'Past Jobs & Contacts', sub: 'Where you have worked, and who you know' };
+  const attrs = `data-row-title="${esc(row.title)}" data-row-menu="Work"${row.sub ? ` data-row-sub="${esc(row.sub)}"` : ''}${row.bar != null ? ` data-row-bar="${Math.round(row.bar)}" data-row-bar-name="${row.barName}"` : ''}`;
+  return `<div class="card info-card" ${attrs}><div class="info-head"><span class="nr-icon">${icon('briefcase')}</span><h3>Work</h3></div>${body}${fameRow}</div>`;
 }
 
 /** Buttons for whatever the player can do about work right now. */

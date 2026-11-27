@@ -58,7 +58,8 @@ for (const t of ['work', 'holdings', 'people', 'pursuits', 'self']) {
   check(rs.every((r) => r.line && r.shown), `${t}: every row says what it is for (${rs.filter((r) => !r.line || !r.shown).map((r) => r.label).join(', ')})`);
 }
 await tab('work');
-check(JSON.stringify(await labels()) === JSON.stringify(['You', 'Find Work']), `work: You, then Find work (${await labels()})`);
+// "You" holds what the player is in now (a job, a week, school while enrolled); then finding work; then the rest.
+check(/^(You,)?Find Work(,More)?$/.test(String(await labels())), `work: You, then Find work, then More (${await labels()})`);
 let rs = await rows();
 check(rs.some((r) => r.label === 'Jobs' && r.locked && /^From age \d+$/.test(r.line)), 'work: Jobs is greyed for a child, with the age it opens');
 check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
