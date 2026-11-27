@@ -18,6 +18,25 @@ export function setBirthGlobe(on) {
 }
 
 const RAD = Math.PI / 180;
+
+/**
+ * Whether this device draws flag emoji as flags. Windows shows two letters instead ("HK"), so there the card leaves
+ * the flag out. Checked once, by drawing a flag and looking for color.
+ */
+let FLAGS = null;
+function flagsShown() {
+  if (FLAGS != null) return FLAGS;
+  try {
+    const c = document.createElement('canvas'); c.width = 24; c.height = 24;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.textBaseline = 'top'; x.font = '20px sans-serif'; x.fillText('\u{1F1EF}\u{1F1F5}', 0, 0); // the flag of Japan: red on white
+    const d = x.getImageData(0, 0, 24, 24).data;
+    let colored = false;
+    for (let i = 0; i < d.length && !colored; i += 4) if (d[i + 3] > 0 && Math.abs(d[i] - d[i + 1]) > 60) colored = true;
+    FLAGS = colored;
+  } catch { FLAGS = true; }
+  return FLAGS;
+}
 const SPIN_MS = 4400; // spinning down and turning to the place
 const ZOOM_MS = 2600; // the last part of it: closing in
 let RINGS = null;
@@ -59,21 +78,41 @@ function drawGlobe(ctx, land, { cx, cy, r, lon0, lat0 }) {
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
   ctx.fillStyle = '#9AD17F'; ctx.strokeStyle = '#4E8A45'; ctx.lineWidth = Math.max(0.6, r / 260); ctx.lineJoin = 'round';
+  // Turn the globe: first about the pole by the longitude, then tip it by the latitude. [depth, right, up]: depth > 0
+  // faces the viewer.
+  const turn = ([x0, y0, z0]) => {
+    const x1 = x0 * cl + y0 * sl; const y1 = -x0 * sl + y0 * cl;
+    return [x1 * cp + z0 * sp, y1, -x1 * sp + z0 * cp];
+  };
+  const at = (p) => [cx + p[1] * r, cy - p[2] * r];
+  // Where a coastline crosses the edge of the visible half: on the rim, between a point in front and one behind.
+  const rim = (a, b) => { const t = a[0] / (a[0] - b[0]); const y = a[1] + (b[1] - a[1]) * t; const z = a[2] + (b[2] - a[2]) * t; const m = Math.hypot(y, z) || 1; return [0, y / m, z / m]; };
+  const angle = (h) => Math.atan2(-h[2], h[1]);
   for (const ring of land) {
-    let seen = false;
-    ctx.beginPath();
-    for (let i = 0; i < ring.length; i++) {
-      const [x0, y0, z0] = ring[i];
-      // Turn the globe: first about the pole by the longitude, then tip it by the latitude.
-      const x1 = x0 * cl + y0 * sl; const y1 = -x0 * sl + y0 * cl;
-      const depth = x1 * cp + z0 * sp; const up = -x1 * sp + z0 * cp;
-      let px = y1; let py = up;
-      if (depth < 0) { const m = Math.hypot(px, py) || 1; px /= m; py /= m; } else seen = true;
-      const sx = cx + px * r; const sy = cy - py * r;
-      if (i) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy);
+    const pts = ring.map(turn);
+    const n = pts.length;
+    const start = pts.findIndex((q) => q[0] >= 0);
+    if (start < 0) continue; // wholly on the far side
+    // Each landmass is cut where it goes over the rim: the land (fill) follows the rim round to where the coast comes
+    // back (the shorter way), and the coast (stroke) is drawn only where it can be seen.
+    const fill = new Path2D(); const coast = new Path2D();
+    let [sx, sy] = at(pts[start]);
+    fill.moveTo(sx, sy); coast.moveTo(sx, sy);
+    let out = null;
+    for (let k = 1; k <= n; k++) {
+      const prev = pts[(start + k - 1) % n]; const q = pts[(start + k) % n];
+      if (prev[0] >= 0 && q[0] >= 0) { [sx, sy] = at(q); fill.lineTo(sx, sy); coast.lineTo(sx, sy); }
+      else if (prev[0] >= 0) { const h = rim(prev, q); [sx, sy] = at(h); fill.lineTo(sx, sy); coast.lineTo(sx, sy); out = angle(h); }
+      else if (q[0] >= 0) {
+        const h = rim(q, prev); const back = angle(h);
+        let d = back - out; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+        fill.arc(cx, cy, r, out, back, d < 0);
+        [sx, sy] = at(h); coast.moveTo(sx, sy);
+        const [qx, qy] = at(q); fill.lineTo(qx, qy); coast.lineTo(qx, qy);
+      }
     }
-    if (!seen) continue;
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    fill.closePath();
+    ctx.fill(fill); ctx.stroke(coast);
   }
   // Light from the upper left; night falls off to the lower right.
   const shade = ctx.createRadialGradient(cx - r * 0.45, cy - r * 0.5, r * 0.2, cx, cy, r * 1.05);
@@ -115,7 +154,7 @@ export async function openBirthGlobe(state, o = {}) {
     <p class="bg-hint">${reduced ? '' : 'Tap to skip'}</p>
     <section class="bg-card" aria-live="polite">
       <p class="bg-eyebrow">${o.designed ? 'You chose to be born in' : 'You are born in'}</p>
-      <h2 class="bg-country"><span class="bg-flag">${c.flag}</span>${esc(c.name)}</h2>
+      <h2 class="bg-country">${flagsShown() ? `<span class="bg-flag">${c.flag}</span>` : ''}${esc(c.name)}</h2>
       <p class="bg-city">${esc(p.city)} · ${state.year}</p>
       ${odds ? `<div class="bg-odds"><span class="bg-rarity bg-${odds.rarity.tone}">${esc(odds.rarity.name)}</span>
         <p><strong>${pct}%</strong> of the world's babies are born here${odds.oneIn > 1 ? `: about 1 in ${odds.oneIn.toLocaleString('en-US')}` : ''}.</p></div>` : ''}
@@ -152,7 +191,7 @@ export async function openBirthGlobe(state, o = {}) {
     const lat0 = 12 + (at.lat * 0.9 - 12) * spin;
     const c0 = { cx: w * 0.5, cy: h * 0.46 }; const c1 = center();
     const cx = c0.cx + (c1.cx - c0.cx) * zoom; const cy = c0.cy + (c1.cy - c0.cy) * zoom;
-    const r = base() * (1 + 1.5 * zoom);
+    const r = base() * (1 + (wide() ? 1.1 : 1.5) * zoom);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(sky, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -187,7 +226,7 @@ export async function openBirthGlobe(state, o = {}) {
   });
   cancelAnimationFrame(raf);
   window.removeEventListener('resize', onResize);
+  // The life is drawn underneath straight away (the caller plays it when this resolves); the globe fades out over it.
   root.classList.add('bg-out');
-  await new Promise((r) => setTimeout(r, reduced ? 0 : 450));
-  root.remove();
+  setTimeout(() => root.remove(), reduced ? 0 : 450);
 }
