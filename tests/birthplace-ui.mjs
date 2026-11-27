@@ -45,16 +45,16 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await shown('#f-city') && ['Los Angeles', 'San Diego', 'San Francisco'].every((x) => ca.includes(x)) && ca.length === 3, `${label}: California's cities (${ca})`);
   await page.selectOption('#f-region', 'Alaska'); await page.waitForTimeout(80);
   check(await page.locator('#f-city').inputValue() === 'Anchorage', `${label}: a state with one city has it chosen`);
-  await page.selectOption('#f-country', 'kr'); await page.waitForTimeout(80);
-  const krOpts = await page.locator('#f-city option').allInnerTexts();
-  check(!(await shown('#f-region')) && /^city$/i.test((await page.locator('[data-city-label]').innerText()).trim()) && krOpts.includes('Seoul') && !krOpts.some((x) => x.includes(':')), `${label}: a country with a handful of cities is one list (${krOpts.slice(0, 3)})`);
+  await page.selectOption('#f-country', 'nz'); await page.waitForTimeout(80);
+  const nzOpts = await page.locator('#f-city option').allInnerTexts();
+  check(!(await shown('#f-region')) && /^city$/i.test((await page.locator('[data-city-label]').innerText()).trim()) && nzOpts.includes('Auckland') && !nzOpts.some((x) => x.includes(':')), `${label}: a country with a handful of cities is one list (${nzOpts.slice(0, 3)})`);
   // Big countries with many cities ask for the region first too: Japan by prefecture.
   await page.selectOption('#f-country', 'jp'); await page.waitForTimeout(80);
   check(await shown('#f-region') && /Prefecture/.test(await page.locator('[data-region-label]').innerText()), `${label}: Japan asks for the prefecture`);
   await page.selectOption('#f-region', 'Hokkaido'); await page.waitForTimeout(80);
   const hk = (await page.locator('#f-city option').allInnerTexts()).slice(1);
   check(hk.includes('Sapporo') && hk.includes('Hakodate') && hk.length === 2, `${label}: then Hokkaido's cities (${hk})`);
-  for (const [id, word] of [['uk', 'Country'], ['fr', 'Region'], ['ca', 'Province'], ['au', 'State'], ['ng', 'State'], ['pk', 'Province'], ['ph', 'Region'], ['eg', 'Governorate'], ['cn', 'Province'], ['in', 'State'], ['br', 'State'], ['ru', 'Region'], ['id', 'Province'], ['mx', 'State'], ['de', 'State']]) {
+  for (const [id, word] of [['uk', 'Country'], ['fr', 'Region'], ['ca', 'Province'], ['au', 'State'], ['ng', 'State'], ['pk', 'Province'], ['ph', 'Region'], ['eg', 'Governorate'], ['kr', 'Province'], ['it', 'Region'], ['es', 'Region'], ['tr', 'Province'], ['cn', 'Province'], ['in', 'State'], ['br', 'State'], ['ru', 'Region'], ['id', 'Province'], ['mx', 'State'], ['de', 'State']]) {
     await page.selectOption('#f-country', id); await page.waitForTimeout(60);
     check(await shown('#f-region') && new RegExp(word).test(await page.locator('[data-region-label]').innerText()), `${label}: ${id} asks for the ${word.toLowerCase()} first`);
   }

@@ -151,7 +151,8 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   check(local.myRegion().name === 'Quebec' && local.regionalLawOptions().length > 0 && !local.regionalLawOptions().some((o) => o.rule === 'deathPenalty'), 'a Canadian premier can change provincial law, but not the death penalty, which is federal');
   p = governor('in', 'Mumbai');
   check(local.regionalLawOptions().some((o) => o.rule === 'alcohol'), 'an Indian state can ban alcohol, as some do');
-  const noStates = COUNTRY_LIST.find((c) => !CITY_ROWS[c.id] && c.cities.length > 1); // a country the game has no states recorded for
+  // A country the game has no states recorded for, that has regional government to take part in.
+  const noStates = COUNTRY_LIST.filter((c) => !CITY_ROWS[c.id] && c.cities.length > 1).find((c) => { do { store.state = createLife({ countryId: c.id }); } while (store.state.player.royal); return politics.offices().some((o) => o.id === 'region'); });
   p = governor(noStates.id, noStates.cities[0]);
   check(/^the area around /.test(local.myRegion().name) && local.myRegion().id.startsWith('around:'), 'where the game has no states recorded, the region is the area around the city');
   section('regions: a governor changes regional law for that region only; the national government cannot touch it');
