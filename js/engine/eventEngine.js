@@ -170,7 +170,7 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
     const queued = [];
     if (pool.length && rng.chance(chance)) {
       const pick = rng.weighted(pool, (x) => x.ev.weight ?? 1);
-      state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+      state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast, ...asideOf(pick.ev) });
       queued.push(pick.ev.id);
     }
     // One of the ordinary scenes of a year can happen between years too. Story beats (priority scenes) stay with the
@@ -185,13 +185,21 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
       }
       if (ordinary.length) {
         const pick = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
-        state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+        state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast, ...asideOf(pick.ev) });
         queued.push(pick.ev.id);
       }
     }
     return queued;
   });
 }
+
+/**
+ * A scene drawn by chance (the year's ordinary scenes, the seasons' scenes between years) is an everyday moment: it is
+ * told as a line in the life story, to answer if the player wants to (ui/shell.js), not put in front of them. Scenes
+ * that follow from the life itself (story beats, and everything the game's systems queue: a job, a baby, a court date)
+ * still come up as they happen. A scene can ask to be shown whatever it is (`show: true`).
+ */
+const asideOf = (ev) => (ev.priority || ev.show ? {} : { aside: true });
 
 /** Queues this year's scenarios onto state.pendingEvents: story beats first. */
 export function drawEvents() {
@@ -224,7 +232,7 @@ export function drawEvents() {
       if (groups.has(pickd.ev.exclusive)) continue;
       groups.add(pickd.ev.exclusive);
     }
-    pending.push({ id: pickd.ev.id, cast: pickd.cast });
+    pending.push({ id: pickd.ev.id, cast: pickd.cast, ...asideOf(pickd.ev) });
   }
 }
 

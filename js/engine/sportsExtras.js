@@ -19,10 +19,11 @@
 import { store, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, WORLD_GAMES, isGamesYear } from '../data/sports.js';
+import { sportOf, WORLD_GAMES } from '../data/sports.js';
 import * as sp from './sports.js';
 import * as life from './sportsLife.js';
 import { teamGame, bout, seeded, edge } from './sportsPlay.js';
+import { nationOf, gamesOf, nationStrength as nationPower } from './nations.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const overall = (e, p) => sp.internals.overall(e, p);
@@ -33,8 +34,7 @@ const name = (c) => COUNTRIES[c]?.name ?? c;
 export const GAMES_TEAMS = 8;
 /** How strong a nation's side is in a sport: the sport's big countries are stronger; the player lifts their own. */
 function nationStrength(sport, countryId, r) {
-  const big = (sport.popular ?? []).indexOf(countryId);
-  return Math.round(clamp(66 + (big >= 0 ? 14 - big * 0.8 : 0) + r.normal(0, 4), 50, 95));
+  return Math.round(clamp(nationPower(sport.id, countryId) + r.normal(0, 3), 50, 97)); // data/sports.js NATION_STRENGTH
 }
 /** A knockout game: a score, and if level, extra time and then penalties (or a shoot-out), the stronger more often. */
 function knockout(sport, a, b, key) {
@@ -45,30 +45,33 @@ function knockout(sport, a, b, key) {
   return { score: [x, y], won, how: sport.adapter === 'goals' ? ' on penalties' : ' after extra time' };
 }
 /**
- * The World Games for a capped professional in a team sport. Called once in a games year, after the club season.
+ * The World Games in a team sport, for the player's nation (engine/nations.js nationOf). Played when the player has
+ * accepted the federation's invitation (o.selected, o.nation, o.games); called without them, a capped professional is
+ * picked on their game alone.
  * @returns {?object} the tournament, or null if not picked or not a games year
  */
-export function gamesTeamEvent(state, e, sum) {
+export function gamesTeamEvent(state, e, sum, opt = {}) {
   const p = state.player;
   const sport = sportOf(e.id);
-  if (!isGamesYear(state.year) || sport.kind !== 'team' || e.level !== 'pro' || !(e.caps > 0)) return null;
+  if (!gamesOf(sport, state.year) || sport.kind !== 'team') return null;
+  if (!opt.selected && (e.level !== 'pro' || !(e.caps > 0))) return null;
   const key = `gamesTeam/${p.id}/${e.id}/${state.year}`;
   e.gamesTeams ??= [];
   if (e.gamesTeams.some((g) => g.year === state.year)) return null;
   const o = overall(e, p);
-  if (o < 80) {
+  if (!opt.selected && o < 80) {
     e.gamesTeams.push({ year: state.year, picked: false });
-    sp.say(state, `${name(p.countryId)} named their ${sport.name.toLowerCase()} squad for the ${WORLD_GAMES.name}. You were not in it.`, 'neutral', { screen: 'sport', id: e.id });
+    sp.say(state, `${name(nationOf(p))} named their ${sport.name.toLowerCase()} squad for the ${WORLD_GAMES.name}. You were not in it.`, 'neutral', { screen: 'sport', id: e.id });
     return null;
   }
   const r = seeded(key);
-  const home = p.countryId;
+  const home = opt.nation ?? nationOf(p);
   const others = r.shuffle((sport.popular ?? []).filter((c) => c !== home && COUNTRIES[c]));
   const rest = r.shuffle(Object.keys(COUNTRIES).filter((c) => c !== home && !others.includes(c)));
   const field = [home, ...others, ...rest].slice(0, GAMES_TEAMS);
   const power = Object.fromEntries(field.map((c) => [c, nationStrength(sport, c, r)]));
   power[home] = Math.round(clamp(power[home] + (o - 78) / 3, 50, 97));
-  const t = { year: state.year, picked: true, field, rounds: [], place: null, medal: null, division: sp.divOf(p) };
+  const t = { year: state.year, picked: true, field, rounds: [], place: null, medal: null, division: sp.divOf(p), nation: home };
   let alive = true;
   let pool = field.filter((c) => c !== home);
   const ROUNDS = ['Quarterfinal', 'Semifinal', 'Final'];
@@ -95,7 +98,7 @@ export function gamesTeamEvent(state, e, sum) {
   if (t.place === 'Final') t.medal = 'silver';
   e.gamesTeams.push(t);
   sum.gamesTeam = t.medal ?? t.place;
-  const games = `${WORLD_GAMES.name} ${state.year}`;
+  const games = opt.games ?? gamesOf(sport, state.year).name;
   if (t.medal) {
     (e.medals ??= []).push({ year: state.year, medal: t.medal, games, team: true });
     milestone(`${t.medal[0].toUpperCase()}${t.medal.slice(1)} medal with ${name(home)} in ${sport.name.toLowerCase()}, ${games}.`, 'career');

@@ -210,7 +210,8 @@ section('field training: reviews held by date at any turn length, four extension
   r.skills.leadership = 50;
   let tried = 0;
   for (let y = 0; y < 5; y++) { if (C.seekPromotion(C.promotionOptions(p)[0]?.id).ok) tried += 1; months(3); C.settlePromotions(); months(9); r.job.rankSince = Math.min(r.job.rankSince, store.state.year - 6); }
-  check(tried > 0 && r.apps.filter((x) => x.kind === 'promotion').every((x) => x.rivalId), 'promotion attempts compete with a real colleague');
+  // Applications compete with a real colleague; a promotion on seniority (autoPromotion.js, after years eligible) has none.
+  check(tried > 0 && r.apps.filter((x) => x.kind === 'promotion' && !x.id.startsWith('app_seniority_')).every((x) => x.rivalId), 'promotion attempts compete with a real colleague');
 }
 section('detectives: selected against a rival for a real seat, a persistent partner, experience before homicide, promotions that need a vacancy');
 
@@ -352,7 +353,7 @@ section('cases: one identity, real witnesses, facts apart from claims, steps fou
     check(!V.view(inv4, 'defense').statements.some((s) => s.id === omittedId) && V.view(inv4, 'prosecutor').notDisclosed.includes(omittedId), 'what the report left out never reached the defense, and the prosecutor\'s view shows it');
     // When the omission comes out (it usually does), the case cannot go on, and a complaint follows. Tried on several cases.
     let dismissed = 0;
-    for (let n = 0; n < 8 && !dismissed; n++) {
+    for (let n = 0; n < 20 && !dismissed; n++) { // each comes out with a 65% chance: twenty tries, so a run of bad luck does not fail the check
       const cx = n === 0 ? inv4 : (() => { let c = null; for (let t = 0; t < 12 && !c; t++) { const z = W.openCase('burglary', { ownerId: a.id, truth: 'insider' }); W.act(z.id, `poi:${z.file.poi[0]}`); if (z.file.clues.some((x) => x.via === 'poi' && x.found)) c = z; } return c; })();
       if (!cx) continue;
       if (cx !== inv4) { r.caseIds.push(cx.id); W.writeReport(cx.id, 'omit'); const cc = k.openCaseFor(cx, cx.file.poi[0]); cx.file.courtCaseId = cc.id; cc.trialDue = core.now(); }
@@ -812,7 +813,8 @@ section('studying: new majors, degrees that count for each path, a head start on
   const me = fam.find((x) => x.you);
   check(me && me.history.length && me.cases.some((c) => c.title === 'The Elm Row Burglary' && c.outcome === 'in court'), 'the Family Archive keeps the player\'s career and the cases that reached a court');
   const text = JSON.stringify(fam);
-  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(store.state.npcs[id].lastName) || store.state.npcs[id].lastName === store.state.player.lastName), 'and never the witnesses of a case');
+  // By full name: a surname alone can belong to someone else in the archive too.
+  check(Object.keys(inv.file.witnesses).every((id) => !text.includes(`${store.state.npcs[id].firstName} ${store.state.npcs[id].lastName}`)), 'and never the witnesses of a case');
 }
 section('the Family Archive: the public career and the court record, not the case file');
 
@@ -1047,6 +1049,10 @@ section('a homicide from the first night to the verdict, scene by scene; the Mar
   const q = FL.queue(p);
   check(q.length >= 2 && q.every((b) => b.due > b.received && k.J().investigations[b.invId]?.file), `requests from real cases, with due dates (${lines.length})`);
   check(q.filter((b) => b.discipline === 'fingerprints').length >= 1, 'most requests are in the scientist\'s discipline');
+  // The laboratory's list of what each kind of case sends it is the cases' own.
+  const { openCase: oc } = await import('../js/engine/investigations/casework.js');
+  check(Object.entries(FL.CARRIES).every(([tid, ds]) => { const got = new Set(oc(tid, {}).file.items.flatMap((x) => x.disciplines)); return ds.every((d) => got.has(d)) && [...got].every((d) => ds.includes(d)); }),
+    'the disciplines each kind of case sends the laboratory are the ones its evidence needs');
   FL.setPolicy('serious');
   const sq = FL.queue(p);
   check(!sq.some((b, i) => !b.serious && sq.slice(i + 1).some((x) => x.serious)), 'serious cases first, when that is the policy');
@@ -1073,7 +1079,8 @@ section('a homicide from the first night to the verdict, scene by scene; the Mar
   if (court) {
     const perf = p.career.performance;
     const res = FL.testify(court.b.id, { method: 'honest', contamination: 'honest', bias: 'honest', certainty: 'honest' });
-    check(res.tone === 'good' && p.career.performance > perf && !FL.testify(court.b.id, {}).ok, 'explaining a report within its limits, once, keeps the scientist\'s word good');
+    // Performance goes up, unless it is already at the top.
+    check(res.tone === 'good' && (p.career.performance > perf || perf >= 100) && !FL.testify(court.b.id, {}).ok, 'explaining a report within its limits, once, keeps the scientist\'s word good');
   }
   // Overclaiming in court is found out, and the scientist's other cases are reviewed.
   const b2 = (() => { L.suspended = null; FL.labYear(p); return FL.queue(p)[0]; })();
@@ -1687,6 +1694,19 @@ section('playtest fixes: interviews end with the proper questions; cases spread 
   check(offered('fd_law_client') && offered('headhunter') && !offered('fd_safety_call'), 'a lawyer at a firm meets the firm\'s client and the headhunter, not the emergency call');
 }
 section('workplaces: scenes set at work happen only in the workplaces they name');
+
+// ---------- Last: routine patrol work done for the player (kept last: a new life moves the ids of later checks) ----------
+{
+  life('us', 25);
+  makeOfficer();
+  const r = core.I();
+  check(C.patrolLeft(r).length > 0 || r.stage !== 'officer', 'patrol work is open in a new year');
+  C.setAutoPatrol(true);
+  check(C.patrolLeft(r).length === 0 && r.autoPatrol, 'asking for routine patrol work to be done does this year\'s');
+  months(12);
+  check(C.patrolLeft(core.I()).length === 0, 'and the next year\'s, at the turn of the year');
+}
+section('routine patrol work, done for the player who asks');
 
 for (const line of ok) console.log(`ok   ${line}`);
 

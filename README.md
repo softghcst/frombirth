@@ -107,6 +107,8 @@ node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medi
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/job-search.mjs      # finding ordinary work: this year's short list of openings, and the job recruiter (three looks a year)
+node tests/job-search-ui.mjs   # browser: Find work on a phone and desktop (the recruiter card, three looks then no more, the list)
 node tests/dance.mjs           # a dancer's life: BFA/BA in dance, gigs from commercials to tours and TV, competitions, dance ensemble parts
 node tests/stage-difficulty.mjs # the major stage is very hard to reach: odds by skill, what a BFA in musical theater adds, agents
 node tests/child-stage.mjs     # the child stage path: lessons from 6, children's parts up to the major stage, children against children, the work permit, a theater childhood counted at 18

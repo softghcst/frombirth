@@ -127,7 +127,7 @@ export function eligible(state, e, D = draftOf(state, e.id)) {
   }
 }
 
-/** How the scouts grade the player for the draft: skill, the years still to grow, the season, the level played. */
+/** How the scouts grade the player for the draft: skill, the years still to grow, the season, the level played, and the record (college seasons, titles, awards, scouts' reports; engine/sports.js recordScore). */
 export function draftGrade(state, e) {
   const p = state.player;
   const o = overall(e, p);
@@ -136,7 +136,7 @@ export function draftGrade(state, e) {
   const level = { D1: 2, IVY: -1, D2: -2, NAIA: -3, JUCO: -1, D3: -5 }[e.college?.division] ?? (e.level === 'academy' || e.level === 'elite' ? 1 : 0);
   const r = seeded(`draftGrade/${p.id}/${e.id}/${state.year}`);
   // Baseball: what a summer with wooden bats showed the scouts (engine/baseball.js).
-  return Math.round(o + youth + form + level + (e.draft?.combine?.[state.year] ?? 0) + (e.bb?.wood ?? 0) + r.normal(0, 2));
+  return Math.round(o + youth + form + level + sp.recordScore(e, state) + (e.draft?.combine?.[state.year] ?? 0) + (e.bb?.wood ?? 0) + r.normal(0, 2));
 }
 /** Where a grade goes in a draft: the first pick at the top, a thousand down for an ordinary prospect. */
 export const projectedPick = (grade) => Math.max(1, Math.round(10 ** ((95 - grade) / 14)));
@@ -336,6 +336,7 @@ function undrafted(state, e, D) {
   const o = overall(e, p);
   const r = seeded(`udfa/${p.id}/${e.id}/${state.year}`);
   if (o < 58 || D.rule === 'hockey') return;
+  if (sp.competitiveYears(e, state) < 1 && !r.chance(0.01)) return; // nobody signs a player they have never seen play
   const lg = topLeague(state, sportOf(e.id), D.div);
   const club = clubOf(state, r.pick(lg.teamIds));
   const asia = ['npb', 'kbo'].includes(D.rule);

@@ -229,14 +229,15 @@ export const DEPARTMENTS = {
 // so pay runs through the ordinary payroll. Leadership ranks need openings and selection (engine/medicine/careers.js).
 export const RANKS = {
   student: { title: 'Medical student', level: null },
-  resident: { title: 'Resident', level: 0 },
-  chief_resident: { title: 'Chief resident', level: 0 },
-  fellow: { title: 'Fellow', level: 0 },
-  attending: { title: 'Attending physician', level: 1 },
-  experienced: { title: 'Experienced attending', level: 1 },
+  // In plain words on screen: trainee doctors, then physicians (the US words resident, fellow and attending are not used).
+  resident: { title: 'Trainee doctor', level: 0 },
+  chief_resident: { title: 'Lead trainee doctor', level: 0 },
+  fellow: { title: 'Advanced trainee', level: 0 },
+  attending: { title: 'Physician', level: 1 },
+  experienced: { title: 'Experienced physician', level: 1 },
   vice_chair: { title: 'Vice chair for education', level: 2, leader: true },
   ceo: { title: 'Hospital chief executive', level: 3, leader: true },
-  senior: { title: 'Senior attending', level: 2 },
+  senior: { title: 'Senior physician', level: 2 },
   director: { title: 'Medical director', level: 2, leader: true },
   chief: { title: 'Chief of service', level: 3, leader: true },
   chair: { title: 'Department chair', level: 3, leader: true },
@@ -307,9 +308,10 @@ const SIMPLE = { entry: 'direct', schoolYears: 4, degrees: ['MBBS / MD'], exams:
   license: { name: 'medical registration', afterTraining: 1 }, internship: 1, selection: 'Specialty training applications', ownership: 'open', detail: 'simplified', dpm: false, osteopathic: false };
 export const JURISDICTIONS = {
   us: { entry: 'graduate', schoolYears: 4, degrees: ['MD', 'DO'], osteopathic: true, dpm: true,
-    exams: [{ id: 'step1', name: 'USMLE Step 1', year: 2 }, { id: 'step2', name: 'USMLE Step 2 CK', year: 4 }],
-    license: { name: 'USMLE Step 3 and a state medical license', afterTraining: 1 }, internship: 0,
-    selection: 'the residency Match', ownership: 'physician', detail: 'detailed' },
+    // Plain words on screen: the licensing exams by part (the USMLE, from 1992; jurisdictionIn has the names before).
+    exams: [{ id: 'step1', name: 'Licensing exam, part 1', year: 2 }, { id: 'step2', name: 'Licensing exam, part 2', year: 4 }],
+    license: { name: 'Licensing exam, part 3, and a state license', afterTraining: 1 }, internship: 0,
+    selection: 'a national match of trainees to hospitals', ownership: 'physician', detail: 'detailed' },
   ca: { ...SIMPLE, entry: 'graduate', schoolYears: 4, degrees: ['MD'], exams: [{ id: 'mccqe1', name: 'MCCQE Part I', year: 4 }],
     license: { name: 'provincial licensure', afterTraining: 2 }, internship: 0, selection: 'the national residency match', ownership: 'physician' },
   uk: { ...SIMPLE, degrees: ['MBBS / MBChB'], exams: [{ id: 'finals', name: 'Medical finals', year: 4 }],
@@ -343,7 +345,7 @@ export function jurisdictionIn(countryId, y) {
   if (j !== JURISDICTIONS.us || y >= 1992) return j;
   const placed = y >= ERA.residencyMatch ? {} : { selection: 'places offered by each hospital, and accepted directly' };
   return y >= 1916
-    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National Board Part I', year: 2 }, { id: 'step2', name: 'National Board Part II', year: 4 }], license: { ...j.license, name: 'National Board Part III and a state medical license' } }
+    ? { ...j, ...placed, exams: [{ id: 'step1', name: 'National licensing exam, part 1', year: 2 }, { id: 'step2', name: 'National licensing exam, part 2', year: 4 }], license: { ...j.license, name: 'National licensing exam, part 3, and a state license' } }
     : { ...j, ...placed, exams: [{ id: 'step1', name: 'Second-year examinations', year: 2 }, { id: 'step2', name: 'Final examinations', year: 4 }], license: { ...j.license, name: 'a state board examination and medical license' } };
 }
 

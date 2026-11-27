@@ -688,6 +688,16 @@ let moved;
   check(r3.ok && cred.licensedIn(p, 'doctor') && /European free movement/.test(r3.text), 'a French doctor in Germany registers under free movement, at once');
   // Not regulated: nothing to recognize.
   check(!cred.regulation('office') && !unmet(CAREERS.find((c) => c.id === 'office')).some((x) => /recognized/.test(x)), 'an office job needs no license');
+  // Only the training for a profession is a qualification in it: a school diploma from abroad is not a nursing degree.
+  p = life('br', 30, 20000);
+  p.education.degrees = [{ type: 'high', gpa: 3, age: 18 }];
+  move.emigrate('us', { forced: true });
+  check(!cred.qualifications().length, 'a school diploma is not a profession');
+  check(!unmet(CAREERS.find((c) => c.id === 'plumber')).some((x) => /recognized/.test(x)) && unmet(CAREERS.find((c) => c.id === 'plumber')).some((x) => /apprenticeship/.test(x)),
+    'someone who never trained as a plumber is told they need the apprenticeship, not that their qualification is not recognized');
+  p.education.degrees.push({ type: 'apprenticeship', majorId: 'plumber', gpa: 3, age: 21 });
+  check(unmet(CAREERS.find((c) => c.id === 'plumber')).some((x) => /plumbing qualification is not recognized/.test(x)) && cred.qualifications().map((q) => q.profession).join() === 'plumbing',
+    'a plumber trained in Brazil holds plumbing, and needs it recognized in the United States');
   section('Part 33: a doctor trained in Nigeria is not a doctor in London until the council says so; language counts; a recognition area registers');
 }
 {
