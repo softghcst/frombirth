@@ -27,10 +27,16 @@ const browser = await chromium.launch();
 const toTitle = async (page) => {
   // Past the opening notice, onto the title screen.
   for (let i = 0; i < 30 && !(await page.locator('[data-random]').count()); i++) {
-    await page.locator('#app button, #modal-root button').filter({ hasText: /continue|start|ok|got it|begin/i }).first().click({ timeout: 500 }).catch(() => {});
+    // Only a notice in front of the title screen is dismissed: never a button on the title screen itself (a saved life's
+    // card says "Continue", and clicking it would load that life and leave the title screen for good).
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#modal-root button, #app button')].find((x) => !x.closest('.title-screen') && /continue|start|ok|got it|begin/i.test(x.innerText));
+      b?.click();
+    });
     await page.waitForTimeout(150);
   }
-  await page.waitForSelector('[data-random]');
+  // A busy machine (the whole suite at once, several browsers) can take a while to draw the title screen.
+  await page.waitForSelector('[data-random]', { timeout: 60000 });
 };
 for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['small', { width: 320, height: 640 }], ['desktop', { width: 1280, height: 900 }]]) {
   for (const scheme of ['light', 'dark']) {

@@ -27,10 +27,16 @@ const check = (c, m) => { if (!c) problems.push(m); };
 const browser = await chromium.launch();
 const toTitle = async (page) => {
   for (let i = 0; i < 30 && !(await page.locator('[data-random]').count()); i++) {
-    await page.locator('#app button, #modal-root button').filter({ hasText: /continue|start|ok|got it|begin/i }).first().click({ timeout: 500 }).catch(() => {});
+    // Only a notice in front of the title screen is dismissed: never a button on the title screen itself (a saved life's
+    // card says "Continue", and clicking it would load that life and leave the title screen for good).
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#modal-root button, #app button')].find((x) => !x.closest('.title-screen') && /continue|start|ok|got it|begin/i.test(x.innerText));
+      b?.click();
+    });
     await page.waitForTimeout(150);
   }
-  await page.waitForSelector('[data-random]');
+  // A busy machine (the whole suite at once, several browsers) can take a while to draw the title screen.
+  await page.waitForSelector('[data-random]', { timeout: 60000 });
 };
 const look = (page) => page.evaluate(() => document.querySelector('.title-screen')?.dataset.landing);
 const stored = (page) => page.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort().map((k) => [k, localStorage.getItem(k)])));
@@ -51,7 +57,8 @@ for (const id of ['afterglow', 'midnight', 'daydream']) {
     localStorage.setItem('frombirth.landing', l);
     const { createLife } = await import('/js/engine/characterGen.js');
     const { saveGame } = await import('/js/save.js');
-    const s = createLife({ countryId: 'kr' }); s.player.age = 7; saveGame(s);
+    // The same life for all three looks (a random name or city can wrap the card onto two lines, and move what is below it).
+    const s = createLife({ countryId: 'kr', city: 'Seoul', firstName: 'Minji', lastName: 'Kim', gender: 'female' }); s.player.age = 7; saveGame(s);
   }, id);
   await page.reload();
   await toTitle(page);
@@ -61,13 +68,17 @@ for (const id of ['afterglow', 'midnight', 'daydream']) {
   const logo = await page.evaluate(() => { const i = document.querySelector('.lp-logo'); return { src: i.getAttribute('src'), alt: i.alt, ok: i.complete && i.naturalWidth > 0, w: i.getBoundingClientRect().width }; });
   check(/from_birth_logo/.test(logo.src) && logo.alt === 'From Birth' && logo.ok && logo.w >= 120 && logo.w <= 182, `${id}: the official logo, phone-sized (${logo.w})`);
   check(await page.locator('.lp-card [data-load]').count() === 1 && /Age 7/.test(await page.locator('.lp-card').first().innerText()), `${id}: the saved life is shown, with its age`);
+  // Measured once fonts and pictures have loaded: on a busy machine a font can still be swapping in, and move everything.
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() => [...document.images].every((i) => i.complete), null, { timeout: 30000 });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   layouts[id] = await page.evaluate(() => ['.lp-logo', '[data-random]', '[data-design]', '[data-world]', '[data-settings]', '#lp-lives', '#lp-past'].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }));
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${id}: nothing scrolls sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/landing-${id}.png` });
   check(!page.errors.length, `${id}: no page errors (${page.errors.join('; ')})`);
   await page.close();
 }
-check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && JSON.stringify(layouts.midnight) === JSON.stringify(layouts.daydream), 'all three appearances share exactly the same layout');
+check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && JSON.stringify(layouts.midnight) === JSON.stringify(layouts.daydream), `all three appearances share exactly the same layout (${JSON.stringify(layouts)})`);
 
 // 2. Following the theme by default; the choice is kept, and is apart from the theme and the app icon.
 {

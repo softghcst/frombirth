@@ -99,8 +99,9 @@ const steps2 = await page.locator('[data-step]').evaluateAll((b) => b.map((x) =>
 check(steps2.includes('study') && !steps2.includes('uni') && !steps2.includes('keep'), `after a degree it offers more study straight away, not university again (${steps2})`);
 check((await page.locator('.grad-school').textContent()).includes('Marlowe College'), 'the university is named on the diploma');
 await page.click('[data-step="rest"]');
-await page.waitForTimeout(150);
-check(await page.locator('#modal-root .scrim').count() === 0, 'Take some time off just closes it');
+// The card closes, and no next step of it opens (the year's own scenes may follow; on a busy machine closing takes a moment).
+const closed = await page.waitForFunction(() => !document.querySelector('#modal-root .grad-school, #modal-root [data-step]'), null, { timeout: 5000 }).then(() => true, () => false);
+check(closed, 'Take some time off just closes it');
 
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
