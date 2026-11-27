@@ -1642,6 +1642,7 @@ section('the academy ends on its own date: graduation and field training the sam
   check(used.size >= 3, `fraud cases spread across the city's companies (${used.size} of 4)`);
 }
 {
+  rng.seed(Number(process.env.IDLE_SEED ?? 3)); // its own dice: which cases the partner happens to work on is luck, and should not hang on every check above
   life('us', 35);
   const a = makeOfficer();
   const r = core.I();

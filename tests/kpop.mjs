@@ -93,7 +93,7 @@ section(`auditions: worldwide and in person, ages and line-ups, stages, ${offers
 
 // 2. A trainee: the agreement, the dorm, the year, the evaluation. No debut promised.
 rng.seed(7);
-p = life('br', 15);
+p = life('br', 15, { city: 'São Paulo' });
 const t = becomeTrainee(p);
 check(!!t, 'a talented applicant becomes a trainee within a few years');
 if (t) {

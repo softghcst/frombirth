@@ -1,4 +1,5 @@
-// Choosing where to be born, in the life designer: a country, then (for the United States) a state and the cities in it,
+// Choosing where to be born, in the life designer: a country, then (for a country with many cities: the US, China, India,
+// Japan, Brazil, Russia, Indonesia, Mexico, Germany) its state, province or prefecture and the cities in it,
 // or, everywhere else, one list of cities. And moving city in the US: a state, then its cities.
 // Needs Playwright. Run with: node tests/birthplace-ui.mjs
 import { createServer } from 'node:http';
@@ -47,9 +48,16 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.selectOption('#f-country', 'ca'); await page.waitForTimeout(80);
   const caOpts = await page.locator('#f-city option').allInnerTexts();
   check(!(await shown('#f-region')) && /^city$/i.test((await page.locator('[data-city-label]').innerText()).trim()) && caOpts.includes('Toronto') && !caOpts.some((x) => x.includes(':')), `${label}: Canada is one list of cities (${caOpts.slice(0, 3)})`);
+  // Big countries with many cities ask for the region first too: Japan by prefecture.
   await page.selectOption('#f-country', 'jp'); await page.waitForTimeout(80);
-  const jp = await page.locator('#f-city option').allInnerTexts();
-  check(!(await shown('#f-region')) && ['Tokyo', 'Osaka', 'Kyoto', 'Sapporo', 'Fukuoka', 'Nagoya'].every((x) => jp.includes(x)), `${label}: Japan lists its cities (${jp.slice(1)})`);
+  check(await shown('#f-region') && /Prefecture/.test(await page.locator('[data-region-label]').innerText()), `${label}: Japan asks for the prefecture`);
+  await page.selectOption('#f-region', 'Hokkaido'); await page.waitForTimeout(80);
+  const hk = (await page.locator('#f-city option').allInnerTexts()).slice(1);
+  check(hk.includes('Sapporo') && hk.includes('Hakodate') && hk.length === 2, `${label}: then Hokkaido's cities (${hk})`);
+  for (const [id, word] of [['cn', 'Province'], ['in', 'State'], ['br', 'State'], ['ru', 'Region'], ['id', 'Province'], ['mx', 'State'], ['de', 'State']]) {
+    await page.selectOption('#f-country', id); await page.waitForTimeout(60);
+    check(await shown('#f-region') && new RegExp(word).test(await page.locator('[data-region-label]').innerText()), `${label}: ${id} asks for the ${word.toLowerCase()} first`);
+  }
   await page.selectOption('#f-country', 'eg'); await page.waitForTimeout(80);
   check((await page.locator('[data-city-label]').innerText()).trim().toLowerCase() === 'city', `${label}: a country without regions in the game just asks for the city`);
   // A state chosen, its city left to chance: born in that state.
@@ -78,4 +86,4 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
 await browser.close();
 server.close();
 if (problems.length) { console.log(`PROBLEMS:\n${problems.map((p) => ` - ${p}`).join('\n')}`); process.exit(1); }
-console.log('Birthplace: country, then state and city in the US, or a list of cities.');
+console.log('Birthplace: country, then region and city in the big countries, or a list of cities.');
