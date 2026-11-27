@@ -56,6 +56,7 @@ import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 import { release as releaseSpecial, jobBlock as jobBlockSpecial } from './specialCareer.js';
+import { recordOdds, bestCompetitiveYears } from './sports.js';
 import { leaveNewsroom } from './journalism.js';
 import { gift as giftLevel, maturity } from './talentGrowth.js';
 import { managerOf, coachingYear } from './childEarnings.js';
@@ -281,7 +282,8 @@ export function finishApplication(id, answers = []) {
     const need = statNeed(career, career.skill, career.req.stats?.[career.skill] ?? 50, p);
     // Casting directors see hundreds of children: they call back the ones with something that cannot be taught.
     const knack = career.giftFor ? (giftLevel(p, career.giftFor) - 60) / 60 : 0;
-    const chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus + knack, 0.03, 0.97);
+    // A professional club or team hires on a record: someone who has never played competitively almost never (engine/sports.js).
+    const chance = clamp(0.3 + ((Number(resolve(piece.path)) || 0) - need) / 45 + piece.edge + bonus + knack, 0.03, 0.97) * (career.id === 'athlete' ? recordOdds(bestCompetitiveYears()) : 1);
     if (rng.chance(chance)) {
       return hire(career, back, 55 + (piece.bonus ? 15 : 0), `You chose ${piece.t.toLowerCase()}, and it landed.`);
     }

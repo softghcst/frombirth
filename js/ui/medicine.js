@@ -118,6 +118,51 @@ function pagesFor(sections) {
   return out;
 }
 
+/** Skills by plain names, for "what is holding you back". */
+const SKILL_WORDS = { reasoning: 'clinical judgment', technical: 'hands-on skill', communication: 'bedside manner', teamwork: 'teamwork', professionalism: 'professionalism', leadership: 'leadership', management: 'management', research: 'research' };
+
+/**
+ * "This year" at the top of My Medical Career: where you stand, the next step and what it asks, what is holding you
+ * back (named), and a button for each useful thing to do now.
+ */
+function thisYear(p, m, open) {
+  const rows = [];
+  const acts = [];
+  const holding = [];
+  const t = m.training;
+  if (t) {
+    rows.push(['Now', `${p.career.title ?? 'Trainee doctor'}`]);
+    const left = t.years - t.pgy;
+    rows.push(['Next', left > 0 ? `${left} more year${left === 1 ? '' : 's'} of training, then a post of your own` : 'Your last year of training: a post of your own comes next']);
+    if (m.license.status !== 'full') holding.push('You are not fully licensed yet: that comes after your first year, with the last licensing exam');
+  } else if (m.job) {
+    const yrs = year() - (m.job.rankSince ?? m.job.since);
+    rows.push(['Now', `${p.career.title ?? 'Physician'}${yrs > 0 ? `, ${yrs} year${yrs === 1 ? '' : 's'} in this post` : ''}`]);
+    const need = ladder.nextStepNeeds(m);
+    if (need?.title) {
+      rows.push(['Next', `${need.title}${need.selected ? ' (chosen from the candidates)' : ''}`]);
+      const plain = need.needs.map((x) => x.replace('at your rank', 'in this post')
+        .replace(/^reputation (\d+)$/, (_, n) => `a reputation of ${n} (yours: ${reputationOf(m)})`)
+        .replace(/^(leadership|management) (\d+)$/, (_, k, n) => `${k} of ${n} (yours: ${Math.round(m.skills[k] ?? 0)})`));
+      if (need.needs.length) holding.push(`To get there: ${plain.join(', ')}`);
+      else holding.push('Nothing: it comes with a good yearly review');
+    } else rows.push(['Next', need?.needs?.[0] ? `On this path: ${need.needs[0]}` : 'You are at the top of this path here']);
+  } else if (m.school && !m.school.graduated) {
+    rows.push(['Now', `Medical school, year ${m.school.year || 1}`]);
+    rows.push(['Next', 'Graduation, then training places are matched to hospitals']);
+  } else return '';
+  if (open) { holding.unshift(`${open} patient${open === 1 ? ' is' : 's are'} still waiting for you this year`); acts.push(btnSec('active', `See your patients (${open})`)); }
+  if (t || m.job) {
+    const core = ['reasoning', 'communication', 'teamwork', 'professionalism'];
+    const weak = core.reduce((a, k) => ((m.skills[k] ?? 0) < (m.skills[a] ?? 0) ? k : a), core[0]);
+    if ((m.skills[weak] ?? 0) < 70) holding.push(`Your weakest skill is ${SKILL_WORDS[weak]} (${Math.round(m.skills[weak] ?? 0)}): working your cases carefully builds it`);
+  }
+  if (t) acts.push(btnSec('training', 'Your training'));
+  if (m.job) acts.push(btnSec('history', 'Your next step'));
+  return `<div class="card this-year-card"><h3>This year</h3>${kv(rows)}${holding.length ? `<div class="section-label">What is holding you back</div>${holding.map((x) => `<p class="body" style="margin:4px 0">${esc(x)}</p>`).join('')}` : ''}${acts.length ? `<div class="btn-stack" style="margin-top:8px">${acts.join('')}</div>` : ''}</div>`;
+}
+const btnSec = (sec, label) => `<button type="button" class="btn" data-go="${sec}">${esc(label)}</button>`; // a shortcut, not a tab
+
 const HUB = [['department', 'My Department'], ['colleagues', 'My Colleagues'], ['residents', 'Residents & Fellows'], ['patients', 'Active Patients'], ['or', 'Operating Room'],
   ['training', 'Training'], ['stories', 'Hospital Stories'], ['relationships', 'Professional Relationships'], ['leadership', 'Leadership'], ['history', 'Career History'], ['jobs', 'Find a Post']];
 
@@ -174,7 +219,7 @@ const VIEWS = {
       ...(m.training ? [['Training', `${m.training.pgy} of ${m.training.years} years`]] : []),
       ...(chances.length ? [['Opportunities', chances.join('; ')]] : []),
     ])) : '';
-    return glance + card(stageWords(m, p), kv([
+    return thisYear(p, m, open) + glance + card(stageWords(m, p), kv([
       ['Degree', m.route === 'dpm' ? 'Foot and ankle medicine (DPM)' : m.route === 'do' ? 'Osteopathic medicine (DO)' : 'Medical degree (MD)'],
       ['Specialty', spec ? specialtyName(spec) : 'Not yet chosen'],
       ['License', m.license.status === 'full' ? m.license.name : m.training ? 'Can treat patients, with a supervisor' : 'None yet'],
@@ -605,8 +650,8 @@ export function openMedicine(api, start = 'overview') {
   root.addEventListener('click', async (e) => {
     const t = e.target;
     if (t.closest('[data-close]')) { modal.close(); return; }
-    const sec = t.closest('[data-sec]');
-    if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
+    const sec = t.closest('[data-sec]') ?? t.closest('[data-go]');
+    if (sec) { st.section = sec.dataset.sec ?? sec.dataset.go; render(); modal.el.scrollTop = 0; return; }
     const hub = t.closest('[data-hub]');
     if (hub) { st.hub = hub.dataset.hub; render(); return; }
     const b = t.closest('[data-act]');

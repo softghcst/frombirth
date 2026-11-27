@@ -12,6 +12,7 @@ import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { book } from './ledger.js';
 import * as bonds from './bonds.js';
+import { pregnancyGoesOn, dropStageScenes } from './pregnancyStages.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -35,6 +36,7 @@ function stopIt(them) {
   const teen = p.flags.teenPregnancy;
   p.flags.pregnancy = null;
   p.flags.pregnancyEnded = store.state.year;
+  dropStageScenes();
   if (teen) { teen.done = store.state.year; teen.plan = 'ended'; }
   const b = them && bonds.bondWith(them.id);
   if (b) delete b.pregnancy;
@@ -47,6 +49,7 @@ function mine(choice, them) {
   if (!preg) return '';
   if (choice === 'keep') {
     preg.decided = 'keep';
+    pregnancyGoesOn();
     p.stats.mood = clamp(p.stats.mood + 4);
     if (them?.alive) bump(them, 2);
     return 'You decide to go on with the pregnancy.';
@@ -54,6 +57,7 @@ function mine(choice, them) {
   const price = cost();
   if (p.finance.cash < price) {
     preg.decided = 'unable';
+    pregnancyGoesOn();
     const where = restricted() ? 'It is not allowed here, and getting away to somewhere it is costs more than you have.' : 'You cannot find the money for it.';
     p.stats.mood = clamp(p.stats.mood - 5);
     return `${where} (${fmtMoney(price, country())} was needed.) The pregnancy goes on. If you want help with what comes next, there are people whose job it is to give it.`;
@@ -80,6 +84,7 @@ function theirs(hope, them) {
   const goesOn = rng.chance(keep);
   if (goesOn || (restricted() && rng.chance(0.6))) {
     preg.decided = 'keep';
+    pregnancyGoesOn();
     bump(them, hope === 'wantend' ? -8 : 4);
     p.stats.mood = clamp(p.stats.mood + (hope === 'wantend' ? -3 : 3));
     return hope === 'wantend' ? `${them.firstName} has decided to go on with the pregnancy, whatever you hoped. It is theirs to decide.` : `${them.firstName} has decided to go on with the pregnancy.`;

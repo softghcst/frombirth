@@ -58,7 +58,35 @@ function overview() {
   const rec = o.track || s.completed ? `<div class="card"><h3>Record</h3>${kv('Cases completed', String(s.completed))}${kv('Trials', `${s.trials} (${s.trialsWon} won, ${s.trialsLost} lost)`)}${kv('Settlements', String(s.settlements))}${kv('Plea agreements', String(s.pleas))}${kv('Dismissals', String(s.dismissals))}${kv('Appeals', String(s.appeals))}
     ${o.legacy ? `<p class="muted">${esc(o.legacy.note)}</p>` : ''}</div>` : '';
   const why = o.why && o.track ? `<p class="muted">${esc(o.why)}</p>` : '';
-  return `${card('Where you stand', lines.join('') + why)}${rec}${o.track ? '' : `<p class="muted">${esc(o.admitted ? 'Apply for legal jobs from Find Work, or open a practice of your own.' : 'Law school, then the bar: both start from the Education & Licensing tab.')}</p>`}`;
+  return `${lawThisYear(p, o)}${card('Where you stand', lines.join('') + why)}${rec}${o.track ? '' : `<p class="muted">${esc(o.admitted ? 'Apply for legal jobs from Find Work, or open a practice of your own.' : 'Law school, then the bar: both start from the Education & Licensing tab.')}</p>`}`;
+}
+
+/**
+ * "This year" at the top of My Legal Career: where you stand, the next step, what is holding you back (named), and a
+ * button for each useful thing to do now.
+ */
+function lawThisYear(p, o) {
+  if (!o.track) return '';
+  const L = p.law ?? {};
+  const ns = nextStep();
+  const yrs = p.career?.yearsInRole ?? 0;
+  const rows = [kv('Now', `${o.title ?? 'Lawyer'}${yrs ? `, ${yrs} year${yrs === 1 ? '' : 's'} in this role` : ''}`),
+    kv('Next', ns ? `${ns.title}${ns.yearsLeft ? `, in about ${ns.yearsLeft} year${ns.yearsLeft === 1 ? '' : 's'}` : ''}` : 'You are at the top of this path')];
+  const holding = [];
+  const acts = [];
+  const open = (L.caseIds ?? []).map(lc.caseById).filter((c) => c && !c.done);
+  const waiting = open.filter((c) => c.awaiting);
+  if (waiting.length) holding.push(`${waiting.length === 1 ? 'A case needs' : `${waiting.length} cases need`} you: a day in court is waiting`);
+  if (ns?.missing?.length) holding.push(`To get there: ${ns.missing.join('; ')}`);
+  const finished = (L.history ?? []).filter((h) => !h.clinic && h.year);
+  const last = finished.length ? Math.max(...finished.map((h) => h.year)) : null;
+  const since = last != null ? store.state.year - last : null;
+  if ((since ?? o.years) >= 2 && o.years >= 2) holding.push(since == null ? 'You have not finished a case yet: promotions count completed cases' : `You have not finished a case in ${since} years: promotions count completed cases`);
+  if ((p.career?.performance ?? 60) < 55) holding.push(`Your performance at work is low (${Math.round(p.career.performance)}): finishing cases well raises it`);
+  if (open.length) acts.push(btn(waiting.length ? `Your cases (${waiting.length} need${waiting.length === 1 ? 's' : ''} you)` : `Your cases (${open.length} open)`, 'data-go="cases"', waiting.length ? 'primary' : ''));
+  if ((L.offers ?? []).length) acts.push(btn(`New cases (${L.offers.length})`, 'data-go="new"'));
+  acts.push(btn(L.autoRoutine ? 'Routine work: done for you (tap to do it yourself)' : 'Let routine work be done for you', 'data-law="autoRoutine"'));
+  return `<div class="card this-year-card"><h3>This year</h3>${rows.join('')}${holding.length ? `<div class="section-label">What is holding you back</div>${holding.map((x) => `<p class="body" style="margin:4px 0">${esc(x)}</p>`).join('')}` : ''}${acts.length ? `<div class="btn-stack" style="margin-top:8px">${acts.join('')}</div>` : ''}</div>`;
 }
 
 function education() {
@@ -316,6 +344,7 @@ async function courtroom(c) {
 }
 
 async function schoolAction(id) {
+  if (id === 'autoRoutine') return say(lc.setAutoRoutine(!player().law?.autoRoutine));
   if (id === 'prepEntrance') return say(ls.prepEntrance());
   if (id === 'readLaw') return say(ls.startReadingLaw());
   if (id === 'sitEntrance') return say(ls.sitEntrance());
@@ -414,7 +443,7 @@ export function openLawCareer(api, start = {}) {
     if (!t || t.disabled) return;
     let r;
     if (t.hasAttribute('data-guide')) { openGuide(); return undefined; }
-    if (t.dataset.tab) { tab = t.dataset.tab; caseId = null; return draw(); }
+    if (t.dataset.tab || t.dataset.go) { tab = t.dataset.tab ?? t.dataset.go; caseId = null; return draw(); } // a tab, or a shortcut to one
     if (t.hasAttribute('data-back')) { caseId = null; tab = 'cases'; return draw(); }
     if (t.dataset.case) { caseId = t.dataset.case; return draw(); }
     if (t.dataset.npcperson) { const n = store.state.npcs[t.dataset.npcperson]; if (n && api.openNpc) api.openNpc(n); return undefined; }

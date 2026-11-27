@@ -1693,6 +1693,19 @@ section('playtest fixes: interviews end with the proper questions; cases spread 
 }
 section('workplaces: scenes set at work happen only in the workplaces they name');
 
+// ---------- Last: routine patrol work done for the player (kept last: a new life moves the ids of later checks) ----------
+{
+  life('us', 25);
+  makeOfficer();
+  const r = core.I();
+  check(C.patrolLeft(r).length > 0 || r.stage !== 'officer', 'patrol work is open in a new year');
+  C.setAutoPatrol(true);
+  check(C.patrolLeft(r).length === 0 && r.autoPatrol, 'asking for routine patrol work to be done does this year\'s');
+  months(12);
+  check(C.patrolLeft(core.I()).length === 0, 'and the next year\'s, at the turn of the year');
+}
+section('routine patrol work, done for the player who asks');
+
 for (const line of ok) console.log(`ok   ${line}`);
 
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

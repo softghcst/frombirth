@@ -311,7 +311,7 @@ function graduate(p, r) {
 
 /** Extensions of field training a department gives before it decides: about a year of them. */
 export const FTO_EXTENSIONS = 4;
-const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
+export const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
 
 /**
  * The field training officer's reviews, one at the end of each stretch of training that has passed: the first at the
@@ -424,6 +424,26 @@ export function patrol(id) {
 }
 
 // ---------- Detective selection ----------
+
+/** Patrol work done for the player each year (on), or left to them (off). */
+export function setAutoPatrol(on) {
+  const r = I();
+  r.autoPatrol = !!on;
+  if (on) for (const { id } of patrolLeft(r)) patrol(id);
+  return result(true, on ? 'Your routine patrol work is done for you each year now. Cases and choices stay yours.' : 'You choose your patrol work yourself again.', 'neutral');
+}
+/** The year's patrol work, done for a player who asked for it (the yearly step, engine/investigations/index.js). */
+export function autoPatrolYear(r = rec()) {
+  if (!r?.autoPatrol) return;
+  for (const { id } of patrolLeft(r)) patrol(id);
+}
+
+/** Patrol work not yet done this year (each can be done once a year). */
+export function patrolLeft(r = rec()) {
+  if (!r || !['field', 'probation', 'officer'].includes(r.stage) || r.job?.detective) return [];
+  const done = r.acted?.year === year() ? r.acted : {};
+  return Object.entries(PATROL).filter(([id]) => !done[`patrol:${id}`]).map(([id, x]) => ({ id, label: x.label, skills: x.skills }));
+}
 
 /** Why an officer cannot apply for detective work yet, or []. Experience, not arrests, decides. */
 export function detectiveUnmet(p = player()) {

@@ -1,5 +1,6 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
+import { workLanguageNote } from '../../engine/languages.js';
 import { childPayRows } from '../../engine/childEarnings.js';
 import { openPolitics } from '../politics.js';
 import { store, player, country } from '../../state.js';
@@ -151,7 +152,7 @@ async function findWork(api) {
   const c = country();
   const cat = await pickModal({
     title: 'Find work',
-    body: 'Each field has its own way in. Locked jobs say what they need.',
+    body: `Each field has its own way in. Locked jobs say what they need.${workLanguageNote() ? ` ${workLanguageNote()}` : ''}`,
     options: [
       ...career.categories().map((x) => ({ value: x.id, label: x.name })),
       { value: 'parttime', label: 'Part-time work', sub: 'For students and anyone without a full-time job.' },

@@ -8,6 +8,7 @@
 // records therefore come out the same in every mode. The turns in between move the calendar on and may bring a scene
 // written for that part of the year (data/events/seasons.js). They never draw on the game's own dice: their luck is
 // keyed to the life and the date, so a shorter turn length changes nothing the year would have done.
+import { monthsPass } from './pregnancyStages.js';
 import { store, log } from '../state.js';
 import { cap } from '../util.js';
 import { advanceYear } from './yearProcessor.js';
@@ -127,6 +128,7 @@ export function advanceTurn(state = store.state) {
   hoodBetween(state); // the months just lived in the neighborhoods: moves, arrivals, events (engine/neighborhood.js)
   tickLaw(); // law school terms and cases move on with the months, not the button presses (engine/lawPractice.js)
   contraceptionBetween(state); // the months just lived: refills, renewals, devices, side effects (engine/health/contraception.js)
+  monthsPass(step); // a pregnancy's months: three in, six in, the shower (engine/pregnancyStages.js)
   releaseHeld(state, seasons);
   drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };
