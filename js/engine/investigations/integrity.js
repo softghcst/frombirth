@@ -51,7 +51,7 @@ export function integrityYear(p = player()) {
   if (!I || !p.alive || I.matters.some((m) => m.status === 'open')) return [];
   let cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id));
   // Only real convictions: when there are none with anything to test, the courts' own work may produce one.
-  for (let i = 0; i < 4 && !cand; i++) { npcCourtCase(p); cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id)); }
+  for (let i = 0; i < 8 && !cand; i++) { npcCourtCase(p); cand = reviewCandidates(p.countryId).find((x) => !I.matters.some((m) => m.invId === x.inv.id)); }
   if (!cand) return ['No conviction here has kept evidence that could be tested anew this year.'];
   const inv = cand.inv;
   const c = k.J().cases[inv.file.courtCaseId];
@@ -93,7 +93,7 @@ export function step(matterId, id, p = player()) {
     m.steps.push(id);
     const used = new Set(f.labs.map((l) => `${l.itemId}:${l.discipline}`));
     m.tests = f.items.flatMap((it) => Object.entries(LAB).filter(([d, x]) => x.kinds.includes(it.kind) && year() >= x.from && !used.has(`${it.id}:${d}`)).map(([d]) => ({ itemId: it.id, discipline: d })));
-    return result(true, m.tests.length ? `The experts say these could be tested now: ${m.tests.map((t) => `the ${bare(f.items.find((x) => x.id === t.itemId).label)} (${LAB[t.discipline].name.toLowerCase()})`).join('; ')}.` : 'Nothing kept could be tested in a new way.', 'neutral');
+    return result(true, m.tests.length ? `The experts say these could be tested now: ${m.tests.map((t) => `the ${bare(f.items.find((x) => x.id === t.itemId).label)} (${LAB[t.discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")})`).join('; ')}.` : 'Nothing kept could be tested in a new way.', 'neutral');
   }
   if (id === 'reanalysis') {
     if (!m.steps.includes('experts') || !m.tests.length) return result(false, 'Consult experts first, on what could be tested.', 'neutral');
@@ -130,7 +130,7 @@ export function step(matterId, id, p = player()) {
     return result(true, m.lab ? `The result does not point away from ${nm(c.defendantId)}. The conviction stands; the matter is closed.` : `Nothing new to put before the court. The conviction stands; the matter is closed.`, 'neutral');
   }
   // New evidence pointing elsewhere: the appeal court decides (the same case, the same court process).
-  const ev = k.addEvidence(incidentOf(inv), 'forensic', m.lab.pointsTo, { lawful: true, summary: `New ${LAB[m.lab.discipline].name.toLowerCase()} of kept evidence points to ${nm(m.lab.pointsTo)}.` });
+  const ev = k.addEvidence(incidentOf(inv), 'forensic', m.lab.pointsTo, { lawful: true, summary: `New ${LAB[m.lab.discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")} of kept evidence points to ${nm(m.lab.pointsTo)}.` });
   ev.reliability = Math.max(ev.reliability, 0.85);
   c.fresh = ev.id;
   const appeal = k.fileAppeal(c, 'new_evidence', I.org === 'ciu' ? c.defenseId : me(p));

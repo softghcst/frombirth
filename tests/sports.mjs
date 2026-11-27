@@ -342,6 +342,7 @@ let soccerLife;
   const p = grownTo(17); p.talents.sports = 95; sp.takeUp('tennis');
   const e = sp.entryOf('tennis'); for (const k of Object.keys(e.skills)) { e.ceiling[k] = 92; e.skills[k] = 85; }
   e.pr = 1500;
+  e.history.push({ year: store.state.year - 3, level: 'club', name: 'a tennis club' }); e.seasonsPlayed = 3; // a record: years of club tennis
   advanceYear(); quiet();
   const d = life.openDecisions().find((x) => x.kind === 'turnPro');
   check(!!d, 'a high rating opens the way to turning professional on tour');

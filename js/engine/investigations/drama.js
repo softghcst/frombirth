@@ -8,10 +8,11 @@ import { store, player, log } from '../../state.js';
 import { SPECIALTIES, FEDERAL, LAB_RESULTS } from '../../data/investigations.js';
 import { W, I, rec, now, year, me, nextId, result, note, grow, regard, seeded, reputationOf, legacies } from './core.js';
 import { agency, office, officeOf, staffer, federalCities } from './agencies.js';
-import { acceptAcademy, declineOffer, meet } from './careers.js';
+import { acceptAcademy, declineOffer, meet, ftoLastChance } from './careers.js';
 import { investigation, incidentOf, caseStatus, coldCandidates, reopen, standings, reviewCandidates, openReview } from './casework.js';
 import * as k from '../cases.js';
 import { storyBeat } from '../storyDirector.js';
+import { cityReporter, pressArticle } from '../journalism.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 const nm = (id) => (npc(id) ? `${npc(id).firstName} ${npc(id).lastName}` : 'someone');
@@ -59,9 +60,11 @@ export function dramaYear(p = player()) {
     const changed = Object.values(f.witnesses).find((x) => x.statements.some((s) => s.q === 'inconsistency') && f.clues.some((c) => c.sourceId === x.id && !c.accurate));
     if (changed && queue(r, 'inv_witness_changes', { ...w, witness: nm(changed.id) }, `changes:${inv.id}`)) continue;
     if (!f.outcome && !f.report && now() > f.due && queue(r, 'inv_report_due', w, `due:${inv.id}`)) continue;
-    if (f.outcome && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
+    // A closed case is a moment for the first few, and for the serious ones; after that it is routine.
+    const closedBefore = Object.keys(r.scenes).filter((x) => x.startsWith('closed:')).length;
+    if (f.outcome && (closedBefore < 3 || ['homicide', 'missing', 'collision'].includes(f.template)) && queue(r, 'inv_closed', w, `closed:${inv.id}`)) continue;
     if (caseStatus(inv) === 'cold' && queue(r, 'inv_cold', w, `cold:${inv.id}`)) continue;
-    if (f.courtCaseId && !f.outcome && queue(r, 'inv_reporter', { ...w, reporter: nm(reporterFor(inv)) }, `press:${inv.id}`)) continue;
+    if (f.courtCaseId && !f.outcome && queue(r, 'inv_reporter', { ...w, reporter: nm(reporterFor(inv)), invId: inv.id, reporterId: reporterFor(inv) }, `press:${inv.id}`)) continue;
     if (['homicide', 'missing'].includes(f.template) && !f.outcome && year() > Math.floor(f.opened / 12) && queue(r, 'inv_family_answers', w, `family:${inv.id}`)) continue;
     const divided = Object.values(standings(inv)).filter((h) => h.status.includes('supported')).length >= 2;
     if (divided && queue(r, 'inv_case_divides', w, `divide:${inv.id}`)) continue;
@@ -220,6 +223,8 @@ function reporterFor(inv) {
   const w = W();
   w.reporters ??= {};
   const key = inv.agencyId ?? 'x';
+  // The court reporter is a real reporter at a real newsroom in the city, when there is one (engine/journalism.js).
+  if (!live(w.reporters[key])) { const real = cityReporter(); if (real) w.reporters[key] = real.reporter.id; }
   if (!live(w.reporters[key])) w.reporters[key] = staffer(player().countryId, 'staff', 'Court reporter', { role: 'reporter' }).id;
   return w.reporters[key];
 }
@@ -235,6 +240,7 @@ export function invChoice(value, cast = {}) {
     case 'offer': { const app = r.apps.find((x) => x.id === w.app); if (!app) return null; return (how === 'accept' ? acceptAcademy(app.id) : declineOffer(app.id)).text; }
     case 'firstday': { const c = npc(r.academy?.classmateIds?.[0]); if (how === 'friend' && c) { c.meters.relationship = clamp(c.meters.relationship + 15); grow('teamwork', 3); } else grow('law', 3); return null; }
     case 'mentor': { const m = npc(r.people.ftoId); if (m) m.meters.relationship = clamp(m.meters.relationship + (how === 'listen' ? 10 : -6)); if (how === 'listen') { grow('writing', 3); r.people.mentorId = r.people.ftoId; } return null; }
+    case 'ftolast': return ftoLastChance(how === 'ask');
     case 'eval': if (how === 'learn') { grow('writing', 4); grow('timeline', 3); } else regard('teamwork', -3); return null;
     case 'report': if (how === 'clean') { grow('writing', 3); regard('reports', 3); } else { regard('reports', -3); grow('writing', 1); } return null;
     case 'talk': grow('interviewing', how === 'calm' ? 4 : 2); if (how === 'calm') regard('skill', 1); return null;
@@ -273,7 +279,14 @@ export function invChoice(value, cast = {}) {
       regard('integrity', -12); regard('ethics', -8); { const id = nextId('complaint'); W().complaints[id] = { id, subjectId: me(), kind: 'fabrication', text: 'Your account of an incident was found to match a colleague\'s word for word, and not the recording.', invId: null, opened: now(), due: now() + 6, status: 'open', true: true }; }
       return 'Two accounts that match word for word draw attention.';
     case 'stayed': return null;
-    case 'press': if (how === 'leak') { regard('ethics', -8); const id = nextId('complaint'); W().complaints[id] = { id, subjectId: me(), kind: 'confidentiality', text: 'Details of a case before the court reached a newspaper.', invId: null, opened: now(), due: now() + 4, status: 'open', true: true }; } else regard('reliability', 1); return null;
+    case 'press': {
+      // The story runs either way, from the public court record: one article, which the case record lists.
+      const inv = w.invId && investigation(w.invId);
+      const real = cityReporter();
+      if (inv?.file && real) pressArticle(p, { beat: 'court', headline: `${inv.file.title}: the case goes to court`, facts: [`${inv.file.title} is before the court.`], links: { caseId: inv.file.courtCaseId, invId: inv.id } }, 'brief', real);
+      if (how === 'leak') { regard('ethics', -8); const id = nextId('complaint'); W().complaints[id] = { id, subjectId: me(), kind: 'confidentiality', text: 'Details of a case before the court reached a newspaper.', invId: null, opened: now(), due: now() + 4, status: 'open', true: true }; } else regard('reliability', 1);
+      return null;
+    }
     case 'family': grow('interviewing', 2); regard('reliability', 1); return null;
     case 'panel': if (how === 'honest') { regard('integrity', 2); const app = r.apps.find((x) => x.kind === 'detective' && x.status === 'pending'); if (app && app.outcome !== 'selected' && app.scores && app.scores.mine + 5 >= app.scores.theirs && app.scores.mine + 5 >= 38) app.outcome = 'selected'; } else regard('teamwork', -1); return null;
     case 'poi': if (how === 'check') { grow('reasoning', 3); regard('integrity', 1); } return null;
@@ -282,7 +295,7 @@ export function invChoice(value, cast = {}) {
     case 'spec': grow(how === 'learn' ? 'forensic' : 'teamwork', 3); return null;
     case 'fedpros': if (how === 'full') { regard('integrity', 2); grow('law', 3); } return null;
     case 'sup': return null;
-    case 'transfer': if (how === 'yes' && r.job) { const o = officeOf(r.job.agencyKind, w.city); r.job.officeId = o.id; r.job.employerId = o.employerId; p.career.employerId = o.employerId; r.pendingMove = w.city; r.people.formerPartnerIds.push(...[r.people.partnerId].filter(Boolean)); r.people.partnerId = o.agentIds[0]; meet(o.agentIds[0], 'Special agent'); r.people.supervisorId = o.supervisorIds[0]; note(`Transferred to ${o.name}.`, 'career', { log: false }); return `You are posted to ${o.name}. Move from My Investigations.`; } return null;
+    case 'transfer': if (how === 'yes' && r.job) { const o = officeOf(r.job.agencyKind, w.city); r.job.officeId = o.id; r.job.employerId = o.employerId; p.career.employerId = o.employerId; r.pendingMove = w.city; r.people.formerPartnerIds.push(...[r.people.partnerId].filter(Boolean)); r.people.partnerId = o.agentIds[0]; meet(o.agentIds[0], 'Special agent'); r.people.supervisorId = o.supervisorIds[0]; note(`Transferred to ${o.name}.`, 'career', { log: false }); return `You are posted to ${o.name}. Move from the Work tab.`; } return null;
     case 'reassign': { if (r.job?.detective && w.unit) { const a2 = agency(r.job.agencyId); const old = a2?.units[r.job.specialty]; if (old) old.memberIds = old.memberIds.filter((x) => x !== me()); r.job.specialty = w.unit; a2?.units[w.unit]?.memberIds.push(me()); r.stats.units = [...new Set([...r.stats.units, w.unit])]; p.career.title = `Detective, ${SPECIALTIES[w.unit].name.toLowerCase()}`; } if (how === 'ask') grow('teamwork', 1); return null; }
     case 'defense': if (how === 'honest') { regard('integrity', 3); regard('reliability', 2); } else regard('integrity', -3); return null;
     case 'board': regard('reliability', how === 'attend' ? 2 : 0); return null;

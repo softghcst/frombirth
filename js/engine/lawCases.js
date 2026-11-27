@@ -19,6 +19,7 @@ import * as realLaw from './realLaw.js';
 import { policeWitness } from './lawPolice.js';
 import * as world from './polity.js';
 import { report } from './news.js';
+import { familyHears } from './lawLife.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
 import { jobs, chronicle as companyNote } from './employers.js';
@@ -85,11 +86,14 @@ export function createCase(templateId, o = {}) {
   const prof = profileFor(countryId);
   LC(); // the store and its counter exist before the first id is drawn
   const id = `lc_${++k.J().lawSeq}`;
+  // Opened on its own date: a case the office assigned in a half-year a long turn passed through starts then, not at
+  // the turn (engine/lawPractice.js openWindow).
+  const start = o.at ?? nowM();
   const role = o.role ?? (T.kind === 'criminal' ? 'defense' : T.role ?? (T.gov ? 'agency' : ROLE_FOR[T.kind]));
-  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: nowM(), openedYear: store.state.year, role, lawyerId: o.lawyerId ?? p.id,
+  const c = { id, templateId, kind: T.kind, level: T.level, countryId, opened: start, openedYear: Math.floor(start / 12), role, lawyerId: o.lawyerId ?? p.id,
     supervisorId: o.supervisorId ?? null, clinic: !!o.clinic, assigned: !!o.assigned, specialty: o.specialty ?? null,
     track: o.track ?? (o.clinic ? 'clinic' : LEGAL_CAREERS.includes(p.career?.careerId) ? p.career.careerId : null), // the job it was done in
-    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: nowM() + T.stages[0][1],
+    stages: T.stages.map(([s, months]) => ({ s, months })), stageIdx: 0, due: start + T.stages[0][1],
     jury: !!T.jury && (T.kind === 'criminal' ? prof.juries.criminal : T.kind === 'civil' ? prof.juries.civil : false), forum: T.forum,
     vars: {}, parties: {}, evidence: [], witnesses: [], filings: [], deadlines: [], hearings: [], tasks: {}, research: null,
     negotiation: { offers: [], accepted: null }, court: null, awaiting: null, outcome: null, appeal: null, errors: [], ethics: null,
@@ -266,10 +270,11 @@ export function feeModelFor(templateId, countryId, wanted) {
 
 export const template = (c) => CASE_TEMPLATES[c.templateId];
 export const stageOf = (c) => c.stages[c.stageIdx]?.s ?? 'closed';
-export const STAGE_NAME = { intake: 'Intake', discovery: 'Discovery', pretrial: 'Pretrial motions', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
-  disclosure: 'Financial disclosure', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody evaluation', review: 'Case review', services: 'Family services',
-  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Pleadings', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
-  distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed', record: 'The trial record', briefing: 'Briefing', argument: 'Oral argument' };
+// Stages in plain words: what is happening, not the legal term for it.
+export const STAGE_NAME = { intake: 'First meeting', discovery: 'Gathering evidence', pretrial: 'Requests to the judge before trial', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
+  disclosure: 'Sharing finances', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody assessment', review: 'Case review', services: 'Family services',
+  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Opening papers', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
+  distribution: 'Distribution', diligence: 'Checking the deal', closing: 'Closing', closed: 'Closed', record: 'Reviewing the trial', briefing: 'Written arguments', argument: 'Arguing in court' };
 /** The side's evidence: for the defense, what favors the client; for a prosecutor (or the agency's counsel), what the state relies on. */
 const ours = (c, e) => (c.role === 'prosecution' || CHILD_ROLES[c.role]?.side === 'other' ? e.favors === 'other' : e.favors === 'client');
 const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
@@ -338,6 +343,13 @@ export function routineAll() {
   for (const c of lawOf(player()).caseIds.map(caseById).filter((x) => x && !x.done)) { const r = routine(c); if (r.ok) done.push(c.title); }
   return done.length ? result(true, `Routine work done on ${done.length === 1 ? done[0] : `${done.length} cases`}. What is left needs your judgment.`, 'good', { cases: done })
     : result(false, 'Nothing routine is waiting.', 'neutral');
+}
+/** Routine work done for the player (on) or left to them (off). @returns {object} result */
+export function setAutoRoutine(on, p = player()) {
+  const L = lawOf(p);
+  L.autoRoutine = !!on;
+  if (on) routineAll();
+  return result(true, on ? 'Routine work is done for you now: meeting clients, going through the evidence and routine filings. The decisions that matter stay yours.' : 'You handle the routine work yourself again.', 'neutral');
 }
 /** Whether a case has routine steps waiting. */
 export const hasRoutine = (c) => !c.done && ((c.clientId && !c.tasks.interview) || !c.tasks.review || proceduralDue(c).length > 0);
@@ -813,6 +825,7 @@ export function discipline(level) {
   (L.discipline ??= []).push({ level, m: nowM(), year: store.state.year });
   if (level === 'suspended') { L.suspendedUntil = nowM() + 12; canon(`law:suspended:${player().id}:${nowM()}`, 'Suspended from practice', 'Suspended for a year by the bar for professional misconduct.', { privacy: 'public', sig: 2 }); }
   if (level === 'disbarred') report(world.polity(player().countryId), 'disbarred', {});
+  if (level !== 'reprimand') familyHears('shame', player());
   if (level === 'disbarred') { L.bar.disbarred = nowM(); (player().flags.licenses ?? []).splice((player().flags.licenses ?? []).indexOf('law'), 1); canon(`law:disbarred:${player().id}`, 'Disbarred', 'Struck off for serious professional misconduct.', { privacy: 'public', sig: 3 }); }
   const text = { reprimand: 'The bar issued a formal reprimand.', suspended: 'The bar suspended you from practice for a year.', disbarred: 'You were disbarred.' }[level];
   log(text, 'system', 'bad');
@@ -896,6 +909,7 @@ export function close(c, out, lines = []) {
     else if (c.templateId === 'criminal_appeal' && out.favorable > 0) report(w, 'conviction_overturned', words);
     else if (c.level >= 3 && c.jury) report(w, out.favorable > 0 ? 'courtWin' : 'courtLoss', words);
   }
+  if (c.level >= 4 && !c.clinic && open && out.favorable > 0) familyHears('win', p); // the family sees the news
   if (c.level >= 4 && !c.clinic) canon(`law:major:${c.id}`, open ? `A major case: ${c.title}` : 'A major confidential matter', open ? out.text : 'Details are confidential to the client.', { privacy: open ? 'public' : 'family', sig: 3 });
   canon(`law:case:${c.id}`, c.title, out.text, { privacy: 'restricted', sig: 1, milestone: false });
   // Appeals: a final judgment against the client can be taken up, on the record, within six months.
@@ -949,7 +963,10 @@ export function progressCases(p = player()) {
   const load = open.reduce((s, c) => s + c.level, 0);
   for (const c of open) {
     let guard = 0;
-    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) advanceStage(c, load, p);
+    // With routine work left to the office (L.autoRoutine), each stage's routine steps are done as the case reaches it,
+    // so a long turn misses no filing a shorter one would have made.
+    if (L.autoRoutine && hasRoutine(c)) routine(c);
+    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) { advanceStage(c, load, p); if (L.autoRoutine && hasRoutine(c)) routine(c); }
     // A day in court left unattended for six months is handled routinely, never in the turn it fell due.
     if (c.awaiting && !c.done && now - c.awaiting.since >= 6 && c.awaiting.turn !== now) {
       note(c, 'You were not there to make the decisions: the case was handled routinely.');

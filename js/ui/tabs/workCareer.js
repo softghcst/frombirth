@@ -1,5 +1,8 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
+import { workLanguageNote } from '../../engine/languages.js';
+import { childPayRows } from '../../engine/childEarnings.js';
+import { openPolitics } from '../politics.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
@@ -20,6 +23,7 @@ import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklif
 import { offers } from '../../engine/hiring.js';
 import { icon } from '../kit.js';
 import { leads } from '../../engine/recruiters.js';
+import { screenName } from '../careerNames.js';
 
 const kv = (rows) => rows.map(([a, b]) =>
   `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -51,7 +55,8 @@ export function careerCard() {
       ...(k.military ? [['Deployments', String(k.military.deployments)]] : []),
       ...(step ? [['Next step', `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${step.yearsLeft} ${step.yearsLeft === 1 ? 'year' : 'years'} with good reviews` : ', when a good review lands'}`]]
         : [['Next step', 'You are at the top.']]),
-      ['Hours a week', String(weeklyLoad().total)],
+      ...childPayRows(cur),
+      (() => { const w = weeklyLoad(); const job = w.rows.find((r) => r.kind === 'job')?.hours ?? 0; return ['Hours a week', w.total > job ? `${job} at work · ${w.total} in all, with ${player().age < 18 ? 'school' : 'everything else'}` : String(w.total)]; })(),
     ]) + `<div style="margin-top:10px">${meterHtml('Performance', k.performance, true)}${meterHtml('Satisfaction', careerState().satisfaction, true)}${meterHtml('Stress', careerState().stress, true)}</div>`;
   } else if (k.partTime) {
     body = kv([['Part-time', k.partTime.title], ['Pay', `${fmtMoney(k.partTime.salary, c)} / year`], ['Since', `Age ${k.partTime.since}`]]);
@@ -73,8 +78,8 @@ export function careerButtons() {
   const list = [];
   const waiting = offers().length + leads().length;
   if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Jobs${waiting ? ` (${waiting} waiting)` : ''}`]);
-  if (medicineOpen(p)) list.push(['medicine', 'My Medical Career']);
-  if (investigationsOpen(p)) list.push(['investigations', 'My Investigations']);
+  if (medicineOpen(p)) list.push(['medicine', screenName('medicine', p)]);
+  if (investigationsOpen(p)) list.push(['investigations', screenName('investigations', p)]);
   if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
@@ -148,7 +153,7 @@ async function findWork(api) {
   const c = country();
   const cat = await pickModal({
     title: 'Find work',
-    body: 'Each field has its own way in. Locked jobs say what they need.',
+    body: `Each field has its own way in. Locked jobs say what they need.${workLanguageNote() ? ` ${workLanguageNote()}` : ''}`,
     options: [
       ...career.categories().map((x) => ({ value: x.id, label: x.name })),
       { value: 'parttime', label: 'Part-time work', sub: 'For students and anyone without a full-time job.' },
@@ -220,7 +225,7 @@ export const careerHandlers = (api) => ({
   'sc:sports': () => openAthletics(api),
   'sc:kpop': () => openIdol(api),
   'sc:journalism': () => openJournalism(api),
-  'sc:politics': () => document.getElementById('politics-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+  'sc:politics': () => openPolitics(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),

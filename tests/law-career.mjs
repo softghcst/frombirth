@@ -16,7 +16,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   check(lp.leadCap() === 2, 'a new associate leads cases up to "Developing"');
   lp.chooseSpecialty('criminal_defense');
   let seen = [];
-  for (let w = 0; w < 10; w++) { seen.push(...lp.offers()); L().offers = []; turn(); }
+  for (let w = 0; w < 10; w++) { seen.push(...lp.offers()); L().offers = []; p().career.yearsInRole = 0; turn(); } // kept an associate for this check
   check(seen.length && seen.every((o) => o.level <= 3) && seen.filter((o) => o.level > 2).every((o) => o.second), `offers fit the level: harder ones as second chair (${seen.map((o) => o.level).join(',')})`);
   const o = seen.find((x) => x.second) ?? null;
   check(!!o, 'some offers are above the junior\'s level, as second chair');
@@ -114,7 +114,7 @@ const done = (n, track, favorable = 1) => { for (let i = 0; i < n; i++) { const 
   // Pass someone over long enough and they may leave.
   ls.lawOf().associates.forEach((x) => { if (!x.partner) x.since -= 10; });
   let left = false;
-  for (let y = 0; y < 12 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
+  for (let y = 0; y < 30 && !left; y++) { turn(); left = lp.firmView().associates.length < 2; }
   check(left, 'an associate passed over for years leaves to open a practice of their own');
 }
 

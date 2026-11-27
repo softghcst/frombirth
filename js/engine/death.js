@@ -24,6 +24,7 @@ import { onDeath as digitalLegacy } from './digital/legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS } from '../data/epitaphs.js';
+import { dressOfPlayer } from '../avatar/render.js';
 import { estateTax, relationOf } from './inheritance.js';
 import { settleOnDeath as settleAnimals } from './animals.js';
 import { ailmentsOf } from './health/ailments.js';
@@ -422,6 +423,8 @@ export function die(cause) {
     counters: p.counters,
     generation: p.generation,
     continuedAs: null,
+    // The face, for the shareable card (ui/shareCard.js).
+    portrait: { gender: p.gender, appearance: p.appearance, seed: p.id, dress: dressOfPlayer(p) },
   };
   addToGraveyard(entry);
   // While there is someone to carry on as, the save is kept so the choice survives a refresh.

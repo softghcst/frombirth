@@ -32,16 +32,18 @@ export const disciplinesNow = () => Object.entries(LAB).filter(([, d]) => year()
 export function specialize(id, p = player()) {
   const L = labRecord(p);
   if (!L) return result(false, 'This is for forensic scientists.', 'neutral');
-  if (L.discipline) return result(false, `You specialize in ${LAB[L.discipline].name.toLowerCase()}.`, 'neutral');
+  if (L.discipline) return result(false, `You specialize in ${LAB[L.discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")}.`, 'neutral');
   if (!LAB[id] || year() < LAB[id].from) return result(false, 'That discipline is not practiced yet.', 'neutral');
   L.discipline = id;
   if (id === 'digital') p.career.title = (p.career.level ?? 0) >= 2 ? 'Senior digital forensic examiner' : 'Digital forensic examiner';
-  return result(true, `You train in ${LAB[id].name.toLowerCase()}. Most of your requests will be in it now.`);
+  return result(true, `You train in ${LAB[id].name.toLowerCase().replace(/\bdna\b/g, "DNA")}. Most of your requests will be in it now.`);
 }
 
 // ---------- The backlog ----------
 
 const KINDS = ['burglary', 'robbery', 'homicide', 'arson', 'collision', 'fraud'];
+/** The disciplines each kind of case sends to the laboratory (its items in casework.js), so a specialist gets work in their own. */
+export const CARRIES = { burglary: ['fingerprints', 'dna', 'video'], robbery: ['video'], homicide: ['dna', 'fingerprints', 'trace', 'digital'], arson: ['fire'], collision: ['trace'], fraud: ['financial'] };
 /** The requests that reach the laboratory this year: more when the department's budget is tight, from real cases. */
 export function labYear(p = player()) {
   const L = labRecord(p);
@@ -56,9 +58,12 @@ export function labYear(p = player()) {
   for (const b of waiting) if (b.due && b.due < now() && !b.overdue) { b.overdue = true; const inv = investigation(b.invId); inv?.file?.log.push({ at: now(), text: `The laboratory request for ${inv.file.items.find((x) => x.id === b.itemId)?.label.toLowerCase() ?? 'an item'} is overdue: the case waits.` }); }
   if (L.suspended === year()) return ['Off casework this year, until the corrective plan is done.'];
   if (waiting.length >= 6) return [`Your bench has ${waiting.length} requests waiting. No new ones are sent until it clears.`];
+  // A specialist is sent cases that need their discipline: the first always, most of the rest; others go to colleagues.
+  const open = KINDS.filter((t) => t !== 'collision' || year() >= 1950);
+  const fits = open.filter((t) => CARRIES[t].includes(L.discipline));
   for (let i = 0; i < n; i++) {
     const det = Object.values(a.units).flatMap((u) => u.memberIds).find((id) => npc(id)?.alive);
-    const tid = roll.pick(KINDS.filter((t) => t !== 'collision' || year() >= 1950));
+    const tid = roll.pick(fits.length && (i === 0 || roll.chance(0.75)) ? fits : open);
     const inv = openCase(tid, { ownerId: a.id, lead: det });
     const items = inv.file.items.filter((x) => x.disciplines.length);
     const it = items.find((x) => L.discipline && x.disciplines.includes(L.discipline)) ?? items[0];
@@ -67,7 +72,7 @@ export function labYear(p = player()) {
     const id = nextId('bench');
     W().bench[id] = { id, invId: inv.id, itemId: it.id, discipline, analystId: me(p), status: 'open', steps: [], received: now(), due: now() + LAB[discipline].months + 1, detectiveId: det, serious: ['homicide', 'collision', 'robbery'].includes(tid) };
     it.custody.push({ at: now(), by: det, act: 'collected and logged' }, { at: now(), by: me(p), act: 'received at the laboratory' });
-    out.push(`A request from ${inv.file.title}: ${LAB[discipline].name.toLowerCase()}.`);
+    out.push(`A request from ${inv.file.title}: ${LAB[discipline].name.toLowerCase().replace(/\bdna\b/g, "DNA")}.`);
   }
   return out;
 }

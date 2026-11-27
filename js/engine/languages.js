@@ -46,6 +46,32 @@ export function fluency(countryId, p = player()) {
   return s >= 70 ? `you speak ${names} well` : s >= 40 ? `you get by in ${names}` : s > 0 ? `your ${names} is not yet enough to live in` : `you do not speak ${names}`;
 }
 
+/**
+ * A line for the screens about the language of a country: whether the player speaks it, and what that does for moving
+ * there and finding work. '' where no language is needed. ✓ helps, ~ a little, ✗ makes it harder.
+ */
+export function languageNote(countryId, p = player()) {
+  const s = speaks(countryId, p);
+  if (s == null) return '';
+  const names = languagesOf(countryId).map((id) => SKILL_BY_ID[id].name).join(' or ');
+  if (s >= 100) return `✓ You speak ${names}: it helps your application, and with work there.`;
+  if (s >= 70) return `✓ You speak ${names} well: it helps your application, and with work there.`;
+  if (s >= 40) return `~ You get by in ${names}: a little help. Practice it to Good (60%) and it counts for more.`;
+  return `✗ You do not speak ${names} yet: applications and finding work there are harder. Practice it under Skills.`;
+}
+/** For the job screens, where the player lives: the local language, and any second languages employers count. */
+export function workLanguageNote(p = player()) {
+  const here = speaks(p.countryId, p);
+  const own = nativeLanguages(p);
+  const second = Object.keys(SPOKEN).concat('sign_language').filter((id) => !own.includes(id) && level(p, id) >= 60).map((id) => SKILL_BY_ID[id].name);
+  const out = [];
+  const names = languagesOf(p.countryId).map((id) => SKILL_BY_ID[id].name).join(' or ');
+  if (here != null && here < 40) out.push(`✗ Interviews here are in ${names}, which you do not speak yet: much harder to be hired.`);
+  else if (here != null && here < 70) out.push(`~ Your ${names} is getting there: interviews are still a little harder.`);
+  if (second.length) out.push(`✓ Employers count your ${second.slice(0, 3).join(', ')}.`);
+  return out.join(' ');
+}
+
 /** What it adds to (or takes from) a visa application. */
 export function visaEdge(countryId, p = player()) {
   const s = speaks(countryId, p);

@@ -4,6 +4,8 @@
 // in another city means moving.
 //
 //   m.offers = [{ hospitalId, city, rank, salary, relocation, year, negotiated }]   offers stand until the year ends
+import { oddsWords, rollRead, afterWords } from '../odds.js';
+import { rng } from '../../rng.js';
 import { clamp, fmtMoney } from '../../util.js';
 import { player, country } from '../../state.js';
 import { RANKS, DEPARTMENTS, SPECIALTY_BY_ID, eraCare } from '../../data/medicine.js';
@@ -82,6 +84,11 @@ const QUESTIONS = [
 ];
 
 /** Applies to a posting: the hospital invites the candidate to interview (it may decline even that). Once a year at each place. */
+/** The chance a hospital asks you to interview, from your reputation. */
+export const interviewChance = (m = M()) => clamp(0.55 + (reputationOf(m) - 50) / 80, 0.15, 0.95);
+/** The same, in plain words, for the jobs list. */
+export const interviewOdds = (m = M()) => oddsWords(interviewChance(m));
+
 export function applyFor(hospitalId, scope = 'country') {
   const p = player();
   const m = M();
@@ -89,11 +96,12 @@ export function applyFor(hospitalId, scope = 'country') {
   if (!o) return result(false, 'That hospital has no post in your specialty.', 'neutral');
   if (o.block) return result(false, o.block, 'neutral');
   if (!once(`post:${hospitalId}`, m)) return result(false, 'You have already applied there this year.', 'neutral');
-  if (!roll(clamp(0.55 + (reputationOf(m) - 50) / 80, 0.15, 0.95))) return result(false, `${o.name} read your application and chose not to interview you this year.`);
+  const read = rollRead(rng, interviewChance(m));
+  if (!read.ok) return result(false, `${o.name} read your application and chose not to interview you this year: they look first at a physician's reputation, and others' stood higher.${afterWords(read)}`);
   const r = seeded(`int/${hospitalId}/${year()}`);
   const qs = [...QUESTIONS].sort(() => r.next() - 0.5).slice(0, 3).map((x) => QUESTIONS.indexOf(x));
   m.interview = { hospitalId, city: o.city, rank: o.rank, locum: !!o.locum, away: o.away, questions: qs, answers: [], year: year() };
-  return result(true, `${o.name} invites you to interview. Answer from My Medical Career.`, 'good');
+  return result(true, `${o.name} invites you to interview. Answer from the Work tab.`, 'good');
 }
 
 /** The interview waiting, with its next question. */
@@ -137,7 +145,7 @@ function makeOffer(m, v) {
     bonus: v.locum ? 0 : Math.round(salary * [0, 0.05, 0.1][r.int(0, 2)]), relocation: v.away && r.next() < 0.7,
     nonCompete: !v.locum && /Private|Physician-owned/.test(hospitalProfile(e.id).ownership) ? 2 : 0 };
   (m.offers ??= []).push(offer);
-  return `${e.name} offers you ${v.locum ? 'a one-year temporary post' : `a post as ${RANKS[v.rank].title.toLowerCase()}`}: ${fmtMoney(salary, country())} a year, ${offer.hours} hours a week, ${offer.call} on-call${offer.bonus ? `, a signing bonus of ${fmtMoney(offer.bonus, country())}` : ''}${offer.relocation ? ', the move paid' : ''}${offer.nonCompete ? `, and a ${offer.nonCompete}-year non-compete in ${v.city}` : ''}. Answer from My Medical Career.`;
+  return `${e.name} offers you ${v.locum ? 'a one-year temporary post' : `a post as ${RANKS[v.rank].title.toLowerCase()}`}: ${fmtMoney(salary, country())} a year, ${offer.hours} hours a week, ${offer.call} on-call${offer.bonus ? `, a signing bonus of ${fmtMoney(offer.bonus, country())}` : ''}${offer.relocation ? ', the move paid' : ''}${offer.nonCompete ? `, and a ${offer.nonCompete}-year non-compete in ${v.city}` : ''}. Answer from the Work tab.`;
 }
 
 /** Offers still standing this year. */

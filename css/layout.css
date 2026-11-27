@@ -27,6 +27,16 @@
   margin-bottom: 10px;
 }
 .grave-glyph { background: var(--card) !important; filter: grayscale(0.2); }
+/* The notice before the title screen: a moment, then the title */
+.notice-screen {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding: 32px 28px calc(32px + var(--safe-bottom)); text-align: center; cursor: pointer;
+  animation: notice-in 0.4s var(--ease, ease) both;
+}
+.notice-screen p { max-width: 30em; margin: 0; font-family: var(--serif); font-size: 1.1rem; line-height: 1.55; color: var(--ink); }
+.notice-screen p + p { color: var(--muted); font-size: 0.98rem; }
+@keyframes notice-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .notice-screen { animation: none; } }
 
 /* ---------- Game screen ---------- */
 .game { flex: 1; min-height: 0; display: flex; flex-direction: column; }

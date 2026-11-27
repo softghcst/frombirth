@@ -7,7 +7,8 @@ import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { guardians } from './childhood.js';
 import { nativeLanguages } from './languages.js';
-import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS } from '../data/skills.js';
+import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS, SKILL_USES, SPOKEN } from '../data/skills.js';
+import { COUNTRIES } from '../data/countries.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -42,6 +43,24 @@ export function aptitude(id) {
   return Math.max(0.5, k);
 }
 
+const placeNames = (ids) => ids.map((id) => COUNTRIES[id]?.name).filter(Boolean);
+const listed = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+/** What a skill is good for, in a line (data/skills.js SKILL_USES). A language: where it is spoken, and what it opens. */
+export function usesOf(id) {
+  const s = SKILL_BY_ID[id];
+  if (s?.group === 'language' && SPOKEN[id]) return `Spoken in ${listed(placeNames(SPOKEN[id]))}. Helps you move and find work there, and counts with employers anywhere.`;
+  return SKILL_USES[id] ?? '';
+}
+/** What reaching a level in a language opens, said once when it is reached. */
+function languageStep(s, before, after) {
+  const where = listed(placeNames(SPOKEN[s.id] ?? []));
+  if (!where) return '';
+  if (before < 40 && after >= 40) return ` You can get by in ${s.name} now: living in ${where} would be much easier.`;
+  if (before < 60 && after >= 60) return ` Your ${s.name} is good now: employers anywhere count it, and you could work in ${where}.`;
+  if (before < 80 && after >= 80) return ` Your ${s.name} is excellent: you could translate, and pass for a local in ${where}.`;
+  return '';
+}
+
 /** Skills on offer, grouped, with where the player stands on each. */
 export function skillOptions() {
   const p = player();
@@ -49,7 +68,7 @@ export function skillOptions() {
   return SKILL_GROUPS.map((g) => ({ ...g, skills: SKILLS.filter((s) => s.group === g.id).map((s) => {
     const level = levelOf(s.id);
     const native = s.group === 'language' && natives.includes(s.id);
-    return { id: s.id, name: s.name, level, levelName: native ? 'Native' : levelName(level), started: level > 0 && (!!s.talent || s.id in book()),
+    return { id: s.id, name: s.name, uses: usesOf(s.id), level, levelName: native ? 'Native' : levelName(level), started: level > 0 && (!!s.talent || s.id in book()),
       tooYoung: native ? 0 : p.age < s.minAge ? s.minAge : 0, natural: aptitude(s.id) >= 1.7, mastered: native || level >= 100, native };
   }) }));
 }
@@ -116,10 +135,11 @@ export function practice(id, lesson = false) {
   p.hidden.discipline = clamp(p.hidden.discipline + 1);
   p.stats.mood = clamp(p.stats.mood + 1);
 
-  const what = s.name.toLowerCase();
+  const what = s.group === 'language' ? s.name : s.name.toLowerCase(); // "you practiced Italian", "you practiced piano"
   const natural = k >= 1.7 ? ' It comes to you as if you had always known it.' : k < 0.8 ? ' It does not come easily.' : '';
   let text = `${lesson ? `You took lessons in ${what}` : before === 0 ? `You took up ${what}` : `You practiced ${what}`}: ${before}% to ${after}%.${natural}`;
   if (levelName(after) !== levelName(before) && after < 100) text += ` You would call yourself ${levelName(after).toLowerCase()} now.`;
+  if (s.group === 'language') text += languageStep(s, before, after);
   if (after >= 100) {
     text += ` You have mastered it.`;
     milestone(`Mastered ${what}.`, 'life');

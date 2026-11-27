@@ -157,7 +157,37 @@ export default [
 
   // ---------- Children who act ----------
   {
-    id: 'set_forgot_lines', category: 'on set', ageRange: [5, 17], cooldown: 3, requires: [onSet],
+    id: 'child_money_parent', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'parent')], cast: { keeper: 'parent' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
+    id: 'child_money_grandparent', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'grandparent')], cast: { keeper: 'grandparent' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
+    id: 'child_money_guardian', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'guardian')], cast: { keeper: 'guardian' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
+    id: 'set_forgot_lines', workplaces: ['stage'], category: 'on set', ageRange: [5, 17], cooldown: 3, requires: [onSet],
     text: 'Forty adults are waiting, the camera is rolling, and your line has gone completely out of your head.',
     choices: [
       { label: 'Make something up', check: chk(0.45, { 'talents.acting': 0.7, 'stats.charm': 0.3 }), outcomes: [
@@ -169,7 +199,7 @@ export default [
     ],
   },
   {
-    id: 'set_or_school', category: 'on set', ageRange: [8, 17], cooldown: 4, requires: [onSet, need('education.enrolled', '==', true)],
+    id: 'set_or_school', workplaces: ['stage'], category: 'on set', ageRange: [8, 17], cooldown: 4, requires: [onSet, need('education.enrolled', '==', true)],
     text: 'The shoot has overrun again. It is either the last week of filming or your end-of-year exams.',
     choices: [
       { label: 'Finish the film', outcomes: [any('You are in every scene of the ending. Your report card says "absent" in four subjects.', 'neutral', perf(10), gpa(-0.25), tal('acting', 2))] },
@@ -181,7 +211,7 @@ export default [
     ],
   },
   {
-    id: 'recognized_at_school', category: 'on set', ageRange: [6, 17], cooldown: 5, requires: [onSet, need('career.level', '>=', 1)],
+    id: 'recognized_at_school', workplaces: ['stage'], category: 'on set', ageRange: [6, 17], cooldown: 5, requires: [onSet, need('career.level', '>=', 1)],
     text: 'Someone at school has seen you on television. By lunchtime the whole playground is doing your line at you.',
     choices: [
       { label: 'Laugh along and do the line back', outcomes: [any('You do it properly, with the face. They love it. It gets old by Thursday, for them and for you.', 'good', st('charm', 3), followers(200), st('mood', 3))] },
@@ -193,7 +223,7 @@ export default [
     ],
   },
   {
-    id: 'stage_parent', category: 'on set', ageRange: [5, 15], once: true, requires: [onSet], cast: { mother: 'mother' },
+    id: 'stage_parent', workplaces: ['stage'], category: 'on set', ageRange: [5, 15], once: true, requires: [onSet], cast: { mother: 'mother' },
     text: '{mother} has started coming to every shoot, and telling the director how your scenes should go.',
     choices: [
       { label: 'Ask her to wait in the car', outcomes: [any('She is hurt, and she does it. The set relaxes. So do you.', 'neutral', rel('mother', -6), perf(6))] },

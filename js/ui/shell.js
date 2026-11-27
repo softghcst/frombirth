@@ -6,11 +6,11 @@ import { birthdayOf, isoDate, longDate, dateNow } from '../engine/birthday.js';
 import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
-import { store, player, country, prunePending } from '../state.js';
+import { store, player, country, prunePending, log } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
 import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
-import { getEvent, resolveChoice, stillFits } from '../engine/eventEngine.js';
+import { getEvent, resolveChoice, stillFits, renderText } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
@@ -23,6 +23,7 @@ import { idolWork } from '../engine/kpop.js';
 import { portrait } from './tabs/people.js';
 import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
+import { careerWaiting } from './tabs/work.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
 import { careWaiting, checkupDue, answerCheckup } from '../engine/health/index.js';
@@ -232,6 +233,9 @@ export function mountGame(app, hooks) {
         html += lineMemoryHtml(entry, mem, enter ? ` fresh" style="--i:${Math.min(i - fresh, 8)}` : '');
         return;
       }
+      // An everyday moment: tap to answer it while its year lasts; after that it is just part of the story.
+      const asideOpen = entry.aside?.open && entry.age === p.age;
+      if (asideOpen) { html += `<p class="entry aside linked${enter}" data-aside="${i}" role="button" tabindex="0">${esc(entry.text)} <span class="aside-go">Answer ›</span></p>`; return; }
       html += `<p class="entry ${entry.kind} ${entry.tone}${link}${enter}">${esc(entry.text)}</p>`;
     });
     closeAge();
@@ -247,6 +251,10 @@ export function mountGame(app, hooks) {
     const waiting = player().alive ? careWaiting() : null;
     const self = app.querySelector('.tab-btn[data-tab="self"]');
     if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
+    // And on Work when the player's own career needs them: patients waiting, a day in court (ui/tabs/work.js).
+    const workBtn = app.querySelector('.tab-btn[data-tab="work"]');
+    const busyWork = player().alive && careerWaiting();
+    if (workBtn) { workBtn.classList.toggle('badge', busyWork); workBtn.setAttribute('aria-label', busyWork ? 'Work & School (your career needs you)' : 'Work & School'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
     // A section takes the whole screen below the header: the dock steps aside until the player goes back.
@@ -292,6 +300,45 @@ export function mountGame(app, hooks) {
     hooks.onDeath(entry);
   }
 
+  /** An everyday moment as a line in the life story: the opening of its scene, which can be answered this year. */
+  function tellAside(state, ev, pending) {
+    const whole = renderText(ev.text, pending.cast).replace(/\s+/g, ' ').trim();
+    const cut = whole.length > 170 ? `${whole.slice(0, whole.lastIndexOf(' ', 167))}…` : whole;
+    log(cut, 'aside', 'neutral');
+    state.journal[state.journal.length - 1].aside = { id: pending.id, cast: pending.cast ?? {}, open: true };
+  }
+
+  /** Answers an everyday moment from its line in the life story, while its year lasts. */
+  async function answerAside(i) {
+    const state = store.state;
+    const entry = state.journal[i];
+    if (!entry?.aside?.open || busy) return;
+    const ev = getEvent(entry.aside.id);
+    const gone = Object.values(entry.aside.cast ?? {}).some((v) => typeof v === 'string' && state.npcs[v] && !state.npcs[v].alive);
+    if (!ev || entry.age !== player().age || gone || !stillFits(entry.aside, state)) {
+      entry.aside.open = false;
+      persist(); render();
+      return;
+    }
+    busy = true;
+    renderHeader();
+    const index = await eventModal(ev, entry.aside.cast, {});
+    const before = state.journal.length;
+    const result = resolveChoice(ev, index, entry.aside.cast);
+    // The scene is already in the story (this line): only the choice and what came of it are added.
+    const again = state.journal.findIndex((x, j) => j >= before && x.kind === 'event');
+    if (again >= 0) state.journal.splice(again, 1);
+    entry.aside.open = false;
+    persist();
+    render();
+    busy = false;
+    if (result.death) { await outcomeModal(result); return finish(die(result.death)); }
+    if (player().stats.health <= 0) { await outcomeModal(result); return finish(die('failing health')); }
+    await outcomeModal(result);
+    if (state.pendingEvents.length) await runPending();
+    render();
+  }
+
   /** Walks through every queued scenario; safe to call after a reload. */
   async function runPending() {
     const state = store.state;
@@ -306,6 +353,9 @@ export function mountGame(app, hooks) {
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
       if (!ev || !stillFits(pending, state)) { state.pendingEvents.shift(); continue; } // gone, or no longer fits the life
+      // An everyday moment drawn by chance is a line in the life story, to answer if the player wants to (asideOf in
+      // engine/eventEngine.js). Settings › Everyday moments can put them back in front of the player as they happen.
+      if (pending.aside && state.settings?.everydayScenes !== 'popup') { state.pendingEvents.shift(); tellAside(state, ev, pending); continue; }
       const index = await eventModal(ev, pending.cast, { ...(turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {}), previous });
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();
@@ -517,6 +567,8 @@ export function mountGame(app, hooks) {
     back.onBack();
   });
   const openFromStory = (e) => {
+    const aside = e.target.closest('.entry[data-aside]');
+    if (aside && !busy && (e.type !== 'keydown' || e.key === 'Enter')) { leaveStory(); return answerAside(Number(aside.dataset.aside)); }
     const sportLine = e.target.closest('.entry[data-sport-screen]');
     if (sportLine && !busy && (e.type !== 'keydown' || e.key === 'Enter')) { leaveStory(); return openAthleticsAt(tabApi, { screen: sportLine.dataset.sportScreen, id: sportLine.dataset.sportId || null }); }
     const line = e.target.closest('.entry[data-animal]');

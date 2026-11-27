@@ -11,11 +11,13 @@ import * as lc from '../engine/lawCases.js';
 import * as lp from '../engine/lawPractice.js';
 import * as camp from '../engine/lawCampaign.js';
 import * as acad from '../engine/lawAcademy.js';
+import * as life from '../engine/lawLife.js';
 import { openCampaign } from './lawCampaignScreen.js';
 import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
 import { caseLaws, eraNotes } from '../engine/realLaw.js';
 import { COMPLEXITY, SIMULATION_NOTE, COURSE_BY_ID } from '../data/law.js';
+import { screenName } from './careerNames.js';
 
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
 const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}" ${attrs}>${esc(label)}</button>`;
@@ -48,6 +50,7 @@ function overview() {
   const lines = [];
   if (o.title) lines.push(kv('Position', `${o.title}${o.trackName ? `, ${o.trackName.toLowerCase()}` : ''}`));
   if (o.specialty) lines.push(kv('Practice', o.specialty.name));
+  if (p.law?.retired) lines.push(kv('Retired', `${p.law.retired.year}${p.law.retired.how === 'mandatory' ? ', at the judges\' retirement age' : ''}`));
   if (p.law?.policeYears > 0) lines.push(kv('Before law', `${p.law.policeYears} year${p.law.policeYears === 1 ? '' : 's'} in law enforcement`));
   lines.push(kv('Admitted to practice', o.admitted ? (p.law.bar.admitted.legacy ? 'Yes (before records were kept)' : String(p.law.bar.admitted.year)) : 'Not yet'));
   if (S && !S.done) lines.push(kv('Law school', `Term ${S.terms.length} of ${ls.termsFor(p)}${S.probation ? ' · on probation' : ''}`));
@@ -56,7 +59,35 @@ function overview() {
   const rec = o.track || s.completed ? `<div class="card"><h3>Record</h3>${kv('Cases completed', String(s.completed))}${kv('Trials', `${s.trials} (${s.trialsWon} won, ${s.trialsLost} lost)`)}${kv('Settlements', String(s.settlements))}${kv('Plea agreements', String(s.pleas))}${kv('Dismissals', String(s.dismissals))}${kv('Appeals', String(s.appeals))}
     ${o.legacy ? `<p class="muted">${esc(o.legacy.note)}</p>` : ''}</div>` : '';
   const why = o.why && o.track ? `<p class="muted">${esc(o.why)}</p>` : '';
-  return `${card('Where you stand', lines.join('') + why)}${rec}${o.track ? '' : `<p class="muted">${esc(o.admitted ? 'Apply for legal jobs from Find Work, or open a practice of your own.' : 'Law school, then the bar: both start from the Education & Licensing tab.')}</p>`}`;
+  return `${lawThisYear(p, o)}${card('Where you stand', lines.join('') + why)}${rec}${o.track ? '' : `<p class="muted">${esc(o.admitted ? 'Apply for legal jobs from Find Work, or open a practice of your own.' : 'Law school, then the bar: both start from the Education & Licensing tab.')}</p>`}`;
+}
+
+/**
+ * "This year" at the top of My Legal Career: where you stand, the next step, what is holding you back (named), and a
+ * button for each useful thing to do now.
+ */
+function lawThisYear(p, o) {
+  if (!o.track) return '';
+  const L = p.law ?? {};
+  const ns = nextStep();
+  const yrs = p.career?.yearsInRole ?? 0;
+  const rows = [kv('Now', `${o.title ?? 'Lawyer'}${yrs ? `, ${yrs} year${yrs === 1 ? '' : 's'} in this role` : ''}`),
+    kv('Next', ns ? `${ns.title}${ns.yearsLeft ? `, in about ${ns.yearsLeft} year${ns.yearsLeft === 1 ? '' : 's'}` : ''}` : 'You are at the top of this path')];
+  const holding = [];
+  const acts = [];
+  const open = (L.caseIds ?? []).map(lc.caseById).filter((c) => c && !c.done);
+  const waiting = open.filter((c) => c.awaiting);
+  if (waiting.length) holding.push(`${waiting.length === 1 ? 'A case needs' : `${waiting.length} cases need`} you: a day in court is waiting`);
+  if (ns?.missing?.length) holding.push(`To get there: ${ns.missing.join('; ')}`);
+  const finished = (L.history ?? []).filter((h) => !h.clinic && h.year);
+  const last = finished.length ? Math.max(...finished.map((h) => h.year)) : null;
+  const since = last != null ? store.state.year - last : null;
+  if ((since ?? o.years) >= 2 && o.years >= 2) holding.push(since == null ? 'You have not finished a case yet: promotions count completed cases' : `You have not finished a case in ${since} years: promotions count completed cases`);
+  if ((p.career?.performance ?? 60) < 55) holding.push(`Your performance at work is low (${Math.round(p.career.performance)}): finishing cases well raises it`);
+  if (open.length) acts.push(btn(waiting.length ? `Your cases (${waiting.length} need${waiting.length === 1 ? 's' : ''} you)` : `Your cases (${open.length} open)`, 'data-go="cases"', waiting.length ? 'primary' : ''));
+  if ((L.offers ?? []).length) acts.push(btn(`New cases (${L.offers.length})`, 'data-go="new"'));
+  acts.push(btn(L.autoRoutine ? 'Routine work: done for you (tap to do it yourself)' : 'Let routine work be done for you', 'data-law="autoRoutine"'));
+  return `<div class="card this-year-card"><h3>This year</h3>${rows.join('')}${holding.length ? `<div class="section-label">What is holding you back</div>${holding.map((x) => `<p class="body" style="margin:4px 0">${esc(x)}</p>`).join('')}` : ''}${acts.length ? `<div class="btn-stack" style="margin-top:8px">${acts.join('')}</div>` : ''}</div>`;
 }
 
 function education() {
@@ -128,6 +159,7 @@ function myCases() {
   return `${needs}${open.length ? `<div class="section-label">Open</div>${open.map(line).join('')}` : '<p class="empty">No open cases.</p>'}
     ${lp.trackOf() ? fitBar('Workload', Math.min(100, w.points / w.capacity * 70)) : ''}
     ${open.some(lc.hasRoutine) ? `<div class="btn-row">${btn('Handle Routine Work on All Cases', 'data-routineall', 'primary')}</div>` : ''}
+    ${(() => { const why = life.proBonoWhy(); return lp.trackOf() && lp.trackOf() !== 'judiciary' ? `<div class="section-label">Pro bono</div>${row(`data-probono ${why ? 'disabled' : ''}`, 'Take a Pro Bono Case', why || `Represent someone who cannot afford a lawyer, without a fee.${player().countryId === 'us' && store.state.year >= 1983 ? ' ABA Model Rule 6.1 asks every lawyer for 50 hours a year.' : ''}`)}` : ''; })()}
     ${lp.trackOf() ? `<div class="btn-row law-load">${btn('Ask for Support', 'data-load="support"')}${btn('Take Leave', 'data-load="leave"')}</div>` : ''}
     ${closed.length ? `<div class="section-label">Closed</div>${closed.map(line).join('')}` : ''}
     ${clientRows ? `<div class="section-label">Clients</div>${clientRows}` : ''}`;
@@ -167,6 +199,8 @@ function progress() {
     ${btn('Change Practice Area', 'data-law="specialty"')}`)}
     ${ns ? card('Next step', `${kv('Next', ns.title)}${ns.yearsLeft ? kv('Years to go', String(ns.yearsLeft)) : ''}${ns.missing.length ? `<p class="muted">Also needed: ${esc(ns.missing.join('; '))}.</p>` : '<p class="muted">Eligible. It depends on your reviews and on a place opening up.</p>'}`) : ''}
     ${campaignCard()}
+    ${(() => { const p2 = player(); const L2 = p2.law ?? {}; if (L2.retired) return ''; const age = life.judicialRetirementAge(p2.countryId); const judge = p2.career?.careerId === 'judiciary';
+      return card('Retirement', `${judge && age ? `<p class="muted">Judges here must retire at ${age}.</p>` : ''}${row(`data-retire ${p2.age < 55 ? 'disabled' : ''}`, judge ? 'Retire from the Bench' : 'Retire from the Law', p2.age < 55 ? 'From age 55' : 'Close your files and look back on the career.')}`); })()}
     ${ops.length ? card('Opportunities', ops.map((x) => row(`data-seek="${x.id}" ${x.why ? 'disabled' : ''}`, x.name, x.why || (x.how ? `Chosen by: ${x.how}` : ''))).join('')) : ''}
     ${card(o.specialty ? `Skills in ${o.specialty.name}` : 'Skills', o.skills.map((s) => fitBar(s.name, s.v)).join('') + (o.specialty ? '<p class="muted">Named for your practice area. Change areas and they take new names; what you have learned stays.</p>' : ''))}
     ${card('Reputation', o.rep.map((r) => fitBar(r.name, r.v)).join('') + '<p class="muted">Built from how you work, not how many cases you win.</p>')}`;
@@ -209,7 +243,10 @@ function history() {
   const me = store.state.player;
   const ev = lp.legalLegacy(me.archiveId ?? me.id, me.archiveId ?? me.id).filter((e) => e.privacy !== 'restricted');
   const H = ls.lawOf().history.slice().reverse().slice(0, 30);
-  return `${ev.length ? card('Milestones', ev.map((e) => kv(String(e.year), e.title)).join('')) : ''}
+  const R = ls.lawOf().retired;
+  const back = R ? card('Looking Back', `${kv('Years in law', String(R.summary.years))}${kv('Cases', `${R.summary.cases} (${R.summary.won} won or resolved well)`)}${R.summary.bench ? kv('Matters heard as a judge', String(R.summary.bench)) : ''}${R.summary.proBono ? kv('Without a fee', String(R.summary.proBono)) : ''}
+    ${R.summary.big.length ? `<div class="section-label">Remembered for</div>${R.summary.big.map((b) => `<p class="muted">${esc(b)}</p>`).join('')}` : ''}`) : '';
+  return `${back}${ev.length ? card('Milestones', ev.map((e) => kv(String(e.year), e.title)).join('')) : ''}
     ${H.length ? card('Completed cases', H.map((h) => kv(String(h.year), `${h.title}: ${h.outcome}`)).join('')) : '<p class="empty">No completed cases yet.</p>'}`;
 }
 
@@ -308,6 +345,7 @@ async function courtroom(c) {
 }
 
 async function schoolAction(id) {
+  if (id === 'autoRoutine') return say(lc.setAutoRoutine(!player().law?.autoRoutine));
   if (id === 'prepEntrance') return say(ls.prepEntrance());
   if (id === 'readLaw') return say(ls.startReadingLaw());
   if (id === 'sitEntrance') return say(ls.sitEntrance());
@@ -373,13 +411,13 @@ async function schoolAct(id) {
 /** A short guide to the legal career: shown the first time the screen opens, and again from How It Works. */
 const GUIDE = [
   ['Education & Licensing', 'Law school term by term, then the bar exam. Nobody practices until they are admitted.'],
-  ['My Cases', 'Your docket. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
+  ['My Cases', 'Your cases. Anything that needs you is at the top. Handle the Routine Steps does the paperwork; the choices that matter are yours.'],
   ['In court', 'When a case reaches a hearing or trial, you choose your opening, your objections, your questions and your closing.'],
   ['Career Progress', 'Your five skills, named for your practice area, your reputation, and the bigger jobs: partner, District Attorney, judge.'],
   ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],
 ];
 export function openGuide() {
-  const m = openModal(`<div class="eyebrow">How it works</div><h2>Your Legal Career</h2>
+  const m = openModal(`<div class="eyebrow">How it works</div><h2>${esc(screenName('law'))}</h2>
     ${GUIDE.map(([t, d], i) => `<div class="kv law-guide"><span><strong>${i + 1}. ${esc(t)}</strong></span></div><p class="muted">${esc(d)}</p>`).join('')}
     <div class="btn-row">${btn('Got It', 'data-guideok', 'primary')}</div>`, { dismissable: true });
   m.el.querySelector('[data-guideok]').addEventListener('click', () => m.close());
@@ -389,15 +427,15 @@ export function openGuide() {
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
-  const m = openModal('<div class="law-hub"></div>', { dismissable: true });
+  const m = openModal('<div class="law-hub"></div>', { dismissable: true, full: true, title: screenName('law') });
   const host = m.el.querySelector('.law-hub');
   const draw = () => {
     const ts = tabs();
     if (!ts.some(([id]) => id === tab)) tab = 'overview';
     const c = caseId ? lc.caseById(caseId) : null;
     host.innerHTML = c ? `<button type="button" class="btn small law-back" data-back>‹ All Cases</button>${casePage(c)}`
-      : `<div class="eyebrow">Every case tells a story.</div><h2>My Legal Career</h2><button type="button" class="btn small" data-guide>How It Works</button>
-        <div class="chips law-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
+      : `<div class="eyebrow">Every case tells a story.</div> <button type="button" class="btn small" data-guide>How It Works</button>
+        <div class="chips law-tabs page-tabs" role="tablist">${ts.map(([id, label]) => `<button type="button" role="tab" class="av-chip ${id === tab ? 'on' : ''}" aria-selected="${id === tab}" data-tab="${id}">${esc(label)}</button>`).join('')}</div>
         <div class="law-page">${{ overview, education, cases: myCases, new: newCases, progress, office, history }[tab]()}</div>`;
   };
   const changed = () => { api.changed?.(); draw(); };
@@ -406,7 +444,7 @@ export function openLawCareer(api, start = {}) {
     if (!t || t.disabled) return;
     let r;
     if (t.hasAttribute('data-guide')) { openGuide(); return undefined; }
-    if (t.dataset.tab) { tab = t.dataset.tab; caseId = null; return draw(); }
+    if (t.dataset.tab || t.dataset.go) { tab = t.dataset.tab ?? t.dataset.go; caseId = null; return draw(); } // a tab, or a shortcut to one
     if (t.hasAttribute('data-back')) { caseId = null; tab = 'cases'; return draw(); }
     if (t.dataset.case) { caseId = t.dataset.case; return draw(); }
     if (t.dataset.npcperson) { const n = store.state.npcs[t.dataset.npcperson]; if (n && api.openNpc) api.openNpc(n); return undefined; }
@@ -425,6 +463,16 @@ export function openLawCareer(api, start = {}) {
       await say(lp.seek(t.dataset.seek)); return changed();
     }
     if (t.hasAttribute('data-campopen')) { openCampaign({ changed }); return undefined; }
+    if (t.hasAttribute('data-probono')) {
+      const opts = life.proBonoOptions();
+      const a = await pickModal({ title: 'Pro Bono', body: 'People who cannot afford a lawyer. You will not be paid; it counts in other ways.', options: opts.map((o) => ({ value: o.id, label: o.summary })) });
+      if (a) { const r2 = life.takeProBono(a); await say(r2); if (r2.caseId) { caseId = r2.caseId; } }
+      return changed();
+    }
+    if (t.hasAttribute('data-retire')) {
+      if (await confirmModal({ title: 'Retire?', body: 'Your open cases go to colleagues, and your career in law comes to its end. It cannot be undone.', yes: 'Retire', no: 'Not Yet' })) await say(life.retire('choice'));
+      return changed();
+    }
     if (t.hasAttribute('data-routineall')) { await say(lc.routineAll()); return changed(); }
     if (t.dataset.cact) { const c = lc.caseById(caseId); if (c) await caseAction(c, t.dataset.cact); return changed(); }
     if (t.dataset.duty) {

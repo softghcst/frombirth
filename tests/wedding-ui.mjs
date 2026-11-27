@@ -68,7 +68,7 @@ for (const [k, v] of Object.entries(picks)) {
   if (k === 'honeymoon') {
     // The honeymoon, planned right here: somewhere else in the home country (no passport needed), a week, by whatever goes there.
     check(await page.locator('.wp-hm select[data-hm="country"]').count() === 1, 'choosing a honeymoon opens its plan: where, how long, how, where to stay');
-    const home = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const { COUNTRIES } = await import('/js/data/countries.js'); const p = store.state.player; return { c: p.countryId, city: COUNTRIES[p.countryId].cities.find((x) => x !== p.city) }; });
+    const home = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const { COUNTRIES } = await import('/js/data/countries.js'); const p = store.state.player; return { c: p.countryId, city: COUNTRIES[p.countryId].cities.find((x) => x !== p.city) ?? COUNTRIES[p.countryId].cities[0] }; });
     await page.selectOption('.wp-hm select[data-hm="country"]', home.c);
     await page.selectOption('.wp-hm select[data-hm="city"]', home.city);
     await page.click('.wp-hm [data-hm-nights="7"]');

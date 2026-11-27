@@ -269,7 +269,7 @@ section('D, E, I: the fellowship rivalry, the mentor, chief resident');
   const head = deptHead(h, 'surgery');
   head.age = 66;
   let changed = false;
-  for (let i = 0; i < 25 && !changed; i++) { year(); changed = h.heads.surgery !== head.id; }
+  for (let i = 0; i < 25 && !changed; i++) { if (m.offer) ladder.answerOffer(false); year(); changed = h.heads.surgery !== head.id; } // the player turns down any post offered, so a colleague succeeds
   check(changed && (employer(m.job.hospitalId).history ?? []).some((x) => /retired as chief/.test(x.text)), 'L. the chief retires, and the chronicle records the successor');
   // M. The old team reunites.
   m.completed[0].to = store.state.year - 12;

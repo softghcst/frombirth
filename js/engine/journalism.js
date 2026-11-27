@@ -35,8 +35,14 @@ import { levelOf } from './skills.js';
 import { exists } from './fame.js';
 import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
-import { polity } from './polity.js';
+import { J as casesJ } from './cases.js';
+import { polity, headTitle } from './polity.js';
+import { addGifts } from './aptitudes.js';
+import { hospitalsIn, deptHead } from './medicine/hospitals.js';
+import { DEPARTMENTS } from '../data/medicine.js';
 import { askOut } from './romance.js';
+import { post as postNews } from './economy.js';
+import { atWar, eventsIn } from './history.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -116,8 +122,10 @@ export function J(p = player()) {
     const w = levelOf('writing');
     p.journalism = { outletId: null, beat: 'local', since: null, skills: { reporting: 15 + Math.round(w / 4), interviewing: 15 + Math.round(p.stats.charm / 5), verification: 15, writing: 15 + Math.round(w / 3) },
       rep: { accuracy: 50, trust: 50, recognition: 0 }, acts: { year: null, used: 0 }, school: { articles: 0, year: null }, intern: null, history: [], awards: [], applied: {} };
+    p.journalism.skills.broadcast = 15; // presenting: kept apart from reporting
+    addGifts(p.journalism.skills, 'journalism', p); // a gift for writing, acting or singing (engine/aptitudes.js)
   }
-  p.journalism.skills.broadcast ??= 15; // presenting: kept apart from reporting
+  p.journalism.skills.broadcast ??= 15;
   p.journalism.scenes ??= {};
   return p.journalism;
 }
@@ -241,9 +249,22 @@ export function setBeat(beat) {
   if (!working(p)) return result(false, 'You are not working as a reporter.', 'neutral');
   const b = BEATS[beat];
   if (!b) return result(false, 'There is no such beat.', 'neutral');
-  if ((b.minLevel ?? 0) > (isReporter(p) ? p.career.level : myPubs(p).length >= 6 ? 9 : 0)) return result(false, 'Investigations are for senior reporters.', 'neutral');
+  const why = beatWhy(beat, p);
+  if (why) return result(false, why, 'neutral');
   J(p).beat = beat;
   return result(true, `You move to the ${b.name.toLowerCase()} beat. New assignments come with the year.`, 'neutral');
+}
+
+/** Why a beat is not open to this reporter now, or ''. */
+export function beatWhy(beat, p = player()) {
+  const b = BEATS[beat];
+  if (!b) return 'There is no such beat.';
+  if (b.assigned) return 'Wartime stories are offered, never forced: your editor asks.';
+  if ((b.minLevel ?? 0) > (isReporter(p) ? p.career.level : myPubs(p).length >= 6 ? 9 : 0)) return 'Investigations are for senior reporters.';
+  if (b.era && year() < b.era) return `Not in ${year()}: the figures are not published yet.`;
+  if (beat === 'technology' && !exists('digital')) return `Not in ${year()}: there is no tech industry yet.`;
+  if (beat === 'kpop' && p.countryId !== 'kr' && !store.state.kpop) return 'There is no K-pop scene to cover from here.';
+  return '';
 }
 
 // ---------- Stories: made from what really happened ----------
@@ -255,8 +276,12 @@ export const myPubs = (p = player()) => Object.values(S().pubs).filter((x) => x.
 
 function newStory(p, o, beat, title, extra) {
   const id = nextId('story');
+  // On some stories a rival newsroom is working on the same thing: the reporter learns of it, and must decide.
+  const rr = seeded(`${id}/race`);
+  const rivals = !['local', 'war'].includes(beat) && o ? outletsHere(p).filter((x) => x.id !== o.id && !x.ownerId) : [];
+  const race = rivals.length && rr.chance(0.25) ? { outlet: rr.pick(rivals).name, by: now() + rr.int(2, 5) } : null;
   const s = { id, beat, title, reporterId: p.id, outletId: o?.id ?? null, editorId: o?.editorId ?? null, created: now(), year: year(), deadline: beat === 'investigative' ? null : now() + 9,
-    status: 'assigned', claims: [], sources: [], docs: [], evidence: [], interviews: [], comment: null, legal: null, draft: null, review: null, pubId: null, links: {}, ...extra };
+    status: 'assigned', claims: [], sources: [], docs: [], evidence: [], interviews: [], comment: null, legal: null, draft: null, review: null, pubId: null, links: {}, race, ...extra };
   S().stories[id] = s;
   return s;
 }
@@ -296,33 +321,59 @@ function localStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
 }
 
 /** A court story, from a case in the public record (engine/investigations). Only what is public is available. */
-function courtStory(p, o, r, cases, w = { countryId: p.countryId, city: p.city }) {
-  const pub = cases.find((x) => !Object.values(S().stories).some((s) => s.links.caseId === x.caseId && s.reporterId === p.id));
+function courtStory(p, o, r, cases, w = { countryId: p.countryId, city: p.city }, only = null) {
+  const pub = only ? cases.find((x) => x.caseId === only) : cases.find((x) => !Object.values(S().stories).some((s) => s.links.caseId === x.caseId && s.reporterId === p.id));
   if (!pub) return null;
-  const s = newStory(p, o, 'court', `${pub.title}: ${pub.outcome === 'pending' ? 'the case goes on' : `the court's decision`}`, { subject: pub.defendant, links: { caseId: pub.caseId }, needsComment: true });
+  const inv = Object.values(casesJ().investigations ?? {}).find((x) => x.file?.courtCaseId === pub.caseId);
+  const f = inv?.file;
+  const title = pub.outcome === 'pending' ? 'the case goes on' : pub.outcome === 'conviction quashed on appeal' ? 'the conviction is overturned' : 'the court\'s decision';
+  const s = newStory(p, o, 'court', `${pub.title}: ${title}`, { subject: pub.defendant, links: { caseId: pub.caseId, ...(inv ? { invId: inv.id } : {}) }, needsComment: true, needsLegal: !!f?.sensitive, protectedName: !!f?.sensitive });
   const convicted = pub.outcome === 'convicted';
   const c1 = addClaim(s, { text: `${pub.defendant} was charged with ${(pub.charge ?? 'an offense').toLowerCase()}`, truth: true, important: true });
   const c2 = addClaim(s, { text: pub.outcome === 'pending' ? 'The case has not yet been decided' : `The case ended: ${pub.outcome}`, truth: true, important: true });
+  // Guilt is the court's to decide: only a conviction makes it so, and an acquittal is never reported as anything else.
   const c3 = addClaim(s, { text: `${pub.defendant} committed the crime`, kind: 'allegation', truth: convicted, important: true });
-  const c4 = addClaim(s, { text: 'A neighbor saw someone at the scene that night', truth: r.chance(0.6) });
   addDoc(s, { title: `The public court record (${pub.court ?? 'the court'})`, settles: [{ claimId: c1.id }, { claimId: c2.id }, ...(pub.outcome !== 'pending' ? [{ claimId: c3.id }] : [])] });
   addDoc(s, { title: 'The police case file', public: false, why: 'Case files are not available to a reporter, and asking someone to leak one puts you both in the wrong. The court record is public.' });
   addDoc(s, { title: 'Sealed witness statements', public: false, why: 'Sealed records stay sealed. A witness who chooses to talk can talk to you.' });
-  const wit = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(25, 75) });
-  wit.occupation = `A witness in ${pub.title.split(',')[0].toLowerCase()}`;
-  store.state.npcs[wit.id] = wit;
-  const c4true = s.claims.find((x) => x.id === c4.id).truth;
-  addSource(s, { npcId: wit.id, name: nameOf(wit), role: 'A neighbor who was there', type: 'witness', willing: 0.55, knows: [{ claimId: c4.id, says: r.chance(0.7) ? c4true : !c4true }, { claimId: c3.id, says: true }] });
+  if (f?.sensitive) addDoc(s, { title: 'The name of the person harmed', public: false, why: 'The law protects them: they are not named, by anyone.' });
+  // The case's own witnesses, those who choose to talk: their memory of that night, which may be wrong.
+  const real = f ? Object.values(f.witnesses ?? {}).filter((x) => x.willing >= 0.5 && npc(x.id)?.alive).slice(0, 2) : [];
+  for (const x of real) {
+    const clue = f.clues.find((c) => c.via === `q:${x.id}:observed`);
+    const cl = addClaim(s, { text: clue?.text ?? `${nameOf(npc(x.id))} remembers the night clearly`, truth: clue ? clue.accurate !== false : x.accurate !== false });
+    addSource(s, { npcId: x.id, name: nameOf(npc(x.id)), role: 'A witness in the case', type: 'witness', willing: x.willing * 0.8, knows: [{ claimId: cl.id, says: true }, { claimId: c3.id, says: true }] });
+  }
+  if (!real.length) {
+    const c4 = addClaim(s, { text: 'A neighbor saw someone at the scene that night', truth: r.chance(0.6) });
+    const wit = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(25, 75) });
+    wit.occupation = `A witness in ${pub.title.split(',')[0].toLowerCase()}`;
+    store.state.npcs[wit.id] = wit;
+    const c4true = s.claims.find((x) => x.id === c4.id).truth;
+    addSource(s, { npcId: wit.id, name: nameOf(wit), role: 'A neighbor who was there', type: 'witness', willing: 0.55, knows: [{ claimId: c4.id, says: r.chance(0.7) ? c4true : !c4true }, { claimId: c3.id, says: true }] });
+  }
   addSource(s, { institution: true, name: 'The defense', role: 'The defendant\'s lawyer', type: 'lawyer', willing: 0.5, knows: [{ claimId: c3.id, says: false }, { claimId: c1.id, says: true }] });
   addSource(s, { institution: true, name: pub.agency ?? 'The police', role: 'The investigating agency', type: 'official', willing: 0.35, knows: [{ claimId: c1.id, says: true }] });
   return s;
+}
+/** Takes a case from the public court record onto the reporter's desk (from the case screens). */
+export function coverCase(caseId) {
+  const p = player();
+  if (!working(p)) return result(false, 'You need to be working as a reporter: with a newsroom, freelance, or your own publication.', 'neutral');
+  if (Object.values(S().stories).some((x) => x.links.caseId === caseId && x.reporterId === p.id && open(x, p))) return result(false, 'You are already covering it.', 'neutral');
+  const cases = (() => { try { return publicCases(p); } catch { return []; } })();
+  if (!cases.some((x) => x.caseId === caseId)) return result(false, 'There is no public record of that case.', 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const o = isReporter(p) ? outlet(J(p).outletId) : ownedOutlet(p);
+  const s = courtStory(p, o, seeded(`${p.id}/cover/${caseId}`), cases, { countryId: p.countryId, city: p.city }, caseId);
+  return s ? result(true, `"${s.title}" is in your assignments. What you can use: the public record, and people willing to talk.`, 'neutral', { storyId: s.id }) : result(false, 'There is no public record of that case.', 'neutral');
 }
 
 /** A sports story, from a season really played (engine/sports): who won, and by how much. */
 function sportsStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const seasons = Object.values(store.state.sports?.seasons ?? {}).filter((x) => x.champion && x.year >= year() - 2 && !Object.values(S().stories).some((s) => s.links.seasonId === x.id && s.reporterId === p.id));
   const season = seasons.sort((a, b) => b.year - a.year)[0];
-  if (!season) return null;
+  if (!season) return athleteStory(p, o, r, w); // no league season to report: an athlete's real record instead
   const team = store.state.sports.teams?.[season.champion];
   const name = team?.name ?? 'The champions';
   const s = newStory(p, o, 'sports', `${name} win the ${season.name}`, { subject: name, links: { seasonId: season.id } });
@@ -408,10 +459,11 @@ export function assignYear(p = player()) {
   const j = J(p);
   if (!working(p) || j.assigned === year()) return [];
   j.assigned = year();
+  if (j.leave === year() && isReporter(p)) { p.stats.mood = clamp(p.stats.mood + 10); return []; }
   // On staff, stories come from the newsroom; a freelancer finds their own and sells them; an owner reports for their own.
   const o = isReporter(p) ? outlet(j.outletId) : ownedOutlet(p);
   const made = [];
-  const n = isReporter(p) ? 2 + Math.min(3, p.career.level ?? 0) : 2;
+  const n = isReporter(p) ? Math.max(1, 2 + Math.min(3, p.career.level ?? 0) - (j.lighter === year() ? 2 : 0)) : 2;
   const where = j.posting ? { countryId: j.posting.countryId, city: j.posting.city } : { countryId: p.countryId, city: p.city };
   const cases = (() => { try { return publicCases(p); } catch { return []; } })();
   for (let i = 0; i < n; i++) {
@@ -420,8 +472,8 @@ export function assignYear(p = player()) {
     // A correspondent posted abroad reports where they are posted; court, sports and music stay with the home desk.
     const abroad = !!j.posting && j.posting.countryId !== p.countryId;
     const b = abroad && ['court', 'sports', 'entertainment'].includes(beat) ? 'local' : beat;
-    const gen = { local: localStory, court: (pp, oo, rr, ww) => courtStory(pp, oo, rr, cases, ww), sports: sportsStory, entertainment: musicStory, politics: politicsStory, investigative: investigativeStory,
-      business: businessStory, science: scienceStory, kpop: kpopStory }[b] ?? localStory;
+    const gen = { local: localStory, court: (pp, oo, rr, ww) => courtStory(pp, oo, rr, cases, ww), sports: sportsStory, entertainment: (pp, oo, rr, ww) => (rr.chance(0.5) ? filmStory(pp, oo, rr, ww) ?? musicStory(pp, oo, rr, ww) : musicStory(pp, oo, rr, ww) ?? filmStory(pp, oo, rr, ww)), politics: (pp, oo, rr, ww) => (rr.chance(0.5) && lawStory(pp, oo, rr, ww)) || politicsStory(pp, oo, rr, ww) || lawStory(pp, oo, rr, ww), investigative: investigativeStory,
+      business: businessStory, science: (pp, oo, rr, ww) => (rr.chance(0.5) && hospitalStory(pp, oo, rr, ww)) || scienceStory(pp, oo, rr, ww), kpop: (pp, oo, rr, ww) => (rr.chance(0.35) && kpopAwardsStory(pp, oo, rr, ww)) || kpopStory(pp, oo, rr, ww), education: educationStory, environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, war: warStory }[b] ?? localStory;
     const s = gen(p, o, r, where) ?? localStory(p, o, r, where); // nothing on the beat this year: a local story instead
     made.push(s);
   }
@@ -453,7 +505,8 @@ export function notebook(id) {
       heard: s.evidence.filter((e) => e.claimId === c.id).map((e) => ({ from: e.type === 'doc' ? s.docs.find((d) => d.id === e.docId)?.title : sourceLabel(s, e.sourceId, e.attribution), says: e.says, offRecord: !!e.offRecord })) })),
     sources: s.sources.filter((x) => !x.hidden).map((x) => ({ id: x.id, name: x.name, role: x.role, npcId: x.npcId ?? null, institution: !!x.institution, asked: s.interviews.some((i) => i.sourceId === x.id), agreed: s.interviews.find((i) => i.sourceId === x.id)?.accepted ?? null, wantsConfidential: x.wantsConfidential })),
     docs: s.docs.filter((d) => !d.secret || d.found).map((d) => ({ id: d.id, title: d.title, public: d.public, why: d.why ?? '', read: s.evidence.some((e) => e.docId === d.id) })),
-    comment: s.comment, legal: s.legal, draft: s.draft, review: s.review, pubId: s.pubId, needsComment: !!s.needsComment, needsLegal: !!s.needsLegal };
+    comment: s.comment, legal: s.legal, draft: s.draft, review: s.review, pubId: s.pubId, needsComment: !!s.needsComment, needsLegal: !!s.needsLegal,
+    race: s.race ? { outlet: s.race.outlet, by: s.race.by, over: now() > s.race.by } : null, conflict: conflictOf(s, player())?.text ?? null, disclosed: !!s.disclosed };
 }
 function sourceLabel(s, sourceId, attribution) {
   const x = s.sources.find((y) => y.id === sourceId);
@@ -477,11 +530,13 @@ export function interview(storyId, sourceId, questions = ['saw'], attribution = 
   if (src.wantsConfidential && attribution === 'record') return result(false, `${src.name} will talk, but not on the record. Agree to keep them unnamed, or do without them.`, 'neutral');
   if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
   const r = seeded(`${s.id}/${src.id}/${year()}`);
-  const yes = r.next() < clamp(src.willing + (J(p).skills.interviewing - 40) / 250, 0.05, 0.95);
+  const known = src.npcId ? J(p).contacts?.[src.npcId] : null;
+  const yes = r.next() < clamp(src.willing + (J(p).skills.interviewing - 40) / 250 + (known ? Math.min(0.2, known.trust / 250) : 0), 0.05, 0.95);
   const rec = { sourceId, year: year(), at: now(), accepted: yes, attribution, questions, said: [] };
   s.interviews.push(rec);
   s.status = s.status === 'assigned' ? 'reporting' : s.status;
   if (!yes) return result(false, `${src.name} does not want to talk to a reporter. That is their right.`, 'neutral');
+  if (src.npcId) { const c = ((J(p).contacts ??= {})[src.npcId] ??= { since: year(), times: 0, trust: 40, stories: [] }); c.times += 1; if (!c.stories.includes(s.id)) c.stories.push(s.id); }
   grow('interviewing', 2);
   const off = attribution === 'off';
   const lines = [];
@@ -652,6 +707,13 @@ export function publish(storyId, o2 = {}) {
       return { name: att === 'record' ? x.name : `${x.role} (not named)`, attribution: att, npcId: att === 'record' ? x.npcId ?? null : null };
     }), errors, quality, readers: Math.round(o.audience * (0.3 + quality / 140)), complaint: null, corrections: [], links: { ...s.links } };
   S().pubs[id] = pub;
+  // Sources whose terms were kept trust the reporter a little more (a confidential name is never printed).
+  for (const x of s.sources) { const c = x.npcId && J(p).contacts?.[x.npcId]; if (c && s.interviews.some((i) => i.sourceId === x.id && i.accepted)) c.trust = clamp(c.trust + (errors.length ? -4 : 6)); }
+  // A rival was on it: first is not the same as right, but it does change who reads it.
+  if (s.race) { if (now() <= s.race.by) { pub.exclusive = true; pub.readers = Math.round(pub.readers * 1.3); j.rep.recognition = clamp(j.rep.recognition + 3); } else { pub.scooped = s.race.outlet; pub.readers = Math.round(pub.readers * 0.7); } }
+  // A conflict of interest not disclosed may come out.
+  const cof = conflictOf(s, p);
+  if (cof && !s.disclosed && seeded(`${id}/conflict`).chance(0.6)) { pub.conflictOut = cof.text; j.rep.trust = clamp(j.rep.trust - 8); j.history.push({ year: year(), text: `It came out that "${pub.headline}" involved ${cof.text}, undisclosed.` }); }
   s.pubId = id;
   s.status = 'published';
   // A freelance fee is paid once, for this piece, under its contract; never again for the same work.
@@ -670,6 +732,19 @@ export function publish(storyId, o2 = {}) {
   if (!j.history.some((h) => /first byline/i.test(h.text))) { j.history.push({ year: year(), text: `First byline: "${pub.headline}", ${o.name}.` }); milestone(`Your first byline: "${pub.headline}" in ${o.name}.`, 'career'); }
   for (const x of pub.sources) if (x.npcId && npc(x.npcId)) { const n = npc(x.npcId); (n.memories ??= []).push({ age: p.age, text: `Was quoted in your story "${pub.headline}".` }); }
   log(`"${pub.headline}" ran in ${o.name}. About ${pub.readers.toLocaleString('en-US')} people ${o.medium === 'print' ? 'read' : o.medium === 'online' ? 'read' : 'saw or heard'} it.`, 'system', 'good');
+  // A careful story about a case: public attention to a conviction (a review is for the authorities), or a reader with
+  // something to tell the investigator. Never a verdict, and never an arrest.
+  if (s.links.invId && !errors.length) {
+    const inv = casesJ().investigations?.[s.links.invId];
+    const stage = inv?.file?.courtCaseId && casesJ().cases?.[inv.file.courtCaseId]?.stage;
+    if (inv?.file && stage === 'sentenced') inv.file.publicAttention = year();
+    else if (inv?.file && !['acquitted', 'dismissed', 'quashed'].includes(stage) && seeded(`${id}/lead`).chance(0.4)) {
+      inv.file.leads.push({ id: `story_${id}`, text: 'After the story ran, a reader called the newsroom: they saw something that night and never told anyone. It needs checking.', why: 'A published story', status: 'open', at: now() });
+      pub.lead = true;
+    }
+  }
+  // A story that matters makes the world's news: one entry, pointing at this article (never a second event).
+  if ((pub.quality >= 75 || ['investigative', 'politics', 'war'].includes(pub.beat)) && !pub.errors.length) { postNews(o.countryId, 'press', `${o.name} reports: "${pub.headline}".`, 'neutral', false); pub.inNews = true; }
   return result(true, `It runs: "${pub.headline}", ${o.name}. About ${pub.readers.toLocaleString('en-US')} ${o.medium === 'television' ? 'viewers' : o.medium === 'radio' ? 'listeners' : 'readers'}.`);
 }
 
@@ -729,8 +804,9 @@ export function tickJournalism(p = player()) {
   for (const s of myStories(p)) if (open(s, p) && s.deadline && now() > s.deadline) s.status = 'expired';
   const own = ownedOutlet(p);
   if (own) lines.push(...ownedYear(own, p));
+  for (const id of J(p).sisters ?? []) { const o = S().outlets[id]; if (o && !o.closed && o.ownerId === p.id) lines.push(...ownedYear(o, p)); }
   keepLegacy(p);
-  if (!isReporter(p)) { if (working(p)) { const made = assignYear(p); if (made.length) lines.push(`${made.length} new leads ${j.freelance ? 'to report and sell' : `for ${own?.name}`}.`); } return lines; }
+  if (!isReporter(p)) { if (ownedOutlet(p)) newsroomScene(p); if (working(p)) { const made = assignYear(p); if (made.length) lines.push(`${made.length} new leads ${j.freelance ? 'to report and sell' : `for ${own?.name}`}.`); } return lines; }
   const lived = year() - 1;
   const pubs = myPubs(p).filter((x) => x.year === lived);
   // The ordinary run of the work: briefs and updates the newsroom runs without a decision from you.
@@ -918,6 +994,7 @@ export function applyMove(outletId) {
 function moveTo(o, p = player()) {
   const j = J(p);
   const from = outlet(j.outletId);
+  if (from?.editorId) (j.formerEditors ??= []).push({ npcId: from.editorId, outletId: from.id, until: year() });
   for (const s of myStories(p)) if (open(s, p)) s.status = 'spiked';
   const level = p.career.level ?? 0;
   hire(CAREER_BY_ID.journalist, level, 60, `You move to ${o.name}.`, { employerId: o.employerId });
@@ -937,6 +1014,7 @@ function moveTo(o, p = player()) {
 // is about real people (the editor, the senior reporter, a friend, a source quoted years ago) and real work.
 
 function sceneOptions(p) {
+  if (!isReporter(p)) return ownerScenes(p);
   const j = J(p);
   const o = outlet(j.outletId);
   const ed = npc(o.editorId);
@@ -961,7 +1039,61 @@ function sceneOptions(p) {
   // A colleague and the reporter: both adults, peers (never the editor, who supervises them), free to say no.
   const single = !p.npcIds.some((id) => ['spouse', 'partner'].includes(npc(id)?.role));
   add('jn_colleague_spark', { words: { first: senior?.firstName ?? '' }, npcId: senior?.id }, single && !!senior?.alive && p.age >= 18 && senior.age >= 18 && Math.abs(senior.age - p.age) <= 12 && senior.meters.relationship >= 60);
+  add('jn_first_assignment', { words: { editor: ed?.firstName ?? 'Your editor' } }, year() - (j.since ?? year()) <= 1 && pubs.length === 0);
+  add('jn_interview_wrong', { words: {} }, myStories(p).some((s) => s.interviews.some((i) => !i.accepted)));
+  add('jn_tip_arrives', { words: {} }, (p.career.level ?? 0) >= 1 && pubs.length >= 2);
+  add('jn_award_night', { words: { prize: j.awards.at(-1)?.name ?? '' } }, j.awards.some((a) => year() - a.year <= 1));
+  add('jn_deadline', { words: { title: myStories(p).find((s) => open(s, p) && s.deadline && s.deadline - now() <= 3)?.title ?? '' } }, myStories(p).some((s) => open(s, p) && s.deadline && s.deadline - now() <= 3));
+  add('jn_viral', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && (j.guests ?? []).some((g) => !g.declined && g.approach === 'fair' && g.delivery >= 60));
+  const segs = pubs.filter((x) => x.segment);
+  const firstPub = pubs.length === 1 ? pubs[0] : null;
+  add('jn_first_byline', { words: { headline: firstPub?.headline ?? '', outlet: o.name } }, !!firstPub);
+  const disputed = myStories(p).find((s) => open(s, p) && s.claims.some((c) => statusOf(s, c) === 'disputed'));
+  add('jn_two_sources', { words: { title: disputed?.title ?? '' } }, !!disputed);
+  const silent = myStories(p).find((s) => open(s, p) && s.needsComment && !s.comment && s.interviews.length >= 2);
+  add('jn_no_comment', { words: { subject: silent?.subject ?? '' } }, !!silent);
+  add('jn_headline_debate', { words: { editor: ed?.firstName ?? 'Your editor' } }, pubs.length >= 3);
+  const fixed = pubs.find((x) => x.corrections.length);
+  add('jn_correction', { words: { headline: fixed?.headline ?? '' } }, !!fixed);
+  add('jn_one_editor_job', { words: { first: senior?.firstName ?? '', outlet: o.name } }, (p.career.level ?? 0) === 2 && !!senior?.alive);
+  add('jn_divided', { words: { outlet: o.name } }, pubs.length >= 4);
+  add('jn_new_generation', { words: {} }, (p.career.level ?? 0) >= 3 && p.age >= 40);
+  add('jn_first_live', { words: { headline: segs[0]?.headline ?? '' } }, segs.length === 1);
+  add('jn_breaking', { words: { outlet: o.name } }, isBroadcast(o) && segs.length >= 2);
+  add('jn_national_offer', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && year() - j.anchor.since >= 3 && !j.anchor.national);
+  const old = (j.formerEditors ?? []).map((x) => ({ ...x, n: npc(x.npcId) })).find((x) => x.n?.alive && x.n.meters.relationship >= 55 && year() - x.until >= 3);
+  const bigger = outletsHere(p).filter((x) => x.id !== o.id && OUTLET_KINDS[x.kind].reach > OUTLET_KINDS[o.kind].reach).sort((a, b) => OUTLET_KINDS[b.kind].reach - OUTLET_KINDS[a.kind].reach)[0];
+  add('jn_old_editor', { words: { editor: old ? nameOf(old.n) : '', first: old?.n.firstName ?? '', outlet: bigger?.name ?? '' }, npcId: old?.npcId }, !!old && !!bigger);
+  const war = eventsIn(p.countryId).find((e) => e.war);
+  add('jn_war_assignment', { words: { war: war?.name ?? '', outlet: o.name } }, !!war && (p.career.level ?? 0) >= 1 && j.warAsked !== year());
+  const openOf = (f) => myStories(p).find((x) => open(x, p) && f(x));
+  const idolStory = openOf((x) => x.beat === 'kpop' && x.sources.some((y) => y.type === 'entertainer'));
+  add('jn_idol_interview', { words: { idol: idolStory?.sources.find((y) => y.type === 'entertainer')?.name ?? '', group: idolStory?.subject ?? '' }, npcId: idolStory?.sources.find((y) => y.type === 'entertainer')?.npcId }, !!idolStory);
+  const sportStory = openOf((x) => x.beat === 'sports' && x.sources.some((y) => y.type === 'athlete'));
+  add('jn_athlete_win', { words: { athlete: sportStory?.sources[0]?.name ?? '', subject: sportStory?.subject ?? '' } }, !!sportStory);
+  const film = openOf((x) => x.links.productionId);
+  add('jn_premiere', { words: { title: film?.subject ?? '' } }, !!film);
+  add('jn_guest_changes', { words: { show: j.anchor?.show ?? '' } }, !!j.anchor && (j.guests ?? []).filter((g) => !g.declined).length >= 2);
+  const oldCase = pubs.find((x) => x.links?.caseId && year() - x.year >= 10);
+  add('jn_old_case', { words: { headline: oldCase?.headline ?? '', year: String(oldCase?.year ?? '') } }, !!oldCase);
+  const lettered = pubs.find((x) => ['investigative', 'business', 'environment', 'technology'].includes(x.beat) && year() - x.year <= 2 && !x.letter);
+  add('jn_legal_letter', { words: { headline: lettered?.headline ?? '' } }, !!lettered);
+  const soft = myStories(p).find((x) => open(x, p) && x.needsComment && x.links.employerId);
+  add('jn_owner_pressure', { words: { outlet: o.name, subject: soft?.subject ?? '' } }, !!soft && pubs.length >= 3);
   add('jn_retirement_interview', { words: { years: String(year() - (j.since ?? year())) } }, p.age >= 62 && year() - (j.since ?? year()) >= 10);
+  return out;
+}
+/** An owner's moments: an investor, a growing company, the first hire. */
+function ownerScenes(p) {
+  const j = J(p);
+  const o = ownedOutlet(p);
+  const seen = (j.scenes ??= {});
+  const out = [];
+  const add = (id, cast, when = true) => { if (when && !seen[id]) out.push({ id, cast }); };
+  const offer = investorOffer(p);
+  add('jn_investor', { words: { outlet: o.name, amount: offer ? fmtMoney(offer.amount, country()) : '' } }, !!offer && year() - o.founded >= 2);
+  add('jn_first_hire', { words: { outlet: o.name, first: npc(o.staff[0]?.npcId)?.firstName ?? '' } }, o.staff.length === 1 && o.staff[0].role === 'reporter');
+  add('jn_expands', { words: { outlet: o.name } }, ownedTitles(p).length >= 2 || o.staff.length >= 3);
   return out;
 }
 /** Picks this year's newsroom scene, if any. */
@@ -980,6 +1112,7 @@ function newsroomScene(p) {
 /** The answer to a newsroom scene (effect type 'journalism'). @returns {string} a line for the outcome */
 export function journalismChoice(value) {
   const p = player();
+  if (value.startsWith('press:')) return answerPress(value.slice(6), p);
   const j = J(p);
   const o = outlet(j.outletId);
   const ed = o && npc(o.editorId);
@@ -1010,6 +1143,93 @@ export function journalismChoice(value) {
     case 'retire:yes': return leaveSpecial().text;
     case 'spark:ask': { const n = npc(j.sceneCast?.npcId); return n ? askOut(n.id).text : ''; }
     case 'spark:friends': rel(senior, 6); return '';
+    case 'byline:frame': p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'byline:work': grow('reporting', 1); return '';
+    case 'disagree:dig': grow('verification', 3); return '';
+    case 'disagree:pick': return 'A disputed claim stays disputed, whoever sounds surer.';
+    case 'nocomment:note': j.rep.trust = clamp(j.rep.trust + 1); return '';
+    case 'nocomment:chase': grow('interviewing', 1); return '';
+    case 'headline:straight': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'headline:punchy': j.rep.recognition = clamp(j.rep.recognition + 2); j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'correction:own': j.rep.accuracy = clamp(j.rep.accuracy + 2); rel(ed, 3); return '';
+    case 'correction:quiet': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'editorjob:go': rel(senior, -3); j.applyEditor = year(); return '';
+    case 'editorjob:back': rel(senior, 8); return '';
+    case 'divided:speak': rel(ed, -2); j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'divided:out': return '';
+    case 'mentor:yes': {
+      const n = makeNpc({ role: 'colleague', countryId: p.countryId, age: 23, relationship: 60 });
+      n.occupation = 'Junior reporter'; n.flags.title = `A junior reporter you mentor at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Junior reporter' };
+      store.state.npcs[n.id] = n; meet(n, n.flags.title, p); (o.staff ??= []).push({ npcId: n.id, role: 'reporter', since: year() });
+      j.history.push({ year: year(), text: `Began mentoring ${nameOf(n)}.` });
+      return `${nameOf(n)} is now someone you know.`;
+    }
+    case 'mentor:no': return '';
+    case 'live:steady': grow('broadcast', 2); return '';
+    case 'live:shaky': grow('broadcast', 1); return '';
+    case 'breaking:confirmed': j.rep.trust = clamp(j.rep.trust + 3); return '';
+    case 'breaking:guess': j.rep.recognition = clamp(j.rep.recognition + 2); j.rep.trust = clamp(j.rep.trust - 5); return '';
+    case 'national:take': j.anchor.national = year(); j.rep.recognition = clamp(j.rep.recognition + 8); j.history.push({ year: year(), text: 'Began anchoring a national broadcast.' }); milestone('Began anchoring a national news broadcast.', 'career'); return '';
+    case 'national:stay': rel(ed, 6); j.anchor.national = -1; return '';
+    case 'investor:take':
+    case 'investor:take_push': {
+      const own = ownedOutlet(p);
+      const off = investorOffer(p);
+      if (!own || !off) return '';
+      const push = value === 'investor:take_push';
+      const amount = push ? Math.round(off.amount * 1.4) : off.amount;
+      p.finance.cash += amount;
+      own.investor = { since: year(), share: push ? 0.35 : off.share, pushy: push, amount };
+      own.history.push({ year: year(), text: `Took ${fmtMoney(amount, country())} from an investor for ${Math.round(own.investor.share * 100)}% of its profits.` });
+      return `${fmtMoney(amount, country())} arrives. ${Math.round(own.investor.share * 100)}% of every profit now goes to them${push ? ', and they want sharper headlines' : ''}.`;
+    }
+    case 'investor:no': { const own = ownedOutlet(p); if (own) own.history.push({ year: year(), text: 'Turned down an investor.' }); return ''; }
+    case 'hire:welcome': { const own = ownedOutlet(p); rel(npc(own?.staff[0]?.npcId), 8); return ''; }
+    case 'hire:brief': return '';
+    case 'expand:celebrate': p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'expand:careful': return '';
+    case 'oldeditor:yes': {
+      const target = outletsHere(p).filter((x) => x.id !== o.id && OUTLET_KINDS[x.kind].reach > OUTLET_KINDS[o.kind].reach).sort((a, b) => OUTLET_KINDS[b.kind].reach - OUTLET_KINDS[a.kind].reach)[0];
+      return target ? moveTo(target, p).text : '';
+    }
+    case 'oldeditor:no': return '';
+    case 'war:yes': { j.warAsked = year(); const r = seeded(`${p.id}/war/${year()}`); const s = warStory(p, o, r, { countryId: p.countryId, city: p.city }); return s ? `"${s.title}" is in your assignments.` : ''; }
+    case 'war:no': j.warAsked = year(); return 'Your editor understands. Nobody has to go.';
+    case 'idol:music': { const st = myStories(p).find((x) => open(x, p) && x.beat === 'kpop'); rel(npc(st?.sources.find((y) => y.type === 'entertainer')?.npcId), 6); grow('interviewing', 2); return ''; }
+    case 'idol:rumor': { const st = myStories(p).find((x) => open(x, p) && x.beat === 'kpop'); rel(npc(st?.sources.find((y) => y.type === 'entertainer')?.npcId), -8); j.rep.trust = clamp(j.rep.trust - 3); return ''; }
+    case 'athlete:fair': grow('interviewing', 2); return '';
+    case 'athlete:injury': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'premiere:honest': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'premiere:kind': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'guest:correct': j.rep.trust = clamp(j.rep.trust + 3); grow('broadcast', 1); return '';
+    case 'guest:let': j.rep.trust = clamp(j.rep.trust - 2); return '';
+    case 'oldcase:reread': { const x = myPubs(p).find((y) => y.links?.caseId && year() - y.year >= 10); if (x) j.history.push({ year: year(), text: `Went back to "${x.headline}", ${year() - x.year} years on. It is still in the archive, as it ran.` }); j.rep.accuracy = clamp(j.rep.accuracy + 1); return ''; }
+    case 'oldcase:leave': return '';
+    case 'letter:review': case 'letter:ignore': {
+      const x = myPubs(p).find((y) => ['investigative', 'business', 'environment', 'technology'].includes(y.beat) && year() - y.year <= 2 && !y.letter);
+      if (!x) return '';
+      x.letter = { year: year(), answer: value };
+      const wrong = x.errors.filter((id) => !x.corrections.length);
+      if (value === 'letter:ignore') { if (wrong.length) { j.rep.trust = clamp(j.rep.trust - 5); return 'The letter was right about one thing, and it stays uncorrected.'; } return ''; }
+      if (wrong.length) { const c = x.claims.find((y) => y.id === wrong[0]); x.corrections.push({ at: now(), text: `Correction: an earlier version of this story said "${c?.text ?? 'something'}". That was not right.` }); j.rep.accuracy = clamp(j.rep.accuracy + 2); return 'Your notes show the letter is right on one point. A correction runs. On the rest, the story stands.'; }
+      j.rep.trust = clamp(j.rep.trust + 2);
+      return 'Your notes hold up on every point. Your editor writes back: the story stands.';
+    }
+    case 'owner:decline': j.rep.trust = clamp(j.rep.trust + 3); rel(ed, 2); j.history.push({ year: year(), text: 'Declined a request to soften a story, and wrote down why.' }); return '';
+    case 'owner:review': rel(ed, 5); grow('verification', 1); return '';
+    case 'owner:soften': j.rep.trust = clamp(j.rep.trust - 5); return '';
+    case 'first:ask': rel(ed, 5); grow('reporting', 2); return '';
+    case 'first:alone': grow('reporting', 1); return '';
+    case 'refused:respect': j.rep.trust = clamp(j.rep.trust + 2); return '';
+    case 'refused:press': j.rep.trust = clamp(j.rep.trust - 4); return '';
+    case 'tip:take': { const r = seeded(`${p.id}/tip/${year()}`); const s = investigativeStory(p, o, r, { countryId: p.countryId, city: p.city }); return s ? `"${s.title}" is in your assignments. It may not stand up; most tips do not.` : ''; }
+    case 'tip:pass': return '';
+    case 'award:thank': rel(ed, 6); p.stats.mood = clamp(p.stats.mood + 6); return '';
+    case 'award:quiet': p.stats.mood = clamp(p.stats.mood + 4); return '';
+    case 'deadline:push': grow('writing', 1); p.stats.mood = clamp(p.stats.mood - 3); return '';
+    case 'deadline:ask': rel(ed, 2); { const s = myStories(p).find((x) => open(x, p) && x.deadline && x.deadline - now() <= 3); if (s) s.deadline += 3; } return 'Your editor gives you three more months.';
+    case 'viral:enjoy': j.rep.recognition = clamp(j.rep.recognition + 4); return '';
+    case 'viral:back': j.rep.trust = clamp(j.rep.trust + 2); return '';
     case 'retire:no': return '';
     default: return '';
   }
@@ -1169,11 +1389,20 @@ function ownedYear(o, p) {
   const good = pubs.filter((x) => !x.errors.length).reduce((n, x) => n + x.quality, 0);
   const bad = pubs.filter((x) => x.errors.length && !x.corrections.length).length;
   // Readers come for the work, and drift away without it.
-  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
+  const research = o.research ?? 0;
+  const bureaus = (o.bureaus ?? []).length;
+  const pushy = o.investor?.pushy ? 0.04 : 0; // sensational coverage: readers now, trust later
+  // Loyalty is its own thing: readers who stay, because the work holds up. A small loyal readership can last.
+  const fixedRight = pubs.filter((x) => x.errors.length && x.corrections.length).length;
+  o.loyalty = Math.round(clamp((o.loyalty ?? 50) + good / 300 + fixedRight - bad * 6 - (pushy ? 5 : 0) + (o.research ?? 0)));
+  const growth = 1 + good / 2500 + reporters * 0.06 + (o.editorId ? 0.03 : 0) + research * 0.025 + bureaus * 0.05 + pushy + (o.loyalty - 50) / 400 - bad * 0.08 - 0.1 + (r.next() - 0.5) * 0.1;
   o.audience = Math.max(30, Math.round(o.audience * growth + good * 3));
   const revenue = Math.round(localWage(k.perReader * o.audience, c));
-  const costs = Math.round(localWage(k.upkeep, c)) + o.staff.reduce((n, x) => n + x.salary, 0);
-  const net = revenue - costs;
+  const costs = Math.round(localWage(k.upkeep * (1 + research * 0.35 + bureaus * 0.4), c)) + o.staff.reduce((n, x) => n + x.salary, 0);
+  let net = revenue - costs;
+  if (o.investor && net > 0) { const cut = Math.round(net * o.investor.share); net -= cut; o.investor.paid = (o.investor.paid ?? 0) + cut; }
+  if (pushy) o.reputation = Math.round(clamp(o.reputation - 4));
+  o.reputation = Math.round(clamp(o.reputation + research));
   p.finance.cash += net;
   if (net > 0) p.finance.lifetimeEarned = (p.finance.lifetimeEarned ?? 0) + net;
   o.reputation = Math.round(clamp(o.reputation + good / 200 - bad * 5));
@@ -1189,7 +1418,7 @@ export function closePublication() {
   o.staff = [];
   o.closed = year();
   o.history.push({ year: year(), text: 'Closed.' });
-  J(p).owned = null;
+  J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Closed ${o.name}.` });
   return result(true, `${o.name} publishes its last edition. The archive stays up.`, 'neutral');
 }
@@ -1206,9 +1435,135 @@ export function sellPublication() {
   o.soldTo = 'a buyer';
   o.sold = year();
   o.history.push({ year: year(), text: `Sold for ${fmtMoney(price, country())}.` });
-  J(p).owned = null;
+  J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Sold ${o.name}.` });
   return result(true, `You sell ${o.name} for ${fmtMoney(price, country())}. It carries on under its new owner.`);
+}
+
+// ---------- More beats: education, environment, technology, arts, data ----------
+
+// An expert, an official or a critic the reporter has spoken to before comes back: the same person, a contact now.
+const RECURRING = /^(Economist|Environmental scientist|Critic|Independent researcher|Business analyst|Official at the city hall)$/;
+const person = (w, r, job, age = [28, 62]) => {
+  if (RECURRING.test(job)) {
+    const c = Object.keys(J(player()).contacts ?? {}).map(npc).find((n) => n?.alive && n.occupation === job && n.flags?.contactCountry === w.countryId);
+    if (c && r.chance(0.7)) return c;
+  }
+  const n = makeNpc({ role: 'acquaintance', countryId: w.countryId, age: r.int(age[0], age[1]) }); n.occupation = job; n.flags.contactCountry = w.countryId; store.state.npcs[n.id] = n; return n; };
+const employersOf = (w, families) => cityEmployers(w.countryId, w.city).filter((x) => families.includes(x.family));
+
+/** An education story: a real school in the city (or a college that employs people there), its published inspection. */
+function educationStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const schools = Object.values(store.state.schools ?? {}).filter((x) => x.countryId === w.countryId && x.city === w.city && x.kind !== 'home');
+  const sc = schools.length ? r.pick(schools) : employersOf(w, ['education'])[0];
+  if (!sc) return null;
+  const name = sc.name;
+  const better = r.chance(0.55);
+  const s = newStory(p, o, 'education', better ? `Results improve at ${name}` : `${name} under pressure`, { subject: name, links: sc.stage ? { schoolId: sc.id } : { employerId: sc.id }, needsComment: !better });
+  const c1 = addClaim(s, { text: `${name} was inspected this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: better ? 'Its results rose this year' : 'Its results fell this year', truth: r.chance(0.7) });
+  const c3 = addClaim(s, { text: 'Classes are bigger than they were', truth: r.chance(0.5) });
+  const c4 = addClaim(s, { text: 'Parents are happy with the school', kind: 'opinion', truth: true });
+  addDoc(s, { title: `The published inspection of ${name}`, settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: 'Pupils\' records', public: false, why: 'Children\'s school records are private. The inspection reports on the school, not the pupils.' });
+  const head = person(w, r, `Head of ${name}`, [40, 62]);
+  const teacher = person(w, r, `Teacher at ${name}`, [24, 60]);
+  const parent = person(w, r, `Parent at ${name}`, [30, 50]);
+  const t2 = s.claims[1].truth; const t3 = s.claims[2].truth;
+  addSource(s, { npcId: head.id, name: nameOf(head), role: 'The head of the school', type: 'official', willing: 0.7, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: better }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: teacher.id, name: nameOf(teacher), role: 'A teacher', type: 'citizen', willing: 0.5, wantsConfidential: true, knows: [{ claimId: c3.id, says: t3 }, { claimId: c2.id, says: r.chance(0.8) ? t2 : !t2 }] });
+  addSource(s, { npcId: parent.id, name: nameOf(parent), role: 'A parent', type: 'community', willing: 0.8, knows: [{ claimId: c4.id, says: true }, { claimId: c3.id, says: r.chance(0.7) ? t3 : !t3 }] });
+  return s;
+}
+
+/** An environment story: a real employer in the city and the public monitoring of the river or air nearby. */
+function environmentStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const list = employersOf(w, ['trades', 'transport', 'land', 'science']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const what = r.pick(['the river', 'the air near the site', 'the groundwater']);
+  const s = newStory(p, o, 'environment', `What is in ${what}? Questions near ${e.name}`, { subject: e.name, links: { employerId: e.id }, needsComment: true });
+  const c1 = addClaim(s, { text: `Monitoring of ${what} near ${e.name} was published this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `Readings near ${e.name} were above the permitted limit`, truth: r.chance(0.4) });
+  const c3 = addClaim(s, { text: `${e.name} is to blame for it`, kind: 'allegation', truth: s.claims[1].truth && r.chance(0.5) });
+  const c4 = addClaim(s, { text: 'People nearby are worried', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The environment agency\'s published monitoring', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: `${e.name}'s internal emails`, public: false, why: 'A company\'s private correspondence is not available. Its permits and the monitoring are.' });
+  const sci = person(w, r, 'Environmental scientist', [30, 64]);
+  const resident = person(w, r, `Lives near ${e.name}`, [25, 80]);
+  const t2 = s.claims[1].truth; const t3 = s.claims[2].truth;
+  addSource(s, { institution: true, name: e.name, role: 'The company\'s press office', type: 'company', willing: 0.5, knows: [{ claimId: c2.id, says: false }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: sci.id, name: nameOf(sci), role: 'An independent environmental scientist', type: 'expert', willing: 0.75, knows: [{ claimId: c2.id, says: r.chance(0.85) ? t2 : !t2 }, { claimId: c3.id, says: r.chance(0.6) ? t3 : !t3 }] });
+  addSource(s, { npcId: resident.id, name: nameOf(resident), role: 'A neighbor of the site', type: 'community', willing: 0.85, knows: [{ claimId: c4.id, says: true }, { claimId: c3.id, says: true }] });
+  return s;
+}
+
+/** A technology story: a real tech company in the city, a product launch, and what users say. Never users' data. */
+function technologyStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  if (!exists('digital')) return null;
+  const list = employersOf(w, ['tech']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const thing = r.pick(['app', 'payment service', 'booking system', 'learning platform']);
+  const s = newStory(p, o, 'technology', `${e.name} launches a new ${thing}`, { subject: e.name, links: { employerId: e.id }, needsComment: true });
+  const users = r.int(5, 90) * 1000;
+  const inflated = r.chance(0.45);
+  const c1 = addClaim(s, { text: `${e.name} launched its ${thing} this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `It has ${(inflated ? users * 3 : users).toLocaleString('en-US')} users`, truth: !inflated });
+  const c3 = addClaim(s, { text: `The ${thing} leaked users' details`, kind: 'allegation', truth: r.chance(0.2) });
+  const c4 = addClaim(s, { text: 'Users like it', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${e.name}'s published company filing`, settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'The data regulator\'s public register of reported breaches', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The users\' accounts', public: false, why: 'People\'s accounts and data are private. No story needs them.' });
+  const eng = person(w, r, `Engineer at ${e.name}`, [23, 50]);
+  const user = person(w, r, `Uses the ${thing}`, [18, 70]);
+  addSource(s, { institution: true, name: e.name, role: 'The company\'s press office', type: 'company', willing: 0.7, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c3.id, says: false }] });
+  addSource(s, { npcId: eng.id, name: nameOf(eng), role: 'An engineer at the company', type: 'citizen', willing: 0.45, wantsConfidential: true, knows: [{ claimId: c2.id, says: !inflated }, { claimId: c3.id, says: s.claims[2].truth }] });
+  addSource(s, { npcId: user.id, name: nameOf(user), role: 'Someone who uses it', type: 'community', willing: 0.85, knows: [{ claimId: c4.id, says: true }, { claimId: c1.id, says: true }] });
+  return s;
+}
+
+/** An arts story: a real theater, orchestra or studio in the city opens its season. What critics think is opinion. */
+function artsStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const list = employersOf(w, ['arts']);
+  const e = list.length ? r.pick(list) : null;
+  if (!e) return null;
+  const work = r.pick(['a new play', 'a season of new music', 'a revival of an old favorite', 'an exhibition of local artists']);
+  const s = newStory(p, o, 'arts', `${e.name} opens ${work}`, { subject: e.name, links: { employerId: e.id } });
+  const sold = r.chance(0.5);
+  const c1 = addClaim(s, { text: `${e.name} opened ${work} this year`, truth: true, important: true });
+  const c2 = addClaim(s, { text: 'The opening night sold out', truth: sold });
+  const c3 = addClaim(s, { text: `${e.name} lost its public funding`, truth: r.chance(0.3) });
+  const c4 = addClaim(s, { text: 'It is the best thing in the city this year', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${e.name}'s published season program`, settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'The arts council\'s published grants', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The performers\' contracts', public: false, why: 'What performers are paid under contract is private. Public grants are not.' });
+  const dir = person(w, r, `Director at ${e.name}`, [32, 70]);
+  const critic = person(w, r, 'Critic', [28, 70]);
+  const t3 = s.claims[2].truth;
+  addSource(s, { npcId: dir.id, name: nameOf(dir), role: 'The director', type: 'official', willing: 0.85, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c3.id, says: t3 }] });
+  addSource(s, { npcId: critic.id, name: nameOf(critic), role: 'A critic who was there', type: 'expert', willing: 0.8, knows: [{ claimId: c4.id, says: r.chance(0.6) }, { claimId: c2.id, says: sold }] });
+  addSource(s, { institution: true, name: `${e.name} box office`, role: 'The box office', type: 'company', willing: 0.6, knows: [{ claimId: c2.id, says: sold }] });
+  return s;
+}
+
+/** A data story: the country's real economy this year (engine/economy.js), from the published statistics. */
+function dataStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  if (year() < 1950) return null;
+  const ph = store.state.world?.places?.[w.countryId]?.phase ?? 'steady';
+  const cn = COUNTRIES[w.countryId]?.name ?? 'the country';
+  const s = newStory(p, o, 'data', `What the figures say about ${cn} this year`, { subject: `${cn}'s statistics office`, links: { phase: ph } });
+  const c1 = addClaim(s, { text: 'Unemployment rose this year', truth: ph === 'slump', important: true });
+  const c2 = addClaim(s, { text: 'House prices rose this year', truth: ph === 'boom' });
+  const c3 = addClaim(s, { text: `${w.city} is doing worse than the rest of ${cn}`, truth: r.chance(0.4) });
+  const c4 = addClaim(s, { text: 'The government\'s policies are working', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${cn}'s published labor and housing figures`, settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: 'The figures broken down by city', settles: [{ claimId: c3.id }], cost: 2 });
+  addDoc(s, { title: 'Individual tax returns', public: false, why: 'Nobody\'s tax return is a statistic. The published figures are.' });
+  const eco = person(w, r, 'Economist', [32, 66]);
+  addSource(s, { npcId: eco.id, name: nameOf(eco), role: 'An economist', type: 'expert', willing: 0.8, knows: [{ claimId: c1.id, says: ph === 'slump' }, { claimId: c3.id, says: r.chance(0.7) ? s.claims[2].truth : !s.claims[2].truth }] });
+  addSource(s, { institution: true, name: 'The government', role: 'A government spokesperson', type: 'official', willing: 0.7, knows: [{ claimId: c1.id, says: false }, { claimId: c4.id, says: true }, { claimId: c2.id, says: ph !== 'slump' }] });
+  return s;
 }
 
 // ---------- More beats: business, science, K-pop ----------
@@ -1216,10 +1571,13 @@ export function sellPublication() {
 /** A business story: a real employer's public filings, a spokesperson, an analyst. Never its bank accounts. */
 function businessStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const list = cityEmployers(w.countryId, w.city).filter((x) => x.family !== 'media');
-  const e = list.length ? r.pick(list) : null;
+  // A business the reporter covered years ago, if there is one: the same business, grown or not.
+  const before = myPubs(p).filter((x) => x.links?.employerId && year() - x.year >= 3 && employer(x.links.employerId) && !Object.values(S().stories).some((y) => y.links.callbackOf === x.id));
+  const back = before.length && r.chance(0.5) ? r.pick(before) : null;
+  const e = back ? employer(back.links.employerId) : list.length ? r.pick(list) : null;
   if (!e) return null;
   const growing = r.chance(0.55);
-  const s = newStory(p, o, 'business', growing ? `${e.name} expands in ${w.city}` : `Hard times at ${e.name}`, { subject: e.name, links: { employerId: e.id }, needsComment: true });
+  const s = newStory(p, o, 'business', back ? `${e.name}, ${year() - back.year} years after you first wrote about it` : growing ? `${e.name} expands in ${w.city}` : `Hard times at ${e.name}`, { subject: e.name, links: { employerId: e.id, ...(back ? { callbackOf: back.id } : {}) }, needsComment: true });
   const n = r.int(12, 140);
   const c1 = addClaim(s, { text: growing ? `${e.name} is taking on ${n} more staff` : `${e.name} is cutting ${n} jobs`, truth: r.chance(0.75), important: true });
   const c2 = addClaim(s, { text: `${e.name}'s sales ${growing ? 'rose' : 'fell'} last year`, truth: r.chance(0.7) });
@@ -1243,7 +1601,8 @@ function businessStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
 function scienceStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const topics = [['a new exercise program', 'back pain'], ['a sleep routine', 'memory in older adults'], ['a reading program', 'children\'s attention'], ['a change in diet', 'blood pressure']];
   const [what, helps] = r.pick(topics);
-  const inst = `${w.city} University Hospital`;
+  const real = (() => { try { const l = hospitalsIn(w.countryId, w.city).map((x) => x.e); return l.find((e) => e.size === 'large') ?? l[0]; } catch { return null; } })();
+  const inst = real?.name ?? `${w.city} University Hospital`;
   const s = newStory(p, o, 'science', `A study on ${what} and ${helps}`, { subject: inst });
   const size = r.int(40, 400);
   const c1 = addClaim(s, { text: `Researchers at ${inst} published a study this year`, truth: true, important: true });
@@ -1282,7 +1641,14 @@ function kpopStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   const rumor = lead ? addClaim(s, { text: `${npc(lead)?.firstName} is secretly dating someone`, kind: 'allegation', truth: false }) : null;
   addDoc(s, { title: `The agency's release announcement and official profile`, settles: [{ claimId: c1.id }, ...(c3 ? [{ claimId: c3.id }] : [])] });
   addDoc(s, { title: 'The music show results', settles: [{ claimId: c2.id }] });
-  for (const id of members.slice(0, 2)) addSource(s, { npcId: id, name: nameOf(npc(id)), role: `Of ${g.name}`, type: 'entertainer', willing: 0.45, knows: [{ claimId: c1.id, says: true }, ...(c3 ? [{ claimId: c3.id, says: true }] : []), ...(rumor ? [{ claimId: rumor.id, says: false }] : [])] });
+  // Members by their official positions as the agency lists them (two at most each): the leader first, then the mains.
+  const POS = (id) => (g.positions?.[id] ?? []);
+  const rank = (id) => (POS(id).includes('leader') ? 0 : POS(id).some((x) => /^main/.test(x)) ? 1 : POS(id).length ? 2 : 3);
+  const talk = [...members].sort((a2, b2) => rank(a2) - rank(b2)).slice(0, 3);
+  const roleOf = (id) => (POS(id).length ? `${POS(id).map((x) => x.replace(/_/g, ' ')).join(' and ').replace(/^./, (c) => c.toUpperCase())} of ${g.name}` : `Of ${g.name}`);
+  for (const id of talk) addSource(s, { npcId: id, name: nameOf(npc(id)), role: roleOf(id), type: 'entertainer', willing: 0.45, knows: [{ claimId: c1.id, says: true }, ...(c3 ? [{ claimId: c3.id, says: true }] : []), ...(rumor ? [{ claimId: rumor.id, says: false }] : [])] });
+  const prodId = rel.credits?.producer;
+  if (prodId && npc(prodId)?.alive) addSource(s, { npcId: prodId, name: nameOf(npc(prodId)), role: `Producer of "${rel.title}"`, type: 'entertainer', willing: 0.65, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: won }] });
   addSource(s, { institution: true, name: 'The agency', role: 'Press office', type: 'company', willing: 0.4, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: won }] });
   addSource(s, { institution: true, name: 'Fan accounts online', role: 'Unverified posts', type: 'citizen', willing: 0.95, knows: rumor ? [{ claimId: rumor.id, says: true }] : [] });
   return s;
@@ -1341,18 +1707,652 @@ export function endPosting(p = player()) {
 
 export function familyJournalism() {
   const by = new Map();
-  for (const x of Object.values(S().pubs)) {
+  // The family's own journalists: the player, and the ancestors whose record the world keeps. Other people's
+  // articles (including ones about this family) are listed as press, not as the family's work.
+  const family = new Set([player().id, ...Object.keys(S().legacy ?? {})]);
+  for (const x of Object.values(S().pubs).filter((y) => family.has(y.reporterId))) {
     if (!by.has(x.reporterId)) by.set(x.reporterId, { id: x.reporterId, name: x.byline, pubs: [] });
     by.get(x.reporterId).pubs.push({ headline: x.headline, outlet: x.outlet, year: x.year, medium: x.medium, corrections: x.corrections.map((c) => c.text), sources: x.sources.map((y) => y.name) });
   }
   const p = player();
   const me = by.get(p.id);
   if (me && p.journalism) { me.history = p.journalism.history; me.awards = p.journalism.awards; }
-  for (const [id, x] of by) if (S().legacy?.[id]) Object.assign(x, S().legacy[id]);
+  for (const [id, x] of Object.entries(S().legacy ?? {})) by.has(id) ? Object.assign(by.get(id), x) : x.history.length && by.set(id, { id, pubs: [], ...x });
   return [...by.values()].map((x) => ({ ...x, pubs: x.pubs.sort((a, b) => a.year - b.year) }));
 }
 /** Keeps a journalist's public record with the world, so it outlives them (run when they die or the life passes on). */
 export function keepLegacy(p = player()) {
   if (!p.journalism) return;
   (S().legacy ??= {})[p.id] = { name: `${p.firstName} ${p.lastName}`, history: [...p.journalism.history], awards: [...p.journalism.awards] };
+}
+
+// ---------- When the life passes on ----------
+
+/**
+ * Carries the world's newsrooms into the heir's life: the outlets and their people, every publication and the family's
+ * record of its journalists. The reporter's unfinished stories end with them. A publication they owned passes to the
+ * heir (a family newspaper stays in the family); the heir owns it without having to run it themselves.
+ */
+export function handOverNewsroom(old, next, heir) {
+  const N = old.newsroom;
+  if (!N) return;
+  const op = old.player;
+  if (op.journalism) (N.legacy ??= {})[op.id] = { name: `${op.firstName} ${op.lastName}`, history: [...op.journalism.history], awards: [...op.journalism.awards] };
+  for (const s of Object.values(N.stories)) if (s.reporterId === op.id && !['published', 'spiked', 'expired'].includes(s.status)) s.status = 'spiked';
+  // The newsrooms' people are the same people.
+  for (const o of Object.values(N.outlets)) for (const id of [o.editorId, o.seniorId, ...(o.staff ?? []).map((x) => x.npcId)]) if (id && old.npcs[id] && !next.npcs[id]) next.npcs[id] = old.npcs[id];
+  next.newsroom = N;
+  const owned = op.journalism?.owned && N.outlets[op.journalism.owned];
+  if (owned && !owned.closed) {
+    owned.ownerId = heir.id;
+    owned.history.push({ year: old.year, text: `Passed from ${op.firstName} ${op.lastName} to ${heir.firstName} ${heir.lastName}.` });
+    J(heir).owned = owned.id;
+    J(heir).history.push({ year: old.year, text: `Inherited ${owned.name}.` });
+  }
+  const sisters = (op.journalism?.sisters ?? []).map((id) => N.outlets[id]).filter((o) => o && !o.closed && o.ownerId === op.id);
+  for (const o of sisters) {
+    o.ownerId = heir.id;
+    o.history.push({ year: old.year, text: `Passed to ${heir.firstName} ${heir.lastName}.` });
+    (J(heir).sisters ??= []).push(o.id);
+    if (!J(heir).owned) { J(heir).owned = o.id; J(heir).sisters = J(heir).sisters.filter((x) => x !== o.id); }
+  }
+}
+
+// ---------- The editor's desk ----------
+//
+// An editor (the career's fourth step and above) reads their reporters' work. Each year a few drafts by the
+// newsroom's real reporters land on the desk, each with what its notes support. The editor approves, sends back or
+// spikes; what they let through that was wrong comes back on the newsroom, and on them.
+
+export const isEditor = (p = player()) => isReporter(p) && (p.career.level ?? 0) >= 3;
+const DESK_CLAIMS = [['A council vote is due next month', 'verified'], ['The plan will cost twice what was promised', 'single'], ['Residents are split on it', 'supported'],
+  ['The contractor has a record of delays', 'disputed'], ['Two councillors have ties to the developer', 'single'], ['Work starts in the spring', 'verified']];
+/** This year's drafts on the editor's desk, made once a year from the newsroom's reporters. */
+export function desk(p = player()) {
+  const j = J(p);
+  if (!isEditor(p)) return [];
+  j.desk ??= {};
+  if (!j.desk[year()]) {
+    const o = outlet(j.outletId);
+    const reporters = [o.seniorId, ...(o.staff ?? []).map((x) => x.npcId)].filter((id) => npc(id)?.alive);
+    if (!reporters.length) { const n = makeNpc({ role: 'colleague', countryId: o.countryId, age: 29 }); n.occupation = 'Reporter'; n.flags.title = `A reporter at ${o.name}`; n.flags.newsroom = { outletId: o.id, role: 'Reporter' }; store.state.npcs[n.id] = n; (o.staff ??= []).push({ npcId: n.id, role: 'reporter', since: year() }); reporters.push(n.id); }
+    const r = seeded(`${p.id}/desk/${year()}`);
+    j.desk[year()] = Array.from({ length: 3 }, (_, i) => {
+      const who = reporters[i % reporters.length];
+      const picks = [...DESK_CLAIMS].sort(() => r.next() - 0.5).slice(0, 3).map(([text, status]) => ({ text, status, truth: status === 'verified' || status === 'supported' ? true : r.chance(0.45) }));
+      return { id: `desk_${year()}_${i}`, reporterId: who, title: `${r.pick(['Questions over', 'The cost of', 'Inside'])} ${r.pick(['the bypass plan', 'the new library', 'the harbor deal', 'the school merger'])}`, claims: picks, decision: null };
+    });
+  }
+  return j.desk[year()];
+}
+/** The editor's call on a draft: approve, send back, or spike. */
+export function deskDecide(id, decision) {
+  const p = player();
+  const d = desk(p).find((x) => x.id === id);
+  if (!d || d.decision) return result(false, 'That draft is not waiting.', 'neutral');
+  if (!['approve', 'back', 'spike'].includes(decision)) return result(false, 'Approve, send back, or spike.', 'neutral');
+  const j = J(p);
+  j.rep.leadership ??= 50;
+  d.decision = decision;
+  const n = npc(d.reporterId);
+  const weak = d.claims.filter((c) => ['single', 'disputed'].includes(c.status));
+  const wrong = weak.filter((c) => !c.truth);
+  if (decision === 'approve') {
+    if (wrong.length) { d.flaw = true; j.rep.leadership = clamp(j.rep.leadership - 6); j.rep.trust = clamp(j.rep.trust - 3); if (n) n.meters.relationship = clamp(n.meters.relationship + 4); return result(false, `It runs. Later, "${wrong[0].text}" turns out not to be so: it rested on ${wrong[0].status === 'single' ? 'one source' : 'a disputed account'}, and it was your call.`, 'bad'); }
+    j.rep.leadership = clamp(j.rep.leadership + (weak.length ? 1 : 3));
+    if (n) n.meters.relationship = clamp(n.meters.relationship + 5);
+    return result(true, `It runs, and it holds up.${weak.length ? ' You were lucky with the thin parts.' : ''}`);
+  }
+  if (decision === 'back') {
+    if (n) n.meters.relationship = clamp(n.meters.relationship - (weak.length ? 1 : 5));
+    j.rep.leadership = clamp(j.rep.leadership + (weak.length ? 4 : -2));
+    return result(true, weak.length ? `${n?.firstName ?? 'The reporter'} goes back to firm up the thin parts. The story is better for it.` : `${n?.firstName ?? 'The reporter'} cannot see what is wrong with it, and neither, on reflection, can you.`, weak.length ? 'good' : 'neutral');
+  }
+  if (n) n.meters.relationship = clamp(n.meters.relationship - 8);
+  j.rep.leadership = clamp(j.rep.leadership + (wrong.length >= 2 ? 3 : -3));
+  return result(true, wrong.length >= 2 ? 'You spike it. It would not have stood up.' : `You spike it. ${n?.firstName ?? 'The reporter'} is not happy: most of it was sound.`, 'neutral');
+}
+
+// ---------- A documentary ----------
+//
+// A published investigation that stood up can become a documentary: months of further reporting, the people who
+// would go on camera, production, and a legal read before release. Released once.
+
+export function documentaryWhy(pubId, p = player()) {
+  const x = S().pubs[pubId];
+  if (!x || x.reporterId !== p.id) return 'Not your story.';
+  if (x.beat !== 'investigative') return 'Documentaries grow from investigations.';
+  if (x.errors.length) return 'Not from a story that got something wrong.';
+  if (!x.claims.some((c) => c.asFact)) return 'The investigation has to have stood up on the record.';
+  if (!isReporter(p) && !ownedOutlet(p)) return 'You need a newsroom or a publication of your own to make it.';
+  if (Object.values(S().docs ?? {}).some((d) => d.pubId === pubId)) return 'There is a documentary of it already.';
+  return '';
+}
+export function startDocumentary(pubId) {
+  const p = player();
+  const why = documentaryWhy(pubId, p);
+  if (why) return result(false, why, 'neutral');
+  const x = S().pubs[pubId];
+  S().docs ??= {};
+  const id = nextId('doc');
+  S().docs[id] = { id, pubId, reporterId: p.id, title: `${x.headline}: the documentary`, stage: 'research', progress: 0, legal: false, started: now(), released: null };
+  return result(true, 'You start on the documentary. Months of work: more reporting, the people who will go on camera, the edit, the lawyers.', 'neutral');
+}
+export const myDocumentaries = (p = player()) => Object.values(S().docs ?? {}).filter((d) => d.reporterId === p.id);
+const DOC_STAGES = [['research', 3], ['interviews', 2], ['production', 3]];
+/** A season of work on it (2 actions): research, interviews, the edit. */
+export function workDocumentary(id) {
+  const p = player();
+  const d = S().docs?.[id];
+  if (!d || d.reporterId !== p.id || d.released) return result(false, 'That is not in progress.', 'neutral');
+  const i = DOC_STAGES.findIndex(([k]) => k === d.stage);
+  if (i < 0) return result(false, 'It is ready for the lawyers.', 'neutral');
+  if (!spend(2, p)) return result(false, 'You are out of time this year.', 'neutral');
+  d.progress += 1;
+  grow('reporting', 2); grow('interviewing', 1);
+  if (d.progress >= DOC_STAGES[i][1]) { d.stage = DOC_STAGES[i + 1]?.[0] ?? 'legal'; d.progress = 0; }
+  return result(true, { research: 'More records, more context.', interviews: 'People agree to go on camera; one changes their mind.', production: 'The edit: three hours of footage becomes fifty minutes.' }[DOC_STAGES[i][0]] + (d.stage === 'legal' ? ' It is ready for the lawyers.' : ''), 'neutral');
+}
+export function releaseDocumentary(id) {
+  const p = player();
+  const d = S().docs?.[id];
+  if (!d || d.reporterId !== p.id || d.released) return result(false, 'That is not in progress.', 'neutral');
+  if (d.stage !== 'legal') return result(false, 'It is not finished.', 'neutral');
+  if (!d.legal) { if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral'); d.legal = true; return result(true, 'The lawyers watch it twice, and ask for two lines to be attributed. Done. It can be released.', 'neutral'); }
+  d.released = year();
+  const j = J(p);
+  j.rep.recognition = clamp(j.rep.recognition + 8);
+  j.history.push({ year: year(), text: `Released the documentary "${d.title}".` });
+  milestone(`Released a documentary: "${d.title}".`, 'career');
+  return result(true, `"${d.title}" is released. People who never read the story watch it.`);
+}
+
+// ---------- Leave ----------
+
+/** A year away from the newsroom: no assignments, rest, and the job kept. Not every great reporter burns out. */
+export function takeLeave() {
+  const p = player();
+  const j = J(p);
+  if (!isReporter(p)) return result(false, 'Leave is for staff reporters.', 'neutral');
+  if (j.leave === year() + 1) return result(false, 'Your leave is booked for next year.', 'neutral');
+  if ((j.lastLeave ?? -99) > year() - 5) return result(false, 'You had leave recently.', 'neutral');
+  j.leave = year() + 1;
+  j.lastLeave = year() + 1;
+  return result(true, 'Your editor signs off a year\'s leave from next year. The desk will be there when you get back.', 'neutral');
+}
+
+// ---------- Your own leads, and following up ----------
+//
+// A staff reporter can bring their editor a lead of their own on any beat open to them, twice a year; whether the
+// editor takes it depends on the reporter's record and how the two get on. A story that ran can be followed up: what
+// has happened since, checked the same way. A follow-up may find nothing has changed, and that can be the story.
+
+export function pitchLeadWhy(beat, p = player()) {
+  if (!isReporter(p)) return 'Leads are pitched to your editor, on staff.';
+  if (J(p).leave === year()) return 'You are on leave.';
+  if ((J(p).leads?.[year()] ?? 0) >= 2) return 'You have pitched two this year.';
+  return beatWhy(beat, p);
+}
+export function pitchLead(beat) {
+  const p = player();
+  const why = pitchLeadWhy(beat, p);
+  if (why) return result(false, why, 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const j = J(p);
+  (j.leads ??= {})[year()] = (j.leads[year()] ?? 0) + 1;
+  const o = outlet(j.outletId);
+  const ed = npc(o.editorId);
+  const r = seeded(`${p.id}/lead/${year()}/${j.leads[year()]}`);
+  const yes = r.chance(clamp(0.35 + (j.rep.accuracy - 50) / 150 + ((ed?.meters.relationship ?? 50) - 50) / 200 + myPubs(p).filter((x) => !x.errors.length).length * 0.02, 0.15, 0.9));
+  if (!yes) return result(false, `${nameOf(ed) || 'Your editor'} hears you out, and says no: "Not this year. Bring me something firmer."`, 'neutral');
+  const w = j.posting ? { countryId: j.posting.countryId, city: j.posting.city } : { countryId: p.countryId, city: p.city };
+  const gens = { local: localStory, politics: politicsStory, investigative: investigativeStory, business: businessStory, science: scienceStory, education: educationStory,
+    environment: environmentStory, technology: technologyStory, arts: artsStory, data: dataStory, sports: sportsStory, entertainment: (pp, oo, rr, ww) => (rr.chance(0.5) ? filmStory(pp, oo, rr, ww) ?? musicStory(pp, oo, rr, ww) : musicStory(pp, oo, rr, ww) ?? filmStory(pp, oo, rr, ww)), kpop: kpopStory };
+  const s = (gens[beat] ?? localStory)(p, o, r, w) ?? localStory(p, o, r, w);
+  s.pitched = { own: true };
+  grow('reporting', 1);
+  return result(true, `${nameOf(ed) || 'Your editor'} takes it: "${s.title}" is yours. Go and find out whether it stands up.`);
+}
+
+export function followStoryWhy(pubId, p = player()) {
+  const x = S().pubs[pubId];
+  if (!x || x.reporterId !== p.id) return 'Not your story.';
+  if (!working(p)) return 'You need to be working as a reporter.';
+  if (x.year >= year()) return 'Give it a year: nothing has happened since yet.';
+  if (Object.values(S().stories).some((s) => s.links.followOf === pubId)) return 'You have followed it up.';
+  return '';
+}
+/** A follow-up of a published story: what has happened since, with a returning source where there was one. */
+export function followStory(pubId) {
+  const p = player();
+  const why = followStoryWhy(pubId, p);
+  if (why) return result(false, why, 'neutral');
+  if (!spend(1, p)) return result(false, 'You are out of time this year.', 'neutral');
+  const x = S().pubs[pubId];
+  const j = J(p);
+  const o = isReporter(p) ? outlet(j.outletId) : ownedOutlet(p);
+  const r = seeded(`${pubId}/follow`);
+  const w = { countryId: p.countryId, city: p.city };
+  const changed = r.chance(0.55);
+  const s = newStory(p, o, x.beat, `Follow-up: ${x.headline}`, { subject: x.headline, links: { ...x.links, followOf: pubId } });
+  const c1 = addClaim(s, { text: `Things have changed since "${x.headline}" ran`, truth: changed, important: true });
+  const c2 = addClaim(s, { text: 'The people in charge did what they promised', truth: changed && r.chance(0.6) });
+  const c3 = addClaim(s, { text: 'People who were affected say it made a difference', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The public record since the story ran', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  const back = x.sources.find((y) => y.npcId && npc(y.npcId)?.alive);
+  const t2 = s.claims[1].truth;
+  if (back) addSource(s, { npcId: back.npcId, name: back.name, role: 'Quoted in the original story', type: 'community', willing: 0.9, knows: [{ claimId: c1.id, says: changed }, { claimId: c3.id, says: true }, { claimId: c2.id, says: r.chance(0.75) ? t2 : !t2 }] });
+  const n = person(w, r, `Lives in ${w.city}`, [22, 75]);
+  addSource(s, { npcId: n.id, name: nameOf(n), role: 'Someone affected', type: 'community', willing: 0.75, knows: [{ claimId: c3.id, says: true }, { claimId: c1.id, says: r.chance(0.8) ? changed : !changed }] });
+  return result(true, `"${s.title}" is in your assignments. Maybe something has changed; maybe nothing has, and that is news too.`, 'neutral');
+}
+
+// ---------- A media company ----------
+//
+// A publication that has lasted can grow: a second title (with an editor hired to run it), a bigger research budget,
+// a bureau in another city, outside money. Every one of them costs money every year; none is sure to pay. The owner
+// runs the business: what the staff think, and how they live, is their own.
+
+/** Every title the player owns: the first, and any launched since. */
+export const ownedTitles = (p = player()) => [ownedOutlet(p), ...(J(p).sisters ?? []).map((id) => S().outlets[id])].filter((o) => o && !o.closed && o.ownerId === p.id);
+export function expandWhy(kind, p = player()) {
+  const o = ownedOutlet(p);
+  if (!o) return 'You need a publication of your own first.';
+  if (year() - o.founded < 2) return 'Give the first one two years.';
+  if (ownedTitles(p).length >= 4) return 'Four titles is as many as you can run.';
+  const k = OWN_KINDS[kind];
+  if (!k) return 'No such kind.';
+  if (k.needs && !exists(k.needs)) return `Not in ${year()}.`;
+  if (year() < k.from) return `Not in ${year()}.`;
+  const cost = startCost(kind) + Math.round(localWage(STAFF_PAY.editor, country()));
+  if (p.finance.cash < cost) return `It costs ${fmtMoney(cost, country())} to launch, with an editor's first year.`;
+  return '';
+}
+/** Launches another title, with an editor hired to run it. */
+export function launchTitle(kind, name) {
+  const p = player();
+  const why = expandWhy(kind, p);
+  if (why) return result(false, why, 'neutral');
+  const first = ownedOutlet(p);
+  const k = OWN_KINDS[kind];
+  p.finance.cash -= startCost(kind);
+  const r = seeded(`${p.id}/title/${year()}/${kind}`);
+  const id = nextId('outlet');
+  const title = (name ?? '').trim().slice(0, 40) || `${first.name} ${kind === 'podcast' ? 'Podcast' : kind === 'newsletter' ? 'Letter' : 'Online'}`;
+  const o = { id, kind: `own_${kind}`, ownKind: kind, name: title, medium: k.medium, countryId: p.countryId, city: p.city, founded: year(), ownerId: p.id, editorId: null, seniorId: null,
+    standards: first.standards, policy: first.policy, reputation: Math.round((first.reputation + 40) / 2), audience: Math.round(k.start * (0.8 + r.next() * 0.4) + first.audience * 0.05), staff: [], finances: [],
+    history: [{ year: year(), text: `Launched by ${p.firstName} ${p.lastName}, alongside ${first.name}.` }] };
+  S().outlets[id] = o;
+  (J(p).sisters ??= []).push(id);
+  const ed = makeNpc({ role: 'colleague', countryId: p.countryId, age: 42, relationship: 55 });
+  ed.occupation = 'Editor';
+  ed.flags.title = `Editor of ${title}, which you own`;
+  ed.flags.newsroom = { outletId: id, role: 'editor' };
+  store.state.npcs[ed.id] = ed;
+  meet(ed, ed.flags.title, p);
+  o.staff.push({ npcId: ed.id, role: 'editor', salary: Math.round(localWage(STAFF_PAY.editor, country())), since: year() });
+  o.editorId = ed.id;
+  J(p).history.push({ year: year(), text: `Launched ${title}.` });
+  milestone(`Launched ${title}: your media company has ${ownedTitles(p).length} titles.`, 'career');
+  return result(true, `${title} launches, edited by ${nameOf(ed)}. ${ownedTitles(p).length} titles now.`);
+}
+/** The research budget of a title: 0 (none), 1 (a fact-checker), 2 (a research desk). Costs more every year. */
+export function setResearch(outletId, level) {
+  const o = ownedTitles().find((x) => x.id === outletId);
+  if (!o) return result(false, 'Not yours.', 'neutral');
+  if (![0, 1, 2].includes(level)) return result(false, 'None, a fact-checker, or a research desk.', 'neutral');
+  o.research = level;
+  o.history.push({ year: year(), text: ['Research budget cut.', 'Hired a fact-checker.', 'Set up a research desk.'][level] });
+  return result(true, ['The research budget goes. It saves money.', 'A fact-checker reads everything before it runs. It costs more each year.', 'A research desk: records, data, checking. It costs a good deal each year.'][level], 'neutral');
+}
+export function bureauWhy(outletId, city, p = player()) {
+  const o = ownedTitles(p).find((x) => x.id === outletId);
+  if (!o) return 'Not yours.';
+  if (!COUNTRIES[p.countryId].cities.includes(city) || city === o.city) return 'Pick another city in the country.';
+  if ((o.bureaus ?? []).includes(city)) return 'There is a bureau there.';
+  if ((o.bureaus ?? []).length >= 3) return 'Three bureaus is enough.';
+  const cost = Math.round(localWage(OWN_KINDS[o.ownKind].upkeep, country()));
+  if (p.finance.cash < cost) return `It costs ${fmtMoney(cost, country())} to set up.`;
+  return '';
+}
+/** A bureau in another city: more to cover, more readers, more costs. */
+export function openBureau(outletId, city) {
+  const p = player();
+  const why = bureauWhy(outletId, city, p);
+  if (why) return result(false, why, 'neutral');
+  const o = S().outlets[outletId];
+  const cost = Math.round(localWage(OWN_KINDS[o.ownKind].upkeep, country()));
+  p.finance.cash -= cost;
+  (o.bureaus ??= []).push(city);
+  o.history.push({ year: year(), text: `Opened a bureau in ${city}.` });
+  return result(true, `${o.name} opens a bureau in ${city}, for ${fmtMoney(cost, country())}. It will cost more every year.`, 'neutral');
+}
+/** An investor's offer for a share of the first title (scene 'jn_investor'): money now, a share of every profit after. */
+export function investorOffer(p = player()) {
+  const o = ownedOutlet(p);
+  if (!o || o.investor) return null;
+  const last = o.finances.at(-1);
+  if (!last) return null;
+  const amount = Math.round(Math.max(localWage(OWN_KINDS[o.ownKind].cost, country()), last.revenue * 0.6));
+  return { amount, share: 0.25 };
+}
+
+// ---------- Workload ----------
+//
+// How much is on: open stories against the time left in the year. A reporter can ask their editor for help on a
+// story (a colleague does an interview), or ask for a lighter year. Nobody has to work themselves into the ground
+// to do good work, and the game does not reward it.
+
+export function workload(p = player()) {
+  const openN = myStories(p).filter((s) => open(s, p)).length;
+  const left = actionsLeft(p);
+  const need = openN * 5;
+  return { open: openN, left, level: need <= left ? 'manageable' : need <= left * 2 ? 'busy' : 'too much', text: need <= left ? 'Manageable' : need <= left * 2 ? 'Busy' : 'Too much for one year' };
+}
+/** A colleague takes one interview on a story off your hands, once a year. */
+export function requestSupport(storyId) {
+  const p = player();
+  const j = J(p);
+  const s = story(storyId);
+  if (!isReporter(p)) return result(false, 'Help comes from your newsroom.', 'neutral');
+  if (!open(s, p)) return result(false, 'That story is not open.', 'neutral');
+  if (j.support === year()) return result(false, 'You have asked for help this year.', 'neutral');
+  j.support = year();
+  const o = outlet(j.outletId);
+  const ed = npc(o.editorId);
+  const helper = npc(o.seniorId) ?? (o.staff ?? []).map((x) => npc(x.npcId)).find(Boolean);
+  if (!helper?.alive || (ed?.meters.relationship ?? 50) < 30) return result(false, `${nameOf(ed) || 'Your editor'} has nobody to spare this year.`, 'neutral');
+  const src = s.sources.find((x) => !x.hidden && !s.interviews.some((i) => i.sourceId === x.id));
+  if (!src) return result(false, 'Everyone on it has been asked already.', 'neutral');
+  // The interview is the newsroom's: the same rules, done by a colleague, on the record or as the source asks.
+  // The colleague's time, not yours: whatever the interview takes is given back.
+  if (j.acts.year !== year()) j.acts = { year: year(), used: 0 };
+  const used = j.acts.used;
+  j.acts.used = Math.max(0, used - 1);
+  const r = interview(s.id, src.id, ['saw', 'evidence', 'who'], src.wantsConfidential ? 'confidential' : 'record');
+  j.acts.used = used;
+  helper.meters.relationship = clamp(helper.meters.relationship + 3);
+  return result(true, `${nameOf(helper)} takes the interview with ${src.name}. ${r.text}`, r.tone);
+}
+/** Asks for fewer assignments next year. */
+export function askLighterYear() {
+  const p = player();
+  const j = J(p);
+  if (!isReporter(p)) return result(false, 'That is for staff reporters.', 'neutral');
+  if (j.lighter === year() + 1) return result(false, 'Next year is lighter already.', 'neutral');
+  j.lighter = year() + 1;
+  return result(true, 'Your editor agrees: fewer assignments next year. Promotions come a little slower; that is the trade.', 'neutral');
+}
+
+// ---------- Wartime ----------
+//
+// Only in a war the country really fought (data/history.js). The reporting is from home: the families, the
+// shortages, the official notices. A censor reads it first; military movements are never published. Nobody has to
+// take the assignment, and nobody is sent into the fighting.
+
+function warStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const war = eventsIn(w.countryId).find((e) => e.war);
+  if (!war) return null;
+  const topic = r.pick([['rationing', 'Food is rationed in the city'], ['families', 'Families wait for news of those serving'], ['work', 'Factories in the city work through the night'], ['volunteers', 'Volunteers run the city\'s shelters']]);
+  const s = newStory(p, o, 'war', `${w.city} in wartime: ${topic[1].toLowerCase()}`, { subject: `${w.city} at home during ${war.name}`, links: { warId: war.id }, needsLegal: true });
+  const c1 = addClaim(s, { text: topic[1], truth: true, important: true });
+  const c2 = addClaim(s, { text: 'Supplies in the city will last the winter', truth: r.chance(0.5) });
+  const c3 = addClaim(s, { text: 'People are holding up', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The government\'s published notices', settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'Where the troops are going', public: false, why: 'Military movements are never published: it would put people in danger.' });
+  const off = person(w, r, 'Official at the city hall', [40, 65]);
+  const fam = person(w, r, `Lives in ${w.city}`, [25, 75]);
+  addSource(s, { npcId: off.id, name: nameOf(off), role: 'An official at the city hall', type: 'official', willing: 0.6, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }] });
+  addSource(s, { npcId: fam.id, name: nameOf(fam), role: 'Someone waiting at home', type: 'community', willing: 0.85, knows: [{ claimId: c3.id, says: true }, { claimId: c2.id, says: r.chance(0.7) ? s.claims[1].truth : !s.claims[1].truth }] });
+  return s;
+}
+export const atWarHere = (p = player()) => atWar(p.countryId);
+
+// ---------- Sharing your work ----------
+
+/** Articles the player published lately, for sharing on their own accounts (Digital Life's own posting). */
+export function shareableArticles(p = player()) {
+  return myPubs(p).filter((x) => year() - x.year <= 1).map((x) => ({ type: 'article', key: `article:${x.id}`, text: x.headline, topic: 'work' }));
+}
+
+// ---------- Conflicts of interest ----------
+
+const CLOSE = { parent: 'your parent', sibling: 'your sibling', child: 'your child', spouse: 'your spouse', partner: 'your partner', grandparent: 'your grandparent', grandchild: 'your grandchild', friend: 'a friend of yours', bestFriend: 'your best friend' };
+/** Whether a story is about, or sourced from, someone close to the reporter. @returns {{npcId:string, text:string}|null} */
+export function conflictOf(s, p = player()) {
+  if (!s) return null;
+  for (const x of s.sources) {
+    const n = x.npcId && npc(x.npcId);
+    if (n && p.npcIds.includes(n.id) && CLOSE[n.role]) return { npcId: n.id, text: `${CLOSE[n.role]}, ${nameOf(n)}` };
+  }
+  return null;
+}
+/** Tells the editor, and the readers: the story says so plainly. */
+export function disclose(storyId) {
+  const p = player();
+  const s = story(storyId);
+  if (!open(s, p)) return result(false, 'That story is not open.', 'neutral');
+  const c = conflictOf(s, p);
+  if (!c) return result(false, 'There is nothing to disclose.', 'neutral');
+  if (s.disclosed) return result(false, 'You have disclosed it.', 'neutral');
+  s.disclosed = true;
+  J(p).rep.trust = clamp(J(p).rep.trust + 1);
+  return result(true, `You tell your editor that the story involves ${c.text}. It will say so, plainly, where readers can see it.`, 'neutral');
+}
+
+// ---------- Athletes: a profile from the saved record ----------
+
+/** An athlete with a real record (engine/sports.js), interviewed about it. Nothing is added to the record. */
+function athleteStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const A = Object.values(store.state.sports?.athletes ?? {}).filter((a) => a.id !== p.id && a.countryId === w.countryId && npc(a.id)?.alive && Object.keys(a.sports ?? {}).length
+    && !Object.values(S().stories).some((x) => x.links.athleteId === a.id && x.reporterId === p.id));
+  const a = A.length ? r.pick(A) : null;
+  if (!a) return null;
+  const e = Object.values(a.sports).sort((x, y) => (y.peak ?? 0) - (x.peak ?? 0))[0];
+  const sportName = e.id.replace(/_/g, ' ');
+  const n = npc(a.id);
+  const s = newStory(p, o, 'sports', `${a.name}: a life in ${sportName}`, { subject: a.name, links: { athleteId: a.id } });
+  const c1 = addClaim(s, { text: `${a.name} has played ${sportName} since ${e.since}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `${a.name} reached ${e.level} level`, truth: true });
+  const c3 = addClaim(s, { text: `${a.name} has won more than they have lost`, truth: (e.wins ?? 0) > (e.losses ?? 0) });
+  const c4 = addClaim(s, { text: `${sportName.replace(/^./, (c) => c.toUpperCase())} gave them everything`, kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The published club and competition records', settles: [{ claimId: c1.id }, { claimId: c2.id }, { claimId: c3.id }] });
+  addDoc(s, { title: `${a.name}'s medical records`, public: false, why: 'An athlete\'s injuries are theirs to disclose. The records stay private.' });
+  addSource(s, { npcId: n.id, name: nameOf(n), role: `The ${sportName} player`, type: 'athlete', willing: 0.75, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c4.id, says: true }, { claimId: c3.id, says: true }] });
+  const coach = person(w, r, `Coached ${a.name}`, [40, 70]);
+  addSource(s, { npcId: coach.id, name: nameOf(coach), role: 'A coach who worked with them', type: 'athlete', willing: 0.7, knows: [{ claimId: c2.id, says: true }, { claimId: c3.id, says: s.claims[2].truth }] });
+  return s;
+}
+
+// ---------- Contacts ----------
+
+/** The people the reporter has interviewed, and how they get on: a contact book built from real interviews. */
+export function contacts(p = player()) {
+  return Object.entries(J(p).contacts ?? {}).map(([id, c]) => ({ npcId: id, n: npc(id), ...c })).filter((x) => x.n).sort((a, b) => b.times - a.times);
+}
+
+// ---------- Film and television: what really came out ----------
+
+/** A film or series that really came out (engine/entertainment.js): its reviews and takings, from the published figures. */
+function filmStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const E = store.state.ent;
+  if (!E) return null;
+  const list = Object.values(E.productions ?? {}).filter((x) => x.status === 'released' && x.tier !== 'student' && x.countryId === w.countryId && x.reception && x.reception.year >= year() - 1
+    && !Object.values(S().stories).some((y) => y.links.productionId === x.id && y.reporterId === p.id));
+  const x = list.length ? r.pick(list) : null;
+  if (!x) return null;
+  const rc = x.reception;
+  const what = x.kind === 'tv' ? 'series' : 'film';
+  const s = newStory(p, o, 'entertainment', `${x.title}: the ${what}, and what critics made of it`, { subject: x.title, links: { productionId: x.id } });
+  const c1 = addClaim(s, { text: `${x.title} came out in ${rc.year}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: 'Critics liked it', truth: rc.critics >= 65 });
+  const c3 = addClaim(s, { text: x.kind === 'tv' ? 'It found a big audience' : 'It made its money back', truth: x.kind === 'tv' ? rc.audience >= 65 : (rc.profit ?? 0) > 0 });
+  const c4 = addClaim(s, { text: 'The lead gives the performance of their career', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The published reviews', settles: [{ claimId: c1.id }, { claimId: c2.id }] });
+  addDoc(s, { title: x.kind === 'tv' ? 'The published ratings' : 'The published box office figures', settles: [{ claimId: c3.id }] });
+  addDoc(s, { title: 'The cast\'s contracts', public: false, why: 'What the cast were paid is between them and the studio.' });
+  const dir = npc(x.directorId);
+  if (dir?.alive) addSource(s, { npcId: dir.id, name: nameOf(dir), role: `Director of ${x.title}`, type: 'entertainer', willing: 0.6, knows: [{ claimId: c1.id, says: true }, { claimId: c2.id, says: true }, { claimId: c4.id, says: true }] });
+  const lead = (x.cast ?? []).find((c) => c.kind === 'lead' && c.who && c.who !== 'player' && c.who !== p.id && npc(c.who)?.alive);
+  if (lead) addSource(s, { npcId: lead.who, name: nameOf(npc(lead.who)), role: `Plays ${lead.character} in ${x.title}`, type: 'entertainer', willing: 0.5, knows: [{ claimId: c1.id, says: true }, { claimId: c3.id, says: true }] });
+  const critic = person(w, r, 'Critic', [28, 70]);
+  addSource(s, { npcId: critic.id, name: nameOf(critic), role: 'A critic who reviewed it', type: 'expert', willing: 0.8, knows: [{ claimId: c2.id, says: rc.critics >= 65 }, { claimId: c4.id, says: rc.critics >= 75 }] });
+  return s;
+}
+
+/** The year-end K-pop awards as they were really given (engine/kpop.js). */
+export function kpopAwardsStory(p, o, r) {
+  const K = store.state.kpop;
+  const y = year() - 1;
+  const a = K?.awards?.[y];
+  if (!a || Object.values(S().stories).some((x) => x.links.kpopAwards === y && x.reporterId === p.id)) return null;
+  const grand = K.releases[a.grand];
+  const g = grand && K.groups[grand.groupId];
+  if (!g) return null;
+  const s = newStory(p, o, 'kpop', `${g.name} take the Grand Prize`, { subject: g.name, links: { kpopAwards: y, groupId: g.id } });
+  const c1 = addClaim(s, { text: `${g.name} won the Grand Prize for "${grand.title}"`, truth: true, important: true });
+  const rookie = a.rookie && K.groups[a.rookie];
+  const other = Object.values(K.groups).find((x) => x.debut?.year === y && x.id !== a.rookie);
+  const c2 = rookie || other ? addClaim(s, { text: `${(rookie ?? other).name} were named Rookie of the Year`, truth: !!rookie }) : null;
+  const c3 = addClaim(s, { text: 'It was the night of their career', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The awards\' published list of winners', settles: [{ claimId: c1.id }, ...(c2 ? [{ claimId: c2.id }] : [])] });
+  const members = g.members.filter((m) => m.to == null).map((m) => m.who).filter((id) => id !== 'player' && npc(id)?.alive);
+  const leader = members.find((id) => (g.positions?.[id] ?? []).includes('leader')) ?? members[0];
+  if (leader) addSource(s, { npcId: leader, name: nameOf(npc(leader)), role: (g.positions?.[leader] ?? []).includes('leader') ? `Leader of ${g.name}` : `Of ${g.name}`, type: 'entertainer', willing: 0.5, knows: [{ claimId: c1.id, says: true }, { claimId: c3.id, says: true }] });
+  addSource(s, { institution: true, name: 'The agency', role: 'Press office', type: 'company', willing: 0.6, knows: [{ claimId: c1.id, says: true }] });
+  return s;
+}
+
+// ---------- When a reporter calls someone else ----------
+//
+// The other careers meet the press here. A real reporter at a real newsroom in the city asks a detective, a
+// politician, a doctor who published, an athlete or an idol about their own work; they may talk on the record, give
+// a short statement, or decline. The article runs either way, from the public record, and it is one article: the
+// newsroom's archive, the subject's own history and any case record all point at it. Acting and music careers meet
+// the press through their own publicists and interviews (engine/press.js).
+
+/** A real reporter at a real newsroom where the player lives: the senior reporter of the first newsroom there. */
+export function cityReporter(p = player()) {
+  const o = outletsHere(p).find((x) => !x.ownerId && npc(x.seniorId)?.alive);
+  return o ? { outlet: o, reporter: npc(o.seniorId) } : null;
+}
+const ANSWERS = { talk: 'on the record', brief: 'a short statement', decline: 'declined' };
+/**
+ * Writes the article about the player's work: headline, what the record shows, and what the player said (or that they
+ * declined). @param {{topic:string, headline:string, facts:string[], links?:object, quote?:string}} about
+ */
+export function pressArticle(p, about, answer, reporterInfo = cityReporter(p)) {
+  if (!reporterInfo) return null;
+  const { outlet: o, reporter: n } = reporterInfo;
+  const id = nextId('pub');
+  const said = answer === 'talk' ? (about.quote ?? 'It is the work that matters.') : answer === 'brief' ? 'I can only say what is already public.' : null;
+  const body = `${about.facts.join(' ')} ${said ? `${p.firstName} ${p.lastName} said: "${said}"` : `${p.firstName} ${p.lastName} declined to comment.`}`;
+  const pub = { id, storyId: null, reporterId: n.id, byline: nameOf(n), outletId: o.id, outlet: o.name, medium: o.medium, at: now(), year: year(), beat: about.beat ?? 'local',
+    headline: about.headline, body, claims: about.facts.map((t, i) => ({ id: `${id}c${i}`, text: t, asFact: true })), sources: said ? [{ name: `${p.firstName} ${p.lastName}`, attribution: 'record', npcId: null, playerId: p.id }] : [],
+    errors: [], quality: 60, readers: Math.round(o.audience * 0.4), complaint: null, corrections: [], links: { ...(about.links ?? {}), aboutId: p.id }, answer };
+  S().pubs[id] = pub;
+  (p.pressMentions ??= []).push({ pubId: id, year: year() });
+  return pub;
+}
+/** Articles about someone (the player or an ancestor), newest first. */
+export const pressAbout = (id) => Object.values(S().pubs).filter((x) => x.links?.aboutId === id).sort((a, b) => b.at - a.at);
+
+/** What a reporter would ask this player about this year, from their own saved record, or null. */
+export function pressTopic(p = player()) {
+  const lived = year() - 1;
+  const cn = COUNTRIES[p.countryId]?.name ?? 'the country';
+  if (p.politics?.officeId) {
+    const law = (polity(p.countryId)?.laws ?? []).filter((x) => x.year >= lived).at(-1);
+    if (law) return { kind: 'politics', beat: 'politics', topic: `the government's decision: ${law.text.toLowerCase()}`, headline: `${cn}: ${law.text}`, facts: [`${law.text} (${law.year}), by ${law.by}.`], links: { law: law.year }, quote: 'We did it because it was the right thing for people, and we will be judged on it.' };
+    return { kind: 'politics', beat: 'politics', topic: `your work as ${p.politics.title ?? 'an elected official'}`, headline: `A year in office: ${p.firstName} ${p.lastName}`, facts: [`${p.firstName} ${p.lastName} has served as ${p.politics.title ?? 'an elected official'} since ${p.politics.since ?? lived}.`], quote: 'There is a lot still to do.' };
+  }
+  const paper = p.medicine?.research?.papers?.filter((x) => x.year >= lived).at(-1);
+  if (paper) return { kind: 'medicine', beat: 'science', topic: `your paper in ${paper.venue}`, headline: `New research on ${paper.field.replace(/_/g, ' ')}`, facts: [`${p.firstName} ${p.lastName} published research on ${paper.field.replace(/_/g, ' ')} in ${paper.venue} in ${paper.year}.`, 'One study is a step, not a cure.'], quote: 'It is one study. It needs repeating before anyone should change what they do.' };
+  const a = store.state.sports?.athletes?.[p.id];
+  const e = a && Object.values(a.sports ?? {}).find((x) => ['college', 'elite', 'pro'].includes(x.level) && !x.retired);
+  if (e) return { kind: 'sports', beat: 'sports', topic: `your ${e.id.replace(/_/g, ' ')} season`, headline: `${p.firstName} ${p.lastName} on a season of ${e.id.replace(/_/g, ' ')}`, facts: [`${p.firstName} ${p.lastName} plays ${e.id.replace(/_/g, ' ')} at ${e.level} level, with ${e.wins ?? 0} wins and ${e.losses ?? 0} losses on the record.`], links: { athleteId: p.id }, quote: 'Every game is a chance to get better.' };
+  const K = store.state.kpop;
+  const g = K && Object.values(K.groups ?? {}).find((x) => x.debut && x.members?.some((m) => (m.who === 'player' || m.who === p.id) && m.to == null));
+  const rel = g && Object.values(K.releases ?? {}).filter((x) => x.groupId === g.id && x.year >= lived && !x.solo).at(-1);
+  if (rel) return { kind: 'kpop', beat: 'kpop', topic: `${g.name}'s release "${rel.title}"`, headline: `${g.name} on "${rel.title}"`, facts: [`${g.name} released "${rel.title}" in ${rel.year}.`], links: { kpopRelease: rel.id, groupId: g.id }, quote: 'We practiced until we could do it in our sleep.' };
+  return null;
+}
+/** Once a year at most, a real reporter asks the player about their work (scene 'jn_press_request'). */
+export function pressRequestYear(p = player()) {
+  if (p.age < 16 || isReporter(p) || p.legal?.incarceration) return null;
+  const t = pressTopic(p);
+  if (!t) return null;
+  const asked = (p.pressAsked ??= {});
+  if (asked[year()] || !seeded(`${p.id}/press/${year()}`).chance(0.5)) return null;
+  const real = cityReporter(p);
+  if (!real) return null;
+  asked[year()] = { ...t, reporterId: real.reporter.id, outletId: real.outlet.id };
+  store.state.pendingEvents.push({ id: 'jn_press_request', cast: { words: { reporter: nameOf(real.reporter), outlet: real.outlet.name, topic: t.topic } } });
+  return t.kind;
+}
+function answerPress(how, p) {
+  const req = p.pressAsked?.[year()];
+  if (!req || req.answered) return '';
+  req.answered = how;
+  const o = S().outlets[req.outletId];
+  const n = npc(req.reporterId);
+  if (!o || !n) return '';
+  const pub = pressArticle(p, req, how, { outlet: o, reporter: n });
+  // Talking on the record is how a reporter comes to know you: they may call again.
+  if (how === 'talk') { n.meters.relationship = clamp(n.meters.relationship + 6); meet(n, `A reporter at ${o.name}`, p); }
+  return pub ? `"${pub.headline}" runs in ${o.name}.` : '';
+}
+
+// ---------- Politics: laws that were really passed ----------
+
+/** A law the country's government really passed last year (engine/polity.js), the head of government and the opposition. */
+function lawStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  const pw = polity(w.countryId);
+  const law = (pw?.laws ?? []).filter((x) => x.year >= year() - 1 && !Object.values(S().stories).some((y) => y.links.lawKey === `${w.countryId}/${x.year}/${x.lever}/${x.dir}` && y.reporterId === p.id)).at(-1);
+  if (!law) return null;
+  const cn = COUNTRIES[w.countryId]?.name ?? 'the country';
+  const s = newStory(p, o, 'politics', `${law.text}: what it means for ${cn}`, { subject: law.by, links: { lawKey: `${w.countryId}/${law.year}/${law.lever}/${law.dir}` }, needsComment: true });
+  const c1 = addClaim(s, { text: `The government passed it in ${law.year}: ${law.text.toLowerCase()}`, truth: true, important: true });
+  const c2 = addClaim(s, { text: `${cn}'s budget is in deficit`, truth: (pw.budget ?? 0) < 0 });
+  const c3 = addClaim(s, { text: 'It was done to please the party\'s donors', kind: 'allegation', truth: false });
+  const c4 = addClaim(s, { text: 'It will help ordinary families', kind: 'opinion', truth: true });
+  addDoc(s, { title: 'The law as published', settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'The published national budget', settles: [{ claimId: c2.id }] });
+  addDoc(s, { title: 'The cabinet\'s private discussions', public: false, why: 'What ministers say to each other in private is not published. What they decided is.' });
+  const headF = pw.figures?.[pw.govt?.headId];
+  if (headF && !headF.died) addSource(s, { institution: true, name: headF.name, role: headTitle(w.countryId), type: 'official', willing: 0.4, knows: [{ claimId: c1.id, says: true }, { claimId: c4.id, says: true }, { claimId: c3.id, says: false }] });
+  const inPower = new Set([pw.govt?.lead, ...(pw.govt?.partners ?? [])]);
+  const opp = Object.values(pw.figures ?? {}).find((f) => !f.died && f.partyId && !inPower.has(f.partyId));
+  if (opp) addSource(s, { institution: true, name: opp.name, role: 'An opposition politician', type: 'official', willing: 0.75, knows: [{ claimId: c4.id, says: false }, { claimId: c3.id, says: true }, { claimId: c2.id, says: true }] });
+  const eco = person(w, r, 'Economist', [32, 66]);
+  addSource(s, { npcId: eco.id, name: nameOf(eco), role: 'An economist', type: 'expert', willing: 0.8, knows: [{ claimId: c2.id, says: s.claims[1].truth }] });
+  return s;
+}
+
+// ---------- Hospitals: the published figures ----------
+
+/** A real hospital in the city (engine/medicine/hospitals.js), its published figures and the real head of a department. */
+function hospitalStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
+  let list;
+  try { list = hospitalsIn(w.countryId, w.city); } catch { return null; }
+  const pick = list.filter((x) => x.h?.depts?.length);
+  const { e, h } = pick.length ? r.pick(pick) : {};
+  if (!h) return null;
+  const dept = r.pick(h.depts);
+  const dname = DEPARTMENTS[dept] ?? 'medicine';
+  const headN = deptHead(h, dept);
+  const better = r.chance(0.5);
+  const s = newStory(p, o, 'science', `${e.name}: waiting times in ${dname.toLowerCase()}`, { subject: e.name, links: { employerId: e.id, dept }, needsComment: !better });
+  const c1 = addClaim(s, { text: `Waiting times in ${dname.toLowerCase()} at ${e.name} ${better ? 'fell' : 'rose'} this year`, truth: r.chance(0.75), important: true });
+  const c2 = addClaim(s, { text: `${e.name} is short of nurses`, truth: r.chance(0.5) });
+  const c3 = addClaim(s, { text: 'Patients are well looked after', kind: 'opinion', truth: true });
+  addDoc(s, { title: `${e.name}'s published performance figures`, settles: [{ claimId: c1.id }] });
+  addDoc(s, { title: 'Patients\' medical records', public: false, why: 'Patients\' records are private, always. The hospital\'s figures are published without them.' });
+  const t2 = s.claims[1].truth;
+  if (headN?.alive) addSource(s, { npcId: headN.id, name: nameOf(headN), role: `Chief of ${dname} at ${e.name}`, type: 'medical', willing: 0.6, knows: [{ claimId: c1.id, says: better }, { claimId: c2.id, says: false }, { claimId: c3.id, says: true }] });
+  const nurse = person(w, r, `Nurse at ${e.name}`, [24, 60]);
+  addSource(s, { npcId: nurse.id, name: nameOf(nurse), role: 'A nurse', type: 'medical', willing: 0.5, wantsConfidential: true, knows: [{ claimId: c2.id, says: t2 }, { claimId: c1.id, says: r.chance(0.8) ? s.claims[0].truth : !s.claims[0].truth }] });
+  const pt = person(w, r, `Was treated at ${e.name}`, [20, 85]);
+  addSource(s, { npcId: pt.id, name: nameOf(pt), role: 'A patient who chose to talk', type: 'community', willing: 0.75, knows: [{ claimId: c3.id, says: true }] });
+  return s;
 }

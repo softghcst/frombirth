@@ -99,6 +99,33 @@ const stories = [
     ['Hope they keep it', 'pregnancy:keep', 'You tell them what you hope.'],
     ["Hope they don't", 'pregnancy:end', 'You tell them what you hope, as gently as you can.'],
   ]),
+  // The months of a pregnancy that goes on (engine/pregnancyStages.js). Nobody knows yet if it is a boy or a girl, or
+  // how many: that is for the day itself.
+  scene('expecting_3', [12, 60], 'Three months in. Morning sickness most mornings, and by mid-afternoon you could sleep standing up. {work} does not stop for it.', [
+    ['Take it easier for a while', 'expecting:rest', 'You let some things go for a few weeks. Less gets done, and you feel more like yourself.', 'good'],
+    ['See the doctor about the sickness', 'expecting:doctor', 'The doctor has seen it a thousand times: small meals, ginger, rest, and it usually eases by the fourth month.', 'good'],
+    ['Push through as normal', 'expecting:push', 'You keep everything going, with crackers in every pocket. It takes it out of you.', 'bad'],
+  ]),
+  scene('expecting_3_partner', [12, 90], 'Three months in. {them} is sick most mornings and asleep on the sofa by eight.', [
+    ['Take on more at home', 'expecting:help', 'You do the cooking, the shopping and the early mornings. {them} notices.', 'good'],
+    ['Go to the appointments with them', 'expecting:appointments', 'You are there for every appointment, and you hear the heartbeat together.', 'good'],
+    ['Carry on as usual', 'expecting:usual', '{them} manages. They would have liked a little more help.', 'bad'],
+  ]),
+  scene('expecting_6', [12, 60], 'Six months. Your back aches, your feet have swollen, and you want strange things to eat at strange hours. {work} feels twice as long as it used to.', [
+    ['Cut back for the last stretch', 'expecting:cutback', 'You cut back. Less gets done, and you sleep through the night again, mostly.', 'good'],
+    ['Sign up for prenatal classes', 'expecting:classes', 'Breathing, birth plans, and a room full of people as nervous as you are.', 'good'],
+    ['Keep going full tilt', 'expecting:fulltilt', 'You keep going at full speed, for as long as your body lets you.', 'neutral'],
+  ]),
+  scene('expecting_6_partner', [12, 90], 'Six months along. {them} cannot get comfortable, and the baby kicks hardest at three in the morning.', [
+    ['Get the nursery ready', 'expecting:nursery', 'You paint a room, build a crib from instructions that make no sense, and hang a mobile.', 'good'],
+    ['Go to prenatal classes together', 'expecting:together', 'You practice the breathing too, and make {them} laugh at the worst moments.', 'good'],
+    ['Work extra hours to save up', 'expecting:extra', 'You put in the hours. The money will help; the evenings at home are quiet without you.', 'neutral'],
+  ]),
+  scene('expecting_shower', [12, 90], 'Friends and family want to throw a baby shower. Nobody knows yet if it is a boy or a girl, so everything is yellow and green.', [
+    ['A big party', 'expecting:big', 'Games, cake, and a pile of presents taller than you are.', 'good'],
+    ['Something small, with the people closest to you', 'expecting:small', 'A quiet afternoon with the people who matter, and a few presents chosen with care.', 'good'],
+    ['Skip it', 'expecting:skip', 'You say thank you, but no. There will be time for parties after.'],
+  ]),
 ];
 
 const TEEN = [14, 17];

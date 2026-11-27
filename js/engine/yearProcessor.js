@@ -61,6 +61,7 @@ import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health/ailments.js';
 import { finishCareYear, healthYear } from './health/index.js';
+import { closeYear as closeContraceptionYear } from './health/contraception.js';
 import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';
 import { snapshot } from './yearSummary.js';
@@ -78,7 +79,7 @@ import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
 import { tickInvestigations } from './investigations/index.js';
 import { tickMedicine } from './medicine/index.js';
-import { tickJournalism } from './journalism.js';
+import { tickJournalism, pressRequestYear } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 import { directYear, yearSteps } from './storyDirector.js';
@@ -115,7 +116,8 @@ export const YEARLY = [
   ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
   ['medicine', () => booked('salary', 'Medicine: training and practice', tickMedicine)], // school, residency, posts, patients (engine/medicine)
   ['investigations', () => booked('salary', 'Investigations: training, ranks and cases', tickInvestigations)],
-  ['journalism', () => { for (const line of tickJournalism(player())) log(line, 'system', 'neutral'); }], // the newsroom's year: complaints, promotions, prizes, assignments (engine/journalism.js) // police, detectives, federal agents, private investigators (engine/investigations)
+  ['journalism', () => { for (const line of tickJournalism(player())) log(line, 'system', 'neutral'); }],
+  ['press requests', () => { pressRequestYear(player()); }], // a reporter asks the player about their own work (engine/journalism.js) // the newsroom's year: complaints, promotions, prizes, assignments (engine/journalism.js) // police, detectives, federal agents, private investigators (engine/investigations)
   ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
@@ -212,6 +214,8 @@ export function advanceYear() {
   const planLines = booked('auto', 'Your plans for the year', () => livePlans(p));
   // The care calendar runs out the weeks left in this year before it turns.
   booked('health', 'Health care through the year', () => finishCareYear(p));
+  // Contraception: the months left in the year, then the year's pregnancy risk from what was in place each month.
+  booked('health', 'Birth control', () => closeContraceptionYear(p));
   // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
   if (p.travel) closeYear();
   finishYear(); // the year just lived: traditions nobody organized, invitations nobody answered (engine/moments.js)

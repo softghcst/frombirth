@@ -126,7 +126,8 @@ function eligible(p, m) {
   if (sad) out.push({ id: 'med_family_answers', cast: {} });
   if (m.job && hospital(m.job.hospitalId)?.teaching && !(m.research?.projects?.length)) out.push({ id: 'med_research_offer', cast: {} });
   if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
-  if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
+  // Drug companies paying doctors to speak at conferences abroad: a postwar practice, from about the mid-1950s.
+  if (m.job && year() >= 1955) out.push({ id: 'med_industry_gift', cast: {} });
   if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
   // Relationships at work, and their consequences years later.
   const hereNow = m.job?.hospitalId ?? t?.hospitalId;
@@ -196,7 +197,7 @@ export function hospitalYear() {
       m.offer = { rank: 'chief', year: year(), hospitalId: id };
       delete h.heads[dept];
       chronicle(e, `${head.firstName} ${head.lastName} retired as chief of ${DEPARTMENTS[dept]}; the search for a successor began.`);
-      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from My Medical Career.`, 'system', 'good');
+      log(`${head.firstName} ${head.lastName} has retired as chief of ${DEPARTMENTS[dept]}, and the hospital has asked you to succeed them. Answer from the Work tab.`, 'system', 'good');
     } else {
       const pool = staffOf(e).filter((n) => n.alive && n.id !== head.id && ['doctor', 'surgery', 'psychiatry', 'podiatrist'].includes(n.life?.job?.careerId) && (n.life.job.level ?? 0) >= 1);
       const next = pool.sort((a, b) => (b.meters.intellect ?? 0) - (a.meters.intellect ?? 0))[0] ?? null;
@@ -365,7 +366,7 @@ export function medicineChoice(value, cast = {}) {
         const there = spec ? workplacesFor(spec, p.countryId, o.city).find(({ e: oe }) => oe.id !== o.hospitalId) ?? workplacesFor(spec, p.countryId, o.city)[0] : null;
         if (there && m.job && roll(0.6)) { startPost(spec, there.e.id, m.job.rank); return `You move to ${o.city} together. ${there.e.name} has a post for you too.`; }
         if (m.job) { m.job = null; endJob('moved with their partner'); }
-        return `You move to ${o.city} together, and leave your post. You will need to find one there: My Medical Career, Find a Post.`;
+        return `You move to ${o.city} together, and leave your post. You will need to find one there: Find a Post, on the Work tab.`;
       }
       if (how === 'stay') { love.meters.relationship = clamp(love.meters.relationship - 4); return `${love.firstName} turns it down. It was their decision, and they made it; it still stings a little.`; }
       if (how === 'talk') { love.meters.relationship = clamp(love.meters.relationship + 3); return `You talk it through for a week. ${love.firstName} decides to wait for something closer to home.`; }
@@ -397,7 +398,7 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'join') return doResearch('project').text;
       return '';
     case 'gift':
-      if (how === 'decline') { grow('integrity', 1, m); return 'You decline. Your prescribing stays yours.'; }
+      if (how === 'decline') { grow('integrity', 1, m); return 'Your prescribing stays yours.'; }
       grow('integrity', -3, m);
       if (roll(0.3)) { m.discipline.push({ year: year(), what: 'Accepted hospitality from a company whose products you prescribe, against hospital policy.' }); return 'A compliance review finds it. It goes on your record.'; }
       return 'The trip is lovely. You notice, later, how often their name comes to mind.';

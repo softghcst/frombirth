@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { oddsWords, rollRead, afterWords } from './odds.js';
 import { majorEdge } from './aptitudes.js';
 import { majorOpen } from './history.js';
 import { forgetNpc } from './digital/core.js';
@@ -836,7 +837,10 @@ export function programOptions() {
     else if (prog.id === 'law' && lawSchool.applyBlock(p)) reason = lawSchool.applyBlock(p);
     else if (acts().applied[prog.id]) reason = 'You already applied this year.';
     const transfer = prog.id === 'university' && isTransfer();
-    return { id: prog.id, label: transfer ? 'University (transfer)' : prog.label,
+    // The chance in plain words, where a place is decided on the application (not open courses, and not a university,
+    // which has its own screen with each course's chances).
+    const odds = !reason && !prog.open && prog.kind !== 'trade' && !['university', 'community'].includes(prog.id) ? oddsWords(admissionChance(prog.id)) : '';
+    return { id: prog.id, odds, label: transfer ? 'University (transfer)' : prog.label,
       blurb: transfer ? 'Your community-college credits count: you start in the third year.' : prog.blurb,
       years: transfer ? 2 : prog.years, tuition: tuitionFor(prog.id),
       stipend: prog.stipend ? localWage(prog.stipend, c) : 0, eligible: !reason, reason };
@@ -957,14 +961,16 @@ export function applyTo(progId, subjectId) {
   const subject = major ? ` to study ${major.name}` : '';
   const rec = major?.audition && p.flags.directorRec;
 
-  if (!rng.chance(admissionChance(progId, subjectId))) {
+  const read = rollRead(rng, admissionChance(progId, subjectId));
+  if (!read.ok) {
     p.stats.mood = clamp(p.stats.mood - 6);
     const text = trade ? `You applied for an apprenticeship as a ${trade.name.toLowerCase()}. They took someone else. You can try again next year.`
       : major?.audition
         ? `You auditioned for ${major.name} and were not offered a place. The panel wants stronger singing, dancing and acting. You can try again next year.`
-        : `Your application to ${prog.label.toLowerCase()}${subject} was rejected. You can try again next year.`;
-    log(text, 'system', 'bad');
-    return { accepted: false, text };
+        : `Your application to ${prog.label.toLowerCase()}${subject} was rejected${whyNot(progId)}. You can try again next year.`;
+    const said = `${text}${afterWords(read)}`;
+    log(said, 'system', 'bad');
+    return { accepted: false, text: said };
   }
 
   const base = prog.needs ? lastDegree(prog.needs) : null;
@@ -975,8 +981,20 @@ export function applyTo(progId, subjectId) {
     : `${major?.audition ? `Your audition won you a place${subject}` : `You were accepted to ${prog.label.toLowerCase()}${subject}`}`
       + `${rec ? '. Your drama director\'s recommendation was on the panel\'s desk' : ''}`
       + `${scholarship ? `. You were offered ${scholarship}${housingAid ? ' that also covers a dorm room' : ''}` : ''}.`;
-  log(text, 'system', 'good');
-  return { accepted: true, text, scholarship, housingAid };
+  const said = `${text}${afterWords(read)}`;
+  log(said, 'system', 'good');
+  return { accepted: true, text: said, scholarship, housingAid };
+}
+
+/** Why an application was turned down, as the school would see it: the part of it that was weakest. */
+function whyNot(progId) {
+  const p = player();
+  const prog = PROGRAMS[progId];
+  const base = prog.needs ? lastDegree(prog.needs) : null;
+  if (['medical', 'podiatric'].includes(progId) && !(p.medicine?.premed && Object.values(p.medicine.premed).some((v) => v > 0))) return ': they wanted to see more time spent around medicine (volunteering, shadowing, research)';
+  if (base && base.gpa < (prog.minGpa ?? 0) + 0.4) return ': your grades were the weak point';
+  if (p.stats.intellect < 55) return ': other applicants did better on the tests';
+  return ': it was a strong year for applicants';
 }
 
 /** Parents pay for a young person's studies, not for a grown adult's. */

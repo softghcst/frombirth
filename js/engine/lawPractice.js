@@ -15,7 +15,7 @@ import { TRACKS, SPECIALTIES, SPECIALTY_BY_ID, CASE_TEMPLATES, COMPLEXITY, LEGAL
 import { lawOf, nowM, profileFor, canon, admitted, progressSchool, progressBar, keepPerson, gain, school, prepareBar } from './lawSchool.js';
 import * as k from './cases.js';
 import * as cases from './lawCases.js';
-import { currentCareer, hire, promote, adjustPerformance, addPromotionGate } from './career.js';
+import { currentCareer, hire, promote, adjustPerformance, addPromotionGate, nextStep as nextStepOf } from './career.js';
 import { businesses } from './business.js';
 import { convictionsOf } from './records.js';
 import { finishLawSchool } from './education.js';
@@ -26,6 +26,7 @@ import { VOTERS } from '../data/parties.js';
 import * as realLawMod from './realLaw.js';
 import { discipline } from './lawCases.js';
 import { tickAcademy, clerking } from './lawAcademy.js';
+import { tickLawLife, strainChoice, retirementChoice } from './lawLife.js';
 import { pendingBriefs, takeBrief, templateFor, takeClaim } from './investigations/legal.js';
 import { openClaims, settleClaims } from './investigations/local.js';
 import { OFFENSE_BY_ID } from '../data/justice.js';
@@ -92,6 +93,7 @@ export function mayPractice(p = player()) {
   if (L.bar.disbarred) return 'You were disbarred.';
   if ((L.suspendedUntil ?? 0) > nowM()) return 'You are suspended from practice.';
   if (trackOf(p) === 'judiciary') return 'A judge does not represent clients.';
+  if (L.retired && !LEGAL.has(p.career?.careerId)) return 'You have retired from practice.';
   return '';
 }
 /** The specialties open on the current track. Only playable ones can be chosen as the main practice. */
@@ -175,16 +177,22 @@ function openWindow(p, w) {
       const role = t === 'prosecutor' ? 'prosecution' : 'defense';
       for (const inv of pendingBriefs(role, p.countryId).slice(0, n)) {
         if (cases.workload(p).open >= 14) break;
-        if (openCase(p, null, { invId: inv.id, role, assigned: true })) i++;
+        if (openCase(p, null, { invId: inv.id, role, assigned: true, at: w * WINDOW })) i++;
       }
     }
     for (; i < n && cases.workload(p).open < 14; i++) {
       const second = rng.chance(0.25) && cap < 5;
       const tid = pickTemplate(L.specialty, second ? cap + 1 : cap);
       if (!tid) break;
-      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, second: CASE_TEMPLATES[tid].level > cap });
+      openCase(p, tid, { role: t === 'prosecutor' ? 'prosecution' : CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined, assigned: true, at: w * WINDOW, second: CASE_TEMPLATES[tid].level > cap });
     }
     return;
+  }
+  // A junior lawyer at a firm is handed work by the partners as well as offered it: one matter each half-year.
+  if (t === 'lawyer' && (p.career?.level ?? 0) <= 1 && cases.workload(p).open < 8 && L.assignedWindow !== w) {
+    L.assignedWindow = w;
+    const tid = pickTemplate(L.specialty, cap);
+    if (tid) openCase(p, tid, { assigned: true, second: inTraining(p) || CASE_TEMPLATES[tid].level > cap, role: CASE_TEMPLATES[tid].kind === 'criminal' ? 'defense' : undefined });
   }
   const n = Math.max(1, t === 'own' ? 2 + (ownFirm(p)?.reputation >= 60 ? 1 : 0) + (FEE_STRATEGIES[L.fees ?? 'standard']?.offers ?? 0) + (L.adBoost === w ? 1 : 0) : 2);
   const taken = new Set((L.offers ?? []).map((o) => o.templateId));
@@ -207,7 +215,7 @@ function openWindow(p, w) {
     const tid = rng.pick(ownCases);
     who.flags.askedForLegalHelp = store.state.year;
     const rel = { bestFriend: 'best friend', inlaw: 'in-law' }[who.role] ?? who.role;
-    L.offers.push({ id: `of${w}_personal`, window: w, second: false, templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
+    L.offers.push({ id: `of${w}_personal`, window: w, second: inTraining(p), templateId: tid, level: CASE_TEMPLATES[tid].level, fee: 0, kind: CASE_TEMPLATES[tid].kind, clientId: who.id, personal: rel, specialty: L.specialty,
       summary: `Your ${rel} ${who.firstName} asks for your help. ${CASE_TEMPLATES[tid].summary.replace(/\{client\}/g, who.firstName).replace(/\{\w+\}/g, (m) => ({ '{other}': 'their spouse', '{child}': 'the child', '{otherOrg}': 'a company', '{clientOrg}': 'their company' }[m] ?? 'some'))} You would not charge them.` });
   }
   // A person charged in a case from a police investigation may want a defense lawyer who practises criminal law.
@@ -258,7 +266,7 @@ function openCase(p, templateId, o = {}) {
   const sup = o.second ? supervisor(p) : null;
   // A child welfare case: government counsel acts for the agency; a private lawyer may be the child's attorney, a guardian ad litem, or a parent's attorney.
   if (templateId === 'dependency' && !o.role) o = { ...o, role: t === 'gov_counsel' ? 'childProtection' : rng.pick(['childAttorney', 'gal', 'parentAttorney']) };
-  const opts = { role: o.role, assigned: o.assigned, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
+  const opts = { role: o.role, assigned: o.assigned, at: o.at, specialty: L.specialty, supervisorId: sup?.id ?? null, fee: o.fee, clientId: o.clientId, track: t };
   const c = o.invId ? takeBrief(o.invId, o.role ?? 'defense', opts) : o.claimId ? takeClaim(o.claimId, opts) : cases.createCase(templateId, opts);
   if (!c) return null;
   c.second = !!o.second;
@@ -528,6 +536,21 @@ export function seek(id, p = player(), o2 = {}) {
   }
   return result(false, 'Nothing happened.', 'neutral');
 }
+/** Once a year: if the only thing between the player and the next rank is a selection that is not an election, it is held. */
+function autoConsider(p) {
+  const L = lawOf(p);
+  if (!p.career?.careerId || L.consideredYear === store.state.year) return;
+  L.consideredYear = store.state.year;
+  const next = nextStepOf();
+  if (!next || next.yearsLeft || next.missing.length !== 1) return;
+  const id = Object.entries(GATE_TEXT).find(([, text]) => text === next.missing[0])?.[0];
+  if (!['partnership', 'managing', 'chief_defender', 'general_counsel', 'elevation'].includes(id)) return;
+  if ((p.career.performance ?? 0) < 60) return;
+  const o = opportunities(p).find((x) => x.id === id);
+  if (!o || o.why) return;
+  const r = seek(id, p);
+  log(r.ok ? r.text : `You were considered for ${GATE_TEXT[id]}. Not this year.`, 'system', r.ok ? 'good' : 'neutral');
+}
 /** Becomes a judge: the old cases go to colleagues, because a judge cannot be counsel in any of them. */
 function becomeJudge(p, elected = false) {
   withdrawAll(p, 'You left practice for the bench.');
@@ -620,20 +643,26 @@ export function tickLaw(o = {}) {
   const admittedNow = progressBar(p); // practical training ends, and admission follows (engine/lawSchool.js)
   if (admittedNow) log(admittedNow.text, 'system', 'good');
   cases.progressCases(p);
+  // Selections that are not elections come to someone who has earned them, without asking: once a year the partners,
+  // the office or the court consider them (a partnership vote, heading the office, the higher court).
+  autoConsider(p);
   // A public lawyer works for the public office (older saves had some at private firms).
   if (['prosecutor', 'defender', 'gov_counsel', 'judiciary'].includes(p.career?.careerId) && !employerOf(p.career.employerId)?.public) {
     const office = placeAt(p.career.careerId, p.countryId, p.city);
     if (office?.public) p.career.employerId = office.id;
   }
   if (trackOf(p)) refreshOpportunities(p);
+  // Cases a long turn assigned in its earlier half-year move on to the present too, as they would have turn by turn.
+  cases.progressCases(p);
   storyBeats(p);
   firmYear(p);
   tickAcademy(p);
+  tickLawLife(p);
   // Closed cases count toward the review once, and the firm's fees go to the firm.
   for (const h of L.history.filter((x) => !x.counted)) {
     h.counted = true;
     if (h.clinic || h.referred) continue;
-    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.favorable < -0.4 ? -1 : 1);
+    if (p.career?.careerId && LEGAL.has(p.career.careerId)) adjustPerformance(h.favorable > 0 ? 3 : h.track === 'defender' ? 1 : h.favorable < -0.4 ? -1 : 1) /* a public defender is judged on the defense, not on winning cases the evidence decides */;
     const c = cases.caseById(h.caseId);
     const firm = ownFirm(p);
     if (c && firm && h.track === 'own' && c.fee.amount && !c.fee.toFirm) { c.fee.toFirm = true; firm.cash += c.fee.amount; firm.reputation = clamp((firm.reputation ?? 30) + (h.favorable > 0 ? 2 : 0)); }
@@ -779,6 +808,8 @@ export function lawChoice(value) {
       if (choice === 'apply') { const r = seek('judge', p); return r.text; }
       return 'You let the vacancy pass. There will be others.';
     }
+    case 'strain': return strainChoice(choice, p);
+    case 'retire': return retirementChoice(choice, p);
     case 'childReads': {
       const kid = store.state.npcs[L.childReads];
       if (!kid) return '';
