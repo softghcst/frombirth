@@ -330,6 +330,117 @@ export default [
       { label: 'Say kindly that you cannot this time', outcomes: [any('{person} said it was no trouble to ask. It was not.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
     ],
   },
+  // ---------- Each kind of disagreement in its own words (data/neighborhoods.js DISAGREEMENTS scene) ----------
+  {
+    ...base, id: 'hood_dispute_noise', ageRange: [18, 120],
+    text: 'Music and voices from {person}\'s place, past midnight, for the third weekend running. You have work in the morning.',
+    choices: [
+      { label: 'Knock and ask them, nicely, to turn it down', outcomes: [any('You knocked in your pajamas. {person} opened the door with a drink in hand and a guilty look.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Suggest a deal: loud until eleven, quiet after', outcomes: [any('You offered a cut-off time. {person} said they would think about it.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Put a polite note through their door', outcomes: [any('A short, clear note: you need to sleep, and this cannot go on.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Call the noise line', outcomes: [any('You made the call. A van came by around one, and the music stopped.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_parking', ageRange: [18, 120],
+    text: 'For the fourth day in a row, {person} has parked right across the front of your house.',
+    choices: [
+      { label: 'Ask them about it, friendly', outcomes: [any('You caught {person} at their car. They had not realized it bothered you.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Suggest you take turns with the good spot', outcomes: [any('Alternate days for the spot by the tree. {person} laughed, but did not say no.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Tell them plainly the space is not theirs', outcomes: [any('You said it straight. {person} went a little red.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Report it to the city', outcomes: [any('A warning notice appeared on the windshield. {person} knows who called.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_boundary', ageRange: [18, 120],
+    text: '{person} has put up a new fence, and you are fairly sure it is a foot onto your side.',
+    choices: [
+      { label: 'Ask them to look at the old plans with you', outcomes: [any('You spread out the old house papers on the hood of a car together.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Offer to split the difference', outcomes: [any('You suggested the fence stay, with the cost of a hedge shared. {person} is thinking.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Ask someone from the street they trust to look', outcomes: [any('An old neighbor who remembers the original fence came over to have a look.', 'neutral', hood({ do: 'dispute', how: 'mediate' }))] },
+      { label: 'Get a surveyor and a lawyer\'s letter', outcomes: [any('A surveyor came with a measuring wheel. Letters were exchanged.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_pet', ageRange: [18, 120],
+    text: '{person}\'s dog barks from the moment they leave in the morning until they come home at night.',
+    choices: [
+      { label: 'Tell them, kindly; they may not know', outcomes: [any('{person} had no idea. They looked genuinely upset about it.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Offer to walk the dog at lunchtime', outcomes: [any('An unusual offer. {person} said they would love that, and so would the dog.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Say clearly it has to stop', outcomes: [any('You said the barking is not something you can live with.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Complain to the city', outcomes: [any('A letter from the city about the dog. {person} was hurt that you did not knock first.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_shared', ageRange: [18, 120],
+    text: 'The shared hallway is full of {person}\'s things again, and the trash cans are overflowing beside them.',
+    choices: [
+      { label: 'Ask {person} about it on the stairs', outcomes: [any('A slightly awkward chat on the landing. {person} said they were between storage places.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Propose a cleaning schedule for the whole floor', outcomes: [any('A schedule on the bulletin board, everyone\'s name on it, {person}\'s included.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Ask the building manager to sort it out', outcomes: [any('The manager sent a friendly note to everyone on the floor.', 'neutral', hood({ do: 'dispute', how: 'mediate' }))] },
+      { label: 'Make a formal complaint to the landlord', outcomes: [any('A formal complaint, with photographs.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_rules', ageRange: [18, 120],
+    text: '{person} keeps three bikes in the stairwell, and you have to squeeze past them every time you come home.',
+    choices: [
+      { label: 'Ask whether they could find somewhere else', outcomes: [any('{person} said there is nowhere else, and asked if you had any ideas.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Suggest the residents club together for a bike rack', outcomes: [any('A bike rack in the courtyard, the cost shared. {person} liked the idea.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Say they block the fire exit, and must go', outcomes: [any('You put it plainly: it is a safety rule, not a preference.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Report it to the building\'s management', outcomes: [any('A notice went up in the lobby about the stairwell.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_tree', ageRange: [18, 120],
+    text: '{person}\'s big tree hangs over your garden, dropping leaves, sap and the occasional branch.',
+    choices: [
+      { label: 'Ask them if it could be trimmed', outcomes: [any('You stood together under the tree. {person} said they love it, and see what you mean.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Offer to share the cost of a tree surgeon', outcomes: [any('Half each for a careful trim. The tree stays, and so does the light.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Tell them you will cut back what hangs over', outcomes: [any('You said you will trim the branches on your side, as is your right.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Ask the city about the rules', outcomes: [any('The city sent a leaflet about overhanging trees, and a copy to {person}.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_smoke', ageRange: [18, 120],
+    text: 'Every Sunday {person} burns garden waste, and the smoke drifts straight into your laundry and your windows.',
+    choices: [
+      { label: 'Ask them about it over the fence', outcomes: [any('{person} had never thought about which way the wind blows.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Suggest they burn only when the wind is the other way', outcomes: [any('A simple deal about the wind. {person} said it seemed fair.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Tell them it has to stop', outcomes: [any('You said the smoke is making your house smell, and it has to stop.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Complain to the city', outcomes: [any('A city inspector came round to talk to {person} about bonfires.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_building', ageRange: [18, 120],
+    text: '{person} is having building work done, and the drilling starts at seven every morning, Saturdays included.',
+    choices: [
+      { label: 'Ask how long it will go on', outcomes: [any('{person} sighed: another two months. They said they are sick of it too.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Ask for a later start on weekends', outcomes: [any('You asked for no drilling before ten on Saturdays. {person} said they would talk to the builders.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Ask the builders to keep to the proper hours', outcomes: [any('You told the foreman the hours the rules allow.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Report it to the city', outcomes: [any('The city reminded the builders of the permitted hours.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_light', ageRange: [18, 120],
+    text: '{person} has put up a security light that clicks on whenever a cat walks by, and shines straight into your bedroom.',
+    choices: [
+      { label: 'Mention it, and ask if it could be angled down', outcomes: [any('{person} came over that evening to see it from your window, and winced.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Offer to help fit a shade on it', outcomes: [any('A small shade on the lamp. You offered to hold the ladder.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Say it has to be moved', outcomes: [any('You said you cannot sleep with it, and it needs to go.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Complain to the city about the light', outcomes: [any('A formal complaint about the light.', 'neutral', hood({ do: 'dispute', how: 'formal' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_dispute_drums', ageRange: [14, 120],
+    text: 'Someone at {person}\'s place has taken up the drums, and practices for two hours every evening.',
+    choices: [
+      { label: 'Ask about it, and when they practice', outcomes: [any('{person} looked embarrassed: their teenager, and a passion that came from nowhere.', 'neutral', hood({ do: 'dispute', how: 'ask' }))] },
+      { label: 'Suggest set practice hours, and rubber pads on the drums', outcomes: [any('An hour a day, before eight, with practice pads. {person} said it sounded fair.', 'neutral', hood({ do: 'dispute', how: 'compromise' }))] },
+      { label: 'Say the evenings need to be quiet', outcomes: [any('You said that two hours a night is too much.', 'neutral', hood({ do: 'dispute', how: 'boundary' }))] },
+      { label: 'Ask someone neutral to help work it out', outcomes: [any('A neighbor you both trust sat you down over coffee to agree on something.', 'neutral', hood({ do: 'dispute', how: 'mediate' }))] },
+    ],
+  },
   {
     ...base, id: 'hood_disagreement', ageRange: [18, 120],
     text: 'Things have got a little tense with {person} over {about}.',
