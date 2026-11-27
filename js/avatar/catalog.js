@@ -56,7 +56,7 @@ export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy)
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = {
   textured_crop: 'textured_pixie_cut',
-  bowl_cut: 'textured_french_crop', long_straight_center_part: 'sleek_glass_hair',
+  bowl_cut: 'textured_french_crop', long_straight_center_part: 'layered_feathered_midi', sleek_glass_hair: 'layered_feathered_midi',
   // The girls' pack, withdrawn.
   '90s_flipped_ponytail': 'half_up_half_down_waves', short_bubble_pigtails: 'space_buns', y2k_spiky_updo_bun: 'messy_top_bun',
   collarbone_butterfly_cut: 'layered_feathered_midi', dutch_halo_braid: 'messy_top_bun', half_up_fountain_bob: 'half_up_half_down_waves',

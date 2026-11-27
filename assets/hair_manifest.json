@@ -670,25 +670,6 @@
       "minAge": 13
     },
     {
-      "id": "sleek_glass_hair",
-      "name": "Sleek Glass Hair",
-      "clipToHead": false,
-      "kids": false,
-      "length": "long",
-      "type": "straight",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ],
-      "gender": "female",
-      "minAge": 13
-    },
-    {
       "id": "slicked_back",
       "name": "Slicked Back",
       "clipToHead": false,

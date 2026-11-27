@@ -127,16 +127,16 @@ for (const id of Object.keys(FITTED_HAIR).filter((x) => !FITTED_HAIR[x].legacy))
   const elders = elderHairStyles('female');
   check(elders.includes('elder_low_bun'), 'Elder Low Bun is not an elder style');
   check(elders.every((id) => !!FITTED_HAIR[id] || !!CATALOG.hair.find((h) => h.id === id)), 'an elder style does not exist');
-  const look = (extra = {}) => ({ v: 3, inherited: { head: 'head_13_athletic', skin: 'tan' }, style: { hair: 'sleek_glass_hair', ...extra } });
+  const look = (extra = {}) => ({ v: 3, inherited: { head: 'head_13_athletic', skin: 'tan' }, style: { hair: 'layered_feathered_midi', ...extra } });
   const drawn = (age, gender, extra) => avatarSvg({ appearance: look(extra), seed: 'elder', age, gender });
   const elderly = (svg) => elders.some((id) => svg.includes(`hair_fitted/${id}_`));
   check(!elderly(drawn(ELDER_HAIR_AGE - 1, 'female')), 'a woman is drawn with an elder style before old age');
   check(elderly(drawn(ELDER_HAIR_AGE, 'female')) && elderly(drawn(90, 'female')), 'an older woman keeps a young style');
-  check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('sleek_glass_hair'), 'an older woman who chose her hair at the salon is not drawn with it');
+  check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('layered_feathered_midi'), 'an older woman who chose her hair at the salon is not drawn with it');
   // Coily hair or locs: the elder styles made for them (type 'coily'); everyone else: the general ones.
   const dressed = (texture, hair) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'umber', hairTexture: texture }, style: { hair } }, seed: 'elder', age: 80, gender: 'female' });
-  check(dressed('coily', 'sleek_glass_hair').includes('hair_fitted/elder_braided_bun_') && dressed('straight', 'side_part_locs').includes('hair_fitted/elder_braided_bun_'), 'an older woman with coily hair or locs is not given the coily elder style');
-  for (const [tex, hair] of [['straight', 'sleek_glass_hair'], ['wavy', 'storybook_waves'], ['curly', 'center_part_waves']]) check(!dressed(tex, hair).includes('elder_braided_bun') && elders.some((id) => dressed(tex, hair).includes(`hair_fitted/${id}_`)), `an older woman with ${tex} hair is given the coily elder style, or none`);
+  check(dressed('coily', 'layered_feathered_midi').includes('hair_fitted/elder_braided_bun_') && dressed('straight', 'side_part_locs').includes('hair_fitted/elder_braided_bun_'), 'an older woman with coily hair or locs is not given the coily elder style');
+  for (const [tex, hair] of [['straight', 'layered_feathered_midi'], ['wavy', 'storybook_waves'], ['curly', 'center_part_waves']]) check(!dressed(tex, hair).includes('elder_braided_bun') && elders.some((id) => dressed(tex, hair).includes(`hair_fitted/${id}_`)), `an older woman with ${tex} hair is given the coily elder style, or none`);
   const menElders = elderHairStyles('male');
   check(['elder_balding_sides', 'classic_side_part', 'swept_back_waves'].every((id) => menElders.includes(id)), 'an older men\'s cut is missing from the elder men\'s styles');
   check(FITTED_STYLES.find((x) => x.id === 'classic_side_part')?.elder == null, 'Classic Side Part is kept from young men');
@@ -144,7 +144,7 @@ for (const id of Object.keys(FITTED_HAIR).filter((x) => !FITTED_HAIR[x].legacy))
   check(!elderly(drawn(90, 'male')), 'an older man is drawn with an elder woman\'s style');
   check(menElders.some((id) => drawn(90, 'male').includes(`hair_fitted/${id}_`)), 'an older man keeps a young style');
   check(!menElders.some((id) => drawn(ELDER_HAIR_AGE - 1, 'male').includes(`hair_fitted/${id}_`)), 'a man is drawn with an elder style before old age');
-  check(drawn(90, 'male', { keepHair: true }).includes('sleek_glass_hair'), 'an older man who chose his hair at the salon is not drawn with it');
+  check(drawn(90, 'male', { keepHair: true }).includes('layered_feathered_midi'), 'an older man who chose his hair at the salon is not drawn with it');
   check(normalize(look({ keepHair: true }), 'k').style.keepHair === true, 'a salon choice in old age is not kept in the save');
 }
 

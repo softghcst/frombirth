@@ -71,6 +71,7 @@ EDGE_START = 4       # that outline starts this far below the top of the shoulde
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
 LOCK_MAX_Y = 400     # ... and on the face (down to about the mouth): hair over the neck always goes behind it
 MIN_LOCK = 150       # a piece of hair over the face below the ears must be this big (square units) to stay in front
+WIDER_MIN = 10       # a cheek or jaw this much wider (units) than the drawn-on head's has the hair fall in front of it
 FACE_MARGIN = 12     # below the ears, hair stays in front of the face only this far inside the head's outline
 
 SIZE = 2048                 # pictures are worked on at this size: 4 pixels to one unit of the 512 frame
@@ -315,7 +316,7 @@ def base_inside():
     return _BASE_INSIDE[0]
 
 
-def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front'):
+def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front', drawn=None):
     """Where hair is in front of a head and where behind it (fields, > 0 inside), in the base head's frame.
 
     Behind: only the hair next to the jaw and neck, below the ear lobes and above the shoulders, so the jaw draws over
@@ -323,6 +324,15 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front'):
     them whole, and lengths that reach the shoulders fall in front of them."""
     y = np.arange(SIZE)[:, None] * np.ones((1, SIZE))
     x = np.ones((SIZE, 1)) * np.arange(SIZE)[None, :]
+    # On a head wider than the one the style was drawn on (a rounder cheek or jaw), hair goes behind only where it is
+    # inside the drawn-on head too: where it falls over the extra cheek it stays in front of it, with an outline, as
+    # hair framing a round face does, instead of being hidden behind the cheek and only its tips poking out past it.
+    own = head
+    wider = None
+    if drawn is not None:
+        # Only where it is clearly wider: a sliver (a jaw a few units wider) still takes the hair behind it.
+        wider = ndi.binary_opening(head & ~drawn, iterations=int(WIDER_MIN / 2 * PX))
+        head = head & ~wider
     inside = ndi.distance_transform_edt(head)
     # The neck: the head's columns where its neck is narrowest, carried straight down (with its outline, and a little
     # room). Hair there always goes behind, so the neck's outline shows all the way down to the shoulders.
@@ -378,12 +388,17 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front'):
     # Where hair in front of the shoulders stops at the neck, it gets an outline, like the rest of its edge.
     edge = mask & (behind < 0.5) & (ndi.distance_transform_edt(~neck) < OUTLINE_W * PX) & (y > (shoulder_y + EDGE_START) * PX)
     edge &= ndi.distance_transform_edt(mask) > 0
+    if wider is not None and wider.any():
+        # Where the front hair stops over the extra cheek, it gets an outline (elsewhere the face's own outline hides it).
+        cut = mask & (behind < 0.5) & (ndi.distance_transform_edt(behind < 0.5) < OUTLINE_W * PX)
+        edge |= cut & ndi.binary_dilation(wider, iterations=int(OUTLINE_W * PX)) & own
     return front, back, gap, edge
 
 
-def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, head_name):
+def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, head_name, drawn=None):
     front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y,
-                                         'behind' if 'data-sides="behind"' in tags else 'jaw' if 'data-sides="jaw"' in tags else 'front')
+                                         'behind' if 'data-sides="behind"' in tags else 'jaw' if 'data-sides="jaw"' in tags else 'front',
+                                         drawn)
     base, details = emit(fparts, front_r)
     if edge.any():
         details += emit([('edge', np.minimum((soft(edge, 1.5) - 0.5) * 8, front_r), OUTLINE)])[1]
@@ -528,11 +543,12 @@ def build(style, force=False):
         warp = None if name == base_name else FH.warp_for(marks, heads[base_name])
         head, lobe_y, shoulder_y, neck_y = head_in_base(polys, warp)
         # On a narrower (or wider) jaw than the one it was drawn beside, the lengths are brought in (or out) to it.
-        left, right = jaw_shift(drawn_head, head, drawn_lobe, lobe_y) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
+        # Only ever in: on a wider jaw the hair stays where it was drawn and falls in front of the extra cheek (regions()).
+        left, right = (np.maximum(d, 0) for d in jaw_shift(drawn_head, head, drawn_lobe, lobe_y)) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
         hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
         hmask = squeeze(fmask, left, right)
         bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
-        svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name)
+        svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name, None if name == base_name else drawn_head)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
