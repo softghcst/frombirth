@@ -54,7 +54,7 @@ function groupSkills(L) {
 }
 /**
  * How lawyers are trained and admitted where someone lives: the justice family's profile, with the country's own
- * documented route laid over it where Pathways has one ('documented'), otherwise labeled 'simplified'.
+ * documented route laid over it where From Birth has one ('documented'), otherwise labeled 'simplified'.
  */
 export function profileFor(countryId = player().countryId) {
   const base = LAW_PROFILES[systemFor(countryId).id];

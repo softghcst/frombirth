@@ -1,6 +1,6 @@
 // What lenders know about the player.
 //
-// This is a Pathways game measure. It is invented, it is simple on purpose,
+// This is a From Birth game measure. It is invented, it is simple on purpose,
 // and it is not any real credit score: nothing here predicts what a real
 // lender would do. Different places keep different records (data/money.js):
 // some share a full file, some only write down serious trouble, and some keep

@@ -1,6 +1,6 @@
 # Fame, celebrity and entertainment
 
-Fame in Pathways comes from work that exists in the world: a part in a real
+Fame in From Birth comes from work that exists in the world: a part in a real
 production, a record that came out, a tour that played. Nothing is a bare number
 the game sets; every gain has a cause, and the archive can show you where it came from.
 

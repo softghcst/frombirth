@@ -1,4 +1,4 @@
-# Money in Pathways
+# Money in From Birth
 
 How the player's money is recorded, what My Money shows, what is invented, and what is not built yet.
 
@@ -88,7 +88,7 @@ stop spending.
 `engine/credit.js`. Built only from things that happened: years of paying on time, going overdrawn, having
 possessions sold to cover debts, bankruptcy. Countries are grouped three ways:
 
-- **file**: a shared record, shown as a Pathways standing from 0 to 100;
+- **file**: a shared record, shown as a credit standing from 0 to 100;
 - **registry**: only serious trouble is written down, and there is no number;
 - **bank**: no shared record, so no standing is shown at all.
 
@@ -327,7 +327,7 @@ These were in the brief and are **not** in the game:
   combined money is not one ledger, and relatives' transactions are not itemized the way the player's are.
 - **Beneficiary rules by country** beyond the reserved share for children; **deposit protection and bank failure.**
 - **Pay by pay period.** Payslips show the year month by month, but pay, bills and statements are still
-  posted once a year. A year in Pathways is lived as one step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
+  posted once a year. A year in From Birth is lived as one step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
   charged for months before it existed, and nothing is pro-rated within a year either.
 - **Historical eras.** The game has no lives set in the past. Banking products, cards and insurance each have
   a first year and refuse to exist before it, but period currencies, merchant banking and the like are not

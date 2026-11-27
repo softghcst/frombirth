@@ -1,6 +1,6 @@
 // A moment before the title screen, when the game is opened afresh (not when a tab that was only away comes back): the people and events are fiction, and nothing in it
 // is advice. It moves on by itself after a couple of seconds; a tap or a key moves on at once. Settings → About
-// Pathways shows the same words.
+// From Birth shows the same words.
 //
 // Automated browsers (navigator.webdriver: the checks in tests/) skip it, so they start at the title screen as before,
 // unless the address asks for it (?notice).
@@ -53,7 +53,7 @@ export function renderNotice(app, onDone) {
 /** The same words, from Settings. */
 export function openNotice() {
   return new Promise((resolve) => {
-    const m = openModal(`<h2>About Pathways</h2>${LINES.map((t) => `<p class="body">${t}</p>`).join('')}<button class="btn primary" data-close style="margin-top:14px">Close</button>`, { dismissable: true, onDismiss: resolve });
+    const m = openModal(`<h2>About From Birth</h2>${LINES.map((t) => `<p class="body">${t}</p>`).join('')}<button class="btn primary" data-close style="margin-top:14px">Close</button>`, { dismissable: true, onDismiss: resolve });
     m.el.querySelector('[data-close]').addEventListener('click', () => { m.close(); resolve(); });
   });
 }

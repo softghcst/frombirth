@@ -196,7 +196,7 @@ function record(state, e, awards, o) {
 
 /**
  * An individual sport's year: Player of the Year, Newcomer of the Year, Comeback Player of the Year, for professionals
- * and national-squad athletes. Measured by the Pathways Rating, the titles and any medal, against the best of the rest,
+ * and national-squad athletes. Measured by the Player Rating, the titles and any medal, against the best of the rest,
  * who are named. @returns {object[]} the awards the player won
  */
 export function yearAwards(state, e, sum) {

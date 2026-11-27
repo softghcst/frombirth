@@ -1,8 +1,8 @@
 {
-  "name": "pathways",
+  "name": "from-birth",
   "private": true,
   "type": "module",
-  "description": "Pathways: a life simulation that runs in the browser. Nothing to install to play; these scripts are for development.",
+  "description": "From Birth: a life simulation that runs in the browser. Nothing to install to play; these scripts are for development.",
   "scripts": {
     "test": "node scripts/test-all.mjs",
     "snap-clothes": "node scripts/snap-clothes.mjs",

@@ -6,7 +6,7 @@
 //   athletes      one record per person who has played, keyed by their id; it is never deleted. The player's is made
 //                 when they first take up a sport. Each record holds, per sport, that sport's own skills (separate from
 //                 the character's general talents), a ceiling for each skill that comes from their talent, the level
-//                 they play at, their club and team, their coach, their training plan, their Pathways Rating, and
+//                 they play at, their club and team, their coach, their training plan, their Player Rating, and
 //                 every season and event they took part in, by id.
 //   orgs          clubs, academies, school teams, university programs, professional clubs and leagues. They persist:
 //                 the same club is there next year with the same name, coach and rivals.
@@ -119,7 +119,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
 const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
-/** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
+/** Whether the person uses a wheelchair. From Birth has no wider disability system: this is the one marker the sports engine reads. */
 export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || conditionIdsOf(p).some((id) => /wheelchair|paraly|spinal/.test(id));
 
 /** Saves from before this engine: a school athlete's record becomes an athletic profile, conservatively. */
@@ -291,7 +291,7 @@ const meanSkill = (e) => Object.values(e.skills).reduce((s, v) => s + v, 0) / Ma
 
 /** A plain description of a skill value. */
 export const skillWord = (v) => (v >= 90 ? 'World class' : v >= 80 ? 'Elite' : v >= 68 ? 'Advanced' : v >= 52 ? 'Competitive' : v >= 36 ? 'Developing' : v >= 20 ? 'Learning' : 'Beginner');
-/** The Pathways Rating as a band. */
+/** The Player Rating as a band. */
 export const prWord = (pr) => (pr >= 1900 ? 'World elite' : pr >= 1650 ? 'International' : pr >= 1450 ? 'National' : pr >= 1250 ? 'Regional' : pr >= 1050 ? 'Club' : 'Recreational');
 
 // ---------- What can be played, where and when ----------

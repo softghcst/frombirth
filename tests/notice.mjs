@@ -1,5 +1,5 @@
 // The notice before the title screen: every time the game opens, the words (fiction; not advice) for a moment, then
-// the title screen by itself; a tap moves on at once; no heading or button; Settings → About Pathways shows the words
+// the title screen by itself; a tap moves on at once; no heading or button; Settings → About From Birth shows the words
 // again. Needs Playwright. Run with: node tests/notice.mjs. Set SHOT=/some/dir for screenshots.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -70,12 +70,12 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.evaluate(() => sessionStorage.clear());
   await page.reload();
   await page.waitForSelector('[data-random]');
-  // Settings → About Pathways shows the words again.
+  // Settings → About From Birth shows the words again.
   await page.click('[data-settings]');
-  await page.locator('#modal-root .choice-btn', { hasText: 'About Pathways' }).click();
+  await page.locator('#modal-root .choice-btn', { hasText: 'About From Birth' }).click();
   await page.waitForTimeout(100);
   const about = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
-  check(/About Pathways/i.test(about) && /fictional/.test(about), `${label}: Settings shows it again`);
+  check(/About From Birth/i.test(about) && /fictional/.test(about), `${label}: Settings shows it again`);
   // An automated browser (the other checks) goes straight to the title screen.
   const plain = await browser.newPage({ viewport });
   await plain.goto(`http://localhost:${port}/index.html`);

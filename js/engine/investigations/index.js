@@ -1,4 +1,4 @@
-// The investigative careers engine (Pathways Detective & Federal Investigations). One yearly step,
+// The investigative careers engine (From Birth Detective & Federal Investigations). One yearly step,
 // run after the working year (engine/yearProcessor.js 'investigations'), and dated steps that are
 // settled whenever the calendar has passed their date (an academy's end, a laboratory report, a
 // court date). Decided when they start and known when their date comes, so 3-, 6- and 12-month

@@ -175,7 +175,7 @@ function rankings() {
   const a = sp.myAthlete();
   return `
     ${Object.values(a.sports).map((e) => `<div class="card"><h3>${esc(sportOf(e.id).name)}</h3>
-      ${kv('Pathways Rating', `${e.pr} · ${sp.prWord(e.pr)}`)}
+      ${kv('Player Rating', `${e.pr} · ${sp.prWord(e.pr)}`)}
       ${kv('Record', `${e.wins} won · ${e.losses} lost${e.draws ? ` · ${e.draws} drawn` : ''}`)}
       ${kv('Titles', String(e.titles.length))}
       ${Object.entries(e.best ?? {}).map(([k, v]) => { const ev = sportOf(e.id).events?.find((x) => x[0] === k); return ev ? kv(`Best ${ev[1]}`, fmtMark(ev, v)) : ''; }).join('')}
@@ -551,7 +551,7 @@ function sportDesk(step) {
   const ov = sp.overall(e);
   const rows = [];
   if (sport.kind === 'team') rows.push(navRow({ attrs: `data-league="${e.id}"`, label: 'League', sub: s ? `${s.name}: the standings` : 'The table, once your first season is played', ico: 'trophy' }));
-  else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Pathways Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
+  else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Player Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
   if (e.status === 'active') {
     rows.push(navRow({ attrs: `data-practice="${e.id}"`, label: 'Practice', sub: left > 0 ? `Work on one skill · ${left} ${left === 1 ? 'session' : 'sessions'} left this year` : 'Done for this year', ico: 'star' }));
     const fit = sp.fitnessScore(sp.fitnessOf());
@@ -565,7 +565,7 @@ function sportDesk(step) {
   if (e.status === 'active') rows.push(navRow({ attrs: `data-giveup="${e.id}"`, label: 'Stop Playing', sub: 'Your record is kept', ico: 'exit' }));
   return { title: sport.name, sub: `${levelName(e.level)}${org ? ` · ${org.name}` : ''}`, body: `
     <div class="card sd-head"><div class="sd-glyph" aria-hidden="true">${glyph(e.id)}</div><div class="sd-main">
-      <strong>${esc(sp.skillWord(ov))}</strong>${bar(ov)}<small class="muted">Overall ${ov} · Pathways Rating ${e.pr}</small></div></div>
+      <strong>${esc(sp.skillWord(ov))}</strong>${bar(ov)}<small class="muted">Overall ${ov} · Player Rating ${e.pr}</small></div></div>
     ${team && sport.kind === 'team' ? `<button class="card sd-team" data-league="${e.id}"><div class="sd-glyph" aria-hidden="true">${jerseyDot(colorsOf(org))}</div><div class="sd-main">
       <strong>${esc(team.name)}${mine ? ` <span class="muted">(${rank(s, s.playerTeamId, table)}/${table.length})</span>` : ''}</strong>
       ${mine ? `<small>${esc(s.year)}: ${record(mine)} · ${esc(finish(s, s.playerTeamId, table))}</small>` : '<small class="muted">The season is played through the year.</small>'}

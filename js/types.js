@@ -1,4 +1,4 @@
-// Master schemas for Pathways. Types only; this module exports nothing at runtime.
+// Master schemas for From Birth. Types only; this module exports nothing at runtime.
 
 /**
  * @typedef {{mood:number, health:number, intellect:number, charm:number}} CoreStats  0–100

@@ -1,9 +1,9 @@
-// Afterglow building blocks shared by every screen: the Pathways mark, outline icons, navigation rows and
+// Afterglow building blocks shared by every screen: the From Birth mark, outline icons, navigation rows and
 // paired actions. Markup only; the look lives in css/components.css.
 import { esc } from '../util.js';
 import { menuInfo } from '../data/menus.js';
 
-/** The Pathways mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
+/** The From Birth mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
 export const markSvg = (cls = 'title-mark') => `
   <svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true">
     <defs><linearGradient id="pw-mark-${cls}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A66B2"/><stop offset="1" stop-color="#5E3F84"/></linearGradient></defs>

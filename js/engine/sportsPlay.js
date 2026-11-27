@@ -173,7 +173,7 @@ export function golfRound(skill, key) {
   return Math.round(r.normal(72 + (70 - skill) * 0.42, 2.6));
 }
 
-// ---------- The Pathways Rating ----------
+// ---------- The Player Rating ----------
 
 /**
  * PR is the game's own rating, not any real body's. It starts at 1000 and moves only with results: an expected win

@@ -48,7 +48,7 @@ export function shareText(g, url = gameUrl()) {
   const f = cardFacts(g);
   const where = f.facts[0][1];
   return [`${f.name} (${f.years})${f.epitaph ? `: ${f.epitaph.title}` : ''}.`, `${f.cause.replace(/\.$/, '')} in ${where}.`,
-    ...(f.highlights[0] ? [f.highlights[0].replace(/^Age (\d+) · /, 'At $1: ')] : []), `A life lived in Pathways${url ? `: ${url}` : '.'}`].join(' ');
+    ...(f.highlights[0] ? [f.highlights[0].replace(/^Age (\d+) · /, 'At $1: ')] : []), `Live your own in From Birth${url ? `: ${url}` : '.'}`].join(' ');
 }
 
 // ---------- The portrait, made drawable ----------
@@ -158,7 +158,7 @@ export async function drawCard(g, url = gameUrl()) {
 
   // The game, and where to find it.
   ctx.fillStyle = PLUM; ctx.fillRect(0, H - 92, W, 92);
-  ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'left'; ctx.font = `700 40px ${SERIF}`; ctx.fillText('Pathways', 60, H - 32);
+  ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'left'; ctx.font = `700 40px ${SERIF}`; ctx.fillText('From Birth', 60, H - 32);
   ctx.textAlign = 'right'; ctx.font = `600 26px ${SANS}`;
   ctx.fillText(wrap(ctx, url ? `Live a life: ${url.replace(/^https?:\/\//, '').replace(/\/$/, '')}` : 'Live a life of your own', W - 420, 1)[0], W - 60, H - 36);
   return canvas;
@@ -169,5 +169,5 @@ export async function cardFile(g, url) {
   const canvas = await drawCard(g, url);
   const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
   const slug = g.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'a-life';
-  return new File([blob], `pathways-${slug}.png`, { type: 'image/png' });
+  return new File([blob], `from-birth-${slug}.png`, { type: 'image/png' });
 }

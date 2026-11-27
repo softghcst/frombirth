@@ -1,5 +1,5 @@
 // Places, people and appointments: clinics that persist in each city, the
-// clinicians who work in them (ordinary Pathways NPCs, kept for life), booking
+// clinicians who work in them (ordinary From Birth NPCs, kept for life), booking
 // and attending appointments, assessment, diagnosis and the care plan.
 import { rng } from '../../rng.js';
 import { store, player, country, log } from '../../state.js';
@@ -235,7 +235,7 @@ function attended(a, npc, p) {
 }
 
 /**
- * An appointment the player chose to go to happens now, in this year: Pathways
+ * An appointment the player chose to go to happens now, in this year: From Birth
  * moves a year at a time, so asking for an assessment or a talk with a
  * prescriber resolves straight away (the wait is part of the story, not
  * something to sit through). Follow-ups and checks that come round on their own
