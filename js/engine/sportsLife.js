@@ -9,7 +9,7 @@
 import { store, log, milestone } from '../state.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS_LIST, sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES, WORLD_GAMES, isGamesYear, MEDAL_FOR, BIG_LEAGUE_PAY, COUNTRY_LEAGUE_PAY } from '../data/sports.js';
+import { SPORTS_LIST, sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES, BIG_LEAGUE_PAY, COUNTRY_LEAGUE_PAY } from '../data/sports.js';
 import { gain, regard } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { book } from './ledger.js';
@@ -19,7 +19,8 @@ import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog, uniOf } from './university.js';
 import { makeNpc } from './npcFactory.js';
 import { emigrate } from './emigration.js';
-import { gamesTeamEvent, boxingYear, coachSeason, moveCoaching } from './sportsExtras.js';
+import { boxingYear, coachSeason, moveCoaching } from './sportsExtras.js';
+import { yearInternational, NATIONS_ANSWERS, nationOf } from './nations.js';
 import { rng } from '../rng.js';
 import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import * as sp from './sports.js';
@@ -624,7 +625,7 @@ function proRoutes(state, a, e) {
     return;
   }
   if (route === 'tour') {
-    if (e.pr >= 1300 && p.age <= 34 && seen('tour')) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
+    if (e.pr >= 1300 && p.age <= 34 && seen('tour')) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Player Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
@@ -1032,17 +1033,15 @@ function yearIn(state, a, e) {
     // The national side, for the best professionals who played most of the season.
     if (e.level === 'pro' && games.length >= (sport.season ?? 14) * 0.6 && overall(e, p) >= 82) {
       const caps = seeded(`caps/${p.id}/${e.id}/${state.year}`).int(3, 9);
-      if (!e.caps) { milestone(`First cap for ${COUNTRIES[p.countryId].name} in ${sport.name.toLowerCase()}.`, 'career'); sp.moment(state, { type: 'national', sportId: e.id, text: `First cap for ${COUNTRIES[p.countryId].name}.`, sig: 3 }); }
+      if (!e.caps) { milestone(`First cap for ${COUNTRIES[nationOf(p)].name} in ${sport.name.toLowerCase()}.`, 'career'); sp.moment(state, { type: 'national', sportId: e.id, text: `First cap for ${COUNTRIES[nationOf(p)].name}.`, sig: 3 }); }
       e.caps = (e.caps ?? 0) + caps;
       sum.caps = caps;
-      sp.say(state, `You won ${caps} caps for ${COUNTRIES[p.countryId].name} this year.`, 'good', { screen: 'sport', id: e.id });
+      sp.say(state, `You won ${caps} caps for ${COUNTRIES[nationOf(p)].name} this year.`, 'good', { screen: 'sport', id: e.id });
     }
-    // The World Games: the national side goes, and a capped professional may go with it (engine/sportsExtras.js).
-    gamesTeamEvent(state, e, sum);
     if (games.length) {
       sum.rating = Math.round(games.reduce((s, x) => s + x, 0) / games.length * 10) / 10;
       e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
-      // The Pathways Rating of a team player follows how they played and how the team did, game by game.
+      // The Player Rating of a team player follows how they played and how the team did, game by game.
       const target = Math.round(1000 + (sum.rating - 6) * 230 + (sp.internals.LEVEL_STRENGTH[e.level] ?? 40) * 6 - 240 + (sum.title ? 40 : 0));
       e.pr = Math.round(e.pr * 0.5 + target * 0.5);
       if (e.played - sum.wins - sum.losses <= games.length && !e.firstGame) { e.firstGame = state.year; sp.moment(state, { type: 'first', sportId: e.id, text: `First competitive season in ${sport.name.toLowerCase()}.`, sig: 1 }); }
@@ -1081,37 +1080,18 @@ function yearIn(state, a, e) {
         if (['pro', 'elite', 'college', 'academy'].includes(ev.level)) milestone(`Won the ${ev.name}.`, 'career');
       }
     }
-    // The World Games, every four years: the country sends its best professionals and national-squad athletes.
-    const gamesYear = can && isGamesYear(state.year) && ['pro', 'elite'].includes(e.level);
-    if (gamesYear && overall(e, p) < 70 && !(e.gamesMissed ?? []).includes(state.year)) {
-      (e.gamesMissed ??= []).push(state.year);
-      sp.say(state, `The ${WORLD_GAMES.name} ${state.year} went ahead without you: the selectors picked others.`, 'neutral', { screen: 'sport', id: e.id });
-    }
-    if (gamesYear && overall(e, p) >= 70) {
-      const ev = playEvent(state, e, 'elite', 'games', { name: `${WORLD_GAMES.name} ${state.year}` });
-      if (!e.events.includes(ev.id)) e.events.push(ev.id);
-      ev.games = true;
-      const medal = MEDAL_FOR[ev.place] ?? null;
-      const wonMatches = ev.rounds.filter((x) => x.won).length;
-      sum.wins += wonMatches; sum.losses += ev.rounds.length - wonMatches;
-      if (medal) {
-        ev.medal = medal;
-        (e.medals ??= []).push({ year: state.year, medal, games: ev.name, eventId: ev.id });
-        sum.medal = medal;
-        milestone(`${medal[0].toUpperCase()}${medal.slice(1)} medal in ${sport.name.toLowerCase()}, ${ev.name}.`, 'career');
-        sp.moment(state, { type: 'medal', sportId: e.id, text: `${medal[0].toUpperCase()}${medal.slice(1)} medal at the ${ev.name}.`, sig: 3, eventId: ev.id });
-      }
-      sp.say(state, `The ${ev.name}: ${medal ? `a ${medal} medal` : `you finished ${/^\d/.test(ev.place) ? ev.place : `in the ${ev.place.toLowerCase()}`}`}.`, medal ? 'good' : 'neutral', { screen: 'sport', id: e.id });
-    }
     const titles = e.titles.filter((t) => t.year === state.year).length;
     if (can) { const won = yearAwards(state, e, sum); if (won.length) sum.awards = [...(sum.awards ?? []), ...won]; }
     const best = can ? e.events.map((id) => S.events[id]).filter((x) => x.year === state.year).map((x) => x.place) : [];
     sum.rating = Math.round(clamp(6 + (sum.wins - sum.losses) / Math.max(4, sum.wins + sum.losses) * 3, 3, 10) * 10) / 10;
     e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
-    if (can) sp.say(state, `Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Pathways Rating ${e.pr}.`, titles ? 'good' : 'neutral', { screen: 'sport', id: e.id });
+    if (can) sp.say(state, `Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Player Rating ${e.pr}.`, titles ? 'good' : 'neutral', { screen: 'sport', id: e.id });
     else log(`Injury kept you out of every ${sport.name.toLowerCase()} event this year.`, 'system', 'bad');
   }
   e.seasonsPlayed += 1;
+  // Playing for one's country: the World Games and the World Baseball Classic, their qualifiers, and the invitation
+  // (engine/nations.js).
+  yearInternational(state, a, e);
   // Paying for it: the family pays for children; adults pay their own, except what a club or scholarship covers.
   const cost = yearlyCost(state, e);
   if (cost && p.age >= 18 && !(p.flags.livesWithParents && p.age < 21)) settle(state, `fees/${e.id}/${state.year}`, -cost, 'sport', `${sport.name}: fees, coaching and kit`);
@@ -1269,7 +1249,7 @@ export function audit(state = store.state) {
 export { LEVEL_NAMES };
 // The other modules' answers are looked up when a decision is answered, not merged here at load time: those modules
 // import this one, and may still be loading when it runs (an import cycle).
-const MORE_ANSWERS = () => [RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS, BASEBALL_ANSWERS, CONTRACT_ANSWERS];
+const MORE_ANSWERS = () => [NATIONS_ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS, BASEBALL_ANSWERS, CONTRACT_ANSWERS];
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };

@@ -355,7 +355,7 @@ function fieldReviews(p, r, j) {
   const weakest = [...FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
   const act = Object.values(PATROL).find((x) => x.skills.includes(weakest));
   const left = FTO_EXTENSIONS - j.ftoExtensions;
-  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" in My Investigations is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
+  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" on the Work tab is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
 }
 
 /** The department lets a trainee go who has not passed field training. */
@@ -578,6 +578,9 @@ export function settlePromotions(p = player()) {
   if (!r) return [];
   const out = [];
   for (const app of r.apps.filter((x) => x.kind === 'promotion' && x.status === 'pending' && x.due <= now())) {
+    const ladder = r.family === 'federal' ? FEDERAL_RANKS : r.job?.detective ? DETECTIVE_RANKS : POLICE_RANKS;
+    // Asked for on another ladder (a patrol rank, before becoming a detective): it lapses.
+    if (!ladder[app.rank]) { app.status = 'lapsed'; continue; }
     app.status = app.outcome;
     if (app.outcome !== 'promoted') { out.push(`${name(app.rivalId)} got the promotion. Your time may come.`); regard('reliability', 0); continue; }
     const table = r.family === 'federal' ? FEDERAL_RANKS : r.job.detective ? DETECTIVE_RANKS : POLICE_RANKS;

@@ -52,7 +52,7 @@ check(kp.available(), 'the idol industry exists today');
 const list = kp.auditions();
 check(list.length >= 5 && list.every((au) => kp.agency(au.agencyId) && au.stages.length === 4), 'every agency puts out a call, with its own stages');
 check(list.some((au) => au.places === 'worldwide' && !kp.whyNotApply(au)), 'a Brazilian can apply to an audition open worldwide');
-check(list.filter((au) => Array.isArray(au.places) && !au.places.includes('br') && au.lineup !== 'male' && p.age >= au.ages[0] && p.age <= au.ages[1]).every((au) => /in-person/.test(kp.whyNotApply(au))), 'and not to an in-person audition in Korea from Brazil');
+check(list.filter((au) => Array.isArray(au.places) && !au.places.includes('br') && au.lineup !== 'male' && p.age >= au.ages[0] && p.age <= au.ages[1]).every((au) => /in person/i.test(kp.whyNotApply(au))), 'and not to an in-person audition in Korea from Brazil');
 const young = list[0];
 p.age = 30;
 check(/ages/.test(kp.whyNotApply(young)), 'each audition has its own ages');

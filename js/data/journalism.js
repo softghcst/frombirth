@@ -12,6 +12,12 @@ export const OUTLET_KINDS = {
   tv: { name: 'Television news station', medium: 'television', from: 1950, reach: 6, pay: 1.25, standards: [0.5, 0.85], words: ['News Channel', 'Television News', 'News Network', 'Evening News'] },
   digital: { name: 'Digital newsroom', medium: 'online', from: 2005, reach: 4, pay: 0.95, standards: [0.4, 0.85], words: ['Dispatch', 'Report', 'Signal', 'Daily', 'Brief'] },
   investigative: { name: 'Investigative nonprofit', medium: 'online', from: 2008, reach: 2, pay: 0.9, standards: [0.75, 0.95], words: ['Reporting Project', 'Accountability Desk', 'Investigations Unit'] },
+  // The national press, in the country's biggest city (engine/journalism.js nationalPress): every other part of the
+  // game reports through these same newsrooms. Names as data/news.js gives them.
+  national: { name: 'National newspaper', medium: 'print', from: 1700, reach: 12, pay: 1.25, standards: [0.6, 0.9], national: true, words: ['The Courier', 'The Morning Record', 'The Standard-Dispatch', 'The Chronicle', 'The Daily Ledger', 'The Observer-Gazette'] },
+  tabloid: { name: 'Tabloid', medium: 'print', from: 1890, reach: 10, pay: 1, standards: [0.25, 0.5], national: true, words: ['The Daily Flash', 'The Comet', 'The Bugle', 'The People\'s Voice'] },
+  network: { name: 'National broadcaster', medium: 'television', from: 1922, reach: 15, pay: 1.3, standards: [0.6, 0.9], national: true, words: ['Channel One News', 'The Evening Bulletin', 'National Radio News'] },
+  magazine: { name: 'Entertainment magazine', medium: 'print', from: 1900, reach: 6, pay: 1, standards: [0.35, 0.7], national: true, words: ['Spotlight', 'Marquee', 'Encore', 'Backstage', 'Limelight'] },
 };
 
 /** The beats, and the kind of story each brings: the same reporting workflow, with its own sources and records. */

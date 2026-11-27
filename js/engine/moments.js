@@ -1,6 +1,6 @@
 // Living moments: the occasions a year holds, lived a year at a time.
 //
-// Pathways has no calendar and this adds none. "This year" is simply the year
+// From Birth has no calendar and this adds none. "This year" is simply the year
 // between one Age Up and the next. The player chooses what to mark, and it is
 // resolved at once: what it costs, who came, who grew closer, what was worth
 // remembering. Age Up then finishes the year (traditions nobody organized, the

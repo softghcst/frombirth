@@ -1,6 +1,6 @@
 // Appearance: Light, Dark, or the System setting. Kept in this browser, apart from any one life, so it
 // applies on the title screen too. index.html applies the saved choice before the first paint.
-export const THEME_KEY = 'pathways.theme';
+export const THEME_KEY = 'frombirth.theme';
 export const THEMES = ['system', 'light', 'dark'];
 export const THEME_NAMES = { system: 'System', light: 'Light', dark: 'Dark' };
 

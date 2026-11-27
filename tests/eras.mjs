@@ -72,13 +72,13 @@ section('Transitions');
   const s = createLife({ countryId: 'us' });
   delete s.era;
   const cash = s.player.finance.cash;
-  mem.set(`pathways.slot.${s.slotId}`, JSON.stringify(s));
+  mem.set(`frombirth.slot.${s.slotId}`, JSON.stringify(s));
   const back = save.loadGame(s.slotId);
   check(back.era.money === 'era' && back.year === s.year && back.player.finance.cash === cash && back.player.age === s.player.age, 'a present-day save loads unchanged, as a modern life');
   // A life saved before eras, already in the past: keeps today's money.
   const old = createLife({ countryId: 'us', year: 1950 });
   delete old.era;
-  mem.set(`pathways.slot.${old.slotId}`, JSON.stringify(old));
+  mem.set(`frombirth.slot.${old.slotId}`, JSON.stringify(old));
   const b2 = save.loadGame(old.slotId);
   check(b2.era.money === 'modern', 'a past life saved before eras keeps today\'s money, so its fortune is not rewritten');
   const again = JSON.stringify(ensureEra(b2, { legacy: true }));
@@ -208,7 +208,7 @@ section('Money');
 {
   const old = createLife({ countryId: 'fr', year: 1960 });
   delete old.era;
-  mem.set(`pathways.slot.${old.slotId}`, JSON.stringify(old));
+  mem.set(`frombirth.slot.${old.slotId}`, JSON.stringify(old));
   const back = save.loadGame(old.slotId);
   store.state = back;
   const { alignWorld } = await import('../js/engine/eras.js');
@@ -371,7 +371,7 @@ section('Health');
   const slot = store.state.slotId;
   // A life that ends with no heir is taken off the saved lives; keep the file to load it again (as a player could
   // with a copy of their save).
-  const key = `pathways.slot.${slot}`;
+  const key = `frombirth.slot.${slot}`;
   const kept = localStorage.getItem(key);
   grow(10);
   const first = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;

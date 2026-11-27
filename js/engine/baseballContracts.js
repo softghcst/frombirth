@@ -9,7 +9,7 @@
 import { log, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { BASEBALL as B, DRAFTS, draftCountry, sportOf } from '../data/sports.js';
+import { BASEBALL as B, DRAFTS, draftCountry, sportOf, leagueName } from '../data/sports.js';
 import { clubOf, toMinors } from './draft.js';
 import { record, isBaseball, levelOf } from './baseball.js';
 import * as sp from './sports.js';
@@ -165,7 +165,7 @@ function sentDown(state, e, k, R, r, club) {
   if (!R.options.includes(state.year) && R.options.length < B.optionYears) {
     R.options.push(state.year);
     toMinors(state, e, club, top, ladder);
-    sp.say(state, `${club.name} optioned you to ${ladder[top]}. It is your ${['first', 'second', 'third'][R.options.length - 1]} option year of three.`, 'bad', { screen: 'hub', id: 'career' });
+    sp.say(state, `${club.name} optioned you to ${leagueName(ladder[top])}. It is your ${['first', 'second', 'third'][R.options.length - 1]} option year of three.`, 'bad', { screen: 'hub', id: 'career' });
     return false;
   }
   // Out of options: designated for assignment, and seven days on waivers.
@@ -181,8 +181,8 @@ function sentDown(state, e, k, R, r, club) {
   }
   rec.how = 'cleared waivers';
   life.decide(state, { kind: 'outright', sportId: e.id, contractId: k.id, key: `outright/${k.id}/${state.year}`,
-    text: `You are out of options, and ${club.name} designated you for assignment. No club claimed you on waivers. You can accept an outright assignment to ${ladder[top]}, on your contract, or become a free agent.`,
-    options: [{ id: 'yes', label: `Go to ${ladder[top]}` }, { id: 'no', label: 'Become a free agent' }] });
+    text: `You are out of options, and ${club.name} designated you for assignment. No club claimed you on waivers. You can accept an outright assignment to ${leagueName(ladder[top])}, on your contract, or become a free agent.`,
+    options: [{ id: 'yes', label: `Go to ${leagueName(ladder[top])}` }, { id: 'no', label: 'Become a free agent' }] });
   void p;
   return false;
 }

@@ -54,6 +54,7 @@ import * as biz from '../engine/business.js';
 import { citiesOf } from '../engine/cities.js';
 import { openNpc } from './tabs/people.js';
 import { hospitalName, hospital, kindName, deptOf, deptHead } from '../engine/medicine/hospitals.js';
+import { screenName } from './careerNames.js';
 
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`;
@@ -630,7 +631,7 @@ const ACTIONS = {
 export function openMedicine(api, start = 'overview') {
   const st = typeof start === 'string' ? { section: start } : { section: 'overview', ...start };
   // A screen of its own: the whole screen on a phone, a readable column on a desktop, Back and the name in the bar.
-  const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: 'My Medical Career' });
+  const modal = openModal('<div data-med></div>', { dismissable: true, full: true, title: screenName('medicine') });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-med]');
   const render = () => {

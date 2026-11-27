@@ -12,9 +12,7 @@ import { confirmModal } from '../modals.js';
 import { openEpitaphCollection } from './obituary.js';
 import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
 import { ageLabel } from '../../engine/turns.js';
-import { markSvg, icon } from '../kit.js';
-
-const MARK = markSvg();
+import { icon } from '../kit.js';
 
 /**
  * @param {HTMLElement} app
@@ -52,7 +50,8 @@ export function renderTitle(app, hooks) {
 
   app.innerHTML = `
     <main class="title-screen">
-      <div class="title-hero">${MARK}<h1>Pathways</h1><p>One Life. One Year at a Time.</p></div>
+      <div class="title-hero has-logo"><h1 class="title-logo-h"><img class="title-logo" src="./assets/branding/from_birth_logo-640.png" width="1123" height="1401" alt="From Birth" decoding="async" fetchpriority="high"></h1>
+        <p>Your life. Your choices. Your story.</p></div>
       <div class="btn-stack title-actions">
         <button class="btn peach big" data-random>${icon('sparkle')}Begin a Random Life</button>
         <button class="btn" data-design>${icon('id')}Design a Life</button>

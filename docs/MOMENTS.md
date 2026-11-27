@@ -1,7 +1,7 @@
 # Living moments
 
 Birthdays, school dances, family occasions, holidays, traditions, invitations and evenings with friends, lived
-the Pathways way: a year at a time. There is no calendar, no dates and no scheduling.
+the From Birth way: a year at a time. There is no calendar, no dates and no scheduling.
 
 ## How a year works
 
@@ -68,7 +68,7 @@ kept, how many times, the years it was skipped, its history, and whether it is a
 
 Every occasion has a first year and, where it is not universal, the countries it belongs to (`data/occasions.js`):
 no prom before 1930 or outside the United States and Canada, no leavers' prom in Britain before 2000,
-invitations by card before 2007 and by message after. Pathways has no historical eras yet; when it does, they
+invitations by card before 2007 and by message after. From Birth has no historical eras yet; when it does, they
 narrow these same fields rather than adding rules of their own.
 
 ## Where it lives

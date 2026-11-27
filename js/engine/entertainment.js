@@ -38,6 +38,7 @@ import { CHOREOGRAPHER } from '../data/dance.js';
 import { choreoRecord } from './dance.js';
 import { canFit } from './worklife.js';
 import { claim as claimSpecial } from './specialCareer.js';
+import { pressWrite } from './journalism.js';
 
 /** Which special career a part belongs to: dance ensemble parts and choreography are a dancer's work, the rest an actor's. */
 const careerOfRole = (r) => (['dance_ensemble', 'choreographer'].includes(r?.kind) ? 'dance' : 'acting');
@@ -53,7 +54,8 @@ export function ent(state = store.state) {
 }
 const nextId = (prefix) => `${prefix}_${(ent().seq += 1).toString(36)}`;
 export const production = (id) => ent().productions[id] ?? null;
-export const org = (id) => ent().orgs[id] ?? null;
+// An outlet in the press is a newsroom (engine/journalism.js): one press world for every career.
+export const org = (id) => ent().orgs[id] ?? store.state.newsroom?.outlets?.[id] ?? null;
 
 /** The player's own working records, made if missing. */
 export function workOf(p = player()) {
@@ -153,7 +155,7 @@ export function orgsOf(countryId) {
     makeOrg('agency', countryId, big, 'top');
     makeOrg('agency', countryId, big, 'mid');
     makeOrg('agency', countryId, rng.pick(cities), 'small');
-    for (let i = 0; i < 3; i++) makeOrg('outlet', countryId, big, 'outlet');
+    // (The entertainment press is the country's national press: engine/journalism.js nationalPress.)
     // Agents work at agencies; each is a person with their own cut, their own pull, a standard, and clients.
     // The best-known working actors are with the leading agencies.
     const actors = pool(countryId).filter((n) => !n.flags.star.agentId).sort((a, b) => (b.flags.star.fame ?? 0) - (a.flags.star.fame ?? 0));
@@ -797,8 +799,16 @@ export function article(o) {
   const p = player();
   const E = ent();
   const prod = o.productionId ? production(o.productionId) : null;
-  const outlets = orgsOf(prod?.countryId ?? p.countryId).filter((x) => x.kind === 'outlet');
-  const a = { id: nextId('art'), outletId: o.outletId ?? rng.pick(outlets)?.id ?? null, year: year(), kind: o.kind, productionId: o.productionId ?? null, about: o.about ?? null,
+  const countryId = prod?.countryId ?? p.countryId;
+  // One press world: the article is written by a real reporter at a real outlet, and kept in the press archive. This
+  // list keeps what the entertainment screens need (how it was reported, whether it is true, any correction).
+  const prefer = { celeb: ['tabloid', 'magazine'], rumor: ['tabloid', 'magazine'], review: ['magazine', 'national'], award: ['network', 'magazine'], nomination: ['magazine', 'network'],
+    interview: ['magazine', 'network'], event: ['magazine', 'tabloid'], feature: ['magazine', 'national'], correction: null }[o.kind] ?? ['magazine', 'national'];
+  const given = o.outletId && org(o.outletId);
+  const about = o.about === 'player' ? p.id : o.about ?? null;
+  const pub = pressWrite({ countryId, outletId: given?.kind && !E.orgs[o.outletId] ? o.outletId : null, prefer: prefer ?? ['magazine'], headline: o.text, aboutId: about, kind: o.kind, beat: 'entertainment',
+    accuracy: o.accuracy ?? 'verified', truth: o.true ?? true, links: { ...(o.productionId ? { productionId: o.productionId } : {}) } });
+  const a = { id: nextId('art'), outletId: pub?.outletId ?? o.outletId ?? null, pubId: pub?.id ?? null, year: year(), kind: o.kind, productionId: o.productionId ?? null, about: o.about ?? null,
     text: o.text, accuracy: o.accuracy ?? 'verified', true: o.true ?? true, corrected: false };
   if (prod) prod.keep = prod.keep || (prod.cast.some((r) => r.who === 'player'));
   E.articles.push(a);

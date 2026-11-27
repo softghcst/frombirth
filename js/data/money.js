@@ -151,7 +151,7 @@ export const MAX_ACCOUNTS = 6;
 
 // ---------- How lenders keep records ----------
 // A simplification for play, not a description of any country's system.
-//   file      lenders share a full record, and the game shows a Pathways standing (0 to 100)
+//   file      lenders share a full record, and the game shows a credit standing (0 to 100)
 //   registry  only serious trouble is written down; there is no number
 //   bank      no shared record: each bank goes on your income and your history with it
 const FILE = 'us uk ca au nz ie za in mx br kr sg hk pr co cl pe';

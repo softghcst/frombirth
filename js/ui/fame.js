@@ -61,7 +61,8 @@ const money = (n, c = country()) => fmtMoney(n, c);
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nameOf = (who) => (who === 'player' ? 'You' : who ? `${store.state.npcs[who]?.firstName ?? ''} ${store.state.npcs[who]?.lastName ?? ''}`.trim() || 'Someone' : '');
 // "Broadway musical" for a major-stage show in New York (engine/entertainment.js tierName), else "Regional theater musical".
-const kindName = (prod) => `${ent.tierName(prod)} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
+// "Community musical", "Student and short film" (not "...film film"): the tier, then the kind unless the tier says it.
+const kindName = (prod) => { const t = ent.tierName(prod); const k = PRODUCTION_KINDS[prod.kind].name.toLowerCase(); return new RegExp(`${k}$`, 'i').test(t) ? t : `${t} ${k}`; };
 const row = (act, arg, main, sub, side = '', n = null, cls = '') => `<button type="button" class="row world-row${cls ? ` ${cls}` : ''}" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
@@ -240,11 +241,11 @@ const VIEWS = {
       <div class="section-label">Casting notices</div>
       ${board.length ? (() => {
         const fee = (x) => (x.role.fee ? money(Math.round(localWage(x.role.fee, COUNTRIES[x.production.countryId])), COUNTRIES[x.production.countryId]) : 'Unpaid');
-        const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`;
+        const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name}`;
         const open = board.filter((x) => !x.why);
         const shut = board.filter((x) => x.why);
-        const q = (x) => `${cap(ent.scriptWord(x.production))}, ${ent.directorWord(x.production)}`;
-        return `${open.length ? open.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), `${x.applied ? 'Auditioned · ' : ''}${q(x)} · ${kindName(x.production)} · ${x.role.character}`, fee(x))).join('')
+        // One short line: what it is and the part. The script and the director are in the notice itself.
+        return `${open.length ? open.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), `${x.applied ? 'Auditioned · ' : ''}${kindName(x.production)} · ${x.role.character}`, fee(x))).join('')
           : '<p class="empty">Nothing open to you right now. New productions are announced every year.</p>'}
         ${shut.length ? `<details class="card" style="margin-top:8px"><summary>Not open to you (${shut.length})</summary>${shut.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), x.why, fee(x))).join('')}</details>` : ''}`;
       })()
@@ -424,7 +425,7 @@ const VIEWS = {
     const cards = entries.map((e) => {
       const club = athletics.orgOf(e.orgId, st);
       const seasons = (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0);
-      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Pathways Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
+      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Player Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
         ...(e.caps ? [['International caps', String(e.caps)]] : []), ...((e.awards ?? []).length ? [['Awards', e.awards.filter((a) => a.kind !== 'team').map((a) => `${a.name} (${a.year})`).join(', ') || `${e.awards.length} team-of-the-season places`]] : []), ...((e.medals ?? []).length ? [['Medals', e.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>`;
     }).join('');
     const known = a?.fame >= 1 ? `<p class="muted">Sports fans know your name from your results: ${Math.round(a.fame)}/100.</p>` : '';

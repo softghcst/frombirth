@@ -6,6 +6,7 @@
 // A leadership post needs a seat to be free and a selection; it is offered, never automatic, and
 // the player may say no. Leaving the hospital (quitting, being let go, taking another job) ends
 // the post; another hospital can be applied to from My Medical Career.
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
@@ -224,7 +225,7 @@ export function postYear() {
   if (m.job.contract?.locum && m.job.contract.until <= year()) {
     const e0 = employer(m.job.hospitalId);
     note(`Finished a temporary post at ${e0?.name ?? 'the hospital'}.`, 'career', { log: false });
-    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from My Medical Career.`, 'system', 'neutral');
+    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from the Work tab.`, 'system', 'neutral');
     m.job = null;
     endJob('temporary post ended');
     return;
@@ -276,7 +277,7 @@ export function postYear() {
     }
     m.offer = { rank: step.id, year: year(), hospitalId: h.id };
     storyBeat('med_leadership_offer', { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } }, { source: 'medicine', must: true });
-    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from My Medical Career.`, 'system', 'good');
+    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from the Work tab.`, 'system', 'good');
     return;
   }
 }
@@ -291,6 +292,7 @@ export function postOptions(p = player(), m = med()) {
 
 /** Applies for an attending post at a hospital, once a year. Not guaranteed. */
 export function applyForPost(hospitalId) {
+  { const sc = jobBlockSpecial('doctor', player()); if (sc) return result(false, sc, 'neutral'); }
   const p = player();
   const m = M();
   const o = postOptions(p, m).find((x) => x.id === hospitalId);

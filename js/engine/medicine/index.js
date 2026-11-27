@@ -1,4 +1,4 @@
-// The medical career engine (Pathways Medical Career Engine). One yearly step, run after the
+// The medical career engine (From Birth Medical Career Engine). One yearly step, run after the
 // working year (engine/yearProcessor.js 'medicine'): school and training years, the posts of a
 // qualified physician, the year's patients, private practice and hospital life. Runs once per
 // world year, so 3-, 6- and 12-month Age Ups give the same career.
@@ -39,7 +39,7 @@ export function medicalBlock(careerId, p = player()) {
   if (!MEDICAL_CAREERS.includes(careerId)) return '';
   const degree = p.education.degrees.some((d) => d.type === 'medical' || d.type === 'podiatric');
   if (!degree && !p.medicine) return '';
-  return 'Physicians are placed by residency programs and appointed by hospitals: see My Medical Career.';
+  return 'Physicians are placed by residency programs and appointed by hospitals: see Medicine on the Work tab.';
 }
 
 /** The yearly step. */

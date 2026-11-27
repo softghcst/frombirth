@@ -435,9 +435,11 @@ export function tickCrime() {
   const J = k.J();
   ageOfficials();
 
-  // Police work goes on, on cases about the player and on cases the player only saw.
+  // Police work goes on, on cases about the player and on cases the player only saw. A detective player's own cases
+  // are theirs to work: their partner does the routine steps (investigations/index.js autoProgress), never the charging.
+  const own = new Set(p.investigator?.caseIds ?? []);
   for (const inv of Object.values(J.investigations)) {
-    if (!['active', 'suspect'].includes(inv.stage)) continue;
+    if (!['active', 'suspect'].includes(inv.stage) || own.has(inv.id)) continue;
     const inc = J.incidents[inv.incidentId];
     const mine = inc.truth.perpetratorId === p.id || inv.suspectIds.includes(p.id);
     const r = k.workInvestigation(inv, mine ? l.heat / 100 : 0);

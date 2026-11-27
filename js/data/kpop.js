@@ -1,4 +1,4 @@
-// The K-pop idol industry, for Pathways. Every agency, label, show, program,
+// The K-pop idol industry, for From Birth. Every agency, label, show, program,
 // group and song here is fictional. The structure follows the real industry in
 // broad outline (agencies with trainee programs, open and online auditions,
 // years of training with no promise of debut, survival programs, weekly music

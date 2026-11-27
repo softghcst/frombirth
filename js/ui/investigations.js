@@ -58,6 +58,7 @@ import { LAB } from '../data/investigations.js';
 const FL_LAB = (id) => LAB[id]?.name ?? id;
 import * as biz from '../engine/business.js';
 import { settle, investigationsOpen, familyInvestigativeLegacy } from '../engine/investigations/index.js';
+import { screenName } from './careerNames.js';
 
 export { investigationsOpen };
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -425,11 +426,15 @@ const VIEWS = {
     return out;
   },
   stories(p) {
-    const open = X.publicCases(p).filter((c) => !X.myStories(p).some((s) => s.caseId === c.caseId));
-    return X.myStories(p).slice().reverse().map((s) => card(`Story: ${W.investigation(s.invId).file.title}`, kv([['Done', s.steps.join(', ') || 'nothing yet'], ['Status', s.published ? `Published (${s.accuracy})${s.correction ? ', corrected' : ''}` : 'In progress']])
-      + s.claims.map((cl) => `<p>• ${esc(cl.text)} <span class="muted">${cl.sourced ? '(sourced)' : '(one person\'s account)'}</span></p>`).join('')
-      + stack(s.published ? (s.accuracy === 'contains an error' && !s.correction ? btn('correct', 'Run a correction', { arg: s.id }) : '') : Object.entries(X.STORY_STEPS).map(([id, x]) => btn('storyStep', x.label, { arg: `${s.id}|${id}`, cls: x.restricted ? 'danger' : '' })).join('') + btn('publish', 'Publish', { arg: s.id })))).join('')
-      + (open.length ? card('Cases in court you could cover', open.map((c) => kv([[c.title, c.outcome]]) + stack(btn('startStory', 'Work on a story', { arg: c.caseId }))).join('')) : '');
+    // Court stories are reported in the newsroom (engine/journalism.js), one notebook for every case. Stories begun
+    // here before then are kept as they ran.
+    const covering = new Set(Object.values(store.state.newsroom?.stories ?? {}).filter((x) => x.reporterId === p.id && x.links?.caseId).map((x) => x.links.caseId));
+    const open = X.publicCases(p).filter((c) => !covering.has(c.caseId));
+    const older = X.myStories(p).slice().reverse().map((s) => card(`Earlier story: ${W.investigation(s.invId).file.title}`, kv([['Status', s.published ? `Published (${s.accuracy})${s.correction ? ', corrected' : ''}` : 'Never finished']])
+      + (s.published && s.accuracy === 'contains an error' && !s.correction ? stack(btn('correct', 'Run a correction', { arg: s.id })) : ''))).join('');
+    return card('Court reporting', muted('Your court stories are reported, checked and edited in your newsroom: the public record, people willing to talk, and your editor.') + stack(btn('newsroom', 'Open your newsroom')))
+      + (open.length ? card('Cases in court you could cover', open.map((c) => kv([[c.title, c.outcome]]) + stack(btn('coverCase', 'Cover it', { arg: c.caseId, sub: 'It goes into your assignments.' }))).join('')) : '')
+      + older;
   },
   press(p) {
     const list = X.publicCases(p);
@@ -761,9 +766,8 @@ const ACTIONS = {
   focus: (a, x) => x.say(PO.setPriority(a)),
   board: (a, x) => x.say(PO.proposeBoard(a === 'create')),
   sheriff: (a, x) => x.say(PO.runForSheriff()),
-  startStory: (a, x) => x.say(X.startStory(a)),
-  storyStep: (a, x) => { const [s2, st] = a.split('|'); return x.say(X.storyStep(s2, st)); },
-  publish: (a, x) => x.say(X.publishStory(a)),
+  coverCase: async (a, x) => { const jn = await import('../engine/journalism.js'); const r = jn.coverCase(a); await x.say(r); if (r.ok) { const ui = await import('./journalism.js'); ui.openJournalism(x.api, { view: 'story', arg: r.storyId }); } },
+  newsroom: async (_, x) => { const ui = await import('./journalism.js'); ui.openJournalism(x.api); },
   correct: (a, x) => x.say(X.correctStory(a)),
   openReview: (a, x) => x.say(W.openReview(a)),
   profile: async (a, x) => { const { openNpc } = await import('./tabs/people.js'); openNpc(store.state.npcs[a], x.api); },
@@ -781,14 +785,6 @@ const ACTIONS = {
 };
 
 /** Opens My Investigations. */
-/** The home screen's groups: each section as a row, with what it is for, in an order a player can follow. */
-const GROUPS = [
-  ['Your work', ['cases', 'bench', 'death', 'competency', 'psych', 'books', 'hospital', 'stories', 'press', 'standards']],
-  ['Your career', ['agency', 'career', 'team']],
-  ['Case history', ['archive', 'cold', 'reviews']],
-  ['Other paths', ['federal', 'private', 'integrity', 'allied']],
-  ['The wider world', ['policy', 'legacy']],
-];
 const SECTION_INFO = {
   cases: ['Your open cases, and the hours each has left this year', 'briefcase'], bench: ['Requests from real cases, waiting on your bench', 'sparkle'],
   death: ['Deaths referred to you by investigators', 'health'], competency: ['Evaluations ordered by the courts', 'health'], psych: ['Consultations, risk assessments and care for officers', 'people'],
@@ -812,49 +808,65 @@ function laterPaths(p, list) {
   };
   return Object.keys(open).filter((id) => have.has(id) && !open[id]());
 }
-/** The home screen: where the player stands, anything waiting on them, then every section as a row. */
-function home(p, r, list) {
-  const have = new Set(list.map(([id]) => id));
-  const label = { ...Object.fromEntries(list), more: 'More careers' };
-  const later = laterPaths(p, list);
-  const groups = GROUPS.map(([name, ids]) => [name, ids.filter((id) => have.has(id) && !later.includes(id))]).filter(([, ids]) => ids.length);
-  // Paths not open yet wait behind one row, so a new officer sees what they can do now.
-  if (later.length) { const g = groups.find(([n]) => n === 'Other paths'); if (g) g[1].push('more'); else groups.push(['Other paths', ['more']]); }
-  const sub = (id) => {
-    if (id === 'more') return `${later.map((x) => label[x]).join(', ')}: not open to you yet`;
-    if (id === 'cases' && r) { const open = r.caseIds.map(W.investigation).filter((inv) => inv?.file && !inv.file.outcome); return open.length ? `${open.length} open case${open.length === 1 ? '' : 's'}` : SECTION_INFO.cases[0]; }
-    return SECTION_INFO[id]?.[0] ?? '';
-  };
-  return `${hint('overview')}${VIEWS.overview(p, r)}${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div><div class="nav-group">${ids.map((id) => navRow({ attrs: `data-sec="${id}"`, label: label[id], sub: sub(id), ico: SECTION_INFO[id]?.[1] ?? 'sparkle' })).join('')}</div>`).join('')}`;
+/**
+ * Tabs, a handful of them: related sections share one page, each under its own heading. A page with one section keeps
+ * that section's name. Roles that are someone's main work (the bench, death investigations...) keep a tab of their own.
+ */
+const TAB_GROUPS = [
+  ['agencies', 'Agencies', ['agency', 'federal', 'team']],
+  ['cases', 'Cases', ['cases', 'archive', 'cold', 'reviews']],
+  ['career', 'Career', ['career', 'legacy']],
+  ['other', 'Other Work', ['private', 'allied', 'integrity', 'hospital', 'policy']],
+];
+function tabsFor(sections) {
+  const out = [];
+  const used = new Set();
+  for (const [id, label] of sections) {
+    if (used.has(id)) continue;
+    const g = TAB_GROUPS.find(([, , ids]) => ids.includes(id));
+    if (!g) { out.push({ id, label, members: [[id, label]] }); used.add(id); continue; }
+    const members = sections.filter(([x]) => g[2].includes(x));
+    members.forEach(([x]) => used.add(x));
+    out.push({ id: g[0], label: members.length === 1 ? members[0][1] : g[1], members });
+  }
+  return out;
 }
-
+/** The Overview tab: where the player stands, and the first tip. */
+function overviewPage(p, r) {
+  return `${hint('overview')}${VIEWS.overview(p, r)}`;
+}
 export function openInvestigations(api, start = 'overview') {
   const st = { section: start };
   const r0 = rec(player());
   // Anything whose date has come, and what the year decided while the page was closed, made known before it is drawn.
   const lines = [...(r0?.unread ?? []), ...settle(player())];
   if (r0) r0.unread = [];
-  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: 'My Investigations' });
+  const modal = openModal('<div data-inv></div>', { dismissable: true, full: true, title: screenName('investigations') });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-inv]');
   const render = () => {
     const p = player();
     const r = rec(p);
     const list = sectionsFor(p, r);
-    if (st.section !== 'more' && !list.some(([id]) => id === st.section)) st.section = 'overview';
-    // The home screen lists every section; a section is a screen of its own, and Back (in the bar) returns home.
-    const name = { ...Object.fromEntries(list), more: 'More careers' }[st.section];
-    root.innerHTML = st.section === 'overview'
-      ? `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>${home(p, r, list)}`
-      : `<button type="button" class="btn small" data-back>‹ My Investigations</button><h2 style="margin-top:0">${esc(name)}</h2>
-        <div>${hint(st.section)}${VIEWS[st.section](p, r)}</div>`;
-    root.innerHTML += stack('<button type="button" class="btn" data-close>Close</button>');
+    // Tabs, grouped: paths not open yet are named on the Overview, not given tabs of their own.
+    const later = laterPaths(p, list);
+    const tabs = tabsFor(list.filter(([id]) => !later.includes(id)));
+    if (later.length) tabs.push({ id: 'more', label: 'More Careers', members: [['more', 'More careers']] });
+    // A path not open yet, read from More Careers, opens on its own (no tab of its own; the strip stays as it is).
+    const reading = later.includes(st.section) ? { id: st.section, members: [[st.section, Object.fromEntries(list)[st.section]]] } : null;
+    const tab = reading ?? tabs.find((t) => t.id === st.section) ?? tabs.find((t) => t.members.some(([x]) => x === st.section)) ?? tabs[0];
+    st.section = tab.id;
+    const page = tab.id === 'overview' ? overviewPage(p, r)
+      : tab.members.length === 1 ? `${hint(tab.members[0][0])}${VIEWS[tab.members[0][0]](p, r)}`
+        : tab.members.map(([x, label]) => `<div class="section-label">${esc(label)}</div>${hint(x)}${VIEWS[x](p, r)}`).join('');
+    root.innerHTML = `<p class="muted" style="margin-top:0"><span aria-hidden="true">🕵️</span> Follow the evidence. Find the truth.</p>
+      <div class="world-groups page-tabs" role="tablist" aria-label="Sections">${tabs.map((t) => `<button type="button" role="tab" class="world-group av-chip ${t.id === st.section ? 'on' : ''}" aria-selected="${t.id === st.section}" data-sec="${t.id}">${esc(t.label)}</button>`).join('')}</div>
+      <div style="margin-top:10px">${page}</div>${stack('<button type="button" class="btn" data-close>Close</button>')}`;
   };
   const say = async (res) => { api.changed(); render(); if (res?.text) await messageModal({ body: res.text, tone: res.tone }); render(); };
   root.addEventListener('click', async (e) => {
     const t = e.target;
     if (t.closest('[data-close]')) { modal.close(); return; }
-    if (t.closest('[data-back]')) { st.section = 'overview'; render(); modal.el.scrollTop = 0; return; }
     const sec = t.closest('[data-sec]');
     if (sec) { st.section = sec.dataset.sec; render(); modal.el.scrollTop = 0; return; }
     const b = t.closest('[data-act]');

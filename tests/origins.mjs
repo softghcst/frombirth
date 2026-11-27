@@ -413,7 +413,7 @@ function makeHalf(m) {
   const child = { ...JSON.parse(JSON.stringify(kid)), id: 'npc_oldkid', role: 'child', adopted: true, adoptionInfo: { date: '2015-04-02', ageThen: 3, countryId: 'us', by: [old.player.id] }, flags: {} };
   old.npcs.npc_oldkid = child; old.player.npcIds.push('npc_oldkid');
   old.slotId = 'life_oldsave';
-  localStorage.setItem('pathways.slot.life_oldsave', JSON.stringify(old));
+  localStorage.setItem('frombirth.slot.life_oldsave', JSON.stringify(old));
   const up = loadGame('life_oldsave');
   const r = up.origins.records.adopt_npc_oldkid;
   check(r && r.legacy && r.birthParentIds.length === 0 && r.adoptiveParentIds[0] === up.player.id && up.npcs.npc_oldkid.role === 'child', 'an adopted child in an older save keeps their parents and gains a record, with no birth parents invented');

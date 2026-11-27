@@ -105,7 +105,7 @@ export function chooseSpecialty(id, p = player()) {
   const s = specialtyOptions(p).find((x) => x.id === id);
   if (!s) return result(false, 'There is no such practice area.', 'neutral');
   if (!s.open) return result(false, 'That is not practiced where you work.', 'neutral');
-  if (!s.playable) return result(false, `${s.name} is not yet playable in Pathways.`, 'neutral');
+  if (!s.playable) return result(false, `${s.name} is not yet playable in From Birth.`, 'neutral');
   const L = lawOf(p);
   if (L.specialty === id) return result(false, 'That is already your practice.', 'neutral');
   const had = L.specialty;

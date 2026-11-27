@@ -262,7 +262,7 @@ function debtHtml() {
   return `
     <div class="card"><h3>Your standing with lenders</h3>
       <p class="muted" style="margin-bottom:8px">${esc(s.line)}</p>
-      ${s.standing != null ? `<div class="mm-line"><span>Pathways standing</span><span><strong>${s.standing} of 100 · ${esc(s.band)}</strong></span></div>${bar(s.standing / 100, s.standing >= 65 ? 'good' : s.standing < 45 ? 'bad' : '')}` : s.band ? kv([[s.name, s.band]]) : ''}
+      ${s.standing != null ? `<div class="mm-line"><span>Credit standing</span><span><strong>${s.standing} of 100 · ${esc(s.band)}</strong></span></div>${bar(s.standing / 100, s.standing >= 65 ? 'good' : s.standing < 45 ? 'bad' : '')}` : s.band ? kv([[s.name, s.band]]) : ''}
       ${kv([['Years of paying on time', String(s.onTime)], ...s.marks.slice(-5).reverse().map((m) => [`${m.year}, age ${m.age}`, credit.markName(m.kind)])])}
       <p class="muted" style="margin-top:6px">${s.standing != null ? 'This is a measure made up for the game, from what has actually happened in this life. It is not a real credit score and predicts nothing outside the game.' : 'There is no number here, because nobody keeps one.'}</p></div>
     ${total || cardRows ? `<div class="section-label">What you owe: ${esc(fmtMoney(total, c))}</div>${cardRows}${loanRows}${mortRows}` : '<p class="empty">You owe nothing.</p>'}

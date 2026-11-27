@@ -1,9 +1,9 @@
-// Afterglow building blocks shared by every screen: the Pathways mark, outline icons, navigation rows and
+// Afterglow building blocks shared by every screen: the From Birth mark, outline icons, navigation rows and
 // paired actions. Markup only; the look lives in css/components.css.
 import { esc } from '../util.js';
 import { menuInfo } from '../data/menus.js';
 
-/** The Pathways mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
+/** The From Birth mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
 export const markSvg = (cls = 'title-mark') => `
   <svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true">
     <defs><linearGradient id="pw-mark-${cls}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A66B2"/><stop offset="1" stop-color="#5E3F84"/></linearGradient></defs>
@@ -68,10 +68,11 @@ export function rowTile(label, ico = 'sparkle') {
  * `attrs` is the data attribute(s) the screen's click handler listens for, e.g. 'data-top="tree"'.
  * A row that is not open to the player yet is shown greyed, with why in place of its line (`why`), and cannot be tapped.
  */
-export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '', extra = '', art = '' }) {
-  const line = (disabled && why) || sub || menuInfo(label)?.desc || '';
+export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '', extra = '', art = '', menu = null }) {
+  // `menu`: the menu entry this row is, for its picture and line, when its label changes (a job title).
+  const line = (disabled && why) || sub || menuInfo(menu ?? label)?.desc || '';
   return `<button class="nav-row${tone ? ` ${tone}` : ''}${disabled ? ' locked' : ''}" ${attrs} ${disabled ? 'disabled aria-disabled="true"' : ''}>
-    ${art ? `<span class="nr-icon nr-art" aria-hidden="true">${art}</span>` : rowTile(label, ico)}
+    ${art ? `<span class="nr-icon nr-art" aria-hidden="true">${art}</span>` : rowTile(menu ?? label, ico)}
     <span class="nr-main"><span class="nr-label">${esc(label)}</span>${line ? `<small>${esc(line)}</small>` : ''}${extra}</span>
     ${disabled ? '<span class="nr-lock" aria-hidden="true">🔒</span>' : icon('chevron', 'nr-chev')}
   </button>`;

@@ -58,7 +58,8 @@ for (const t of ['work', 'holdings', 'people', 'pursuits', 'self']) {
   check(rs.every((r) => r.line && r.shown), `${t}: every row says what it is for (${rs.filter((r) => !r.line || !r.shown).map((r) => r.label).join(', ')})`);
 }
 await tab('work');
-check(JSON.stringify(await labels()) === JSON.stringify(['You', 'Find Work']), `work: You, then Find work (${await labels()})`);
+// "You" holds what the player is in now (a job, a week, school while enrolled); then finding work; then the rest.
+check(/^(You,)?Find Work(,More)?$/.test(String(await labels())), `work: You, then Find work, then More (${await labels()})`);
 let rs = await rows();
 check(rs.some((r) => r.label === 'Jobs' && r.locked && /^From age \d+$/.test(r.line)), 'work: Jobs is greyed for a child, with the age it opens');
 check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
@@ -80,7 +81,7 @@ rs = await rows();
 check(rs.some((r) => r.label === 'Look for Love' && r.locked && /From age 14/.test(r.line)), 'self: Look for Love is greyed until 14 (with Adopt a Child, under Love and Family)');
 
 // The same player, grown: the rows open.
-await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.age = 30; p.birthYear = S.store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; });
+await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.age = 30; p.birthYear = S.store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; p.flags.citizenOf = [...(p.flags.citizenOf ?? []), p.countryId]; }); // a citizen where they live (a random life may have moved abroad): the armed forces take only citizens
 await tab('holdings');
 rs = await rows();
 check(['Browse Property', 'Invest', 'Borrow Money'].every((n) => rs.find((r) => r.label === n && !r.locked)), 'holdings: at 30 property, investing and borrowing are open');
@@ -89,19 +90,22 @@ rs = await rows();
 check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is open');
 check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military is open');
 // Joining: the way in, then the branch from a dropdown, then basic training.
-await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; p.flags.citizenOf = [...(p.flags.citizenOf ?? []), p.countryId]; }); // a citizen where they live (a random life may have moved abroad), as the armed forces take only citizens
-await tab('holdings'); // away and back: tapping the tab already open does not redraw it, and it was drawn before the citizenship
+await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
+await tab('holdings'); // away and back: tapping the tab already open does not redraw it
 await tab('work');
 await page.waitForSelector('[data-act="military"]', { state: 'attached', timeout: 15000 }).catch(async (err) => {
   console.log('DIAG', await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; const M = await import('/js/engine/military.js');
-    return JSON.stringify({ alive: p.alive, age: p.age, jail: !!p.legal.incarceration, join: M.joinOptions(), title: document.querySelector('[data-panel-title]')?.textContent, tab: document.querySelector('.tab-btn.active, .tab-btn[aria-selected=true]')?.dataset.tab,
+    const SC = await import('/js/engine/specialCareer.js');
+    return JSON.stringify({ alive: p.alive, age: p.age, jail: !!p.legal.incarceration, join: M.joinOptions(), special: SC.current(p), block: SC.jobBlock('other', p), career: p.career?.careerId ?? null, title: document.querySelector('[data-panel-title]')?.textContent, tab: document.querySelector('.tab-btn.active, .tab-btn[aria-selected=true]')?.dataset.tab,
       rows: [...document.querySelectorAll('[data-panel-body] .nr-label')].map((x) => x.textContent), modals: [...document.querySelectorAll('#modal-root .scrim')].map((m) => m.innerText.slice(0, 120)), app: document.getElementById('app')?.innerText.slice(0, 200) }); }));
   throw err;
 });  // the tab is drawn before it is used: on a busy machine it takes a moment
 await page.evaluate(() => document.querySelector('[data-act="military"]').click()); await page.waitForTimeout(250);
 await page.locator('#modal-root .choice-btn', { hasText: 'Enlist' }).click(); await page.waitForTimeout(250);
 const branches = await page.locator('#modal-root select#m-pick option').allInnerTexts();
-check(branches.length >= 3, `the branch is picked from a dropdown (${branches.join(', ')})`);
+// Every branch the country has is offered: most have several; some (Switzerland's) have one.
+const here = await page.evaluate(async () => (await import('/js/engine/military.js')).branches().length);
+check(branches.length >= 1 && branches.length === here, `the branch is picked from a dropdown of the country's branches (${branches.join(', ')})`);
 await page.locator('#modal-root [data-go]').click(); await page.waitForTimeout(300);
 check(/contract/i.test(await page.locator('#modal-root .modal').last().innerText()), 'enlisting says what was signed');
 await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(300);

@@ -169,11 +169,11 @@ export default [
   ]),
   // The Story Director's beats (engine/medicine/story.js): each once, each about the real life and its real patients.
   scene('med_first_patient', 'Your first patient of your own: {patient}, {label}. The chart is thin, the waiting room is full, and they are looking at you as if you know what to do.', [
-    ['Sit down, introduce yourself, and listen first', 'You learn more in five minutes of listening than in the whole chart. The case is waiting in My Medical Career.', 'skill:communication:1.5', 'good'],
+    ['Sit down, introduce yourself, and listen first', 'You learn more in five minutes of listening than in the whole chart. The case is waiting on the Work tab.', 'skill:communication:1.5', 'good'],
     ['Go straight to the examination', 'Efficient. You will go back for the history.', 'skill:reasoning:0.5'],
   ]),
   scene('med_unexpected_result', 'A result comes back for {patient} that nobody expected, and it does not fit the story you had in your head.', [
-    ['Go back to the beginning: history, examination, the differential', 'The answer was in the history all along. Work the case through in My Medical Career.', 'skill:reasoning:2', 'good'],
+    ['Go back to the beginning: history, examination, the differential', 'The answer was in the history all along. Work the case through on the Work tab.', 'skill:reasoning:2', 'good'],
     ['Repeat the test and hope it was wrong', 'Sometimes it is. This time you will have to think.', 'skill:reasoning:0.5'],
   ]),
   scene('med_senior_advice', '{mentor} stops you in the corridor. "Can I give you one piece of advice? Nobody gave it to me."', [
@@ -185,7 +185,7 @@ export default [
     ['Pick up where the notes left off', 'Fine. You could have learned more.', null],
   ]),
   scene('med_challenging_dx', '{patient}: {label}. Three people have seen them already, and nobody has an answer.', [
-    ['Start again from nothing, as if nobody had seen them', 'A fresh look finds what familiarity missed. The case is in My Medical Career.', 'skill:reasoning:2', 'good'],
+    ['Start again from nothing, as if nobody had seen them', 'A fresh look finds what familiarity missed. The case is on the Work tab.', 'skill:reasoning:2', 'good'],
     ['Ask a colleague to look with you', 'Two heads, and a better differential.', 'skill:teamwork:1.5', 'good'],
   ]),
   scene('med_consultation', '{patient} needs another specialist\'s opinion: {label}. You write the referral.', [
@@ -201,7 +201,7 @@ export default [
     ['Present the version that makes the team look good', 'It goes smoothly. Nobody learns much.', null],
   ]),
   scene('med_beat_or', 'The operating room. {patient} is on the list today: {label}. The team is waiting for you to begin.', [
-    ['Stop and go through it with the whole team: who everyone is, the patient, the plan', 'It feels slow. It is how operating rooms stay safe. The case is in My Medical Career.', 'skill:teamwork:1.5', 'good'],
+    ['Stop and go through it with the whole team: who everyone is, the patient, the plan', 'It feels slow. It is how operating rooms stay safe. The case is on the Work tab.', 'skill:teamwork:1.5', 'good'],
     ['Skip ahead: everyone knows the routine', 'Nothing goes wrong today.', 'skill:professionalism:-1', 'bad'],
   ]),
   scene('med_beat_athlete', '{patient} wants to know one thing: when they can play again. It is {label}, and the season starts in a month.', [
@@ -209,11 +209,11 @@ export default [
     ['Tell them what they want to hear', 'They leave happy, for now.', 'skill:integrity:-1.5', 'bad'],
   ]),
   scene('med_beat_child', 'A frightened child, {patient}, and a parent more frightened still: {label}.', [
-    ['Kneel down, talk to the child first, then the parent', 'The child stops crying long enough to be examined. The case is in My Medical Career.', 'skill:communication:2', 'good'],
+    ['Kneel down, talk to the child first, then the parent', 'The child stops crying long enough to be examined. The case is on the Work tab.', 'skill:communication:2', 'good'],
     ['Talk over the child to the parent', 'You get the history. The child gets nothing.', null],
   ]),
   scene('med_beat_emergency', 'An emergency arrives: {patient}, {label}. The doors open and the room fills.', [
-    ['Take charge calmly: one voice, clear roles', 'The team settles. The case is in My Medical Career.', 'skill:leadership:1.5', 'good'],
+    ['Take charge calmly: one voice, clear roles', 'The team settles. The case is on the Work tab.', 'skill:leadership:1.5', 'good'],
     ['Do everything yourself', 'You are fast. Nobody knows what anybody else is doing.', 'skill:teamwork:-1'],
   ]),
   scene('med_beat_long_term', '{patient} has been coming to see you for a while now: {label}. Some months are better than others.', [
@@ -225,7 +225,7 @@ export default [
     ['Cover the essentials and move on', 'They have more questions in the car.', null],
   ]),
   scene('med_beat_pregnancy', 'A pregnancy that is not going to plan: {patient}, {label}.', [
-    ['Explain the options plainly, and let them choose', 'It is their decision, made with good information. The case is in My Medical Career.', 'skill:communication:2', 'good'],
+    ['Explain the options plainly, and let them choose', 'It is their decision, made with good information. The case is on the Work tab.', 'skill:communication:2', 'good'],
     ['Tell them what you would do', 'They agree, without quite understanding.', null],
   ]),
   scene('med_beat_scan', 'A finding on the images for {patient}: {label}. The team that asked for it is waiting for your report.', [
@@ -233,7 +233,7 @@ export default [
     ['Write it up and move to the next one', 'The report is accurate. Someone reads it tomorrow.', null],
   ]),
   scene('med_beat_foot', 'The foot and ankle clinic: {patient}, {label}. They have been walking on it for months.', [
-    ['Look at how they walk, and at their shoes, before anything else', 'The answer is half in the shoes. The case is in My Medical Career.', 'skill:reasoning:1.5', 'good'],
+    ['Look at how they walk, and at their shoes, before anything else', 'The answer is half in the shoes. The case is on the Work tab.', 'skill:reasoning:1.5', 'good'],
     ['Go straight to imaging', 'The pictures are clear. They do not show the gait.', null],
   ]),
   scene('med_beat_specialist', 'A colleague asks for your opinion as the specialist: {patient}, {label}.', [
@@ -249,7 +249,7 @@ export default [
     ['Not this year', 'They will ask again.', null],
   ]),
   scene('med_clinic_idea', 'A colleague who left to open a practice of their own calls you. "You should do it too. It is hard, and it is yours."', [
-    ['Start looking at what it would take', 'You open My Medical Career and look at the practice options.', null, 'good'],
+    ['Start looking at what it would take', 'You look at the practice options on the Work tab.', null, 'good'],
     ['Say you are happy where you are', 'You are, mostly.', null],
   ]),
   scene('med_first_month_practice', 'The first month at {clinic}: a new sign on the door, a waiting room that is not yet full, and every bill addressed to you.', [

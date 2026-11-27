@@ -4,6 +4,7 @@
 // in another city means moving.
 //
 //   m.offers = [{ hospitalId, city, rank, salary, relocation, year, negotiated }]   offers stand until the year ends
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { oddsWords, rollRead, afterWords } from '../odds.js';
 import { rng } from '../../rng.js';
 import { clamp, fmtMoney } from '../../util.js';
@@ -91,6 +92,7 @@ export const interviewOdds = (m = M()) => oddsWords(interviewChance(m));
 
 export function applyFor(hospitalId, scope = 'country') {
   const p = player();
+  { const sc = jobBlockSpecial('doctor', p); if (sc) return result(false, sc, 'neutral'); }
   const m = M();
   const o = postings(scope, p, m).find((x) => x.id === hospitalId) ?? postings('country', p, m).find((x) => x.id === hospitalId);
   if (!o) return result(false, 'That hospital has no post in your specialty.', 'neutral');
@@ -101,7 +103,7 @@ export function applyFor(hospitalId, scope = 'country') {
   const r = seeded(`int/${hospitalId}/${year()}`);
   const qs = [...QUESTIONS].sort(() => r.next() - 0.5).slice(0, 3).map((x) => QUESTIONS.indexOf(x));
   m.interview = { hospitalId, city: o.city, rank: o.rank, locum: !!o.locum, away: o.away, questions: qs, answers: [], year: year() };
-  return result(true, `${o.name} invites you to interview. Answer from My Medical Career.`, 'good');
+  return result(true, `${o.name} invites you to interview. Answer from the Work tab.`, 'good');
 }
 
 /** The interview waiting, with its next question. */
@@ -145,7 +147,7 @@ function makeOffer(m, v) {
     bonus: v.locum ? 0 : Math.round(salary * [0, 0.05, 0.1][r.int(0, 2)]), relocation: v.away && r.next() < 0.7,
     nonCompete: !v.locum && /Private|Physician-owned/.test(hospitalProfile(e.id).ownership) ? 2 : 0 };
   (m.offers ??= []).push(offer);
-  return `${e.name} offers you ${v.locum ? 'a one-year temporary post' : `a post as ${RANKS[v.rank].title.toLowerCase()}`}: ${fmtMoney(salary, country())} a year, ${offer.hours} hours a week, ${offer.call} on-call${offer.bonus ? `, a signing bonus of ${fmtMoney(offer.bonus, country())}` : ''}${offer.relocation ? ', the move paid' : ''}${offer.nonCompete ? `, and a ${offer.nonCompete}-year non-compete in ${v.city}` : ''}. Answer from My Medical Career.`;
+  return `${e.name} offers you ${v.locum ? 'a one-year temporary post' : `a post as ${RANKS[v.rank].title.toLowerCase()}`}: ${fmtMoney(salary, country())} a year, ${offer.hours} hours a week, ${offer.call} on-call${offer.bonus ? `, a signing bonus of ${fmtMoney(offer.bonus, country())}` : ''}${offer.relocation ? ', the move paid' : ''}${offer.nonCompete ? `, and a ${offer.nonCompete}-year non-compete in ${v.city}` : ''}. Answer from the Work tab.`;
 }
 
 /** Offers still standing this year. */

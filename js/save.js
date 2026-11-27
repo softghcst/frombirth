@@ -24,12 +24,52 @@ import { giveNativeLanguages } from './engine/languages.js';
 import { migrateOrigins } from './engine/origins.js';
 
 export const SCHEMA_VERSION = 2;
-const K_INDEX = 'pathways.index';
-const K_SLOT = 'pathways.slot.';
-const K_GRAVE = 'pathways.graveyard';
-const K_UNDO = 'pathways.undo.';
+const K_INDEX = 'frombirth.index';
+const K_SLOT = 'frombirth.slot.';
+const K_GRAVE = 'frombirth.graveyard';
+const K_UNDO = 'frombirth.undo.';
 /** How many years back "age down" can go. */
 export const UNDO_YEARS = 3;
+
+/**
+ * The game was called Pathways, and kept its data under "pathways." (and "pathways:") keys. Nothing is thrown away:
+ * each old key is carried to its From Birth name ("frombirth."), and the old key is removed only once the new one
+ * holds the data. Where both exist, the lists of saved lives and of graves are merged, and anything else keeps the
+ * newer From Birth value. Safe to run on every load: once carried over, there is nothing left to do.
+ * @returns {number} how many old keys were carried over
+ */
+export function carryOldName(storages = [globalThis.localStorage, globalThis.sessionStorage]) {
+  let moved = 0;
+  const merge = (oldRaw, newRaw, key) => {
+    try {
+      const a = JSON.parse(oldRaw); const b = JSON.parse(newRaw);
+      if (!Array.isArray(a) || !Array.isArray(b)) return null;
+      const id = key === 'index' ? 'slotId' : 'id';
+      const seen = new Set(b.map((x) => x?.[id]));
+      return JSON.stringify([...b, ...a.filter((x) => x?.[id] == null || !seen.has(x[id]))]);
+    } catch { return null; }
+  };
+  for (const st of storages) {
+    try {
+      if (!st) continue;
+      const old = [];
+      for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k?.startsWith('pathways.') || k?.startsWith('pathways:')) old.push(k); }
+      for (const k of old) {
+        const to = `frombirth${k.slice('pathways'.length)}`;
+        const value = st.getItem(k);
+        const have = st.getItem(to);
+        if (have == null) st.setItem(to, value);
+        else if (to === 'frombirth.index' || to === 'frombirth.graveyard') { const m = merge(value, have, to === 'frombirth.index' ? 'index' : 'graves'); if (m) st.setItem(to, m); }
+        // Only once the From Birth key holds it is the old one let go (a full storage keeps both, and tries again).
+        if (st.getItem(to) != null) { st.removeItem(k); moved += 1; }
+      }
+    } catch { /* storage unavailable or full: the old keys stay, and are carried over next time */ }
+  }
+  return moved;
+}
+carryOldName();
+/** (The earlier name for carryOldName: it now carries old data over instead of clearing it.) */
+export const forgetOldName = carryOldName;
 
 function read(key, fallback) {
   try {

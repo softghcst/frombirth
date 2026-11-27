@@ -39,6 +39,7 @@ import { openMilitary } from '../military.js';
 import { openLawCareer, lawRowSub, showLawRow } from '../lawCareer.js';
 import * as career from '../../engine/career.js';
 import { FAME_MIN_AGE } from '../../data/careers.js';
+import { screenName } from '../careerNames.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -80,7 +81,7 @@ async function leaveSchool(api) {
 }
 
 /** Housing picker. Resolves {housing, roommateId} or null. */
-async function chooseHousing(housingAid) {
+export async function chooseHousing(housingAid) {
   const c = country();
   const housing = await pickModal({
     title: 'Where will you live?',
@@ -177,7 +178,7 @@ function pickMajor(progId) {
 }
 
 /** Funding picker. Resolves a funding id, 'public' when nothing is owed, or null. */
-async function chooseFunding(api, fee, length, offer) {
+export async function chooseFunding(api, fee, length, offer) {
   const c = country();
   const p = player();
   if (!fee) return 'public';
@@ -225,7 +226,7 @@ function chooseOffer(offers) {
 }
 
 /** What comes next: program → subject → decision(s) → funding → housing → enroll. */
-async function applyFlow(api) {
+export async function applyFlow(api) {
   const c = country();
   const progId = await pickModal({
     title: 'What comes next?',
@@ -428,20 +429,21 @@ function findWork(p, list) {
  */
 function ownCareer(p, list) {
   const sc = special.current(p);
-  if (sc) return { act: `sc:${sc}`, title: special.SPECIAL_BY_ID[sc].name, sub: `Your career${p.career?.title ? `: ${p.career.title}` : ''}`, dot: false };
+  // Named for the job, as everywhere: the title when there is one, the field otherwise; the picture is the field's.
+  if (sc) { const name = special.SPECIAL_BY_ID[sc].name; return { act: `sc:${sc}`, title: p.career?.title || name, menu: name, sub: p.career?.title ? name : 'Your career', dot: false }; }
   const m = p.medicine;
   if (has(list, 'medicine') && (m?.job || m?.training)) {
     let dot = false;
     try { dot = medCaseload(m, p).some((c) => c.status !== 'closed'); } catch { /* no caseload this year */ }
-    return { act: 'medicine', title: 'My Medical Career', sub: dot ? 'Patients are waiting for you' : (p.career?.title ?? 'Patients, training and your hospital'), dot };
+    return { act: 'medicine', title: screenName('medicine', p), menu: 'Medicine', sub: dot ? 'Patients are waiting for you' : (p.career?.title ?? 'Patients, training and your hospital'), dot };
   }
   if (LEGAL_CAREERS.includes(p.career?.careerId)) {
     let dot = false;
     try { dot = (lawOf(p).caseIds ?? []).map(lawCaseById).some((c) => c && !c.done && c.awaiting); } catch { /* not practicing yet */ }
-    return { act: 'law', title: 'My Legal Career', sub: dot ? 'A day in court is waiting for you' : (p.career?.title ?? 'Your cases'), dot };
+    return { act: 'law', title: screenName('law', p), menu: 'Law', sub: dot ? 'A day in court is waiting for you' : (p.career?.title ?? 'Your cases'), dot };
   }
   if (INVESTIGATIVE.includes(p.career?.careerId) || p.investigator?.job) {
-    return { act: 'investigations', title: 'My Investigations', sub: p.career?.title ?? 'Your cases and your department', dot: false };
+    return { act: 'investigations', title: screenName('investigations', p), menu: 'Law Enforcement', sub: p.career?.title ?? 'Your cases and your department', dot: false };
   }
   return null;
 }
@@ -482,18 +484,16 @@ function specialCareers(p, list) {
     return navRow({ attrs: `data-act="sc:${c.id}"`, label: c.name, sub: now === c.id ? 'Your career' : c.blurb, ico: c.ico, tone: now === c.id ? 'peach' : '' });
   });
   const useFame = has(list, 'fame') ? row(has(list, 'fame')) : career.fame() >= 10 ? lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)) : '';
-  // Careers with a page of their own that are not one-at-a-time special careers: the law, law enforcement, medicine.
+  // The law, law enforcement and medicine have screens of their own too: in the same list.
   const own = [];
-  own.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', label: 'Law Enforcement & Investigations', sub: 'Police, detectives, federal agents, private investigators', ico: 'compass' }) : lockedRow('Law Enforcement & Investigations', fromAge(p.age, 16) || 'Not open to you now'));
-  if (showLawRow(p)) own.push(navRow({ attrs: 'data-act="law"', label: 'My Legal Career', sub: lawRowSub() }));
+  own.push(has(list, 'investigations') ? navRow({ attrs: 'data-act="investigations"', menu: 'Law Enforcement', label: screenName('investigations', p), sub: screenName('investigations', p) === 'Law Enforcement' ? 'Police, detectives, federal agents' : 'Your cases, your agency and your career', ico: 'compass' }) : lockedRow('Law Enforcement', fromAge(p.age, 16) || 'Not open to you now'));
+  if (showLawRow(p)) own.push(navRow({ attrs: 'data-act="law"', menu: 'Law', label: screenName('law', p), sub: lawRowSub() }));
   const m = p.medicine;
   const medStudy = !m?.training && !m?.job && !(m?.completed ?? []).length;
-  if (has(list, 'medicine') && !medStudy) own.push(navRow({ attrs: 'data-act="medicine"', label: 'My Medical Career', sub: 'Training, posts, patients and cases', ico: 'book' }));
+  if (has(list, 'medicine') && !medStudy) own.push(navRow({ attrs: 'data-act="medicine"', menu: 'Medicine', label: screenName('medicine', p), sub: 'Training, posts, patients and cases', ico: 'book' }));
   return `<div class="card"><h3>Special careers</h3>
-    <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career. You can follow one at a time.'}</p>
-    <div class="nav-group">${rows.join('')}${useFame}</div>
-    <div class="section-label">Professions with their own training and ranks</div>
-    <div class="nav-group">${own.join('')}</div></div>`;
+    <p class="muted" style="margin-bottom:10px">${now ? `You are ${esc(special.SPECIAL_BY_ID[now].noun)}. One special career at a time: to start another, leave this one from its page.` : 'Each is a whole career, with a screen of its own.'}</p>
+    <div class="nav-group">${rows.join('')}${own.join('')}${useFame}</div></div>`;
 }
 /** Opposite choices, shown side by side: Study harder | Slack off. */
 const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
@@ -534,7 +534,7 @@ export default {
     // Before residency, a medical career is study: it sits with School (premedical years, classes, rotations, the Match).
     const m = p.medicine;
     const medStudy = has(work, 'medicine') && !m?.training && !m?.job && !(m?.completed ?? []).length;
-    if (medStudy) school.unshift(['medicine', `My Medical Career: ${e.enrolled && ['medical', 'podiatric'].includes(e.stage) ? 'classes, rotations, exams and the Match' : 'premedical years and applying'}`]);
+    if (medStudy) school.unshift(['medicine', `${screenName('medicine', p)}: ${e.enrolled && ['medical', 'podiatric'].includes(e.stage) ? 'classes, rotations, exams and the Match' : 'premedical years and applying'}`]);
     // Your job's own actions stay with the job; finding work and the special careers have lists of their own below.
     const jobOnly = work.filter(([id]) => !FIND.has(id) && !SPECIAL.has(id) && !(medStudy && id === 'medicine'));
 
@@ -562,12 +562,23 @@ export default {
       ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
 
+    // "You": what the player is in now, the job first, so it is one tap away; then the week, then school while enrolled.
+    // Without a job, the job's row is not there: past jobs and contacts wait further down, and school too once left.
+    const own = ownCareer(p, work);
+    const employed = !!(own || career.currentCareer() || k.partTime || k.retired);
+    const workMore = `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`;
+    let jobCard = careerCard();
+    if (own) jobCard = jobCard.replace('<div class="card info-card"', `<div class="card info-card" data-direct="${esc(own.act)}" data-direct-title="${esc(own.title)}" data-direct-sub="${esc(own.sub)}" data-direct-menu="${esc(own.menu ?? '')}"${own.dot ? ' data-direct-dot="1"' : ''}`);
+    jobCard = jobCard.replace(/<\/div>\s*$/, () => `${btns(jobOnly, workMore)}</div>`);
+    const showJob = employed || jobOnly.length || workMore;
+    const enrolled = e.enrolled || sch.atSchool(p) || medStudy;
+    const schoolCard = `<div class="card info-card" ${enrolled ? '' : 'data-row-title="Education" data-row-sub="Courses, degrees and your record" '}data-row-menu="School"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>`;
+    const week = commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : '';
+    const you = `${employed ? jobCard : ''}${week}${enrolled ? schoolCard : ''}`;
     el.innerHTML = `
-      <div class="section-label">You</div>
-      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
-      ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${(() => { const d = ownCareer(p, work); const c0 = careerCard(); return d ? c0.replace('<div class="card info-card">', `<div class="card info-card" data-direct="${esc(d.act)}" data-direct-title="${esc(d.title)}" data-direct-sub="${esc(d.sub)}"${d.dot ? ' data-direct-dot="1"' : ''}>`) : c0; })().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${you ? `<div class="section-label">You</div>${you}` : ''}
       ${findWork(p, work)}
+      ${enrolled && (employed || !showJob) ? '' : `<div class="section-label">More</div>${enrolled ? '' : schoolCard}${!employed && showJob ? jobCard : ''}`}
       ${specialCareers(p, work)}`;
 
     el.onclick = (ev) => {

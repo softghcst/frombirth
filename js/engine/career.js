@@ -871,7 +871,9 @@ export function tickCareer() {
   // A promotion needs a seat to be free: big, healthy employers have more of them.
   const odds = clamp((0.25 + (c.performance - bar) / 100 + mentor * 0.03 + seniority) * leadFactor(), 0, 0.9) * (toTop ? 0.35 : 1) * vacancyOdds(c)
     * (career.agesOut ? 1.7 : 1); // a child's whole career is ten years or so: parts come, or the child grows out of them
-  if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
+  // A newsroom promotes its reporters on their published work (engine/journalism.js tickJournalism), not here.
+  const newsroom = c.careerId === 'journalist';
+  if (next && served && !newsroom && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {
     if (next && served && missing.length && (c.yearsInRole - level.years) % 3 === 0) {

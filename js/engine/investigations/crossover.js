@@ -22,11 +22,13 @@ const nm = (id) => nameOfId(id);
 /**
  * A case worked by a detective who is not the player, taken through the real court process: the kind of case a
  * reporter covers. Its clues are found by that detective's ordinary work; the court decides as for any case.
+ * @param {{serious?:boolean}} [o] serious: a homicide, the kind of case that can end in prison
  */
-export function npcCourtCase(p = player()) {
+export function npcCourtCase(p = player(), o = {}) {
   const a = agencyOf(kindsIn(p.countryId)[0], p.countryId, p.city);
   const det = Object.values(a.units)[0].memberIds.find((id) => store.state.npcs[id]?.alive);
-  const inv = openCase('burglary', { ownerId: a.id, lead: det, truth: 'insider' });
+  // A burglary, unless a serious case is asked for (o.serious): a killing by someone the victim knew.
+  const inv = o.serious ? openCase('homicide', { ownerId: a.id, lead: det, truth: 'known' }) : openCase('burglary', { ownerId: a.id, lead: det, truth: 'insider' });
   const inc = incidentOf(inv);
   for (const c of inv.file.clues.filter((x) => ['scene', 'specialist', 'records'].includes(x.via))) {
     c.found = true; c.at = now();
@@ -34,7 +36,7 @@ export function npcCourtCase(p = player()) {
   }
   inv.file.report = { at: now(), complete: true, omitted: [] };
   const suspect = inv.file.poi[0];
-  if (k.strength(inv.evidenceIds, suspect) < k.CHARGE_AT) return null;
+  if (!suspect || k.strength(inv.evidenceIds, suspect) < k.CHARGE_AT) return null;
   const c = k.openCaseFor(inv, suspect);
   inv.file.courtCaseId = c.id;
   for (let i = 0; i < 8 && !['sentenced', 'acquitted', 'dismissed'].includes(c.stage); i++) k.runToEnd(c);

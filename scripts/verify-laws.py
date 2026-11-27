@@ -31,7 +31,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, '.cache', 'wiki')
-UA = {'User-Agent': 'PathwaysDataCheck/1.0 (game reference-data verification)'}
+UA = {'User-Agent': 'FromBirthDataCheck/1.0 (game reference-data verification)'}
 
 # What is checked, against which page and revision.
 SOURCES = {
