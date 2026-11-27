@@ -111,7 +111,8 @@ function pageActivitiesHub() {
   const row = (attr, label, sub, ico) => navRow({ attrs: attr, label, sub, ico });
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
-    <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : 'Try out for the team', SPORT_ICON)).join('')}
+    <div class="nav-group">${sports.slice(0, 6).map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : 'Try out for the team', SPORT_ICON)).join('')}
+    ${sports.length > 6 ? row('data-team-more', 'More sports teams', `${sports.length - 6} more: ${sports.slice(6, 9).map(sportName).join(', ')}…`, SPORT_ICON) : ''}
     ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try-out${c.blurb ? ` · ${c.blurb}` : ''}`, 'star')).join('')}</div>
     ${outsideSchool()}`;
 }
@@ -259,7 +260,13 @@ export function openSchool(onChange) {
     }
     const out = t.closest('[data-outclub]')?.dataset.outclub;
     if (out) { await openClubs({ changed: () => onChange?.() }, out); return draw(true); }
-    const team = t.closest('[data-team]')?.dataset.team;
+    let team = t.closest('[data-team]')?.dataset.team;
+    if (t.closest('[data-team-more]')) {
+      const e = player().education; const a = life.activities();
+      const more = life.sportsHere().filter((x) => !(e.clubs.includes('sports_team') && x === (a.sport ?? ''))).slice(6);
+      team = await pickModal({ title: 'Sports teams', cancel: 'Never mind', body: 'Every sport the school plays.', options: more.map((x) => ({ value: x, label: `${cap(sportName(x))} team` })) });
+      if (!team) return undefined;
+    }
     if (team) {
       const e = player().education;
       if (e.clubs.includes('sports_team')) { life.setSport(team); return say({ ok: true, text: `You switched to the ${sportName(team)} team.`, tone: 'good' }); }

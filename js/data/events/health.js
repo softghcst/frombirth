@@ -4,6 +4,7 @@
 // look for help, to lean on people, and to use what has been learned.
 // Scenes about distress are support-focused, never graphic, and are switched
 // off by the "reduced" content setting in My Health.
+import { AT } from '../workplaces.js';
 import { st, hid, rel, any, ok, bad, chk, need, mem, perf } from './helpers.js';
 
 const health = (value) => ({ type: 'health', value });
@@ -58,7 +59,7 @@ export default [
     choices: [
       { label: 'See a doctor', outcomes: [any('You make an appointment.', 'neutral', { type: 'ailment', value: 'doctor' })] },
       { label: 'Rest it off', outcomes: [any('You go to bed early.', 'neutral', { type: 'ailment', value: 'rest' })] },
-      { label: 'Ignore it', outcomes: [any('You carry on.', 'neutral', { type: 'ailment', value: 'ignore' })] },
+      { label: 'Ignore it', outcomes: [any('You decide it will pass.', 'neutral', { type: 'ailment', value: 'ignore' })] },
     ],
   },
 
@@ -140,7 +141,7 @@ export default [
     ],
   },
   {
-    id: 'meeting_no_interpreter', category: 'work', ageRange: [16, 80], cooldown: 5, weight: 2,
+    id: 'meeting_no_interpreter', workplaces: [...AT.desk, 'school', 'care'], category: 'work', ageRange: [16, 80], cooldown: 5, weight: 2,
     requires: [need('hearing', '==', true), need('employed', '==', true)],
     text: 'An all-staff meeting is announced for tomorrow: an hour of people talking, with no captions and no interpreter booked.',
     choices: [

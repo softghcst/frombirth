@@ -22,6 +22,7 @@ import { store, player, log, milestone } from '../../state.js';
 import { recordEvent } from '../chronicle.js';
 import { SKILLS, SPECIALTY_BY_ID, qualifiesAs } from '../../data/medicine.js';
 import { storyBeat } from '../storyDirector.js';
+import { addGifts } from '../aptitudes.js';
 
 export const VERSION = 1;
 export const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -53,7 +54,10 @@ function blank() {
 
 /** The physician's record, made if it is not there. */
 export function M(p = player()) {
-  p.medicine ??= blank();
+  if (!p.medicine) { // a gift for science, acting or art (engine/aptitudes.js)
+    p.medicine = blank();
+    addGifts(p.medicine.skills, 'medicine', p);
+  }
   const m = p.medicine;
   const fresh = blank();
   for (const [k, v] of Object.entries(fresh)) if (m[k] === undefined) m[k] = v;

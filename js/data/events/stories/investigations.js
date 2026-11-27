@@ -22,6 +22,9 @@ export default [
   Q('inv_field_eval', '{fto} has written your field training evaluation. Most of it is good. One line is not: "Reports are thorough but slow; misses times."', [
     C('Ask what to change', '{fto} showed you how they write times as they happen, not after.', 'eval:learn'),
     C('Argue the point', 'You argued. {fto} wrote that down too.', 'eval:argue')]),
+  Q('inv_fto_last_chance', 'After {months} more months, {fto} still cannot sign off your field training. The captain calls you in: the department is letting you go, unless you can give a reason not to.', [
+    C('Ask for one last chance', 'You say what you have been working on, and what you would do with three more months.', 'ftolast:ask'),
+    C('Accept it', 'You thank them for the chance you had.', 'ftolast:accept')]),
   Q('inv_first_report', 'Your first report on your own: a break-in at a corner shop. The owner is sure who did it. You did not see anything yourself.', [
     C('Write what you saw and what you were told, separately', 'Facts in one place, claims in another. Your sergeant initialed it without changes.', 'report:clean'),
     C('Write the owner\'s suspicion as fact', 'Your sergeant sent it back: "Did you see this, or did he tell you?"', 'report:sloppy')]),

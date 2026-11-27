@@ -30,11 +30,24 @@ import * as ins from '../../engine/health/insurance.js';
 import * as hosp from '../../engine/health/hospital.js';
 import * as sys from '../../engine/systems.js';
 import { ailmentsOf } from '../../engine/health/ailments.js';
+import { reproSection, bcPage, bcFlows } from './contraception.js';
 
 const SKILLS_NAMES = new Set(Object.values(SKILLS));
+/**
+ * Five pages, each with its sections under their own headings: fewer tabs to hunt through, and every section still
+ * reached by its id (openHealth({ section: 'appointments' }) opens Care at Appointments).
+ */
+const PAGES = [
+  ['overview', 'Overview', ['overview', 'goals']],
+  ['body', 'Body & Mind', ['physical', 'mental', 'conditions', 'repro']],
+  ['care', 'Care', ['appointments', 'therapy', 'medications', 'supports']],
+  ['cover', 'Cover & Bills', ['cover']],
+  ['history', 'History', ['history']],
+];
+const pageOf = (sec) => PAGES.find(([id, , members]) => id === sec || members.includes(sec)) ?? PAGES[0];
 const SECTIONS = [
   ['overview', 'Overview'], ['physical', 'Physical'], ['mental', 'Mental health'], ['conditions', 'My conditions'], ['appointments', 'Appointments'],
-  ['therapy', 'Therapy'], ['medications', 'Medications'], ['supports', 'Accessibility'], ['cover', 'Cover & hospital'], ['history', 'History'], ['goals', 'Goals'],
+  ['therapy', 'Therapy'], ['medications', 'Medications'], ['repro', 'Reproductive health'], ['supports', 'Accessibility'], ['cover', 'Cover & hospital'], ['history', 'History'], ['goals', 'Goals'],
 ];
 /**
  * Under this age a child's health is in their parents' hands: My Health is one simple page, with how they are,
@@ -81,7 +94,7 @@ function clinicianRow(npc, extra = '') {
   const f = care.facility(c.facilityId);
   return `<button class="row hl-person" data-person="${npc.id}">
     <div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: 60, label: npc.firstName })}</div>
-    <div class="main"><strong>${esc(care.clinicianName(npc))}</strong><small>${esc(PROFESSIONS[c.profession].name)}${c.dbt ? ', DBT-trained' : ''} · ${esc(f?.name ?? '')}</small>${extra ? `<small>${extra}</small>` : ''}</div>
+    <div class="main"><strong>${esc(care.clinicianName(npc))}</strong><small>${esc(PROFESSIONS[c.profession].name)}${c.dbt ? ', trained in emotion skills therapy' : ''} · ${esc(f?.name ?? '')}</small>${extra ? `<small>${extra}</small>` : ''}</div>
     <div class="side">›</div></button>`;
 }
 
@@ -426,11 +439,11 @@ function dbtPage(p, h) {
   const goalsList = h.plans.flatMap((x) => x.goals);
   const done = s.groupCourses.flatMap((c) => Object.keys(c.moduleDone ?? {}));
   const hasBpd = activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
-  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My DBT Journey</h3>
+  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My Emotion Skills</h3>
     
-    ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
+    ${card('Emotion skills therapy, one to one', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
       : `${muted('Weekly sessions with a DBT-trained therapist.')}${btn('Find a DBT therapist', 'findTherapy', { arg: 'dbt' })}`)}
-    ${card('DBT skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
+    ${card('Emotion skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
         ${s.module ? kv('Teaching now', `${esc(MODULE_BY_ID[s.module.id].name)}, week ${s.module.weekIn} of ${s.module.of}`) : ''}${kv('Your attendance', `${grpCourse.attended} of ${grpCourse.attended + grpCourse.missed}`)}
         ${muted('What people share in the group stays in the group.')}`
       : `${muted('A weekly class teaching the four skills modules.')}${btn('Join a skills group', 'findTherapy', { arg: 'dbt_group' })}`)}
@@ -454,20 +467,28 @@ export function openHealth(api, to = {}) {
   const p = player();
   healthOf(p);
   const young = p.age < OWN_CARE_AGE;  // a baby or small child: one simple page (youngView)
+  // A screen of its own, like the careers: the whole screen on a phone, Back and its name in the bar along the top.
   const m = openModal(`
-    <div class="dyn-head"><div><div class="eyebrow">${esc(p.firstName)}</div><h2>My Health</h2></div>
-      <button class="icon-btn" data-close aria-label="Close">✕</button></div>
-    ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${SECTIONS.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
-    <div class="dyn-body hl-body" data-body></div>`, { dismissable: true });
+    <div class="dyn-head" style="flex:none"><div class="eyebrow">${esc(p.firstName)}</div></div>
+    ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${PAGES.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
+    <div class="dyn-body hl-body" data-body></div>`, { dismissable: true, full: true, title: 'My Health' });
   m.el.classList.add('dyn-modal', 'hl-modal');
   const body = m.el.querySelector('[data-body]');
 
   function draw(keepScroll = false) {
     const h = healthOf(p);
     const top = keepScroll ? body.scrollTop : 0;
+    // A section asked for by its own id opens its page, at its heading.
+    const page = pageOf(nav.section);
+    const at = page[2].includes(nav.section) && page[2][0] !== nav.section ? nav.section : null;
+    nav.section = page[0];
     m.el.querySelectorAll('[data-tab]').forEach((b) => { const on = !nav.page && b.dataset.tab === nav.section; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
-    const pages = { overview, physical, mental, conditions, appointments, therapy, medications, supports, cover, history, goals };
-    body.innerHTML = young ? youngView(p, h) : nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : pages[nav.section](p, h);
+    const pages = { overview, physical, mental, conditions, appointments, therapy, medications, repro: reproSection, supports, cover, history, goals };
+    const label = (id) => SECTIONS.find(([x]) => x === id)?.[1] ?? id;
+    const whole = page[2].length === 1 ? pages[page[2][0]](p, h)
+      : page[2].map((id) => `<h3 class="hl-group" id="hl-sec-${id}">${esc(label(id))}</h3>${pages[id](p, h)}`).join('');
+    body.innerHTML = young ? youngView(p, h) : nav.page === 'bc' ? bcPage(p, nav) : nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : whole;
+    if (at && !nav.page && !keepScroll) requestAnimationFrame(() => body.querySelector(`#hl-sec-${at}`)?.scrollIntoView({ block: 'start' }));
     body.scrollTop = keepScroll ? top : nav.scroll && nav.restore ? nav.scroll : 0;
     nav.restore = false;
     m.el.querySelector(`[data-tab="${nav.section}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -511,7 +532,7 @@ export function openHealth(api, to = {}) {
   }
 
   const flows = {
-    dbtFocus: async () => { const m = await pickModal({ title: 'Your DBT focus this year', body: 'Your therapist will put extra time into it. The group goes on through all four modules.', options: [{ value: 'auto', label: 'Whatever I need most', sub: 'Your therapist decides as the year goes.' }, ...DBT_MODULES.map((x) => ({ value: x.id, label: x.name, sub: x.blurb }))] }); return m ? after(ther.setDbtFocus(m === 'auto' ? null : m)) : draw(true); },
+    dbtFocus: async () => { const m = await pickModal({ title: 'Your emotion skills focus this year', body: 'Your therapist will put extra time into it. The group goes on through all four modules.', options: [{ value: 'auto', label: 'Whatever I need most', sub: 'Your therapist decides as the year goes.' }, ...DBT_MODULES.map((x) => ({ value: x.id, label: x.name, sub: x.blurb }))] }); return m ? after(ther.setDbtFocus(m === 'auto' ? null : m)) : draw(true); },
     seek: (arg) => seek(arg), seekOther: () => seek(null), doctor: async () => { await seeDoctor(api); draw(true); },
     journey: () => { nav.page = 'journey'; draw(); }, dbt: () => { nav.page = 'dbt'; draw(); },
     follow: () => { const h = healthOf(p); h.settings.follow = !h.settings.follow; api.changed(); draw(true); },
@@ -546,6 +567,7 @@ export function openHealth(api, to = {}) {
     insure: async () => after(sys.setCover(true)), uninsure: async () => after(sys.setCover(false)),
     appeal: (arg) => after(ins.appeal(arg)),
     physio: () => after(hosp.requestRehab('back')),
+    ...bcFlows({ p, after: (r) => after(r), draw, nav, api }),
     goals: async () => { const list = Object.entries(care.GOALS); const id = await pickModal({ title: 'Choose a goal', options: list.map(([k, g]) => ({ value: k, label: g.text })) }); if (id) care.setGoals([id]); api.changed(); return draw(true); },
   };
 
@@ -554,6 +576,8 @@ export function openHealth(api, to = {}) {
     if (young) return undefined;  // nothing to set or manage yet
     const tab = e.target.closest('[data-tab]');
     if (tab) { nav.section = tab.dataset.tab; nav.page = null; return draw(); }
+    const bt = e.target.closest('[data-bctab]');
+    if (bt) { nav.bc.tab = bt.dataset.bctab; return draw(); }
     const jt = e.target.closest('[data-jtab]');
     if (jt) { nav.journey = jt.dataset.jtab; return draw(); }
     if (e.target.closest('[data-back]')) { nav.page = null; return draw(); }

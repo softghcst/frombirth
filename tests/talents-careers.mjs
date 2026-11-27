@@ -1,0 +1,95 @@
+// A gift points somewhere beyond its own stage: Math and Science toward medicine, Writing toward journalism and law,
+// Acting toward a courtroom, Sports toward the police. Each counts in getting the job and on the first day of the
+// career's own skills (engine/aptitudes.js); none counts against anyone. Run with: node tests/talents-careers.mjs
+const disk = new Map();
+globalThis.localStorage = { getItem: (k) => (disk.has(k) ? disk.get(k) : null), setItem: (k, v) => { disk.set(k, String(v)); }, removeItem: (k) => { disk.delete(k); } };
+
+const { store } = await import('../js/state.js');
+const { rng } = await import('../js/rng.js');
+const { createLife } = await import('../js/engine/characterGen.js');
+const { TALENTS } = await import('../js/data/talents.js');
+const { CAREERS } = await import('../js/data/careers.js');
+const apt = await import('../js/engine/aptitudes.js');
+const { M } = await import('../js/engine/medicine/core.js');
+const { I } = await import('../js/engine/investigations/core.js');
+const { lawOf } = await import('../js/engine/lawSchool.js');
+const { J } = await import('../js/engine/journalism.js');
+const { tripleThreat } = await import('../js/engine/conditions.js');
+const { skillsOf } = await import('../js/engine/kpop.js');
+const { look } = await import('../js/engine/modeling.js');
+const { CLUBS: SCHOOL_CLUBS } = await import('../js/data/schools.js');
+
+rng.seed(20261126);
+const problems = [];
+const check = (c, m) => { if (!c) problems.push(m); };
+const job = (id) => CAREERS.find((c) => c.id === id);
+const life = (gifts = {}) => {
+  do { store.state = createLife({ countryId: 'us', year: 2000 }); } while (store.state.player.royal);
+  const p = store.state.player;
+  for (const t of TALENTS) p.talents[t.id] = 40;
+  Object.assign(p.talents, gifts);
+  for (const k of Object.keys(p.skills ?? {})) p.skills[k] = 0;
+  return p;
+};
+
+// Every talent says where it leads.
+for (const t of TALENTS) check(typeof t.leadsTo === 'string' && t.leadsTo.length > 10, `${t.id} says what it leads to`);
+
+// Where each gift counts in getting the job.
+const plain = life();
+const pairs = [['science', 'doctor'], ['science', 'nurse'], ['writing', 'journalist'], ['writing', 'lawyer'], ['acting', 'lawyer'],
+  ['persuasion', 'lawyer'], ['persuasion', 'political_staff'],
+  ['sports', 'police'], ['sports', 'firefighter'], ['art', 'dentist'], ['writing', 'author']];
+for (const [gift, careerId] of pairs) {
+  const c = job(careerId);
+  check(c, `${careerId} exists`);
+  const before = apt.workEdge(c, plain);
+  const p = life({ [gift]: 95 });
+  check(apt.workEdge(c, p) > before + 0.1, `a gift for ${gift} helps toward ${careerId} (${before} -> ${apt.workEdge(c, p)})`);
+}
+// Not everywhere: music is no help in a hospital.
+check(apt.workEdge(job('doctor'), life({ music: 99 })) === apt.workEdge(job('doctor'), plain), 'music does not make a doctor');
+
+// The first day of a career's own skills.
+const base = life();
+const m0 = M(base).skills.reasoning, l0 = lawOf(base).skills.courtroom, j0 = J(base).skills.writing, i0 = I(base).skills.digital;
+const gifted = life({ science: 100, acting: 100, writing: 100, tech: 100 });
+check(M(gifted).skills.reasoning >= m0 + 10, 'a gift for science: clinical judgment from the first day');
+check(M(gifted).skills.communication > M(base).skills.communication, 'a gift for acting: a bedside manner');
+check(lawOf(gifted).skills.courtroom >= l0 + 10, 'a gift for acting: the courtroom');
+check(J(gifted).skills.writing >= j0 + 10, 'a gift for writing: the newsroom');
+check(I(gifted).skills.digital >= i0 + 10, 'a gift for technology: digital evidence');
+// An ordinary talent changes nothing, and nothing goes above 100.
+const avg = life({ science: 50 });
+check(M(avg).skills.reasoning === m0, 'an ordinary talent gives no head start');
+check(Object.values(M(gifted).skills).every((v) => v <= 100), 'skills stay within 100');
+
+// Persuasion: debate and student council train it, and a courtroom rewards it.
+check(lawOf(life({ persuasion: 100 })).skills.negotiation >= lawOf(base).skills.negotiation + 10, 'a gift for persuasion: negotiation');
+for (const id of ['debate', 'council', 'mock_trial', 'model_un']) {
+  const c = SCHOOL_CLUBS.find((x) => x.id === id);
+  check(c?.yearly?.talents?.persuasion > 0, `${id} trains persuasion`);
+}
+// Musical theater needs all three: two great talents and a weak one lose to three good ones.
+check(tripleThreat(life({ singing: 95, dance: 95, acting: 30 })) < tripleThreat(life({ singing: 70, dance: 70, acting: 70 })), 'a triple threat needs all three');
+// K-pop and modeling: an actor's presence counts, and never against anyone.
+check(skillsOf().stage >= 0, 'idol skills read');
+const idolPlain = (() => { const p = life(); return skillsOf().camera; })();
+const idolActor = (() => { const p = life({ acting: 100 }); return skillsOf().camera; })();
+check(idolActor > idolPlain, `an actor is at ease on camera (${idolPlain} -> ${idolActor})`);
+const lookPlain = look(life()), lookActor = look(life({ acting: 100 }));
+check(lookActor > lookPlain, 'an actor knows how to pose');
+
+// Modeling is a gift of its own: it makes the look, the work is judged on the look, and lessons train it.
+const avgFace = life(); avgFace.stats.charm = 50; avgFace.stats.health = 70; avgFace.age = 20;
+const natural = life({ modeling: 95 }); natural.stats.charm = 50; natural.stats.health = 70; natural.age = 20;
+check(look(natural) >= look(avgFace) + 10, `a gift for modeling shows (${look(avgFace)} -> ${look(natural)})`);
+const modelJob = (await import('../js/data/careers.js')).CAREER_BY_ID.modeling;
+check(modelJob?.skill === 'modelLook' && modelJob.req.stats.modelLook > 0, 'modeling hires on the look');
+const { LESSONS } = await import('../js/data/lessons.js');
+check(LESSONS.find((l) => l.id === 'modeling')?.grows['talents.modeling'] > 0, 'modeling lessons train the gift');
+const { SKILL_BY_ID } = await import('../js/data/skills.js');
+check(SKILL_BY_ID.modeling?.talent === 'modeling', 'runway and posing can be practiced');
+
+if (problems.length) { console.log(problems.map((x) => `FAIL ${x}`).join('\n')); process.exit(1); }
+console.log('A gift leads somewhere: medicine, law, the newsroom, the police.');

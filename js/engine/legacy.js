@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { SKILL_BY_ID } from '../data/skills.js';
 import { giveBirthday, yearSpan } from './birthday.js';
 import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
@@ -308,7 +309,7 @@ export function continueAs(npcId) {
   archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
     trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
     medicine: physicianSummary(op), // a physician's career, never their patients (engine/medicine/core.js)
-    languages: Object.entries(op.skills ?? {}).filter(([k, v]) => ['spanish', 'french', 'japanese', 'mandarin', 'german', 'korean', 'portuguese', 'arabic', 'sign_language'].includes(k) && v >= 40).map(([k]) => k) } });
+    languages: Object.entries(op.skills ?? {}).filter(([k, v]) => SKILL_BY_ID[k]?.group === 'language' && v >= 40).map(([k]) => k) } });
   player.archiveParents = [archiveIdOf(op)];
   store.state = next;
   heirHealth(next, h);

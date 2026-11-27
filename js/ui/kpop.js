@@ -48,7 +48,7 @@ function tabsFor(p) {
 export function openIdol(api, start = 'overview') {
   kp.world();
   const st = { stack: [{ view: start, arg: null }] };
-  const modal = openModal('<div data-idol></div>', { dismissable: true });
+  const modal = openModal('<div data-idol></div>', { dismissable: true, full: true, title: 'K-pop Idol' });
   modal.el.classList.add('world-modal');
   const root = modal.el.querySelector('[data-idol]');
   const top = () => st.stack[st.stack.length - 1];

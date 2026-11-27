@@ -20,7 +20,7 @@ import { CAREER_BY_ID } from '../../data/careers.js';
 import { I, rec, W, year, now, me, seeded, reputationOf, grow, regard, migrateInvestigations, legacies } from './core.js';
 import { J } from '../cases.js';
 import { agencyOf, kindsIn } from './agencies.js';
-import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit } from './careers.js';
+import { settleApplications, settleAcademy, settleProbation, settlePromotions, jobEnded, licensed, studyCredit, autoPatrolYear } from './careers.js';
 import { settleAll, assignCase, investigation, caseStatus, workLeft } from './casework.js';
 import { settleComplaints, intake } from './oversight.js';
 import { dramaYear, peopleYear, formTaskForce } from './drama.js';
@@ -37,6 +37,12 @@ import { booksYear } from './books.js';
 import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
+import { considerYear } from './autoPromotion.js';
+import { settleAncestor } from './family.js';
+import { seriesYear, inheritYear } from './serial.js';
+import { wellbeingYear } from './wellbeing.js';
+import { mediaYear } from './truecrime.js';
+import { endUndercover } from './undercover.js';
 
 export * from './core.js';
 /** Careers this engine runs (the career engine pays them, but does not review them). */
@@ -67,6 +73,8 @@ export function settle(p = player()) {
   if (ac === 'graduated') out.push('You graduated.');
   settleProbation(p);
   out.push(...settlePromotions(p), ...settleAll(p), ...settleComplaints(), ...settleWorkplace(p));
+  for (const id of r.caseIds) { const line = settleAncestor(investigation(id), p); if (line) out.push(line); }
+  { const line = endUndercover(); if (line) out.push(line); }
   return out;
 }
 
@@ -81,12 +89,13 @@ export function tickInvestigations() {
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
-  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...alliedYear(p), ...alliedCareerYear(p)]) log(line, 'system', 'neutral');
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
   if (r.job && !(r.job.corporate && p.career.careerId === 'pi' && p.career.employerId === r.job.employerId) && !INVESTIGATIVE.includes(p.career.careerId) && r.academy?.status !== 'enrolled') jobEnded(p, r, p.career.retired ? 'retired' : 'left');
-  settle(p);
+  // What the year decided (an application, a promotion, a complaint) waits to be read in My Investigations.
+  { const lines = settle(p); if (lines.length) r.unread = [...(r.unread ?? []), ...lines].slice(-12); }
   if (r.job && r.job.legacy && !r.job.agencyId && r.family === 'police') {
     // A legacy officer's department gets its agency record now (the employer stays what it was).
     const a = agencyOf(kindsIn(p.countryId)[0], p.countryId, p.city);
@@ -94,18 +103,23 @@ export function tickInvestigations() {
     if (r.job.detective) { const u = a.units[r.job.specialty] ?? a.units.general ?? Object.values(a.units)[0]; r.job.specialty = u.specialty; if (!u.memberIds.includes(me())) u.memberIds.push(me()); r.people.supervisorId ??= u.headId; }
   }
   studyCredit(p, r); // a degree finished while serving (part-time) counts from now on
+  autoPatrolYear(r); // routine patrol work, for a player who asked for it to be done for them
   if (r.job && !['academy', 'federal_training'].includes(r.stage)) {
     r.stats.years += 1;
     // A year on the job: the skills its work uses grow a little. Performance follows how the work is done.
     const use = r.job.detective || r.family === 'federal' ? ['reasoning', 'evidence', 'interviewing', 'management'] : ['observation', 'writing', 'interviewing', 'teamwork'];
     for (const s of use) grow(s, 1);
     if (['sergeant', 'lieutenant', 'captain', 'deputy_chief', 'chief', 'detective_sergeant', 'detective_lieutenant', 'supervisory', 'asac', 'sac'].includes(r.job.rank)) grow('leadership', 2);
+    // Experience teaches leading too: a seasoned officer or detective is the one newer colleagues ask (promotion to sergeant needs it).
+    if (r.stats.years >= 5) grow('leadership', 1);
     p.career.performance = clamp(Math.round(p.career.performance * 0.5 + reputationOf(r) * 0.5 + rng.int(-3, 3)));
     autoProgress(p, r);
+    considerYear(p, r); // considered for the next rank, a step raise, or a warning (autoPromotion.js)
     // New cases, for those who investigate: one a year, two for the experienced, never past a caseload of three.
     if (r.job.detective || (r.family === 'federal' && r.job.rank !== 'trainee')) {
       const n = r.stats.years >= 5 ? 2 : 1;
       for (let i = 0; i < n; i++) assignCase(p);
+      for (const line of [...inheritYear(p), ...seriesYear(p)]) log(line, 'system', 'neutral'); // serial.js
     }
     taskForces(p, r);
     intake(p);
@@ -116,6 +130,8 @@ export function tickInvestigations() {
   for (const line of unionYear(p)) log(line, 'system', 'neutral');
   for (const line of reformYear(p)) log(line, 'system', 'neutral');
   for (const line of payYear(p)) log(line, 'system', 'good');
+  for (const line of wellbeingYear(p)) log(line, 'system', 'bad');
+  { const line = endUndercover(); if (line) log(line, 'system', 'neutral'); }
   peopleYear(p);
   dramaYear(p);
 }
@@ -130,6 +146,15 @@ function autoProgress(p, r) {
     const f = inv?.file;
     if (!f || f.outcome || !['active', 'suspect'].includes(inv.stage)) continue;
     if ((f.work[year() - 1] ?? 0) > 0) continue;
+    // Three years with nobody working it: the sergeant sets it aside (inactive, still open), and the caseload has room again.
+    const idle = [1, 2, 3].every((n) => !(f.work[year() - n] > 0)) && now() - f.opened >= 36 && !f.courtCaseId && !f.review;
+    if (idle) {
+      inv.stage = 'suspended';
+      f.inactive = now();
+      f.log.push({ at: now(), text: 'Three years without work on it: the sergeant set it aside. It stays open, and can be taken up again.' });
+      log(`${f.title} has had no work for three years; your sergeant set it aside, and you will get new cases.`, 'system', 'neutral');
+      continue;
+    }
     const step = ['scene', 'specialist', 'examiner', 'urgency', 'search'].find((s) => !f.done[s] && f.clues.some((c) => c.via === s));
     if (!step) continue;
     f.done[step] = now();
@@ -147,7 +172,8 @@ function taskForces(p, r) {
     if (!f || f.taskForceId || f.outcome || !['robbery', 'fraud', 'cyber'].includes(f.template)) continue;
     if (!seeded(`${inv.id}/tf`).chance(0.3)) continue;
     const res = formTaskForce(inv.id, f.template === 'robbery' ? 'fbi' : 'fbi');
-    if (res.ok) { log(res.text, 'system', 'neutral'); if (!r.scenes[`tf:${inv.id}`]) { r.scenes[`tf:${inv.id}`] = year(); store.state.pendingEvents.push({ id: 'inv_task_force', cast: { words: { case: f.title } } }); } }
+    if (res.ok) { log(res.text, 'system', 'neutral'); const lastTf = Math.max(0, ...Object.entries(r.scenes).filter(([key2]) => key2.startsWith('tf:')).map(([, y]) => y));
+      if (!r.scenes[`tf:${inv.id}`] && year() - lastTf >= 4) { r.scenes[`tf:${inv.id}`] = year(); store.state.pendingEvents.push({ id: 'inv_task_force', cast: { words: { case: f.title } } }); } }
     break;
   }
 }
@@ -162,7 +188,9 @@ export function legacySummary(p) {
   return {
     name: `${p.firstName} ${p.lastName}`,
     family: r.family,
-    history: r.history.filter((h) => h.kind === 'career').map((h) => ({ year: h.year, text: h.text })),
+    // The milestones of a career, not its paperwork: each referral is in the court-case list already; repeats are kept once.
+    history: r.history.filter((h) => h.kind === 'career' && !/^Referred a case to the prosecutor/.test(h.text))
+      .filter((h, i, all) => all.findIndex((x) => x.text === h.text) === i).map((h) => ({ year: h.year, text: h.text })),
     years: r.stats.years, units: r.stats.units, license: r.license ? r.license.name : null,
     retired: r.retired?.year ?? null,
     stats: r.stats.unknownBefore ? { note: 'Casework from before records were kept is not known.' } : { assigned: r.stats.assigned, completed: r.stats.completed, court: r.stats.court, reopened: r.stats.reopened },

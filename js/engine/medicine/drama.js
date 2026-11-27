@@ -126,7 +126,8 @@ function eligible(p, m) {
   if (sad) out.push({ id: 'med_family_answers', cast: {} });
   if (m.job && hospital(m.job.hospitalId)?.teaching && !(m.research?.projects?.length)) out.push({ id: 'med_research_offer', cast: {} });
   if (m.job && year() - m.job.since >= 3) out.push({ id: 'med_department_divided', cast: {} });
-  if (m.job) out.push({ id: 'med_industry_gift', cast: {} });
+  // Drug companies paying doctors to speak at conferences abroad: a postwar practice, from about the mid-1950s.
+  if (m.job && year() >= 1955) out.push({ id: 'med_industry_gift', cast: {} });
   if (t || m.job) out.push({ id: 'med_alter_record', cast: {} });
   // Relationships at work, and their consequences years later.
   const hereNow = m.job?.hospitalId ?? t?.hospitalId;
@@ -397,7 +398,7 @@ export function medicineChoice(value, cast = {}) {
       if (how === 'join') return doResearch('project').text;
       return '';
     case 'gift':
-      if (how === 'decline') { grow('integrity', 1, m); return 'You decline. Your prescribing stays yours.'; }
+      if (how === 'decline') { grow('integrity', 1, m); return 'Your prescribing stays yours.'; }
       grow('integrity', -3, m);
       if (roll(0.3)) { m.discipline.push({ year: year(), what: 'Accepted hospitality from a company whose products you prescribe, against hospital policy.' }); return 'A compliance review finds it. It goes on your record.'; }
       return 'The trip is lovely. You notice, later, how often their name comes to mind.';

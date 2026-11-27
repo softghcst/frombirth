@@ -50,8 +50,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('[data-act="sc:journalism"]').count() === 1, `${label}: Journalism is a special career on the Work tab`);
   await page.click('[data-act="sc:journalism"]'); await page.waitForTimeout(300);
   check(await page.locator('#modal-root .modal-full').count() === 1 && /Newsrooms in/i.test(await page.locator('#modal-root .modal').last().innerText()), `${label}: the page lists the city's newsrooms`);
-  // Apply until a newsroom hires (a new year each round, as in play).
-  for (let i = 0; i < 12; i++) {
+  // Apply until a newsroom hires (a new year each round, as in play). Hiring is a roll: enough rounds that an
+  // unlucky run of them does not fail the check.
+  for (let i = 0; i < 30; i++) {
     const hired = await page.evaluate(async () => (await import('/js/engine/journalism.js')).isReporter());
     if (hired) break;
     const b = page.locator('#modal-root [data-act="apply"]:not([disabled])').first();

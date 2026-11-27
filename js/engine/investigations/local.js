@@ -26,7 +26,10 @@ export function realBusiness(tid, countryId, city, key) {
   const fit = list.filter((e) => FAMILIES[tid].includes(e.family));
   const pool = fit.length ? fit : list.filter((e) => !['government', 'safety'].includes(e.family));
   if (!pool.length) return null;
-  return seeded(`${key}/place`).pick(pool);
+  // A company is not defrauded every other year: prefer ones without the same kind of case in the last fifteen years.
+  const recent = new Set(Object.values(k.J().investigations).filter((inv) => inv.file?.template === tid && inv.file.employerId && now() - inv.file.opened < 180).map((inv) => inv.file.employerId));
+  const fresh = pool.filter((e) => !recent.has(e.id));
+  return seeded(`${key}/place`).pick(fresh.length ? fresh : pool);
 }
 /** A real resident of one of the city's neighborhoods, made a full person (the same one the player could meet). */
 export function neighborWitness(countryId, city, key, exclude = []) {
@@ -56,6 +59,8 @@ export function placeCase(inv, o) {
     if (v) { v.alive = false; v.flags.diedYear = year(); v.flags.causeOfDeath = 'Struck by a car'; }
     if (h) { f.hospitalId = h.id; f.log.push({ at: now(), text: `${v ? `${v.firstName} ${v.lastName}` : 'The pedestrian'} was taken to ${h.name} and died there that night.` }); }
   }
+  // A homicide's victim is dead: their record says so, once, as the game's own death would.
+  if (f.template === 'homicide' && f.victimId) { const v = store.state.npcs[f.victimId]; if (v?.alive) { v.alive = false; v.flags.diedYear = year(); v.flags.causeOfDeath = 'Homicide'; } }
   if (f.template === 'cyber') {
     let accts = [];
     try { accts = activeAccountsOf(f.reportingId); } catch { accts = []; }
@@ -123,9 +128,9 @@ export function settleClaims() {
     if (!driver || !store.state.npcs[f.reportingId]?.alive) { f.claimId = 'none'; continue; }
     const id = `claim_${inv.id}`;
     claims()[id] = { id, invId: inv.id, familyId: f.reportingId, driverId: driver, deceasedId: f.victimId, hospitalId: f.hospitalId ?? null, countryId: inc?.countryId, city: inc?.city,
-      outcome: f.outcome.kind, finding: f.outcome.finding ?? null, opened: now(), due: now() + 12, status: 'open', lawCaseId: null };
+      outcome: f.outcome.kind, finding: f.outcome.finding ?? null, opened: f.outcome.at ?? now(), due: (f.outcome.at ?? now()) + 12, status: 'open', lawCaseId: null };
     f.claimId = id;
-    f.log.push({ at: now(), text: `${store.state.npcs[f.reportingId].firstName} ${store.state.npcs[f.reportingId].lastName} began a claim against the driver for the loss.` });
+    f.log.push({ at: f.outcome.at ?? now(), text: `${store.state.npcs[f.reportingId].firstName} ${store.state.npcs[f.reportingId].lastName} began a claim against the driver for the loss.` });
   }
   for (const c of Object.values(claims())) {
     if (c.status !== 'open' || c.due > now()) continue;

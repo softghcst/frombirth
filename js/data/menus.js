@@ -25,7 +25,7 @@ export const MENU_RULES = [
   [/^military$/i, '🎖️', 'Enlist, train, and serve your country'],
   [/^my legal career$/i, '⚖️', 'Law school, the bar, cases and the courtroom'],
   [/^law enforcement & investigations$|^my investigations$/i, '🕵️', 'Police, detectives, federal agents and private investigators'],
-  [/^special careers$/i, '🌟', 'Fame, idols, sport, politics and law enforcement'],
+  [/^special careers$/i, '🌟', 'Fame, sport, politics, law enforcement, law and medicine'],
   [/^my fame$/i, '⭐', 'Acting, music and being known'],
   [/^k-pop idol$/i, '🎤', 'Auditions, training and debut'],
   [/^my athletics$/i, '🏅', 'Your sports, teams and contracts'],

@@ -32,7 +32,7 @@ const life = (age = 23, year = 2024, country = 'us') => {
 const hireMe = (p) => {
   // A graduate with clips to show: the newsrooms still decide, but this is not left to luck.
   const j0 = jn.J(p); j0.skills.writing = Math.max(j0.skills.writing, 55); j0.school.articles = Math.max(j0.school.articles, 4);
-  for (let y = 0; y < 8 && !jn.isReporter(p); y++) {
+  for (let y = 0; y < 30 && !jn.isReporter(p); y++) {
     for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
@@ -671,8 +671,9 @@ function report(s) {
   const yAw = Object.keys(K.awards ?? {}).map(Number).sort().at(-1);
   if (yAw) {
     store.state.year = yAw + 1;
+    // Written once a year per reporter: if the year's assignments already gave it to them, it is that story.
     const aw = jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), { chance: () => true, pick: (a) => a[0], int: (a) => a, next: () => 0.5 })
-      ?? Object.values(jn.S().stories).find((x) => x.links.kpopAwards === yAw && x.reporterId === k.id); // written already this year
+      ?? jn.myStories(k).find((x) => x.links?.kpopAwards === yAw);
     check(aw && K.releases[K.awards[yAw].grand].groupId === aw.links.groupId && aw.claims[0].truth, 'the Grand Prize story is about the group that really won it');
     check(!jn.kpopAwardsStory(k, jn.outlet(jn.J().outletId), {}), 'one awards story a year');
   } else check(false, 'setup: a year of K-pop awards');

@@ -1,19 +1,20 @@
 // Pay beyond the salary, once per year that passed (the career engine pays the salary itself):
 //
-//   overtime          police officers, detectives and deputy marshals are paid for hours past their shifts. Hours
+//   overtime          police officers and detectives are paid for hours past their shifts. Hours
 //                     come from the casework actually done in the year (casework.js f.work), at time and a half,
 //                     capped; administrative steps cannot be repeated for money (each step is done once)
-//   availability pay  federal criminal investigators (FBI, DEA, ATF, Secret Service, HSI, IRS-CI) are paid a
-//                     fixed share of salary for being available beyond the workweek, instead of overtime
+//   availability pay  federal criminal investigators (FBI, DEA, ATF, Secret Service, HSI, IRS-CI, and deputy US marshals
+//                     once reclassified as criminal investigators after the academy) are paid a fixed share of salary
+//                     for being available beyond the workweek, instead of overtime
 //
-// Rates are simplified gameplay rules modeled on US practice (law enforcement availability pay is 25%), unverified.
+// Law enforcement availability pay is 25% of basic pay (OPM fact sheet, checked 2026-11-26); the rest is simplified.
 import { localMoney, fmtMoney } from '../../util.js';
 import { store, player, country } from '../../state.js';
 import { rec, year, working } from './core.js';
 import { investigation } from './casework.js';
 
 export const AVAILABILITY = 0.25;
-const LEAP = ['fbi', 'dea', 'atf', 'usss', 'hsi', 'irs'];
+const LEAP = ['fbi', 'dea', 'atf', 'usss', 'hsi', 'irs', 'usms'];
 /** What the year that just passed earned beyond salary. Paid once for each year. */
 export function payYear(p = player()) {
   const r = rec(p);

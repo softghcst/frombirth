@@ -1,5 +1,6 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
+import { openNotice } from './screens/notice.js';
 import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
 import { getPeople, addPerson, removePerson, GENDERS, MAX_PEOPLE } from '../people.js';
@@ -76,8 +77,10 @@ export async function openSettings(hooks = {}) {
         // Only while a life is being played, once there are teams in it: their names, jerseys and players.
         ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Names and colors' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
+        ...(store.state?.player?.alive ? [{ value: 'everyday', label: 'Everyday moments', sub: store.state.settings?.everydayScenes === 'popup' ? 'Shown as they happen' : 'In your life story, to answer if you want' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
+        { value: 'about', label: 'About Pathways', sub: 'Fictional characters and events' },
       ],
     });
     if (!pick) return;
@@ -87,6 +90,7 @@ export async function openSettings(hooks = {}) {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
+    if (pick === 'everyday') { store.state.settings = { ...(store.state.settings ?? {}), everydayScenes: store.state.settings?.everydayScenes === 'popup' ? 'story' : 'popup' }; continue; }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
     if (pick === 'haptics') { setHaptics(!hapticsOn()); continue; }
     if (pick === 'weddings') { setWeddingScenes(!weddingScenesOn()); continue; }
@@ -96,6 +100,7 @@ export async function openSettings(hooks = {}) {
     if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
+    if (pick === 'about') await openNotice();
   }
 }
 

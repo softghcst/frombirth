@@ -125,6 +125,7 @@ caseOf('an injury keeps the player out of their own games, playoffs included', (
 
 caseOf('turning professional is asked again after "not now", and asked of an heir', () => {
   grownTo(18, 'us', 'Chicago', able); sp.takeUp('tennis'); const e = sp.entryOf('tennis'); maxOut(e, 80);
+  e.history.push({ year: S().year - 3, level: 'club', name: 'a tennis club' }); e.seasonsPlayed = 3; // years of club tennis behind them
   let asked = 0;
   for (let i = 0; i < 3; i++) { e.pr = Math.max(e.pr, 1500); advanceYear(); S().pendingEvents = []; for (const d of life.openDecisions()) { if (d.kind === 'turnPro') asked++; life.answer(d.id, 'no'); } }
   check(asked >= 2, `asked in more than one year (${asked})`);

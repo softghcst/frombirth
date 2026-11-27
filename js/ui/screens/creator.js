@@ -117,6 +117,7 @@ export function renderCreator(app, hooks) {
         </div>
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
+          <p class="muted gift-note" data-gift-note aria-live="polite"></p>
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
           ${picker('health', 'Born with', 'Random', [{ value: 'none', label: 'Nothing in particular' }, ...BIRTH_CHOICES.map((id) => ({ value: id, label: CONDITION_BY_ID[id].name }))])}
           
@@ -150,9 +151,16 @@ export function renderCreator(app, hooks) {
   });
   q('[data-clear-look]').addEventListener('click', () => { look = null; preview(); });
 
+  // What a gift leads to, beyond the obvious (data/talents.js, leadsTo): Writing helps in law, Math and Science in medicine.
+  const giftNote = () => {
+    const t = TALENT_LIST.find((x) => x.id === choice.talent);
+    q('[data-gift-note]').textContent = t?.leadsTo ?? '';
+  };
+  giftNote();
   app.querySelectorAll('select[data-pick]').forEach((sel) => {
     sel.addEventListener('change', () => {
       choice[sel.dataset.pick] = sel.value;
+      if (sel.dataset.pick === 'talent') giftNote();
       if (sel.dataset.pick === 'sex' || sel.dataset.pick === 'trans') ranks();
       preview();
     });
