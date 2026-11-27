@@ -1555,3 +1555,7 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .nr-bar small { flex: none; margin: 0; }
 .nr-bar .track { flex: 1; max-width: 150px; height: 7px; border-radius: 99px; background: var(--line-soft); overflow: hidden; }
 .nr-bar .fill { display: block; height: 100%; border-radius: 99px; }
+
+/* The shareable card's preview in the share window. */
+.share-preview { text-align: center; }
+.share-preview img { width: 100%; max-width: 360px; max-height: 52vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow); }

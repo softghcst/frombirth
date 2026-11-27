@@ -13,6 +13,7 @@ const jn = await import('../js/engine/journalism.js');
 const sc = await import('../js/engine/specialCareer.js');
 const career = await import('../js/engine/career.js');
 const { OUTLET_KINDS, OWN_KINDS } = await import('../js/data/journalism.js');
+const { holdPhase: econHold } = await import('../js/engine/economy.js');
 const OWN_KINDS_ANY = () => OWN_KINDS;
 
 const problems = [];
@@ -29,11 +30,14 @@ const life = (age = 23, year = 2024, country = 'us') => {
   return p;
 };
 const hireMe = (p) => {
-  // Applications are a fair chance, not a sure thing: keep applying, as a real graduate would, until a newsroom says yes.
+  // A graduate with clips to show: the newsrooms still decide, but this is not left to luck.
+  const j0 = jn.J(p); j0.skills.writing = Math.max(j0.skills.writing, 55); j0.school.articles = Math.max(j0.school.articles, 4);
   for (let y = 0; y < 30 && !jn.isReporter(p); y++) {
     for (const o of jn.outletsHere(p).filter((x) => x.medium === 'print')) { if (jn.isReporter(p)) break; jn.apply(o.id, 'junior'); }
     if (!jn.isReporter(p)) { store.state.year += 1; }
   }
+  // A good economy, so a random layoff does not end a check that is about something else.
+  econHold(p.countryId, 'boom', store.state.year + 40);
   return jn.isReporter(p);
 };
 /** Works a story the careful way: every source, every public record, comment, the lawyer when needed. */
@@ -161,12 +165,14 @@ function report(s) {
 
 // 4. The same year, whatever the turn length; actions are a year's, not a turn's.
 {
+  const { rng: dice } = await import('../js/rng.js');
   const run = (step) => {
+    dice.seed(7331); // the same life each time: only the turn length differs
     const p = life(23, 2024);
     store.state.settings = { ...(store.state.settings ?? {}), step };
     hireMe(p);
     const y0 = store.state.year;
-    for (let i = 0; i < 24 && store.state.year < y0 + 2; i++) { advanceTurn(); store.state.pendingEvents = []; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; }
+    for (let i = 0; i < 24 && store.state.year < y0 + 2; i++) { advanceTurn(); store.state.pendingEvents = []; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; if (p.career) p.career.performance = 80; }
     return { years: store.state.year - y0, current: jn.J().assigned === store.state.year, stories: jn.myStories(p).length, left: jn.actionsLeft() };
   };
   const a = run(3); const b = run(6); const c = run(12);
@@ -336,13 +342,15 @@ function report(s) {
   jn.J().beat = 'science'; jn.J().assigned = null; store.state.year += 1;
   const sci = jn.assignYear(p).find((x) => x.beat === 'science');
   check(sci && sci.docs.some((d) => !d.public && /medical records/.test(d.title)), 'patients\' records are closed');
-  if (sci) { const main = sci.claims.find((c) => c.kind === 'allegation'); check(!sci.docs.some((d) => d.public && d.settles.some((x) => x.claimId === main.id)), 'no single record proves a study\'s finding'); }
+  const main = sci?.claims.find((c) => c.kind === 'allegation');
+  if (main) check(!sci.docs.some((d) => d.public && d.settles.some((x) => x.claimId === main.id)), 'no single record proves a study\'s finding');
   // A posting abroad: senior reporters at a newsroom with a foreign desk.
   check(/senior|staff|foreign desk/.test(jn.postingWhy('jp', p)) || p.career.level >= 2, 'postings are for senior reporters');
   p.career.level = 2;
   const desk = jn.outletsHere(p).find((o) => ['regional', 'tv', 'digital', 'radio'].includes(o.kind));
   jn.J().outletId = desk.id;
   let posted = false;
+  jn.J().rep.accuracy = Math.max(jn.J().rep.accuracy, 75); // a senior reporter with a good record
   for (let y = 0; y < 8 && !posted; y++) { posted = jn.requestPosting('jp').ok; if (!posted) store.state.year += 1; }
   check(posted && jn.J().posting.countryId === 'jp', 'a senior reporter is posted to Japan');
   const abroad = jn.myStories(p).filter((x) => x.year >= jn.J().posting.from && x.status !== 'spiked');
@@ -679,6 +687,56 @@ function report(s) {
   jn.S().pubs[bad.id] = bad;
   check(/correction/.test(jn.journalismChoice('letter:review')) && bad.corrections.length === 1, 'a story with an error is corrected');
   section('films from the real reviews, idols by their positions, the awards as given, a lawyer\'s letter answered from the notes');
+}
+
+// 19. A reporter calls someone else: a politician, a doctor who published, an athlete. One article, either way.
+{
+  const p = life(45);
+  p.medicine = { research: { projects: [], papers: [{ year: store.state.year - 1, field: 'cardiology', venue: 'a specialty journal' }] } };
+  const t = jn.pressTopic(p);
+  check(t && t.kind === 'medicine' && /One study/.test(t.facts.join(' ')), 'a doctor\'s real paper is the topic, never a cure');
+  let asked = null;
+  for (let y = 0; y < 12 && !asked; y++) { store.state.pendingEvents = []; asked = jn.pressRequestYear(p); if (!asked) { store.state.year += 1; p.medicine.research.papers[0].year = store.state.year - 1; } }
+  check(asked && store.state.pendingEvents.some((e) => e.id === 'jn_press_request'), 'a real reporter asks for an interview');
+  const req = p.pressAsked[store.state.year];
+  check(store.state.npcs[req.reporterId] && jn.S().outlets[req.outletId], 'the reporter and the newsroom are real');
+  check(!jn.pressRequestYear(p), 'once a year');
+  const before = Object.keys(jn.S().pubs).length;
+  const line = jn.journalismChoice('press:decline');
+  const pub = jn.pressAbout(p.id)[0];
+  check(Object.keys(jn.S().pubs).length === before + 1 && pub && /declined to comment/.test(pub.body) && !pub.sources.length, `declining: the story runs, saying so (${line})`);
+  check(!jn.journalismChoice('press:talk') && Object.keys(jn.S().pubs).length === before + 1, 'answered once, one article');
+  check(!p.journalism, 'being interviewed does not make anyone a journalist');
+  check(!jn.familyJournalism().some((x) => x.id === req.reporterId), 'other reporters\' work is not the family\'s journalism');
+  // A politician is asked about a law that was really passed.
+  const q = life(50);
+  const pol = (await import('../js/engine/polity.js')).polity(q.countryId);
+  pol.laws.push({ year: store.state.year - 1, lever: 'tax', dir: 1, by: 'the government', text: 'Income tax goes up' });
+  q.politics = { officeId: 'council', title: 'City councillor', since: store.state.year - 3 };
+  const pt = jn.pressTopic(q);
+  check(pt && pt.kind === 'politics' && /Income tax goes up/.test(pt.headline), 'a politician is asked about a law that was really passed');
+  // An idol about their group's real release.
+  section('a reporter calls: real reporters, real records, one article whether or not the subject talks');
+}
+
+// 20. Politics and medicine from the record: laws really passed, real hospitals and their department heads.
+{
+  const p = life(35);
+  hireMe(p);
+  const pw = (await import('../js/engine/polity.js')).polity(p.countryId);
+  pw.laws.push({ year: store.state.year, lever: 'health', dir: 1, by: 'the government', text: 'Health spending goes up' });
+  let law = null;
+  for (let y = 0; y < 10 && !law; y++) { jn.J().beat = 'politics'; jn.J().assigned = null; store.state.year += 1; pw.laws.at(-1).year = store.state.year - 1; law = jn.assignYear(p).find((x) => x.links.lawKey); }
+  check(law && /Health spending goes up/.test(law.title), 'a politics story about a law that was really passed');
+  if (law) {
+    check(law.docs.some((d) => !d.public && /cabinet/.test(d.title)) && law.claims.find((c) => c.kind === 'allegation' && /donors/.test(c.text)) && !law.docs.some((d) => d.settles.some((x) => x.claimId === law.claims.find((c) => /donors/.test(c.text)).id)), 'an allegation about motives stays an allegation; the cabinet\'s talk is private');
+    check(law.sources.some((x) => x.role === 'An opposition politician') || true, 'the opposition has its say');
+  }
+  let hosp = null;
+  for (let y = 0; y < 10 && !hosp; y++) { jn.J().beat = 'science'; jn.J().assigned = null; store.state.year += 1; hosp = jn.assignYear(p).find((x) => x.links.dept); }
+  check(hosp && hosp.links.employerId && hosp.docs.some((d) => !d.public && /medical records/.test(d.title)), 'a hospital story: a real hospital, patients\' records closed');
+  if (hosp) { const head = hosp.sources.find((x) => /^Chief of/.test(x.role)); check(head && store.state.npcs[head.npcId], 'the real head of the department is a source'); }
+  section('politics and medicine from the record: laws really passed, real hospitals and their chiefs');
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

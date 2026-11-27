@@ -363,11 +363,15 @@ export function openJournalism(api, start = {}) {
 /** Family Archive → Journalism: each journalist in the family and their published work as it ran. Never a notebook or a confidential source. */
 export function openJournalismLegacy() {
   const list = jn.familyJournalism();
+  // Written about the family: articles by other reporters about the player and their ancestors' own work.
+  const ids = [player().id, ...Object.keys(store.state.archive?.people ?? {})];
+  const about = ids.flatMap((id) => jn.pressAbout(id));
   return openModal(`<div class="eyebrow">Professional legacy</div><h2>Journalism in the family</h2>
     ${list.length ? list.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>
       ${(x.history ?? []).map((h) => kv([[String(h.year), h.text]])).join('')}
       ${(x.awards ?? []).map((a) => kv([[String(a.year), a.name]])).join('')}
       <div class="section-label">Published</div>${x.pubs.map((y) => `<div class="kv"><span>${y.year} · "${esc(y.headline)}"</span><span>${esc(y.outlet)}</span></div>${y.corrections.map((c) => `<p class="muted" style="margin:0 0 6px">${esc(c)}</p>`).join('')}`).join('')}</div>`).join('')
     : '<p class="empty">Nobody in the family has published journalism yet.</p>'}
+    ${about.length ? `<div class="section-label">Written about the family</div>${about.map((y) => `<div class="kv"><span>${y.year} · "${esc(y.headline)}"</span><span>${esc(y.outlet)}, by ${esc(y.byline)}</span></div><p class="muted" style="margin:0 0 6px">${esc(y.answer === 'decline' ? 'Declined to comment.' : y.answer === 'brief' ? 'Gave a short statement.' : 'Spoke on the record.')}</p>`).join('')}` : ''}
     <p class="muted">Only what was published is kept here: reporters' notebooks, drafts and confidential sources stay private.</p>`, { dismissable: true });
 }

@@ -1,6 +1,7 @@
 // School, as a book: where the player is at school and how they are doing in
 // each subject, who is there with them, and every school they have been to.
 // Rules: engine/schooling.js. Everything shown comes from the saved life.
+import { graduationNotice } from './graduation.js';
 import { summerOptions, goToSummer, askForRecommendation } from '../engine/summer.js';
 import { titleCase } from './titles.js';
 import { player, country } from '../state.js';
@@ -233,7 +234,14 @@ export function openSchool(onChange) {
       if (pick) return say(goToSummer(pick));
       return;
     }
-    if (go === 'early') return say(edu.startCollegeEarly());
+    if (go === 'early') {
+      const r = edu.startCollegeEarly();
+      if (!r.ok) return say(r);
+      onChange?.();
+      m.close();
+      // The diploma, early: the graduation card, and from it the university planner (ui/graduation.js).
+      return graduationNotice({ changed: () => onChange?.() });
+    }
     if (go) { stack.push(go); return draw(); }
     const act = t.closest('[data-do]')?.dataset.do;
     if (act === 'study') return say(edu.studyHard());
