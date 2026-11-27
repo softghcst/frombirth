@@ -26,6 +26,8 @@ const check = (c, m) => { if (!c) problems.push(m); };
 const browser = await chromium.launch();
 const toTitle = async (page) => {
   // Past the opening notice, onto the title screen.
+  // (The birth globe is turned off: the loop below presses any 'begin' button, which could start a life and its globe.)
+  await page.evaluate(() => { try { localStorage.setItem('frombirth.birthGlobe', 'off'); } catch { /* storage unavailable */ } });
   for (let i = 0; i < 30 && !(await page.locator('[data-random]').count()); i++) {
     // Only a notice in front of the title screen is dismissed: never a button on the title screen itself (a saved life's
     // card says "Continue", and clicking it would load that life and leave the title screen for good).

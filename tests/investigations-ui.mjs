@@ -48,7 +48,7 @@ async function run(viewport) {
   page.on('pageerror', (e) => errors.push(`${w}px: ${e.message}`));
   await page.goto(url);
   await page.waitForSelector('[data-random]');
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('.tab-btn[data-tab="work"]');
   await page.evaluate(async () => {
     const { store } = await import('/js/state.js');

@@ -68,10 +68,9 @@ for (const id of ['afterglow', 'midnight', 'daydream']) {
   const logo = await page.evaluate(() => { const i = document.querySelector('.lp-logo'); return { src: i.getAttribute('src'), alt: i.alt, ok: i.complete && i.naturalWidth > 0, w: i.getBoundingClientRect().width }; });
   check(/from_birth_logo/.test(logo.src) && logo.alt === 'From Birth' && logo.ok && logo.w >= 120 && logo.w <= 182, `${id}: the official logo, phone-sized (${logo.w})`);
   check(await page.locator('.lp-card [data-load]').count() === 1 && /Age 7/.test(await page.locator('.lp-card').first().innerText()), `${id}: the saved life is shown, with its age`);
-  // Measured once fonts and pictures have loaded: on a busy machine a font can still be swapping in, and move everything.
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForFunction(() => [...document.images].every((i) => i.complete), null, { timeout: 30000 });
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  // Measured once the fonts and the logo are in: on a busy machine either can still be loading.
+  await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].filter((i) => !i.complete).map((i) => new Promise((r) => { i.onload = r; i.onerror = r; setTimeout(r, 3000); }))); });
+  await page.waitForTimeout(100);
   layouts[id] = await page.evaluate(() => ['.lp-logo', '[data-random]', '[data-design]', '[data-world]', '[data-settings]', '#lp-lives', '#lp-past'].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }));
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${id}: nothing scrolls sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/landing-${id}.png` });
@@ -93,7 +92,8 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   await page.locator('#modal-root .choice-btn', { hasText: 'Appearance' }).click();
   await page.locator('#modal-root .choice-btn', { hasText: 'Landing Page' }).click();
   await page.waitForSelector('.lpk-grid');
-  check(await page.locator('.lpk-opt[role="radio"]').count() === 4 && await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'auto', 'four choices, following the theme by default');
+  check(await page.locator('.lpk-opt[role="radio"]').count() === 5 && await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'auto', 'five choices, following the theme by default');
+  check(/light mode/.test(await page.locator('[data-landing-opt="auto"]').innerText()) && /8pm/.test(await page.locator('[data-landing-opt="clock"]').innerText()), 'each says plainly what it follows');
   check(await page.evaluate(() => [...document.querySelectorAll('.lpk-thumb')].every((t) => /hero_/.test(getComputedStyle(t).backgroundImage) || t.classList.contains('lpk-auto'))), 'each shows a picture of its scene');
   await page.locator('[data-landing-opt="daydream"]').click();
   check(await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'daydream', 'Daydream is chosen');
@@ -113,6 +113,26 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   check(await look(page) === 'daydream', 'changing the theme or the app icon leaves the landing page alone');
   check(!page.errors.length, `settings: no page errors (${page.errors.join('; ')})`);
   await page.close();
+}
+
+// 2b. The scene keeps up: the device turning dark switches Follow your theme at once; Day and night goes by the clock.
+{
+  const page = await freshPage({ scheme: 'light' });
+  await page.reload(); await toTitle(page);
+  check(await look(page) === 'afterglow', 'a light device shows Afterglow');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.waitForTimeout(200);
+  check(await look(page) === 'midnight', 'when the device turns dark, the open landing page turns to Midnight');
+  await page.close();
+  for (const [hour, want] of [[8, 'afterglow'], [19, 'afterglow'], [20, 'midnight'], [7, 'midnight']]) {
+    const p2 = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
+    await p2.clock.install({ time: new Date(2026, 5, 1, hour, 0, 0) });
+    await p2.goto(`http://localhost:${port}/index.html`);
+    await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('frombirth.landing', 'clock'); });
+    await p2.reload(); await toTitle(p2);
+    check(await look(p2) === want, `Day and night at ${hour}:00 shows ${want} (${await look(p2)})`);
+    await p2.close();
+  }
 }
 
 // 3. The buttons, the lives, the graves, and nothing changed by looking.
@@ -160,7 +180,7 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   await page.waitForTimeout(300);
   check(!(await page.locator('[data-random]').count()), 'Design a Life opens the creator');
   await page.evaluate(() => { sessionStorage.clear(); localStorage.removeItem('frombirth.session.playing'); }); await page.goto(`http://localhost:${port}/index.html`); await toTitle(page);
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]', { timeout: 8000 }).catch(() => {});
   check(await page.locator('[data-year]').count() > 0, 'Begin a Random Life starts a life');
   check(!page.errors.length, `lives: no page errors (${page.errors.join('; ')})`);

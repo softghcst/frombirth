@@ -28,10 +28,11 @@
 // each month: all at once with year-long turns, a season at a time with shorter ones. Three-, six- and twelve-month
 // turns therefore come to the same neighborhood, the same people and the same history.
 import { store, player } from '../state.js';
+import { inFamilyHome } from './kinship.js';
 import { clamp, cap } from '../util.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
-import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, MOMENTS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
+import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, MOMENTS, NEIGHBOR_NEEDS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
 import { needs as accessNeeds, homeRecord as accessHome } from './health/access.js';
 import { STREETS } from '../data/properties.js';
 import { seeded } from './sportsPlay.js';
@@ -489,20 +490,66 @@ function housemates(state, d) {
   const out = [];
   const npcs = p.npcIds.map((id) => state.npcs[id]).filter((n) => n?.alive);
   if (d.kind === 'family') {
-    const away = p.flags.parentsStatus === 'separated';
+    // Parents, brothers and sisters, and a parent's partner who has moved in, with their children (engine/kinship.js).
+    // A parent who has moved out after a separation lives in a household of their own (houseApart, below).
     for (const n of npcs) {
-      if (n.role === 'parent' && !(away && n.gender === 'male')) out.push(n.id);
-      else if (n.role === 'sibling' && n.age < 18 && !n.flags.abroad) out.push(n.id);
-      else if (p.flags.care?.guardianId === n.id) out.push(n.id);
+      if (p.flags.care?.guardianId === n.id) out.push(n.id);
+      else if (inFamilyHome(n)) out.push(n.id);
     }
   } else if (d.kind !== 'dorm') {
     for (const n of npcs) {
       if (n.role === 'spouse' || (n.role === 'partner' && n.flags.livingTogether)) out.push(n.id);
       else if (n.role === 'child' && n.age < 18 && !n.flags.abroad && !n.flags.custody) out.push(n.id);
+      // A child placed with the player in foster or kinship care, or under their guardianship (engine/fostering.js).
+      else if ((n.flags.placementId || (n.role === 'ward' && n.age < 18)) && !n.flags.abroad) out.push(n.id);
+      // A spouse's child who mainly lives with them (engine/blended.js stepchildrenOnMarriage).
+      else if (n.role === 'stepchild' && n.age < 18 && n.flags.liveIn && !n.flags.abroad) out.push(n.id);
       else if (n.id === hoods(state).roommate) out.push(n.id);
     }
   }
   return out;
+}
+
+/**
+ * Someone in the player's family sets up a home of their own in a city (a parent who moves out after a separation), or
+ * joins one (`hhId`: a partner who moves in with them). A real home, with its record of who lived there; nobody is made
+ * twice. Returns the home.
+ */
+export function houseApart(state, npcId, city = state.player.city, why = 'moved out', hhId = null) {
+  const H = hoods(state);
+  const n = state.npcs[npcId];
+  if (!n || !COUNTRIES[state.player.countryId]) return null;
+  const t = nowT(state);
+  // Out of any household they are part of other than the player's (which syncHousehold keeps true to life).
+  for (const hh of Object.values(H.hhs)) if (hh.m.includes(npcId) && !hh.me && !hh.fam && hh.id !== hhId) hh.m = hh.m.filter((x) => x !== npcId);
+  const joining = hhId ? H.hhs[hhId] : null;
+  if (joining?.home) {
+    if (!joining.m.includes(npcId)) joining.m.push(npcId);
+    n.flags.hh = joining.id;
+    return H.homes[joining.home];
+  }
+  const d = { countryId: state.player.countryId, city, kind: 'rent', sig: `rent|${state.player.countryId}|${city}` };
+  const home = findHome(state, d);
+  if (!home) return null;
+  const hood = H.list[home.h];
+  const hh = { id: `${hood.id}x${++hood.nh}`, n: n.lastName, h: hood.id, home: null, m: [npcId], from: t, kind: 'single', own: false, kin: true };
+  H.hhs[hh.id] = hh;
+  settleIn(state, home, hh, t, why);
+  n.flags.hh = hh.id;
+  return home;
+}
+
+/** A relative who lived apart comes back to the family home: their own household is left, as a home they lived in. */
+export function homeAgain(state, npcId) {
+  const H = hoods(state);
+  const n = state.npcs[npcId];
+  const hh = n?.flags.hh ? H.hhs[n.flags.hh] : null;
+  if (hh) {
+    hh.m = hh.m.filter((x) => x !== npcId);
+    if (!living(state, hh).length) { const home = H.homes[hh.home]; if (home) leaveHome(state, home, nowT(state), 'moved back'); hh.to = nowT(state); }
+  }
+  if (n) delete n.flags.hh;
+  syncHousehold(state);
 }
 
 /** Keeps the player's household as it is: who has moved in with them (a spouse who was a neighbor), and who has not. */
@@ -844,7 +891,7 @@ export function forget(state = store.state) {
 
 /** Scenes that are all, at heart, "a neighbor would like your company": one of these is plenty for a while. */
 const COMPANY = new Set(['hood_invitation', 'hood_invitation_upstairs', 'hood_different_neighbor', 'hood_unexpected_friendship', 'hood_kindness_returned', 'hood_block_party', 'hood_building_gathering', 'hood_community_event', 'hood_friend_across_street']);
-const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
+const sceneSort = (id) => { const s = STORY_OF[id] ?? id; return COMPANY.has(s) ? 'company' : s; };
 
 /** Queues one neighborhood scene for the player, once per story key, one a year at most. */
 /** Years before the same neighborhood scene can come again, whoever it is about. */
@@ -852,7 +899,12 @@ const SCENE_GAP = 10;
 /** Years between any two neighborhood scenes: the neighborhood is background, and the rest of life comes first. */
 const ANY_GAP = 2;
 /** Scenes that are the same story told about a different occasion: one gap for all of them. */
-const STORY_OF = { hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation' };
+const STORY_OF = {
+  hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation',
+  // Each community event and each kind of help has its own scene, but they are one story each for the gaps above.
+  ...Object.fromEntries(Object.values(COMMUNITY_EVENTS).filter((x) => x.scene).map((x) => [x.scene, 'hood_community_event'])),
+  ...Object.fromEntries(Object.values(NEIGHBOR_NEEDS).map((x) => [x.scene, 'hood_need_hand'])),
+};
 
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
@@ -1025,7 +1077,7 @@ export function planYear(state, hood, y) {
     const pAge = p.age + (y - state.year);
     if (known.length && r.chance(0.45)) { const n = r.pick(known); if (H.res[n.id] && n.meters.relationship >= 40 && n.age >= 6) ev.push({ m: r.int(0, 11), k: 'invite', res: n.id }); }
     const nearAdults = near.filter((x) => x.prox.near >= 3).flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && age(x) >= 25);
-    if (pAge >= 12 && nearAdults.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'help', res: r.pick(nearAdults).id, need: r.pick(['move', 'meal', 'garden', 'pet', 'errand']) });
+    if (pAge >= 12 && nearAdults.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'help', res: r.pick(nearAdults).id, need: r.pick(Object.keys(NEIGHBOR_NEEDS).filter((k) => y >= (NEIGHBOR_NEEDS[k].from ?? 0))) });
     const adjacent = near.filter((x) => x.prox.near >= 4).flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && age(x) >= 21);
     if (pAge >= 18 && adjacent.length && r.chance(0.16)) {
       const who = r.pick(adjacent);
@@ -1049,7 +1101,7 @@ export function planYear(state, hood, y) {
     }
     const elders = residentsOf(state, hood.id).filter((x) => age(x) >= 70 && y - yearOf(H.hhs[x.hh]?.from ?? T(y)) >= 25 && !state.npcs[x.id]);
     if (pAge >= 14 && elders.length && r.chance(0.2)) ev.push({ m: r.int(0, 11), k: 'elder', res: r.pick(elders).id });
-    // A small everyday moment with a neighbor (a parcel at the wrong door, a power cut, a pet gone missing).
+    // A small everyday moment with a neighbor (a new baby next door, a big game on the porch, a pet gone missing).
     if (pAge >= 8 && nearAdults.length && r.chance(0.3)) {
       const bk = H.blocks[here.b].kind;
       const who = r.pick(nearAdults);
@@ -1236,7 +1288,7 @@ function apply(state, hood, e, y, quiet = false) {
       if (repeated === 2) note(state, { t, h: hood.id, k: 'tradition', kind: e.kind, text: `The ${eventName(e.kind, hood.c).toLowerCase()} has become a neighborhood tradition.` });
       const pAge = p.age - (state.year - y);
       if (playerHere && (ev.who !== 'adult' || pAge >= 16) && pAge >= 4) {
-        queueAbout(state, e.kind === 'street_party' ? 'hood_block_party' : e.kind === 'building' ? 'hood_building_gathering' : 'hood_community_event', org.id,
+        queueAbout(state, e.kind === 'street_party' ? 'hood_block_party' : e.kind === 'building' ? 'hood_building_gathering' : ev.scene ?? 'hood_community_event', org.id,
           { event: eventName(e.kind, hood.c).toLowerCase(), what: ev.text, eventId: id, kind: e.kind }, `event/${id}`, t);
       }
       return;
@@ -1267,7 +1319,8 @@ function apply(state, hood, e, y, quiet = false) {
     case 'help': {
       const r = H.res[e.res];
       if (!playerHere || !r || r.dead || H.homes[H.hhs[r.hh]?.home]?.h !== hood.id) return;
-      queueAbout(state, 'hood_need_hand', r.id, { need: { move: 'move a wardrobe up the stairs', meal: 'have a hot meal brought round while they recover from an operation', garden: 'get the garden back under control', pet: 'have someone feed the animals while they are away', errand: 'get a few things from the shops this week' }[e.need] }, `help/${r.id}/${y}`, t);
+      const need = NEIGHBOR_NEEDS[e.need];
+      queueAbout(state, need?.scene ?? 'hood_need_hand', r.id, { need: need?.words ?? 'lend a hand' }, `help/${r.id}/${y}`, t);
       return;
     }
     case 'dispute': {

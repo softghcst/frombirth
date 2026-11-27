@@ -1,5 +1,7 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
+import { journeyScenesOn, setJourneyScenes } from './journey.js';
+import { birthGlobeOn, setBirthGlobe } from './birthGlobe.js';
 import { openNotice } from './screens/notice.js';
 import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
@@ -68,6 +70,8 @@ export async function openSettings(hooks = {}) {
       options: [
         { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]} · ${APP_ICON_BY_ID[getAppIcon()].name} icon` },
         { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
+        { value: 'globe', label: 'Birth globe', sub: birthGlobeOn() ? 'On: a new life begins with the world spinning to where you are born.' : 'Off: a new life begins straight away.' },
+        { value: 'journeys', label: 'Journey scenes', sub: journeyScenesOn() ? 'On: a trip begins on the globe, with your boarding pass and moments in the air.' : 'Off: trips begin straight away.' },
         { value: 'weddings', label: 'Interactive weddings', sub: weddingScenesOn() ? 'On: plan your wedding with a planner, then live the day.' : 'Off: plan it on one page, then a "Just married!" card.' },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
@@ -97,6 +101,8 @@ export async function openSettings(hooks = {}) {
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
     if (pick === 'haptics') { setHaptics(!hapticsOn()); continue; }
     if (pick === 'weddings') { setWeddingScenes(!weddingScenesOn()); continue; }
+    if (pick === 'globe') { setBirthGlobe(!birthGlobeOn()); continue; }
+    if (pick === 'journeys') { setJourneyScenes(!journeyScenesOn()); continue; }
     if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
@@ -134,7 +140,7 @@ export function openLandingPage() {
   return new Promise((resolve) => {
     const m = openModal('<div data-landingpick></div>', { dismissable: true, title: 'Landing Page', onDismiss: () => resolve() });
     const root = m.el.querySelector('[data-landingpick]');
-    const thumb = (id) => (id === 'auto'
+    const thumb = (id) => (id === 'auto' || id === 'clock'
       ? '<span class="lpk-thumb lpk-auto"><span style="background-image:url(./assets/branding/hero_afterglow-thumb.webp)"></span><span style="background-image:url(./assets/branding/hero_midnight-thumb.webp)"></span></span>'
       : `<span class="lpk-thumb" style="background-image:url(./assets/branding/hero_${id}-thumb.webp)"></span>`);
     const render = () => {

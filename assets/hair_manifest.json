@@ -466,24 +466,6 @@
       "minAge": 13
     },
     {
-      "id": "long_straight_center_part",
-      "name": "Long Straight Center Part",
-      "clipToHead": false,
-      "kids": false,
-      "length": "long",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "pixie",
-        "sculpted"
-      ],
-      "gender": "female"
-    },
-    {
       "id": "low_taper_fade",
       "name": "Low Taper Fade",
       "clipToHead": true,
@@ -1271,13 +1253,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1298,13 +1280,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1343,13 +1325,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1370,13 +1352,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1397,13 +1379,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1424,13 +1406,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1451,13 +1433,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 264.0,
-        "angular": 261.7,
+        "almond": 262.0,
+        "angular": 262.0,
         "athletic": 262.0,
-        "cherubic": 263.2,
-        "dimple_oval": 263.7,
-        "pixie": 265.5,
-        "sculpted": 261.7
+        "cherubic": 262.0,
+        "dimple_oval": 262.0,
+        "pixie": 262.0,
+        "sculpted": 262.0
       }
     },
     {
@@ -1478,13 +1460,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 272.5,
-        "angular": 269.9,
+        "almond": 270.0,
+        "angular": 270.0,
         "athletic": 270.0,
-        "cherubic": 271.6,
-        "dimple_oval": 272.1,
-        "pixie": 274.9,
-        "sculpted": 269.9
+        "cherubic": 270.0,
+        "dimple_oval": 270.0,
+        "pixie": 270.0,
+        "sculpted": 270.0
       }
     },
     {

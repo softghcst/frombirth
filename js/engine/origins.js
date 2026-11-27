@@ -1446,8 +1446,10 @@ export function migrateOrigins(state) {
     if (!state.player?.npcIds?.includes(n.id)) continue;
     const by = n.adoptionInfo?.by?.length ? n.adoptionInfo.by : [state.player.id];
     const year = Number(String(n.adoptionInfo?.date ?? '').slice(0, 4)) || null;
-    const rec = newRecord(o, { adopteeId: n.id, kind: 'by-player', legal: 'adoption', reason: 'unknown', adoptiveParentIds: by, legalParentIds: by,
-      birthFather: 'unrecorded', birthParents: 'not on record', placementYear: year, placementAge: n.adoptionInfo?.ageThen ?? null, finalizedYear: year,
+    // A child adopted from the player's own foster care (engine/fostering.js) has birth parents who are known people.
+    const known = (n.flags?.birthParentIds ?? []).filter((id) => state.npcs[id]);
+    const rec = newRecord(o, { adopteeId: n.id, kind: 'by-player', legal: 'adoption', reason: known.length ? 'from foster care' : 'unknown', adoptiveParentIds: by, legalParentIds: by,
+      birthParentIds: known, birthFather: 'unrecorded', birthParents: known.length ? 'on record' : 'not on record', placementYear: year, placementAge: n.adoptionInfo?.ageThen ?? null, finalizedYear: year,
       status: 'final', birthCountryId: n.bornIn ?? null, jurisdiction: n.adoptionInfo?.countryId ?? state.player.countryId, contact: 'unknown', legacy: true });
     n.flags.adoptionRecord = rec.id;
   }

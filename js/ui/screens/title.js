@@ -1,4 +1,5 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
+import { birthGlobeOn, openBirthGlobe } from '../birthGlobe.js';
 import { idolWork } from '../../engine/kpop.js';
 import { openWorld } from '../world.js';
 import { openSettings, cloudLine } from '../settings.js';
@@ -26,6 +27,15 @@ const DICE = `<svg viewBox="0 0 48 48"><g stroke="#2A1530" stroke-width="2.6" st
   <path d="M24 4 42 13 24 22 6 13z" fill="#FFFDF8"/><path d="M24 22 42 13v21L24 44z" fill="#F2E3D2"/></g>
   <g fill="#2A1530"><ellipse cx="24" cy="13" rx="2.6" ry="1.6"/><circle cx="11" cy="21" r="2"/><circle cx="18.5" cy="32" r="2"/><circle cx="14.6" cy="26.6" r="2"/>
   <circle cx="30" cy="27" r="2"/><circle cx="36" cy="22" r="2"/><circle cx="30" cy="36.5" r="2"/><circle cx="36" cy="31.5" r="2"/></g></svg>`;
+
+// The scene keeps up while the title screen is open: when the device turns dark or light, when the evening comes, and
+// when the player comes back to the app. It only changes the appearance; nothing is redrawn or stored.
+const refreshLook = () => { const el = document.querySelector('.title-screen[data-landing]'); if (el) { const now = landingNow(); if (el.dataset.landing !== now) el.dataset.landing = now; } };
+if (typeof window !== 'undefined') {
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshLook); } catch { /* older browsers */ }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLook(); });
+  setInterval(refreshLook, 60 * 1000);
+}
 
 /**
  * @param {HTMLElement} app
@@ -90,7 +100,12 @@ export function renderTitle(app, hooks) {
         ${graves.length ? `<button type="button" class="lp-epitaphs" data-epitaphs>Epitaphs Earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</section>
     </main>`;
 
-  app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));
+  // A random life begins on the birth globe, unless it is turned off in Settings (js/ui/birthGlobe.js).
+  app.querySelector('[data-random]').addEventListener('click', async () => {
+    const life = createLife();
+    if (birthGlobeOn()) await openBirthGlobe(life);
+    hooks.onPlay(life);
+  });
   app.querySelector('[data-design]').addEventListener('click', () => hooks.onDesign());
   app.querySelector('.title-screen').addEventListener('click', async (e) => {
     const cmp = e.target.closest('[data-compare]');

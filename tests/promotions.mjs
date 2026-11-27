@@ -37,9 +37,15 @@ for (const id of ['teacher', 'office', 'nurse', 'software']) {
 rng.seed(7); const t = life('teacher', 85); const first = t.career.title; years(t, 15, 85);
 check(t.career.level >= 1 && t.career.title !== first && CAREER_BY_ID.teacher.levels.some((l) => l.title === t.career.title || t.career.title.includes(l.title.split(' ').pop())), `a teacher's title changes with the rank (${first} → ${t.career.title})`);
 // At the top, raises carry on.
-rng.seed(8); const top = life('office', 85);
-const C = CAREER_BY_ID.office; top.career.level = C.levels.length - 1; top.career.title = C.levels.at(-1).title; top.career.yearsInRole = 0;
-const pay0 = top.career.salary; const j0 = store.state.journal.length; years(top, 8, 85);
+// (A layoff in a bad year, drawn by chance, ends the job and its pay: judged on a life that keeps it all eight years.)
+const C = CAREER_BY_ID.office;
+let top; let pay0; let j0;
+for (let seed = 8; seed < 14; seed++) {
+  rng.seed(seed); top = life('office', 85);
+  top.career.level = C.levels.length - 1; top.career.title = C.levels.at(-1).title; top.career.yearsInRole = 0;
+  pay0 = top.career.salary; j0 = store.state.journal.length; years(top, 8, 85);
+  if (top.career.careerId === 'office') break;
+}
 const raises = store.state.journal.slice(j0).filter((e) => /raise/.test(e.text)).length;
 check(top.career.careerId === 'office' && top.career.salary > pay0, `at the top rank, raises go on (${pay0} → ${top.career.salary})`);
 check(raises >= 1 && raises < 8, `but not every year (${raises} raises in 8 years of strong work)`);

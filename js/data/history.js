@@ -137,6 +137,8 @@ export const LAW_HISTORY = {
     ['cr', 2020], ['cl', 2022], ['ch', 2022], ['si', 2022], ['mx', 2022], ['cu', 2022], ['ad', 2023], ['ee', 2024], ['gr', 2024],
     ['li', 2025], ['th', 2025], ['*', 2000],
   ].map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
+  // [fact] Japan lowered its age of majority from 20 to 18 in April 2022.
+  majorityAge: { jp: [{ until: 2021, value: 20 }] },
   // [fact] Divorce introduced: Italy 1970, Brazil 1977, Spain 1981 (and briefly 1932–1939), Argentina 1987,
   // Ireland 1997, Chile 2004, Malta 2011.
   divorce: {
@@ -355,6 +357,9 @@ export const SCENE_FROM = {
   // Mobile phones and the messages they carry
   first_phone: 1998, contraband: 1998, card_school: 1998, jealous: 2002, their_secret: 2002, ex_returns: 1995, headhunter_call: 1998,
   found_phone: 2008, exam_answers: 2008, school_petition: 2007, sibling_video: 1985,
+  // Everyday adult life (data/events/everydayLife.js)
+  car_wont_start: 1930, pay_it_forward: 1960, overcharged_mechanic: 1950, unfair_ticket: 1950, flat_tire_stranger: 1930, blood_drive: 1945, charity_run: 1970, secret_santa: 1950, office_karaoke: 1985, quiz_night: 1970,
+  twenties_road_trip: 1930, mid_neighbor_wifi_name: 2005, twenties_learn_drive: 1925, twenties_volunteer_abroad: 1960, twenties_gym_join: 1975, twenties_concert: 1955, mid_car_trouble_trip: 1930, mid_lost_luggage: 1955, mid_work_trip: 1950, mid_wrong_bus: 1920, mid_first_aid_course: 1950, mid_fire_drill: 1950, mid_coworker_baby: 1975, mid_tired_all_time: 1940, later_bus_pass: 1975, later_cruise_brochure: 1960, later_health_check: 1950, kid_pen_pal: 1920, kid_snow_day: 1925, kid_new_glasses: 1920,
   // Social media
   brand_offer: 2010, post_backlash: 2010,
   // Working life

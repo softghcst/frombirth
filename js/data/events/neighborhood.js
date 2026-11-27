@@ -15,21 +15,21 @@ const base = { category: 'neighborhood', queuedOnly: true, hood: true, cooldown:
 export default [
   // ---------- Small everyday moments (data/neighborhoods.js MOMENTS) ----------
   {
-    ...base, id: 'hood_wrong_parcel', ageRange: [10, 120],
-    text: 'A parcel for {person} has been left at your door by mistake. It rattles a little.',
+    ...base, id: 'hood_new_baby', ageRange: [12, 120],
+    text: '{person} and their family have just brought a new baby home. The curtains have been closed for three days.',
     choices: [
-      { label: 'Take it round to them', outcomes: [any('{person} had been waiting for it all week. They asked you in for a cup of something, and you stayed longer than you meant to.', 'good', hood({ do: 'meet', rel: 40 }), st('mood', 2))] },
-      { label: 'Leave a note through their door', outcomes: [any('{person} came to collect it that evening, with thanks and a chocolate bar.', 'neutral', hood({ do: 'meet', rel: 34 }))] },
-      { label: 'Leave it on their step', outcomes: [any('It was gone by the morning. You hope it was them who took it.', 'neutral')] },
+      { label: 'Leave a cooked meal on their step', outcomes: [any('A casserole and a note: no need to return the dish. {person} told you later it was the first proper meal they had eaten all week.', 'good', hood({ do: 'meet', rel: 44 }), hid('karma', 2))] },
+      { label: 'Knock with a small present', outcomes: [any('A tired, happy face at the door, and a glimpse of a very small person asleep.', 'good', hood({ do: 'meet', rel: 38 }), st('mood', 3))] },
+      { label: 'Keep the noise down for a while', outcomes: [any('Nobody notices, which is the point.', 'neutral', hid('karma', 1))] },
     ],
   },
   {
-    ...base, id: 'hood_power_cut', ageRange: [6, 120],
-    text: 'The power goes off along the whole street one evening. Through the window you can see {person} on their step with a torch, looking up and down the road.',
+    ...base, id: 'hood_big_game', ageRange: [8, 120],
+    text: 'The national team is in the final, and {person} has wheeled a television out onto the front porch for the whole street.',
     choices: [
-      { label: 'Go out and see if everyone is all right', outcomes: [any('Half the street was out. Someone brought candles, someone brought a guitar, and {person} told stories about the last time this happened.', 'good', hood({ do: 'meet', rel: 40 }), st('mood', 4))] },
-      { label: 'Check on {person} in particular', outcomes: [any('They were fine, and glad someone thought to ask. You sat on their step until the lights came back.', 'good', hood({ do: 'meet', rel: 44 }), hid('karma', 1))] },
-      { label: 'Light a candle and wait it out inside', outcomes: [any('An evening of candlelight and no screens. It was oddly nice.', 'neutral', st('mood', 1))] },
+      { label: 'Bring a chair and snacks', outcomes: [any('Thirty neighbors, one television, and a last-minute goal. {person} hugs strangers. So do you.', 'good', hood({ do: 'meet', rel: 42 }), st('mood', 6))] },
+      { label: 'Watch for the first half', outcomes: [any('You catch the first half and the best of the cheering from your kitchen window.', 'neutral', hood({ do: 'meet', rel: 32 }), st('mood', 2))] },
+      { label: 'Close the windows and read', outcomes: [any('The cheering comes through the windows anyway.', 'neutral')] },
     ],
   },
   {
@@ -137,6 +137,188 @@ export default [
       { label: 'Go down and join in', outcomes: [any('You met people you had been passing on the stairs for months.', 'good', hood({ do: 'attend', how: 'attend' }))] },
       { label: 'Bring something and help {person} set up', requires: teen, outcomes: [any('Folding chairs, paper cups, and a long conversation with {person} about the building\'s history.', 'good', hood({ do: 'attend', how: 'help' }))] },
       { label: 'Not this time', outcomes: [any('You could hear the laughter through the floor. Nice to know it is there.', 'neutral')] },
+    ],
+  },
+  // ---------- Each community event in its own words (data/neighborhoods.js COMMUNITY_EVENTS scene) ----------
+  {
+    ...base, id: 'hood_event_welcome', ageRange: [4, 120],
+    text: 'New people have moved onto the street, and {person} is putting together a little {event} so they meet everyone.',
+    choices: [
+      { label: 'Go and say hello to the new people', outcomes: [any('You were the first to shake their hands. They asked you where the good bakery was, and you told them the truth.', 'good', hood({ do: 'attend', how: 'attend' }))] },
+      { label: 'Bake something for the welcome table', requires: teen, outcomes: [any('Your cake was gone in ten minutes. {person} asked for the recipe.', 'good', hood({ do: 'attend', how: 'help' }), cash(-10))] },
+      { label: 'Wave from across the street', outcomes: [any('A wave, and a promise to yourself to introduce yourself properly later.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_picnic', ageRange: [4, 120],
+    text: '{person} is organizing a {event}: blankets on the grass in the park, and everyone bringing something to share.',
+    choices: [
+      { label: 'Bring something and spread out a blanket', outcomes: [any('Sandwiches traded, a game of catch, and a long lazy afternoon in the sun.', 'good', hood({ do: 'attend', how: 'attend' }), st('mood', 3))] },
+      { label: 'Organize the games', requires: teen, outcomes: [any('An egg-and-spoon race, a three-legged race and a tug of war that ended in a heap. {person} said it was the best picnic yet.', 'good', hood({ do: 'attend', how: 'help' }), st('mood', 3))] },
+      { label: 'It looks like rain', outcomes: [any('It did not rain.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_sale', ageRange: [8, 120],
+    text: 'The whole neighborhood is holding a {event}, and {person} is putting up signs on every lamppost.',
+    choices: [
+      { label: 'Wander round and look at everything', outcomes: [any('You came home with a lamp, a stack of old records and the life stories of four neighbors.', 'good', hood({ do: 'attend', how: 'attend' }), cash(-10))] },
+      { label: 'Set out a table of your own things', requires: teen, outcomes: [any('You sold almost everything, haggled like a professional and made a little money.', 'good', hood({ do: 'attend', how: 'help' }), cash(30))] },
+      { label: 'Keep your money in your pocket', outcomes: [any('A wise move, and a little sad.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_cleanup', ageRange: [6, 120],
+    text: '{person} has organized a {event}: gloves, bags and a promise of coffee afterward.',
+    choices: [
+      { label: 'Grab a bag and join in', outcomes: [any('Three hours, eleven bags and a shopping cart pulled out of the stream. The park looked like new.', 'good', hood({ do: 'attend', how: 'attend' }), hid('karma', 2), st('health', 1))] },
+      { label: 'Help organize the teams', requires: teen, outcomes: [any('A clipboard, a map of the area and a lot of cheerful volunteers. It went like clockwork.', 'good', hood({ do: 'attend', how: 'help' }), hid('karma', 2))] },
+      { label: 'Leave it to the volunteers', outcomes: [any('The park looked lovely afterward. You noticed.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_fundraiser', ageRange: [6, 120],
+    text: '{person} is running a {event} for a local cause, with a cake stall and a raffle with some surprisingly good prizes.',
+    choices: [
+      { label: 'Buy raffle tickets and a slice of cake', outcomes: [any('You did not win the bicycle, but you won a jar of pickles and a lot of goodwill.', 'good', hood({ do: 'attend', how: 'attend' }), cash(-10), hid('karma', 2))] },
+      { label: 'Run the raffle', requires: teen, outcomes: [any('You sold tickets to everyone, including people who had not meant to come in. A record amount was raised.', 'good', hood({ do: 'attend', how: 'help' }), hid('karma', 3), st('charm', 1))] },
+      { label: 'Put something in the tin and go', outcomes: [any('A small donation, quietly given.', 'neutral', hid('karma', 1))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_holiday', ageRange: [4, 120],
+    text: '{person} is hosting a {event} for the neighborhood: lights strung up, warm drinks and food for everyone.',
+    choices: [
+      { label: 'Go and bring a dish', outcomes: [any('Lights, songs and far too much food. You walked home warm in every way.', 'good', hood({ do: 'attend', how: 'attend' }), st('mood', 4))] },
+      { label: 'Help string the lights', requires: teen, outcomes: [any('A ladder, a tangle of wires and a lot of laughing. When they finally came on, everyone cheered.', 'good', hood({ do: 'attend', how: 'help' }), st('mood', 4))] },
+      { label: 'Stay home this year', outcomes: [any('You saw the lights from your window, twinkling down the street.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_sports_day', ageRange: [4, 120],
+    text: '{person} has organized a {event}: races for the children, a tug of war for the grown-ups and a lot of shouting.',
+    choices: [
+      { label: 'Enter the tug of war', outcomes: [any('Your team won after a long, red-faced struggle and then fell over together.', 'good', hood({ do: 'attend', how: 'attend' }), st('health', 1), st('mood', 4))] },
+      { label: 'Be the referee', requires: teen, outcomes: [any('A whistle, a lot of arguments about the egg-and-spoon rules and nobody seriously hurt. A success.', 'good', hood({ do: 'attend', how: 'help' }), st('charm', 1))] },
+      { label: 'Watch from the side', outcomes: [any('You cheered for whoever was losing.', 'neutral', st('mood', 1))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_meeting', ageRange: [16, 120],
+    text: '{person} has called a {event} in the hall about the neighborhood: the roads, the park, and what people want changed.',
+    choices: [
+      { label: 'Go and listen', outcomes: [any('Two hours, a lot of opinions and some bad coffee. You came away understanding the place better.', 'good', hood({ do: 'attend', how: 'attend' }), st('intellect', 1))] },
+      { label: 'Stand up and speak', requires: teen, outcomes: [any('You said what you had been thinking for months. People nodded. {person} wrote it down.', 'good', hood({ do: 'attend', how: 'help' }), st('charm', 2))] },
+      { label: 'Read the minutes later', outcomes: [any('Nothing much was decided, the minutes say, at length.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_festival', ageRange: [4, 120],
+    text: 'It is time for the {event}, and {person} is one of the people running it: stalls, music, and half the town out.',
+    choices: [
+      { label: 'Spend the whole day there', outcomes: [any('Music, food from every stall and a funnel cake you will remember for years.', 'good', hood({ do: 'attend', how: 'attend' }), cash(-15), st('mood', 5))] },
+      { label: 'Volunteer on a stall', requires: teen, outcomes: [any('You sold lemonade for six hours and met what felt like everyone in town.', 'good', hood({ do: 'attend', how: 'help' }), st('charm', 2), st('mood', 3))] },
+      { label: 'Avoid the crowds', outcomes: [any('You heard the music drifting over the roofs all afternoon.', 'neutral')] },
+    ],
+  },
+  {
+    ...base, id: 'hood_event_harvest', ageRange: [4, 120],
+    text: '{person} invites everyone to the {event} in the hall: long tables, home cooking and a speech nobody can hear.',
+    choices: [
+      { label: 'Go and sit at the long table', outcomes: [any('You sat between two farmers who argued about rain all evening. The pie was magnificent.', 'good', hood({ do: 'attend', how: 'attend' }), st('mood', 4))] },
+      { label: 'Help in the kitchen', requires: teen, outcomes: [any('Steam, noise and a mountain of potatoes. You were thanked in the speech, which nobody could hear.', 'good', hood({ do: 'attend', how: 'help' }), st('mood', 3))] },
+      { label: 'Not this year', outcomes: [any('A plate was sent round to you anyway, covered in foil.', 'neutral')] },
+    ],
+  },
+  // ---------- Each kind of help a neighbor asks for, in its own words (data/neighborhoods.js NEIGHBOR_NEEDS) ----------
+  {
+    ...base, id: 'hood_hand_move', ageRange: [14, 120],
+    text: '{person} is standing at the bottom of their stairs with a wardrobe, looking at it the way people look at mountains.',
+    choices: [
+      { label: 'Take the other end', outcomes: [any('Up, round the bend, a scraped knuckle, a lot of "to you, to me". It is in. {person} insisted on making you lunch.', 'good', hood({ do: 'help', how: 'help' }), hid('karma', 2), st('health', 1))] },
+      { label: 'Tell them about a cheap moving company', outcomes: [any('Two strong people came the next day. {person} was grateful for the number.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say your back would not survive it', outcomes: [any('{person} laughed and said theirs would not either.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_meal', ageRange: [14, 120],
+    text: '{person} is home after an operation and cannot stand at the stove for long. They mention it, a little embarrassed.',
+    choices: [
+      { label: 'Bring round a hot meal every few days', outcomes: [any('Soup, a stew, a pie. {person} said it was the thing that got them through.', 'good', hood({ do: 'help', how: 'help' }), hid('karma', 3), st('mood', 2))] },
+      { label: 'Set up a schedule with other neighbors', outcomes: [any('Six households, a different dinner every night. {person} has never eaten so well.', 'good', hood({ do: 'help', how: 'suggest' }), hid('karma', 2))] },
+      { label: 'Wish them a quick recovery', outcomes: [any('They thanked you, and you meant it.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_garden', ageRange: [12, 120],
+    text: '{person}\'s garden has turned into a jungle, and they admit they do not know where to start.',
+    choices: [
+      { label: 'Spend a Saturday on it together', outcomes: [any('Brambles out, grass cut, a rose found under it all. {person} sat on the step and cried a little, happily.', 'good', hood({ do: 'help', how: 'help' }), st('health', 1), hid('karma', 2))] },
+      { label: 'Recommend a gardener', outcomes: [any('The gardener was good and cheap. {person} was pleased.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say gardening is not your thing', outcomes: [any('Fair enough, said {person}, looking at the brambles.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_pet', ageRange: [10, 120],
+    text: '{person} is going away for a week and asks if you could feed their animals and keep them company.',
+    choices: [
+      { label: 'Of course', outcomes: [any('A week of feeding, a few walks and a lot of affection. They greeted you every day like an old friend.', 'good', hood({ do: 'help', how: 'help' }), st('mood', 3))] },
+      { label: 'Suggest a pet-sitter you know', outcomes: [any('The sitter was wonderful. {person} sent a postcard.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you will be away too', outcomes: [any('{person} found someone else.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_errand', ageRange: [12, 120],
+    text: '{person} has hurt their ankle and asks, if you are passing the shops, whether you could pick up a few things.',
+    choices: [
+      { label: 'Pick up everything on the list', outcomes: [any('Milk, bread, cat food and some very specific cookies. {person} pressed a bar of chocolate on you.', 'good', hood({ do: 'help', how: 'help' }), hid('karma', 2))] },
+      { label: 'Tell them which shop delivers', outcomes: [any('A delivery the next day. {person} said they had not known that was possible.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you are not going that way', outcomes: [any('{person} said not to worry.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_gutter', ageRange: [16, 120],
+    text: 'Rain is forecast, and {person}\'s gutters are overflowing with leaves. They are eyeing a wobbly ladder.',
+    choices: [
+      { label: 'Hold the ladder, or go up yourself', outcomes: [any('A bucket of leaves, a dead bird\'s nest and one alarming wobble. The gutters ran clear when the rain came.', 'good', hood({ do: 'help', how: 'help' }), hid('karma', 2))] },
+      { label: 'Find them someone with proper equipment', outcomes: [any('A man with a long pole sorted it in ten minutes.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you do not do ladders', outcomes: [any('{person} nodded. They do not either, really.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_kids', ageRange: [16, 120],
+    text: '{person} has an evening out they cannot miss, and asks whether you could watch their children for a few hours.',
+    choices: [
+      { label: 'Say yes', outcomes: [any('Board games, a bedtime story read in silly voices and a quiet house by nine. The children ask for you by name now.', 'good', hood({ do: 'help', how: 'help' }), st('mood', 3))] },
+      { label: 'Recommend a teenager you trust', outcomes: [any('The teenager was perfect. {person} was very grateful for the name.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you are busy that night', outcomes: [any('{person} found someone else.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_ride', ageRange: [17, 120],
+    text: '{person} has a hospital appointment across town and no way of getting there. They ask, hesitantly, about a ride.',
+    choices: [
+      { label: 'Drive them, and wait', outcomes: [any('An hour in the waiting room together. It was good news, and you drove home with the radio on loud.', 'good', hood({ do: 'help', how: 'help' }), hid('karma', 3))] },
+      { label: 'Help them book the hospital transport', outcomes: [any('A van came to the door. {person} had not known it existed.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you are working that day', outcomes: [any('{person} took a taxi.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_letter', ageRange: [16, 120],
+    text: '{person} knocks with an official letter full of long words, and asks if you could help them understand it.',
+    choices: [
+      { label: 'Sit down and go through it together', outcomes: [any('It was less frightening than it looked. You filled in the form together, and {person} let out a long breath.', 'good', hood({ do: 'help', how: 'help' }), st('intellect', 1), hid('karma', 2))] },
+      { label: 'Point them to the free advice office', outcomes: [any('The advice office sorted it out in twenty minutes.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say it is beyond you too', outcomes: [any('It probably was.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_hand_tech', ageRange: [12, 120],
+    text: '{person} has a brand-new computer still in its box, and a look of deep suspicion.',
+    choices: [
+      { label: 'Set it up and show them the basics', outcomes: [any('An afternoon of patience. By the end, {person} sent their first message to a grandchild, and was delighted.', 'good', hood({ do: 'help', how: 'help' }), st('mood', 2))] },
+      { label: 'Tell them about the free class at the library', outcomes: [any('They went every week and now know more than you do.', 'neutral', hood({ do: 'help', how: 'suggest' }))] },
+      { label: 'Say you are no good with computers', outcomes: [any('The box stayed sealed for another month.', 'neutral', hood({ do: 'help', how: 'decline' }))] },
     ],
   },
   {

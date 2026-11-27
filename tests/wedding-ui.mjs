@@ -21,6 +21,8 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const port = server.address().port;
 
+/** Through the journey scene (js/ui/journey.js): a tap takes the window seat and flies on; a moment in the air is answered. */
+const throughJourney = async (page) => { for (let i = 0; i < 30 && await page.locator('.journey-screen').count(); i++) { const ch = page.locator('.journey-screen [data-choice]').first(); const on = page.locator('.journey-screen [data-onward]'); if (await ch.count()) await ch.click().catch(() => {}); else if (await on.count()) await on.click().catch(() => {}); else await page.locator('.journey-screen').click({ position: { x: 5, y: 5 } }).catch(() => {}); await page.waitForTimeout(300); } };
 const problems = [];
 const check = (c, m) => { if (!c) problems.push(m); };
 const browser = await chromium.launch();
@@ -30,13 +32,13 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
-await page.click('[data-random]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
 await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 // An engagement to a best friend from school.
 const setUp = () => page.evaluate(async () => {
   const { store } = await import('/js/state.js'); const { makeNpc } = await import('/js/engine/npcFactory.js');
-  const p = store.state.player; p.age = 30; p.finance.cash = 1e10; p.legal.incarceration = null;
+  const p = store.state.player; p.age = 30; p.finance.cash = 1e15; p.legal.incarceration = null;
   for (const n of Object.values(store.state.npcs)) if (['partner', 'spouse'].includes(n.role)) n.role = 'friend';
   const n = makeNpc({ role: 'partner', age: 30, countryId: p.countryId, gender: p.gender === 'male' ? 'female' : 'male' });
   n.flags.engaged = true; n.flags.title = 'Best friend'; n.meters.relationship = 80;
@@ -105,8 +107,8 @@ check(!!booked.listed, `and it is never on offer in the trip planner on its own 
 // Off they go: the journey on a map, the honeymoon's moments, home, and a postcard from where they went.
 await page.evaluate(async (id) => { const { goOnTrip } = await import('/js/ui/globalLife.js'); window.__went = goOnTrip({ changed() {} }, id).then((r) => { window.__wentDone = r; }); }, booked.id);
 await page.waitForSelector('.journey-screen', { timeout: 8000 }).catch(() => {});
-check(await page.locator('.journey-screen').count() === 1, 'leaving shows the journey on a map');
-await page.locator('.journey-screen').click().catch(() => {});
+check(await page.locator('.journey-screen').count() === 1, 'leaving shows the journey on the globe');
+await throughJourney(page);
 for (let n = 0; n < 12; n++) {
   await page.waitForTimeout(250);
   if (await page.locator('.wq-postcard').count()) break;
@@ -170,9 +172,9 @@ const hm = await page.evaluate(async (id) => {
 check(hm.open && hm.type === 'honeymoon' && hm.coming === 'accepted', `the honeymoon opens in the trip planner, the spouse coming (${JSON.stringify(hm)})`);
 await page.evaluate(async () => { const { openJourney } = await import('/js/ui/journey.js'); window.__jr = openJourney({ stops: [{ countryId: 'us', city: 'Chicago' }, { countryId: 'fr', city: 'Paris' }], over: 'air' }); });
 await page.waitForSelector('.journey-screen', { timeout: 5000 });
-check(await page.locator('.journey-map use').count() === 3 && /Paris/.test(await page.locator('.journey-head').innerText()) && await page.locator('.journey-map animateMotion').count() === 1, 'the flight is shown on a map, the plane following its route');
-await page.click('.journey-screen'); await page.waitForTimeout(500);
-check(!(await page.locator('.journey-screen').count()), 'and a tap skips it');
+check(await page.locator('.journey-screen canvas').count() === 1 && /Paris/.test(await page.locator('.journey-head').innerText()), 'the flight is shown on the globe, the plane following its route');
+await page.click('.journey-screen', { position: { x: 5, y: 5 } }); await page.waitForSelector('.journey-screen', { state: 'detached', timeout: 5000 }).catch(() => {});
+check(!(await page.locator('.journey-screen').count()), 'and a tap skips it to the landing, and on');
 await page.evaluate(async (id) => {
   const { store } = await import('/js/state.js'); const w = await import('/js/ui/weddingPlanner.js');
   window.__pc = w.honeymoonPostcard({ changed() {} }, { type: 'honeymoon', mode: 'jet', destination: { countryId: 'fr', city: 'Paris' }, origin: { countryId: 'us', city: 'Chicago' }, travelers: [{ id }] });

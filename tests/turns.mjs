@@ -228,7 +228,12 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   const room = 5000000; const real = { set: localStorage.setItem };
   localStorage.setItem = (k, v) => { let used = 0; for (const [kk, vv] of disk) if (kk !== k) used += kk.length + vv.length; if (used + k.length + String(v).length > room) throw new Error('QuotaExceededError'); disk.set(k, String(v)); };
   let failed = 0;
-  for (let i = 0; i < 4 * 25 && P().alive; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; if (!saveGame(S())) failed++; }
+  // Twenty-five years of quarters. A life the dice end early (an illness, an accident) proves nothing about storage: another is lived.
+  for (let tries = 0; tries < 4; tries++) {
+    if (tries) { const old = S().slotId; for (const k of [...disk.keys()]) if (k.includes(old)) disk.delete(k); life(); turns.setStep(3); }
+    for (let i = 0; i < 4 * 25 && P().alive; i++) { P().stats.health = 95; pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; if (!saveGame(S())) failed++; }
+    if (P().alive) break;
+  }
   localStorage.setItem = real.set;
   check(failed === 0, `with storage nearly full, the life still saves every turn (${failed} failed)`);
   const to = peekUndo(S().slotId);
