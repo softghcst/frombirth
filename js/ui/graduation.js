@@ -5,7 +5,7 @@
 // some time off, which just closes it.
 import { esc, cap } from '../util.js';
 import { player } from '../state.js';
-import { openModal } from './modals.js';
+import { openModal, pickModal } from './modals.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { stageLabel, programOptions } from '../engine/education.js';
 import * as uni from '../engine/university.js';
@@ -129,14 +129,16 @@ export function nextSteps(card) {
   const plan = uni.plan();
   const answered = plan?.sent && plan.list?.some((a) => a.outcome === 'accepted');
   const schoolLeaver = ['high', 'equivalency', 'community'].includes(card.stage);
-  if (schoolLeaver && (answered || plan || open('university'))) {
-    steps.push({ id: 'uni', emoji: '🏛️', label: card.stage === 'community' ? 'Transfer to University' : usStyle() ? 'Go to College' : 'Go to University',
-      sub: answered ? 'Pick Your School' : plan?.sent ? 'See Your Answers' : 'Apply to Schools' });
-  }
-  if (anyStudy.length) {
-    steps.push({ id: 'study', emoji: '📚', label: card.stage === 'university' && open('graduate') ? 'Go to Grad School' : schoolLeaver ? 'Other Schooling' : 'Keep Studying',
-      sub: schoolLeaver ? 'Trade School & More' : `${anyStudy.slice(0, 2).map((o) => titleCase(o.label.replace(/ school$/i, ''))).join(', ')}${anyStudy.length > 2 ? ' & More' : ''}` });
-  }
+  const college = usStyle() ? 'College' : 'University';
+  const uniStep = schoolLeaver && (answered || plan || open('university'))
+    ? { id: 'uni', emoji: '🏛️', label: card.stage === 'community' ? 'Transfer to University' : `Go to ${college}`,
+      sub: answered ? 'Pick Your School' : plan?.sent ? 'See Your Answers' : 'Apply to Schools' } : null;
+  const studyStep = anyStudy.length
+    ? { id: 'study', emoji: '📚', label: card.stage === 'university' && open('graduate') ? 'Go to Grad School' : schoolLeaver ? 'Trade School & More' : 'Keep Studying',
+      sub: schoolLeaver ? 'Community College, Apprenticeships & More' : `${anyStudy.slice(0, 2).map((o) => titleCase(o.label.replace(/ school$/i, ''))).join(', ')}${anyStudy.length > 2 ? ' & More' : ''}` } : null;
+  // Out of school: one Keep Studying, which then asks which kind (university, or trade school and the rest).
+  if (uniStep && studyStep) steps.push({ id: 'keep', emoji: '📚', label: 'Keep Studying', sub: `${college}, Trade School & More`, choices: [uniStep, studyStep] });
+  else if (uniStep || studyStep) steps.push(uniStep ?? studyStep);
   if (!p.legal.incarceration) {
     steps.push({ id: 'work', emoji: '💼', label: p.career.careerId ? 'Back to Work' : 'Get a Job', sub: p.career.careerId ? 'Your Career' : 'Find Work Now' });
   }
@@ -144,7 +146,7 @@ export function nextSteps(card) {
   return steps;
 }
 
-/** Opens the card. Resolves the step chosen ('uni', 'study', 'work' or 'rest'). */
+/** Opens the card. Resolves the step chosen ('keep', 'uni', 'study', 'work' or 'rest'). */
 export function openGraduationCard(p, card, steps = nextSteps(card)) {
   return new Promise((resolve) => {
     const m = openModal(`
@@ -175,7 +177,16 @@ export async function graduationNotice(api) {
   api.changed();
   // Only a fresh graduation: years lived without the card being seen (a life played on by the engine alone) let it go.
   if (p.age - (card.age ?? p.age) > 1) return;
-  const step = await openGraduationCard(p, card);
+  const steps = nextSteps(card);
+  let step;
+  for (;;) {
+    step = await openGraduationCard(p, card, steps);
+    const keep = steps.find((x) => x.id === 'keep');
+    if (step !== 'keep') break;
+    // Which kind of studying: back goes back to the card.
+    step = await pickModal({ title: 'Keep Studying', cancel: 'Back', options: keep.choices.map((c) => ({ value: c.id, label: `${c.emoji} ${c.label}`, sub: c.sub })) });
+    if (step) break;
+  }
   if (!player().alive) return;
   // The turn waits until the planner or the job hunt is closed, so nothing else pops up over it.
   if (step === 'uni') { openUniversity(api, { funding: chooseFunding, housing: chooseHousing }); return untilClosed(); }
