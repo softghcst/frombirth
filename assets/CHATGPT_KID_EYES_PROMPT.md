@@ -25,26 +25,29 @@ wears the kid version of the eyes they will have from 14.
 
 ## Reference eyes (the easiest way to get the style right)
 
-ChatGPT copies a picture far better than a description. These are the current girl kid eyes (`baby_eyes_6`), the
-style every new shape should match: an iris black on top and warm brown below, with a black pupil, two big white
-highlights, a thick dark upper lid with soft lashes, and only a crescent of white:
+ChatGPT copies a picture far better than a description. Three references, each on the kid face (where the eyes sit)
+and alone, at the template's size and position, all with a black iris:
 
-- `assets/clothes_templates/kid_eyes_reference_on_face.png`: the eyes on the kid face (where they sit).
-- `assets/clothes_templates/kid_eyes_reference.png`: the eyes alone, at the same size and position.
+| reference | files | for |
+|---|---|---|
+| eyes 8: almond, a black iris and pupil with a highlight, flicked lashes | `kid_eyes_reference_girl_on_face.png`, `kid_eyes_reference_girl.png` | girls' eyes |
+| eyes 9: a heavy, relaxed upper lid, no lashes | `kid_eyes_reference_boy_on_face.png`, `kid_eyes_reference_boy.png` | boys' eyes |
+| eyes 25: upturned almond with fluttery lashes (the shape to copy; it needs a full iris) | `kid_eyes_reference_shape_25_on_face.png`, `kid_eyes_reference_shape_25.png` | a shape idea |
 
-Upload `kid_eyes_template.png` and `kid_eyes_reference_on_face.png` together, with:
+Upload `kid_eyes_template.png` and the reference **on the face** together, with:
 
 ````text
 The second image shows the eyes I want, on the face. Draw new eyes for the first image (the same face, with no eyes),
-in EXACTLY the same style, size and position as the second image: the same big iris, black on top and warm brown
-below, with a black pupil and two big white highlights; the same thick dark upper lid; the same small crescent of
-white. Change ONLY the shape of the eyelids and corners, to make them [DESCRIBE THE SHAPE]. [For a boy: no eyelashes,
-just the thick upper lid line.] Output a 1254 x 1254 PNG with a fully transparent background, with only the eyes
-drawn, in exactly the same place as in the second image.
+in EXACTLY the same style, size and position as the second image: the same lid line and lashes (or no lashes), the same
+proportions, a BLACK iris with a black pupil inside it and one or two white highlights, and white around it. Change
+ONLY the shape of the eyelids and corners, to make them [DESCRIBE THE SHAPE]. Output a 1254 x 1254 PNG with a fully
+transparent background, with only the eyes drawn, in exactly the same place as in the second image.
 ````
 
-The shapes to describe are listed below (round, almond, monolid, hooded, upturned, downturned). For each boy's version,
-keep the bracketed sentence about lashes.
+For eyes 25's shape, upload its reference and say instead: "Keep this exact shape and these lashes, but give each eye a
+full black iris with a pupil and white highlights, like normal eyes."
+
+The shapes to describe are listed below. Girls' versions use the girl reference, boys' the boy reference.
 
 ## Prompt
 
