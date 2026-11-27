@@ -83,7 +83,7 @@ export function biologicalParents(person) {
     return { mother: gp.find((x) => sexOf(x) === 'female') ?? null, father: gp.find((x) => sexOf(x) === 'male') ?? null };
   }
   // Brothers and sisters share the player's parents (half-siblings share one).
-  if (person?.role === 'sibling') {
+  if (person?.role === 'sibling' && !person.flags?.adoptiveSibling && !person.flags?.birthKin) {
     const bio = mine('parent').filter(isBiological);
     const keep = person.flags?.half ? bio.filter((x) => x.id === person.flags.half) : bio;
     return { mother: keep.find((x) => sexOf(x) === 'female') ?? null, father: keep.find((x) => sexOf(x) === 'male') ?? null };
@@ -95,7 +95,8 @@ export function biologicalParents(person) {
   return { mother: known.find((x) => sexOf(x) === 'female') ?? null, father: known.find((x) => sexOf(x) === 'male') ?? null };
 }
 
-export const isBiological = (n) => !n.adopted && !n.flags?.step && !/^Step/.test(n.flags?.title ?? '');
+// Adoptive parents, guardians and the relatives who raise a child are their family, not their genes (engine/origins.js).
+export const isBiological = (n) => !n.adopted && !n.flags?.step && !n.flags?.adoptiveParent && !n.flags?.guardian && !n.flags?.kinCarer && !/^Step/.test(n.flags?.title ?? '');
 
 /**
  * Anyone's genome. Worked out once and kept; for someone whose parents are

@@ -83,6 +83,7 @@ import { tickJournalism } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 import { directYear, yearSteps } from './storyDirector.js';
+import { tickOrigins } from './origins.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -107,6 +108,7 @@ export const YEARLY = [
   ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
+  ['origins', tickOrigins], // adoption and birth families: the birth family's own year, what the player learns, one revelation at most (engine/origins.js)
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
