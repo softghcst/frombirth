@@ -376,7 +376,7 @@ export function openNpc(npc, api, back, o = {}) {
   const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.alive ? bonds.bondActions(npc) : []),
-    ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
+    ...((npc.role === 'child' || kid.homeKid(npc)) && npc.alive ? kid.actionsFor(npc) : []), // your own, a stepchild at home, a child in your care
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
     // A method in place (an implant, an IUD, a pill, a permanent method) greys it out, with why underneath.
@@ -463,6 +463,7 @@ export function openNpc(npc, api, back, o = {}) {
         if (how) await report(api, kid.homework(npc.id, how));
       },
       schoolEvent: () => report(api, kid.attend(npc.id)),
+      carePlan: () => report(api, kid.carePlanMeeting(npc.id)),
       kidTutor: async () => {
         const c = country();
         const yes = await confirmModal({ title: 'Pay for a tutor?', body: `Two evenings a week for a year: ${fmtMoney(localMoney(kid.TUTOR_COST, c), c)}.`, yes: 'Pay for it' });
