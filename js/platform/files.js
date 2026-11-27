@@ -4,7 +4,7 @@
 import { isNative, plugin } from './native.js';
 
 /**
- * @returns {Promise<{ok:boolean, how:'downloaded'|'shared'|'cancelled'|'failed', text?:string}>}
+ * @returns {Promise<{ok:boolean, how:'downloaded'|'shared'|'canceled'|'failed', text?:string}>}
  */
 export async function giveFile(name, text, title = 'From Birth saves') {
   const fs = plugin('Filesystem'); const share = plugin('Share');
@@ -18,7 +18,7 @@ export async function giveFile(name, text, title = 'From Birth saves') {
       return { ok: true, how: 'shared' };
     } catch (e) {
       // Closing the share sheet without choosing is not a failure.
-      if (/cancel/i.test(String(e?.message ?? e))) return { ok: false, how: 'cancelled' };
+      if (/cancel/i.test(String(e?.message ?? e))) return { ok: false, how: 'canceled' };
       return { ok: false, how: 'failed', text: `The share sheet could not be opened: ${e?.message ?? e}` };
     }
   }

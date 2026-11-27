@@ -1,7 +1,7 @@
 """The iOS app's icon and launch image, from the game's own artwork. Run: python3 scripts/make-app-images.py
 
 - App icon: icons/icon-afterglow-1024.png (Afterglow, the icon an install uses), flattened to RGB as Apple requires.
-- Launch image: the From Birth logo, centered on the light background colour (#F1EBFA), 2732 x 2732.
+- Launch image: the From Birth logo, centered on the light background color (#F1EBFA), 2732 x 2732.
 """
 from pathlib import Path
 from PIL import Image

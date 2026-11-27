@@ -380,7 +380,7 @@ async function openTransfer(hooks) {
   if (pick === 'file') {
     const day = new Date().toISOString().slice(0, 10);
     const done = await giveFile(`from-birth-saves-${day}.txt`, code);
-    if (done.how === 'cancelled') return undefined;
+    if (done.how === 'canceled') return undefined;
     if (!done.ok) return messageModal({ title: 'No file was made', body: `${done.text} Your saves here are unchanged; try Copy a transfer code instead.`, tone: 'bad' });
     return messageModal({ title: done.how === 'shared' ? 'Transfer file ready' : 'Transfer file saved', body: done.how === 'shared'
       ? 'Wherever you sent it (Files, AirDrop, Mail), open Load saves on the other device and choose it there.'

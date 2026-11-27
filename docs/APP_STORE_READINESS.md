@@ -100,7 +100,7 @@ session. A connection is used only for cloud saves, when a player signs in.
 
 ### App Review risks
 - **Minimum functionality (4.2).** Apps that are mainly a website in a wrapper are often rejected. In From Birth's
-  favour:
+  favor:
   - the whole game is in the app and works offline;
   - it uses native haptics, the share sheet and file storage;
   - it has no web-page chrome or outside links for its core.
@@ -108,7 +108,7 @@ session. A connection is used only for cloud saves, when a player signs in.
   Still the most likely reason for a rejection. Make sure the review notes describe what is native.
 - **Accuracy of health content.** Contraception and health facts cite sources (`docs/CONTRACEPTION.md`,
   `docs/HEALTH.md`). Reviewers may look at medical claims.
-- **Real people and brands.** Check names of real organisations, employers and places used in the game, against
+- **Real people and brands.** Check names of real organizations, employers and places used in the game, against
   the content guidelines.
 - **Account deletion** (above), if the database function is missing.
 - **Crashes on launch.** Never run on iOS yet: TestFlight first.
