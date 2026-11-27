@@ -126,3 +126,32 @@ export const KIN_WORDS = {
   aunt: ['Uncle (birth family)', 'Aunt (birth family)', 'Relative (birth family)'],
 };
 export const kinWord = (kin, gender) => (KIN_WORDS[kin] ?? KIN_WORDS.aunt)[gender === 'male' ? 0 : gender === 'female' ? 1 : 2];
+
+/**
+ * Joint adoption by a same-sex couple: the first year both partners could adopt a child together, nationally.
+ * Sources: national legislation and court rulings. United States: the last state ban (Mississippi) was struck down in
+ * March 2016, after Obergefell v. Hodges (2015); before that it depended on the state (see SAME_SEX_US_SHARE).
+ * England and Wales: Adoption and Children Act 2002, in force 30 December 2005. Netherlands 2001, South Africa 2002
+ * (Du Toit), Sweden 2003, Spain 2005, Belgium 2006, Iceland 2006, Norway 2009, Uruguay 2009, Denmark 2010, Argentina
+ * 2010, Brazil 2010 (court), France 2013, New Zealand 2013, Malta 2014, Colombia 2015, Luxembourg 2015, Portugal 2016,
+ * Austria 2016, Finland 2017, Germany 2017, Ireland 2017, Australia 2018 (the last territory). Canada: province by
+ * province from 1996; 2005 here, with marriage. Anywhere else: not before same-sex marriage, and not at all where it is
+ * still not legal (a conservative default until researched).
+ */
+export const SAME_SEX_ADOPTION_FROM = {
+  us: 2016, uk: 2006, nl: 2001, za: 2002, se: 2003, es: 2005, ca: 2005, be: 2006, is: 2006, no: 2009, uy: 2009, dk: 2010, ar: 2010,
+  br: 2010, fr: 2013, nz: 2013, mt: 2014, co: 2015, lu: 2015, pt: 2016, at: 2016, fi: 2017, de: 2017, ie: 2017, au: 2018,
+};
+/**
+ * United States before 2016: some states allowed joint or second-parent adoption by same-sex couples, others did not.
+ * Each adopted life is placed in an unnamed state; this is the share of lives whose state allowed it, by year
+ * (a handful of states in the mid-1990s, about half by the early 2010s, most by 2014–2015).
+ */
+export function sameSexUsShare(year) {
+  if (year < 1995) return 0;
+  if (year < 2005) return 0.2;
+  if (year < 2013) return 0.4;
+  return 0.75;
+}
+/** How often an adoptive couple is two women or two men, where the law allows it (in the US, roughly one adopted child in twenty-five). */
+export const SAME_SEX_SHARE = 0.05;

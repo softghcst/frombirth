@@ -123,6 +123,38 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
   section('raised by relatives: kinship care, guardianship and adoption kept apart', n);
 }
 
+// Two mothers or two fathers: where and when the law let same-sex couples adopt together.
+{
+  const n = problems.length;
+  const couples = (countryId, year, tries = 250) => {
+    let same = 0; let all = 0; let example = null;
+    for (let i = 0; i < tries; i++) {
+      store.state = createLife({ countryId, origin: 'birth', year });
+      const r = rec();
+      if (!r || r.kind !== 'birth' || r.adoptiveParentIds.length !== 2) continue;
+      all += 1;
+      const [a, b] = r.adoptiveParentIds.map(npc);
+      if (a.gender === b.gender) { same += 1; example ??= { state: S(), r }; }
+    }
+    return { same, all, example };
+  };
+  const now = couples('us', 2020);
+  check(now.same > 0 && now.same < now.all * 0.15, `US 2020: some adoptive couples are two women or two men (${now.same} of ${now.all})`);
+  if (now.example) {
+    store.state = now.example.state;
+    const [a, b] = now.example.r.adoptiveParentIds.map(npc);
+    check(a.role === 'parent' && b.role === 'parent' && a.flags.adoptiveParent && b.flags.adoptiveParent && P().npcIds.includes(a.id) && P().npcIds.includes(b.id), 'both are the legal, household parents');
+    check(now.example.r.legalParentIds.length === 2 && !isBiological(a) && !isBiological(b), 'both legal parents; neither biological');
+    check(S().journal.some((e) => /^Your (mothers|fathers) are /.test(e.text)), 'the opening story names them as two mothers or two fathers');
+    check(P().npcIds.map(npc).filter((x) => x.flags.adoptiveSibling).every((x) => x.parentIds.length === 1), 'an older sibling is the child of one of them, not of both');
+  }
+  check(couples('us', 1985, 120).same === 0, 'none in the US before any state allowed it');
+  check(couples('uk', 2000, 120).same === 0 && couples('uk', 2010, 250).same > 0, 'England and Wales: from the 2002 Act coming into force (end of 2005)');
+  check(couples('jp', 2020, 120).same === 0, 'none where same-sex couples still cannot adopt together');
+  check(O.sameSexAdoptionLegal('us', 2010, 0.1) && !O.sameSexAdoptionLegal('us', 2010, 0.9) && O.sameSexAdoptionLegal('us', 2017, 0.9), 'before 2016 it depended on the (unnamed) US state the adoption was in');
+  section('same-sex adoptive couples, by country and year', n);
+}
+
 // 5, 6. Brothers and sisters, and the integrity of the graph.
 {
   const n = problems.length;

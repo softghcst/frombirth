@@ -27,7 +27,8 @@ import { generateFamily } from './familyGen.js';
 import { storyBeat } from './storyDirector.js';
 import { recordEvent } from './chronicle.js';
 import { ADOPTION_FROM, DEFAULT_ADOPTION_FROM, RECORDS_AGE, recordsAccessShares, serviceFrom, REASONS, CONTACT,
-  contactShares, tellingShares, CURIOSITY, SURPRISE, kinWord } from '../data/origins.js';
+  contactShares, tellingShares, CURIOSITY, SURPRISE, kinWord, SAME_SEX_ADOPTION_FROM, sameSexUsShare, SAME_SEX_SHARE } from '../data/origins.js';
+import { rule } from './rules.js';
 
 export const VERSION = 1;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -52,6 +53,40 @@ const pickW = (shares, r) => {
 /** When legal adoption exists in a country. */
 export const adoptionFrom = (countryId) => ADOPTION_FROM[countryId] ?? DEFAULT_ADOPTION_FROM;
 export const adoptionLegal = (countryId, year) => year >= adoptionFrom(countryId);
+
+/**
+ * Whether a same-sex couple could adopt jointly here and now. `stateSeed` places the life in an unnamed US state,
+ * which matters only before 2016, when it depended on the state.
+ */
+export function sameSexAdoptionLegal(countryId, year, stateSeed = 0.5) {
+  const from = SAME_SEX_ADOPTION_FROM[countryId];
+  if (from != null) return year >= from || (countryId === 'us' && stateSeed < sameSexUsShare(year));
+  // Not researched here: not before same-sex couples could marry there (the law of the year being lived, Historical Eras).
+  try { return !!rule('sameSexMarriage', countryId); } catch { return false; }
+}
+
+/**
+ * An adoptive couple made by the family generator is sometimes two women or two men, where the law allowed them to
+ * adopt together. One partner is replaced by a new person of the same gender as the other; the grandparents on the
+ * replaced partner's side go with them. Returns the family (changed or not).
+ */
+export function maybeSameSex(adopt, c, year, stateSeed, r) {
+  if (!adopt.mother || !adopt.father || adopt.status !== 'together') return adopt;
+  if (!sameSexAdoptionLegal(c.id, year, stateSeed) || r >= SAME_SEX_SHARE) return adopt;
+  const women = seeded(`${adopt.mother.id}:couple`) < 0.55; // somewhat more often two mothers than two fathers
+  const keep = women ? adopt.mother : adopt.father;
+  const gone = women ? adopt.father : adopt.mother;
+  const partner = makeNpc({ role: 'parent', countryId: c.id, gender: keep.gender, age: clamp(keep.age + rng.int(-4, 5), 25, 60), lastName: keep.lastName,
+    relationship: rng.int(60, 98) });
+  if (partner.firstName === keep.firstName) partner.firstName = rng.pick((c.names[keep.gender] ?? []).filter((x) => x !== keep.firstName)) ?? partner.firstName;
+  for (const par of [keep, partner]) par.orientation = rng.chance(0.8) ? 'gay' : 'bisexual';
+  const side = gone === adopt.father ? 'paternal' : 'maternal';
+  adopt.grandparents = adopt.grandparents.filter((g) => g.flags.side !== side);
+  for (const g of adopt.grandparents) g.flags.side = 'maternal';
+  if (women) adopt.father = partner; else adopt.mother = partner;
+  adopt.sameSex = keep.gender;
+  return adopt;
+}
 
 // ---------- The record ----------
 
@@ -163,7 +198,8 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
       carers = [aunt];
       aunt.flags.title = auntGender === 'female' ? 'Aunt' : 'Uncle';
       if (rng.chance(0.55)) {
-        const partner = makeNpc({ role: 'parent', countryId: c.id, gender: auntGender === 'female' ? 'male' : 'female', age: aunt.age + rng.int(-4, 5), relationship: rng.int(55, 90), lastName: aunt.lastName });
+        const same = sameSexAdoptionLegal(c.id, year, accessSeed) && rng.chance(SAME_SEX_SHARE);
+        const partner = makeNpc({ role: 'parent', countryId: c.id, gender: same ? auntGender : auntGender === 'female' ? 'male' : 'female', age: aunt.age + rng.int(-4, 5), relationship: rng.int(55, 90), lastName: aunt.lastName });
         partner.flags.title = partner.gender === 'female' ? 'Aunt' : 'Uncle';
         carers.push(partner);
       }
@@ -222,13 +258,13 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
     giveMotherAge(reason); keepSiblings();
     const contact = pickW(contactShares('birth', year), contactSeed);
     const lastName = rng.pick(c.names.last);
-    const adopt = generateFamily(c, lastName, { avoidNames: [p.firstName, mother.firstName, ...fam.siblings.map((s) => s.firstName)] });
+    const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, mother.firstName, ...fam.siblings.map((s) => s.firstName)] }), c, year, accessSeed, rng.next());
     // A twin is placed with you; a twin generated for the adoptive family is not real.
     const fakeTwin = adopt.siblings.find((s) => s.flags.twin);
     if (fakeTwin) adopt.siblings = adopt.siblings.filter((s) => s !== fakeTwin);
     const parents = [adopt.mother, adopt.father].filter(Boolean);
     for (const par of parents) { par.age = Math.max(par.age, rng.int(27, 34)); par.flags.adoptiveParent = true; par.flags.originsStance = stance(par); }
-    for (const s of adopt.siblings) { s.flags.adoptiveSibling = true; s.parentIds = parents.map((x) => x.id); }
+    for (const s of adopt.siblings) { s.flags.adoptiveSibling = true; s.parentIds = adopt.sameSex ? [parents[0].id] : parents.map((x) => x.id); }
     const twin = fam.twin;
     // The birth family: everyone made for the child's birth, living on without them.
     mother.role = 'relative'; giveKinFlags(mother, 'mother', p.id, { title: 'Birth mother' });
@@ -262,8 +298,10 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
     o.self = { recordId: rec.id, aware: false, awareAge: awareAgeFor(telling, rng.next()), telling, facts: {}, people: {}, curiosity: 'none', done: {} };
     o.parentsKnow = { [rec.id]: { people: { ...(contact === 'open' ? { [mother.id]: 'named' } : contact === 'mediated' ? { [mother.id]: 'first' } : {}) } } };
     if (contact === 'open' || contact === 'mediated') o.contacts[mother.id] = { status: contact === 'open' ? 'open' : 'mediated', since: year, history: [{ year, what: contact === 'open' ? 'The families agreed to letters, photos and visits.' : 'The agency agreed to pass letters and photos once a year.' }] };
-    j(`You are adopted at birth by ${parents.map((x) => x.firstName).join(' and ')} ${p.lastName}${parents.length === 1 ? ', who adopts you on her own' : ''}.`, 'good');
-    for (const par of parents) j(`Your ${par.gender === 'male' ? 'father' : 'mother'} is ${par.firstName}, ${an(par.occupation)}, age ${par.age}.`);
+    j(`You are adopted at birth by ${parents.map((x) => x.firstName).join(' and ')} ${p.lastName}${parents.length === 1 ? `, who adopts you on ${parents[0].gender === 'male' ? 'his' : 'her'} own` : ''}.`, 'good');
+    const work = (par) => (par.occupation === 'unemployed' ? 'out of work' : an(par.occupation));
+    if (adopt.sameSex) j(`Your ${adopt.sameSex === 'male' ? 'fathers' : 'mothers'} are ${parents[0].firstName}, ${work(parents[0])}, age ${parents[0].age}, and ${parents[1].firstName}, ${work(parents[1])}, age ${parents[1].age}.`);
+    else for (const par of parents) j(`Your ${par.gender === 'male' ? 'father' : 'mother'} is ${par.firstName}, ${work(par)}, age ${par.age}.`);
     if (twin) j(`You and your twin ${twin.gender === 'male' ? 'brother' : 'sister'}, ${twin.firstName}, are adopted together.`, 'good');
     for (const s of adopt.siblings) j(`You have an older ${s.gender === 'male' ? 'brother' : 'sister'}, ${s.firstName}, age ${s.age}.`);
     if (adopt.grandparents.length) j(`You have ${adopt.grandparents.length} living grandparent${adopt.grandparents.length > 1 ? 's' : ''}.`);
@@ -444,11 +482,11 @@ function place(rec) {
   }
   if (rec.reason === 'health') for (const n of birth.filter((x) => x.flags.birthKin === 'mother')) n.meters.health = Math.min(n.meters.health, rng.int(25, 45));
   const lastName = rng.pick(c.names.last);
-  const adopt = generateFamily(c, lastName, { avoidNames: [p.firstName, ...p.npcIds.map((id) => npcOf(id)?.firstName).filter(Boolean)] });
+  const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, ...p.npcIds.map((id) => npcOf(id)?.firstName).filter(Boolean)] }), c, state.year, rec.accessSeed, rng.next());
   adopt.siblings = adopt.siblings.filter((s) => !s.flags.twin);
   const parents = [adopt.mother, adopt.father].filter(Boolean);
   for (const par of parents) { par.age = Math.max(par.age, rng.int(28 + p.age, 36 + p.age) - p.age); par.flags.adoptiveParent = true; par.flags.originsStance = stance(par); }
-  for (const s of adopt.siblings) { s.flags.adoptiveSibling = true; s.parentIds = parents.map((x) => x.id); s.age += 0; }
+  for (const s of adopt.siblings) { s.flags.adoptiveSibling = true; s.parentIds = adopt.sameSex ? [parents[0].id] : parents.map((x) => x.id); }
   // The birth family leaves the household. Brothers and sisters still small may be placed with you, or with another family.
   const together = [];
   for (const id of [...p.npcIds]) {
@@ -484,7 +522,7 @@ function place(rec) {
   for (const m of keepOpen) { o.self.people[m.id] = 'contact'; m.meters.relationship = clamp(m.meters.relationship - 15); }
   o.parentsKnow[rec.id] = { people: Object.fromEntries(birth.map((n) => [n.id, 'named'])) };
   const names = parents.map((x) => x.firstName).join(' and ');
-  log(`${rec.reason === 'after_foster' ? 'After some months with a foster family, you' : 'You'} go to live with a new family: ${names} ${parents[0].lastName}. The adoption is made final the next year.${p.lastName !== was ? ` Your surname becomes ${p.lastName}.` : ''}`, 'system', 'neutral');
+  log(`${rec.reason === 'after_foster' ? 'After some months with a foster family, you' : 'You'} go to live with a new family: ${adopt.sameSex ? `your new ${adopt.sameSex === 'male' ? 'fathers' : 'mothers'}, ` : ''}${names} ${parents[0].lastName}. The adoption is made final the next year.${p.lastName !== was ? ` Your surname becomes ${p.lastName}.` : ''}`, 'system', 'neutral');
   if (together.length) log(`${together.map((t) => t.firstName).join(' and ')} ${together.length > 1 ? 'come' : 'comes'} with you.`, 'system', 'good');
   milestone(`Adopted by ${names} ${parents[0].lastName}.`, 'family');
   recordEvent({ key: `origins:${p.id}:placement`, type: 'adoption', title: `${p.firstName} was adopted by ${names} ${parents[0].lastName}`, privacy: 'family', significance: 2 });
