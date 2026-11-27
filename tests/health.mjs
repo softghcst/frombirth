@@ -522,9 +522,9 @@ section('history: services, therapies, medicines and diagnoses only in their own
   p.birth = ['dyslexia'];
   const iq = p.stats.intellect;
   saveGame(store.state);
-  const raw = JSON.parse(mem.get(`pathways.slot.${store.state.slotId}`));
+  const raw = JSON.parse(mem.get(`frombirth.slot.${store.state.slotId}`));
   delete raw.player.health;
-  mem.set(`pathways.slot.${store.state.slotId}`, JSON.stringify(raw));
+  mem.set(`frombirth.slot.${store.state.slotId}`, JSON.stringify(raw));
   const back = loadGame(store.state.slotId);
   store.state = back;
   const h = back.player.health;

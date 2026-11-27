@@ -8,12 +8,12 @@
 // The "age down" history is left out: it is large, and only makes sense on
 // the device where the years were lived.
 
-const K_INDEX = 'pathways.index';
-const K_SLOT = 'pathways.slot.';
-const K_GRAVE = 'pathways.graveyard';
-const K_UNDO = 'pathways.undo.';
-const K_PEOPLE = 'pathways.people';
-const K_GONE = 'pathways.deleted';
+const K_INDEX = 'frombirth.index';
+const K_SLOT = 'frombirth.slot.';
+const K_GRAVE = 'frombirth.graveyard';
+const K_UNDO = 'frombirth.undo.';
+const K_PEOPLE = 'frombirth.people';
+const K_GONE = 'frombirth.deleted';
 /** Deletions older than this are forgotten. */
 const TOMBSTONE_DAYS = 180;
 
@@ -152,8 +152,8 @@ export function describe(bundle) {
 
 // ---------- As text ----------
 
-const PREFIX_GZ = 'PATHWAYS1:';
-const PREFIX_PLAIN = 'PATHWAYS0:';
+const PREFIX_GZ = 'FROMBIRTH1:';
+const PREFIX_PLAIN = 'FROMBIRTH0:';
 
 function toBase64(bytes) {
   let s = '';

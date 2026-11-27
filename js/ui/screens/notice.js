@@ -17,8 +17,8 @@ export const NOTICE_MS = 2600;
  * This tab's session (sessionStorage: kept when the phone restores a tab it put to sleep; gone once the tab or app is
  * closed): whether the notice has been shown, and which life is being played.
  */
-const SEEN = 'pathways.session.notice';
-const PLAYING = 'pathways.session.playing';
+const SEEN = 'frombirth.session.notice';
+const PLAYING = 'frombirth.session.playing';
 const get = (k) => { try { return sessionStorage.getItem(k); } catch { return null; } };
 const set = (k, v) => { try { if (v == null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch { /* storage unavailable */ } };
 export const session = {

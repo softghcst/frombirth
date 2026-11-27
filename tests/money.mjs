@@ -430,7 +430,7 @@ p.finance.accounts = { EUR: 250 };
 delete store.state.ledger; delete p.flags.firstPay;
 const oldWorth = (() => { const s = store.state; return s.player.finance.cash - 3000; })();
 saveGame(store.state);
-const raw = JSON.parse(disk.get(`pathways.slot.${store.state.slotId}`));
+const raw = JSON.parse(disk.get(`frombirth.slot.${store.state.slotId}`));
 check(!raw.ledger, 'the old save has no ledger');
 store.state = loadGame(store.state.slotId); p = store.state.player;
 check(!!store.state.ledger && txs().length === 1 && txs()[0].cat === 'opening' && txs()[0].src === 'migration', 'an old save opens with one opening entry, marked as carried over');

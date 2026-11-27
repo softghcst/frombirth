@@ -309,7 +309,7 @@ function openLoad(hooks) {
     const m = openModal(`
       <h2>Load saves</h2>
       <div class="field"><label for="t-code">Transfer code</label>
-        <textarea id="t-code" class="code-box" rows="5" placeholder="PATHWAYS1:…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
+        <textarea id="t-code" class="code-box" rows="5" placeholder="FROMBIRTH1:…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
       <div class="field"><label for="t-file">Or a transfer file</label><input id="t-file" type="file" accept=".txt,text/plain"></div>
       <div class="field"><label>What happens to the saves already here</label>
         <div class="picker" data-mode role="radiogroup" aria-label="What happens to the saves already here">

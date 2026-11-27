@@ -13,8 +13,8 @@
 import { CLOUD } from './config.js';
 import { collect, merge, apply, encode, decode, onChanged, fingerprint } from './bundle.js';
 
-const K_SESSION = 'pathways.session';
-const K_STATE = 'pathways.cloud';
+const K_SESSION = 'frombirth.session';
+const K_STATE = 'frombirth.cloud';
 /** How long after the last save to wait before uploading. */
 const DEBOUNCE_MS = 4000;
 

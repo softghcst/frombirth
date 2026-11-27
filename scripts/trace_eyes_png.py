@@ -125,7 +125,7 @@ def build(group, name, frame):
     if not masks['white'].any() or not masks['ink'].any():
         print('  warning: no white of the eye or no outline found: is it drawn on a transparent (or white) background?')
     eid = f'eyes_{GROUPS[group]}_{name}'
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1" data-lines="1" data-from-png="1" data-gender="{'female' if group == 'women' else 'male'}"><g id="art">
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-frombirth="1" data-lines="1" data-from-png="1" data-gender="{'female' if group == 'women' else 'male'}"><g id="art">
 <!-- Traced from assets/eyes_png/{group}/{name}.png by scripts/trace_eyes_png.py. Redraw the picture and trace again, rather than editing this. -->
 {chr(10).join(paths)}
 </g></svg>
