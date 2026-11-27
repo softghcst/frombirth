@@ -6,7 +6,7 @@ const t = (value) => ({ type: 'teenYears', value });
 const scene = (id, ageRange, text, story, choices) => ({ id, category: 'family', ageRange, queuedOnly: true, text,
   choices: choices.map(([label, line, choice, tone = 'neutral']) => ({ label, outcomes: [any(line, tone, t(`${story}:${choice}`))] })) });
 
-const pressure = (kind, text, yes) => scene(`teen_pressure_${kind}`, [14, 17], text, `pressure_${kind}`, [
+const pressure = (kind, text, yes) => scene(`teenage_pressure_${kind}`, [14, 17], text, `pressure_${kind}`, [
   [yes, 'You go along with it.', 'yes'],
   ['Say no', 'You say no.', 'no'],
   ['Make an excuse and leave', 'You say you have to be somewhere, and go.', 'leave'],
@@ -14,7 +14,7 @@ const pressure = (kind, text, yes) => scene(`teen_pressure_${kind}`, [14, 17], t
 ]);
 
 export default [
-  scene('teen_prom_night', [16, 18], 'Prom night. You and {them} dance until your feet hurt, under a ceiling of balloons in the school gym. Then the music stops, and everyone is asking the same thing: what now?', 'prom', [
+  scene('teenage_prom_night', [16, 18], 'Prom night. You and {them} dance until your feet hurt, under a ceiling of balloons in the school gym. Then the music stops, and everyone is asking the same thing: what now?', 'prom', [
     ['Home, before curfew', 'You go home happy.', 'home', 'good'],
     ['Pancakes at the all-night diner', 'You pile into a booth, still dressed up.', 'diner', 'good'],
     ['The after-party', 'Someone knows a house whose owners are away.', 'after'],

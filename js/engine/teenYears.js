@@ -72,7 +72,7 @@ export function goToPromWith(n, outfitId) {
   p.prom = { year: S().year, dateId: asFriends ? 'friends' : n.id, with: n.id, outfit: o.value, went: false, after: null };
   bump(n, 6);
   p.stats.mood = clamp(p.stats.mood + o.joy);
-  storyBeat('teen_prom_night', { them: n.id }, { source: 'teen' });
+  storyBeat('teenage_prom_night', { them: n.id }, { source: 'teen' });
   return `${asFriends ? `You and ${n.firstName} decide to go as a group, with the rest of your friends.` : `${n.firstName} says yes. You both pretend to be calm about it.`} ${o.label}${family ? ', which your family pays for' : `, for ${fmtMoney(cost, COUNTRIES[p.countryId])}`}.`;
 }
 
@@ -89,7 +89,7 @@ export function tickTeenYears() {
   const pals = p.npcIds.map(npc).filter((n) => n?.alive && ['friend', 'classmate'].includes(n.role) && Math.abs(n.age - p.age) <= 2);
   if (!pals.length) return;
   const kind = d.pick(PRESSURES);
-  storyBeat(`teen_pressure_${kind}`, { them: d.pick(pals).id }, { source: 'teen' });
+  storyBeat(`teenage_pressure_${kind}`, { them: d.pick(pals).id }, { source: 'teen' });
 }
 
 /** Choices in the teen scenes (data/events/teenYears.js): 'pressure_<kind>:<choice>' or 'prom:<after>'. */

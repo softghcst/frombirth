@@ -63,8 +63,8 @@ const answer = (id, choice) => { const e = S().pendingEvents.find((x) => x.id ==
   if (!went) T.doBond(pal.id, 'with:prom', 'borrowed');
   check(Y.prom()?.dateId && Y.prom().outfit, 'a date (or friends) and an outfit');
   check(!acts(friend('friend', 90)).includes('with:prom'), 'once you are going, no more asking');
-  check(S().pendingEvents.some((e) => e.id === 'teen_prom_night'), 'prom night is a scene');
-  const note = answer('teen_prom_night', 1);
+  check(S().pendingEvents.some((e) => e.id === 'teenage_prom_night'), 'prom night is a scene');
+  const note = answer('teenage_prom_night', 1);
   check(Y.prom().went && Y.prom().after === 'diner' && P().milestones.some((m) => /prom/.test(m.text)), `prom night: the diner after (${note})`);
   teen(15);
   check(!acts(friend('classmate', 95)).includes('with:prom'), 'not at 15');
@@ -75,7 +75,7 @@ const answer = (id, choice) => { const e = S().pendingEvents.find((x) => x.id ==
   teen(15);
   const pal = friend('friend', 70);
   let offered = null;
-  for (let i = 0; i < 12 && !offered; i++) { S().year += 1; S().pendingEvents = []; Y.tickTeenYears(); offered = S().pendingEvents.find((e) => e.id.startsWith('teen_pressure_')); }
+  for (let i = 0; i < 12 && !offered; i++) { S().year += 1; S().pendingEvents = []; Y.tickTeenYears(); offered = S().pendingEvents.find((e) => e.id.startsWith('teenage_pressure_')); }
   check(offered && offered.cast.them === pal.id, 'a friend offers something');
   answer(offered.id, 1);
   check(P().flags.pressure?.no === 1, 'saying no is remembered');
@@ -86,7 +86,7 @@ const answer = (id, choice) => { const e = S().pendingEvents.find((x) => x.id ==
   teen(12);
   friend();
   let any = false;
-  for (let i = 0; i < 10; i++) { S().year += 1; Y.tickTeenYears(); any ||= S().pendingEvents.some((e) => e.id.startsWith('teen_pressure_')); }
+  for (let i = 0; i < 10; i++) { S().year += 1; Y.tickTeenYears(); any ||= S().pendingEvents.some((e) => e.id.startsWith('teenage_pressure_')); }
   check(!any, 'not before 14');
 }
 

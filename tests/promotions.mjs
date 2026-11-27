@@ -45,13 +45,14 @@ check(top.career.careerId === 'office' && top.career.salary > pay0, `at the top 
 check(raises >= 1 && raises < 8, `but not every year (${raises} raises in 8 years of strong work)`);
 // Poor work: a warning, then the job may go.
 let warned = 0; let fired = 0;
-for (let i = 0; i < 8; i++) {
+// (Twenty-four lives: firing is a chance each year, and eight lives were too few to say "most" whichever way the rolls fell.)
+for (let i = 0; i < 24; i++) {
   rng.seed(300 + i); const w = life('office', 30); const before = store.state.journal.length;
   years(w, 5, 30);
   if (store.state.journal.slice(before).some((e) => /formal warning/.test(e.text))) warned++;
   if (!w.career.careerId || w.career.careerId !== 'office') fired++;
 }
-check(warned >= 6, `poor work brings a formal warning first (${warned} of 8)`);
-check(fired >= 6, `and if it goes on, the job goes (${fired} of 8 within five years)`);
+check(warned >= 18, `poor work brings a formal warning first (${warned} of 24)`);
+check(fired >= 18, `and if it goes on, the job goes (${fired} of 24 within five years)`);
 if (problems.length) { console.log(`PROBLEMS:\n - ${problems.join('\n - ')}`); process.exit(1); }
 console.log('Every job moves, up for good work and out for poor work.');
