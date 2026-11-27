@@ -86,6 +86,8 @@ await tab('holdings');
 rs = await rows();
 check(['Browse Property', 'Invest', 'Borrow Money'].every((n) => rs.find((r) => r.label === n && !r.locked)), 'holdings: at 30 property, investing and borrowing are open');
 await tab('work');
+// On a busy machine the tab takes longer than the fixed pause to redraw: wait until the Work rows are there.
+await page.waitForFunction(() => [...document.querySelectorAll('[data-panel-body] .nr-label')].some((x) => x.textContent === 'Military'), null, { timeout: 15000 }).catch(() => {});
 rs = await rows();
 check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is open');
 check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military is open');
