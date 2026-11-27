@@ -31,7 +31,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear());
 await page.reload();
-await page.click('[data-random]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
 await page.waitForSelector('[data-year]');
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 
@@ -100,7 +100,7 @@ check(steps2.includes('study') && !steps2.includes('uni') && !steps2.includes('k
 check((await page.locator('.grad-school').textContent()).includes('Marlowe College'), 'the university is named on the diploma');
 await page.click('[data-step="rest"]');
 await page.waitForTimeout(150);
-check(await page.locator('#modal-root .scrim').count() === 0, 'Take some time off just closes it');
+check(await page.locator('.grad').count() === 0, 'Take some time off just closes it');
 
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();

@@ -8,6 +8,7 @@ import * as campusLife from '../../engine/campus.js';
 import { openCampus } from '../campus.js';
 import * as uni from '../../engine/university.js';
 import { openUniversity } from '../university.js';
+import { interviewThenTake } from '../interview.js';
 import * as sch from '../../engine/schooling.js';
 import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
@@ -329,7 +330,9 @@ async function findJob(api) {
       sub: j.available ? `At ${j.place}. ${fmtMoney(j.pay, c)} a year.` : j.reason,
     })),
   });
-  if (id) await report(api, job.takeJob(id));
+  if (!id) return;
+  const r = await interviewThenTake(id);
+  if (r) await report(api, r);
 }
 
 async function quitJob(api) {

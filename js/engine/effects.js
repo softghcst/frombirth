@@ -13,6 +13,9 @@ import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
+import { blendedChoice } from './blended.js';
+import { fosterChoice } from './fostering.js';
+import { callbackChoice } from './callbacks.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
@@ -57,6 +60,7 @@ import { hoodChoice } from './neighborhoodLife.js';
 import { medicineChoice } from './medicine/drama.js';
 import { musicChoice } from './music.js';
 import { journalismChoice } from './journalism.js';
+import { originsChoice } from './origins.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -212,6 +216,9 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'medicine': { const said = medicineChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
+      case 'blended': ctx.note = blendedChoice(e.value, ctx.cast); break;
+      case 'foster': ctx.note = fosterChoice(e.value, ctx.cast); break;
+      case 'callback': ctx.note = callbackChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
       case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
@@ -260,6 +267,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
       case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'origins': { const note = originsChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;

@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { migrateFamilyLife } from './blended.js';
 import { giveBirthday, birthDate } from './birthday.js';
 import { giveNativeLanguages } from './languages.js';
 import { startTalents, giftsOf } from './talentGrowth.js';
@@ -29,6 +30,7 @@ import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 import { LATER_TALENTS } from '../data/talents.js';
+import { applyOrigin } from './origins.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -282,12 +284,19 @@ function createOnce(opts = {}) {
   if (seat) dress(seat.dynasty, state);
   // Genomes for the family and the child, and what the child is born with (not yet recognized by anyone).
   healthAtBirth(state, opts.health);
+  // Starting life adopted, or raised by relatives (engine/origins.js): the family just made is the birth family, and the
+  // child is given the family that raises them. Looks, traits and health above came from the birth parents.
+  if (opts.origin && opts.origin !== 'standard' && !seat && !player.royal) {
+    const out = applyOrigin(state, { fam, c, year, origin: opts.origin, journal });
+    if (out?.parents?.length && out.journal) player.flags.moneySense = startingSense(out.parents);
+  }
   // The family's animals were there first: they go on the family's record with the line that introduces them.
   for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
   reconcileAnimals(state);
   player.birthCity = player.city;
   ensureGlobal(state);
   ensureEra(state); // a new life keeps its money in the money of its own years
+  migrateFamilyLife(state); // who the life's parents are, and the brothers and sisters born to them (engine/blended.js)
   settleHood(state); // the family home, in a neighborhood with neighbors (engine/neighborhood.js)
   return state;
 }

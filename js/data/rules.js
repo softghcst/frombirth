@@ -26,6 +26,8 @@ export const RULES = {
   marriageAge: { name: 'Marriage age', kind: 'age', default: 18 },
   // Where the law sets a different age for women. Shown with marriageAge, not as a line of its own.
   marriageAgeWomen: { name: 'Marriage age for women', kind: 'age', default: null, hidden: true },
+  // When someone can sign a lease or other contract in their own name (engine/independence.js). Simplified: one age a country.
+  majorityAge: { name: 'Age of majority', kind: 'age', default: 18 },
   schoolLeavingAge: { name: 'School-leaving age', kind: 'age', default: 16 },
   retirementAge: { name: 'State pension age', kind: 'age', default: 65 },
   alcohol: { name: 'Alcohol', kind: 'flag', default: true, words: ['Banned', 'Legal'] },
@@ -111,7 +113,7 @@ export const PLACE_RULES = {
   jm: { schoolLeavingAge: 14 },
   jp: { drinkingAge: 20, gamblingAge: 20, schoolLeavingAge: 15 },
   ke: { gamblingAge: 21 },
-  kr: { drinkingAge: 19, gamblingAge: 19, marriageAge: 19, schoolLeavingAge: 15, retirementAge: 60 },
+  kr: { drinkingAge: 19, gamblingAge: 19, marriageAge: 19, schoolLeavingAge: 15, retirementAge: 60, majorityAge: 19 },
   kw: { votingAge: 21, schoolLeavingAge: 15, alcohol: false },
   kz: { drinkingAge: 21, gamblingAge: 21, retirementAge: 63 },
   lb: { votingAge: 21, gamblingAge: 21, schoolLeavingAge: 12, retirementAge: 64 },
@@ -140,7 +142,7 @@ export const PLACE_RULES = {
   ru: { schoolLeavingAge: 15, retirementAge: 64 },
   sa: { drivingAge: 17, schoolLeavingAge: 15, retirementAge: 60, alcohol: false },
   se: { gamblingAge: 20, retirementAge: 66 },
-  sg: { votingAge: 21, gamblingAge: 21, marriageAge: 21, retirementAge: 63 },
+  sg: { votingAge: 21, gamblingAge: 21, marriageAge: 21, retirementAge: 63, majorityAge: 21 },
   sk: { drivingAge: 17, retirementAge: 62 },
   sv: { drivingAge: 15 },
   sy: { schoolLeavingAge: 15 },
@@ -197,8 +199,11 @@ export const REGION_RULES = {
   'ae/dubai': { drinkingAge: 21 },
   'ae/abu_dhabi': { drinkingAge: 21 },
   'ae/ajman': { drinkingAge: 21 },
-  // Nigeria: the northern states prohibit alcohol.
-  'ng/around:Kano': { alcohol: false },
+  // Nigeria: the northern states that adopted Sharia penal codes prohibit alcohol (of the game's cities: Kano, Sokoto, Maiduguri).
+  // Kaduna applies it only in part, and is left at the national law.
+  'ng/kano': { alcohol: false },
+  'ng/sokoto': { alcohol: false },
+  'ng/borno': { alcohol: false },
 };
 
 /**

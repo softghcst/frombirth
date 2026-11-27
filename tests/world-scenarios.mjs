@@ -203,7 +203,10 @@ play('G', () => {
 play('H', () => {
   scenario('H');
   stay(false);
-  p = adult({ countryId: 'kr', city: 'Busan' }, 28, 200000); const granny = p.firstName;
+  // A Korean of twenty-eight (a family can emigrate while a child grows up; this story needs one who stayed).
+  p = adult({ countryId: 'kr', city: 'Busan' }, 28, 200000);
+  for (let i = 0; i < 6 && !(cit.held(p).includes('kr') && p.countryId === 'kr'); i++) p = adult({ countryId: 'kr', city: 'Busan' }, 28, 200000);
+  const granny = p.firstName;
   check(go('us', { route: 'settle', city: 'Seattle' }), 'the first generation moved from South Korea to the United States');
   const sp = makeNpc({ role: 'spouse', countryId: 'us', age: 27 }); store.state.npcs[sp.id] = sp; p.npcIds.push(sp.id);
   const kid = newborn(sp);

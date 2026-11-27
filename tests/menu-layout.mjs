@@ -28,7 +28,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
-await page.click('[data-random]'); await page.waitForSelector('[data-year]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 // Answers or closes whatever is open: a scene's first choice, a notice's OK, a yes/no question (answered no), or else
 // any other pop-up's last button. Notices come one after another (a scene, then a birth, then the year's update), each
 // opening a moment after the last has closed: it stops only once nothing has opened for a while.
@@ -91,6 +91,7 @@ check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is o
 check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military is open');
 // Joining: the way in, then the branch from a dropdown, then basic training.
 await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
+await tab('holdings'); // away and back: tapping the tab already open does not redraw it
 await tab('work');
 await page.waitForSelector('[data-act="military"]', { state: 'attached', timeout: 15000 }).catch(async (err) => {
   console.log('DIAG', await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; const M = await import('/js/engine/military.js');
@@ -110,6 +111,7 @@ check(/contract/i.test(await page.locator('#modal-root .modal').last().innerText
 await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(300);
 check(/basic training/i.test(await page.locator('#modal-root .modal').last().innerText()), 'and basic training follows at once');
 for (let i = 0; i < 6 && await page.locator('#modal-root .scrim').count(); i++) { const c = page.locator('#modal-root .choice-btn:not([disabled])'); if (await c.count()) await c.first().click(); else await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(200); }
+await tab('holdings'); // away and back, so the tab is drawn as it is now
 await tab('work');
 rs = await rows();
 check(rs.some((r) => r.label === 'Military' && /, /.test(r.line)), 'serving: the row shows rank and branch');

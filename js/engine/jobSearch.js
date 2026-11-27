@@ -73,12 +73,14 @@ export function yearList(p = player()) {
   if (p.flags.jobList?.age !== p.age) {
     const now = store.state.year;
     // Prominent openings from last year's list stay while they are held.
+    // At most half of a year's list is carried over, however short the list is in a quiet year: most of it is new.
+    const size = listSize();
     const carried = (p.flags.jobList?.ids ?? []).map((id) => market.posting(id))
-      .filter((x) => x && market.isOpen(x) && x.featuredUntil >= now && local(x, p)).slice(0, CARRY_MAX);
+      .filter((x) => x && market.isOpen(x) && x.featuredUntil >= now && local(x, p)).slice(0, Math.min(CARRY_MAX, Math.floor(size / 2)));
     const kept = new Set(carried.map((x) => x.careerId));
     const last = new Set(p.flags.jobList?.ids ?? []); // the rest of last year's list makes way for new openings
     const views = varied(pool().filter((x) => !kept.has(x.careerId) && !last.has(x.id)));
-    const n = Math.max(0, listSize() - carried.length);
+    const n = Math.max(0, size - carried.length);
     const can = views.filter((v) => v.eligible);
     const cannot = views.filter((v) => !v.eligible);
     // About two in three are open to the player; the rest show what the market wants.

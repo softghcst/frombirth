@@ -267,7 +267,11 @@ section('emergency contraception: after a real exposure, asked at once, gone whe
   const v = C.active().find((r) => r.methodId === 'vasectomy');
   check(v?.status === 'awaiting_confirmation' && C.riskAt(C.absNow()) >= 0.99, 'a vasectomy does not protect until a test confirms it');
   turn(); turn();
-  check(C.active().find((r) => r.methodId === 'vasectomy').status === 'active' && C.riskAt(C.absNow()) < 0.01, 'confirmed by the follow-up test, about three months on');
+  // One test in five is not clear yet: another follows three months later, with protection only once it confirms.
+  const vr = () => C.active().find((r) => r.methodId === 'vasectomy');
+  const retested = vr().status === 'awaiting_confirmation';
+  if (retested) { check(C.riskAt(C.absNow()) >= 0.99, 'an unclear test still does not protect'); turn(); }
+  check(vr().status === 'active' && C.riskAt(C.absNow()) < 0.01, `confirmed by the follow-up test, about three months on${retested ? ' (after a retest)' : ''}`);
   life({ age: 19 });
   check(!C.eligibility('tubal').ok, 'not offered under 21 in this simplified profile');
 }

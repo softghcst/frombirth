@@ -28,7 +28,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
-await page.click('[data-random]'); await page.waitForSelector('[data-year]');
+await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 const adopted = await page.evaluate(async () => {
   document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
   const { store } = await import('/js/state.js'); const zoo = await import('/js/engine/animals.js'); const care = await import('/js/engine/animalCare.js');

@@ -2,6 +2,8 @@
 // loans, with everything you can do about each.
 import { PACES, DURATIONS } from '../../data/rides.js';
 import { careLine } from '../../engine/guardianship.js';
+import * as indep from '../../engine/independence.js';
+import * as N from '../../engine/neighborhood.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
 import { inheritanceLine, inheritanceShort, lawOf } from '../../engine/inheritance.js';
@@ -390,6 +392,40 @@ async function borrowMoney(api) {
 export const openMoney = (api) => openMyMoney(api, { invest: browseMarket, borrow: borrowMoney, will: changeWill });
 
 /** Icons for the things to browse and do in Holdings. */
+/** Moving out of the family home: where, with whom, and what it costs (engine/independence.js). */
+async function moveOutFlow(api) {
+  const c = country();
+  const where = await pickModal({ title: 'Move out', body: `You sign the lease yourself. The deposit is a month's rent, paid now and returned when you leave. Rent and bills are paid with the year's other costs.`,
+    options: indep.rentalOptions().map((o) => ({ value: o.profileId, label: o.name, sub: `About ${fmtMoney(o.rentYear, c)} a year alone, ${fmtMoney(o.rentShared, c)} sharing. Deposit ${fmtMoney(o.deposit, c)}.` })) });
+  if (!where) return undefined;
+  const friends = indep.roommateCandidates();
+  const who = await pickModal({ title: 'Live with someone?', body: 'A roommate pays their share of the rent. It is a real person to live with, not just a saving.', cancel: 'Back',
+    options: [{ value: 'alone', label: 'Live alone', sub: 'Your own space, and the whole rent.' },
+      ...friends.map((n) => ({ value: n.id, label: `With ${n.firstName} ${n.lastName}`, sub: `A friend, ${n.age}.` })),
+      { value: 'notice', label: 'Put up a notice for a roommate', sub: 'Someone new answers it.' }] });
+  if (!who) return undefined;
+  return report(api, indep.moveOut(where, who === 'alone' ? null : who));
+}
+
+/** Every home rented, and every home lived in, newest first. */
+function homesHistory() {
+  const rows = indep.leaseHistory().map((l) => [`${l.start}–${l.end ?? 'now'}`, `${N.hoods().list[l.hoodId]?.name ?? 'A rented home'}, ${l.city}${l.endWhy ? ` · ${l.endWhy}` : ''}`]);
+  const me = player().archiveId ?? player().id;
+  const past = N.placesWeCalledHome().filter((x) => x.who === me).reverse().map((x) => [x.years, `${x.type ?? 'Home'}${x.hoodName ? ` in ${x.hoodName}` : ''}${x.city ? `, ${x.city}` : ''}`]);
+  const m = openModal(`<h2>Places you have lived</h2>${rows.length ? `<div class="section-label">Leases</div>${kv(rows)}` : ''}${past.length ? `<div class="section-label">Homes</div>${kv(past)}` : ''}<button class="btn" data-close style="margin-top:12px;width:100%">Close</button>`, { dismissable: true });
+  m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
+}
+
+/** Where you live, and moving: out of the family home, back to it, and the places you have lived. */
+function homeGroup(p) {
+  const rows = [];
+  const out = indep.moveOutBlock(p);
+  if (p.flags.livesWithParents && p.age >= 16) rows.push(out ? lockedRow('Move out', out) : navRow({ attrs: 'data-go="moveout"', label: 'Move out', sub: 'Rent a place of your own, alone or with someone', ico: 'home', tone: 'peach' }));
+  if (!p.flags.livesWithParents && p.age >= 18 && !indep.moveBackBlock(p)) rows.push(navRow({ attrs: 'data-go="moveback"', label: 'Move back home', sub: 'Ask your family if you can live with them again', ico: 'home' }));
+  if (indep.leaseHistory(p).length || N.placesWeCalledHome().filter((x) => x.who === (p.archiveId ?? p.id)).length > 1) rows.push(navRow({ attrs: 'data-go="homes"', label: 'Places you have lived', sub: 'Every home and lease, with the years', ico: 'compass' }));
+  return rows.length ? navGroup(rows, 'Home') : '';
+}
+
 const HOLD_ICONS = { property: 'home', market: 'trophy', borrow: 'coin', currencies: 'globe', vehicles: 'compass', driving: 'id', flying: 'globe' };
 
 export default {
@@ -453,6 +489,7 @@ export default {
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}</details>
       </div>
+      ${homeGroup(p)}
       ${navGroup([...actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), ...locked.map(([label, why]) => lockedRow(label, why))], 'Buy and invest')}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
@@ -465,7 +502,7 @@ export default {
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go) {
         return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
-          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => drivingTest(api), flying: () => report(api, cars.learnToFly()) }[go]();
+          borrow: () => borrowMoney(api), will: () => changeWill(api), moveout: () => moveOutFlow(api), moveback: async () => { if (await confirmModal({ title: 'Move back home?', body: 'Ask your family if you can move back in. Your lease ends, and the deposit comes back.', yes: 'Ask them', no: 'Not now' })) return report(api, indep.moveBackHome()); return undefined; }, homes: () => homesHistory(), driving: () => drivingTest(api), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
       if (repay) return report(api, bank.repayLoan(repay));

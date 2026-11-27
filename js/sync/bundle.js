@@ -180,9 +180,12 @@ export async function encode(bundle) {
 
 /** Reads text made by encode(). Throws a plain-words Error if it is not one. */
 export async function decode(text) {
-  const t = String(text ?? '').replace(/\s+/g, '');
+  let t = String(text ?? '').replace(/\s+/g, '');
   let bytes;
   try {
+    // A code made while the game was called Pathways reads the same.
+    if (t.startsWith('PATHWAYS1:')) t = PREFIX_GZ + t.slice('PATHWAYS1:'.length);
+    else if (t.startsWith('PATHWAYS0:')) t = PREFIX_PLAIN + t.slice('PATHWAYS0:'.length);
     if (t.startsWith(PREFIX_GZ)) {
       if (typeof DecompressionStream !== 'function') throw new Error('old');
       bytes = await streamBytes(new Blob([fromBase64(t.slice(PREFIX_GZ.length))]).stream().pipeThrough(new DecompressionStream('gzip')));

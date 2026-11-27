@@ -53,7 +53,7 @@ section('the years bring a talent on toward half the gift; practice takes it fur
 {
   let known = 0; let hints = 0; let lives = 0;
   const tried = []; const idle = [];
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 80; k++) {
     const p = life({ talent: 'sports' }); lives++;
     const practice = k % 2 === 0;
     let at = null;

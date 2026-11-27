@@ -11,6 +11,7 @@ import { meterHtml } from '../meter.js';
 import { dutyButtons, runDuty } from '../justice.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { openOccupation } from '../occupation.js';
+import { interviewThenTake } from '../interview.js';
 import { openMedicine, medicineOpen } from '../medicine.js';
 import { openInvestigations, investigationsOpen } from '../investigations.js';
 import { openFame } from '../fame.js';
@@ -152,7 +153,9 @@ async function findPartTime(api) {
       sub: j.available ? `At ${j.place}. ${fmtMoney(j.pay, c)} a year.` : j.reason,
     })),
   });
-  return id ? report(api, job.takeJob(id)) : undefined;
+  if (!id) return undefined;
+  const r = await interviewThenTake(id);
+  return r ? report(api, r) : undefined;
 }
 
 async function findWork(api) {
