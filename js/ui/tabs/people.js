@@ -42,6 +42,7 @@ import { openMoments } from '../moments.js';
 import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
 import { originsRow, openOrigins } from '../origins.js';
+import { rootsText } from '../roots.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -270,7 +271,9 @@ function geoLine(npc) {
   const now = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad].name : COUNTRIES[player().countryId].name;
   const lived = new Set((npc.places ?? []).map((l) => l.countryId)).size;
   const home = npc.flags.homeLanguage?.pace ? ` Growing up with ${npc.flags.homeLanguage.lang.replace(/^./, (c) => c.toUpperCase()).replace('_', ' ')} at home.` : '';
-  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}${esc(home)}</p>`;
+  // Family roots, when they are somewhere other than where they were born.
+  const roots = rootsText(npc.appearance, npc.bornIn);
+  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}${esc(home)}${roots ? ` ${esc(roots)}` : ''}</p>`;
 }
 
 /** What the courts recorded about someone, as far as it is public. */

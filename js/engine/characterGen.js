@@ -26,6 +26,7 @@ import { healthAtBirth } from './health/index.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
+import { inferHeritage, blendHeritage, blendRoots, FACE_VALUES } from '../avatar/heritage.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 import { LATER_TALENTS } from '../data/talents.js';
@@ -112,7 +113,11 @@ function createOnce(opts = {}) {
   // Family first, then the child is derived from the parents.
   // A designed face: the family is built to resemble it.
   const designed = opts.appearance?.inherited ? normalize(opts.appearance, 'designed') : null;
-  const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, avoidNames: [firstName] });
+  // A designed face's family is of the heritage the face most likely comes from, weighing what is common where they are
+  // born: a face like the people there is of them; one unlike them, of the heritage it looks like (the family came from
+  // elsewhere, and its roots say where). Its colors then go to the parents, below.
+  const designedHeritage = designed ? inferHeritage(designed.inherited, c.id, FACE_VALUES) : undefined;
+  const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, heritage: designedHeritage, avoidNames: [firstName] });
   // A royal child: the house is built around the family before the child is drawn from it.
   const birth = birthKind(c.id, opts.birthRank);
   // The heir: the monarch's first child, so no older brothers or sisters stand ahead in the line.
@@ -128,6 +133,9 @@ function createOnce(opts = {}) {
     const theirs = fam.grandparents.filter((g) => g.flags.side === (parent === father ? 'paternal' : 'maternal'));
     for (const g of theirs) { g.bornIn = from; g.firstName = rng.pick(COUNTRIES[from].names[g.gender] ?? COUNTRIES[from].names.female); g.flags.abroad = from; g.flags.from = from; }
     roots = { parent, from, there: theirs.length };
+    // Their side of the family has its roots there too, and so do the children.
+    for (const g of theirs) if (g.appearance?.inherited) g.appearance.inherited.roots = [from];
+    for (const s of fam.siblings) if (s.appearance?.inherited) s.appearance.inherited.roots = blendRoots(mother.appearance?.inherited?.roots, genes.appearance?.inherited?.roots);
   }
   const family = [mother, ...(father ? [father] : []), ...fam.siblings, ...fam.grandparents, ...fam.pets];
 
@@ -138,6 +146,13 @@ function createOnce(opts = {}) {
       const parent = father && rng.chance(0.5) ? father : mother;
       if (rng.chance(0.8)) parent.appearance.inherited[key] = designed.inherited[key];
     }
+  }
+  // A designed face carries its family's heritage and roots, as a born one does.
+  if (designed) {
+    const her = blendHeritage(mother.appearance?.inherited?.heritage, genes.appearance?.inherited?.heritage);
+    if (her) designed.inherited.heritage = her;
+    const rts = blendRoots(mother.appearance?.inherited?.roots, genes.appearance?.inherited?.roots);
+    if (rts.length) designed.inherited.roots = rts;
   }
   const appearance = ensureStyled(designed ?? inheritAppearance(mother, genes), gender);
   if (fam.twin) { fam.twin.age = 0; if (rng.chance(0.4)) fam.twin.appearance = cloneAppearance(appearance); }

@@ -239,6 +239,9 @@ export function normalize(a, seed = 'x') {
   // Where their family comes from (js/avatar/heritage.js), when it is known; older saves have none.
   const heritage = cleanHeritage(src.heritage);
   if (heritage) inherited.heritage = heritage;
+  // And the places their family comes from (country ids), likewise.
+  const roots = Array.isArray(src.roots) ? src.roots.filter((r) => typeof r === 'string' && /^[a-z]{2}$/.test(r)).slice(0, 4) : [];
+  if (roots.length) inherited.roots = roots;
   inherited.marks = Array.isArray(src.marks) ? src.marks.filter((id) => has('marks', id))
     : hash(`${seed}:marks`) % 9 === 0 ? ['freckles'] : [];
 

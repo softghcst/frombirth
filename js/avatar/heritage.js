@@ -3,8 +3,9 @@
 // born; a child's is the average of its parents'; what anyone is born with is drawn from the blend of their heritages'
 // leanings (featureWeights), never limited to it.
 import { rng } from '../rng.js';
-import { HERITAGE_BY_ID, COUNTRY_HERITAGE, DEFAULT_BY_GROUP } from '../data/heritage.js';
+import { HERITAGE_BY_ID, HERITAGE_IDS, COUNTRY_HERITAGE, DEFAULT_BY_GROUP } from '../data/heritage.js';
 import { place } from '../data/world.js';
+import { SKIN_TONE_IDS } from '../avatarPalettes.js';
 
 const round = (x) => Math.round(x * 1000) / 1000;
 
@@ -117,3 +118,76 @@ export function featureWeights(h, key, values) {
   for (const v of values) w[v] += rare;
   return w;
 }
+
+// ---------- Family roots: where a family comes from, as places ----------
+
+/** The share a heritage has among people born in a place (0 to 1). */
+export function shareIn(countryId, heritageId) {
+  const mix = placeMix(countryId);
+  const total = mix.reduce((t, [w]) => t + w, 0) || 1;
+  return mix.reduce((t, [w, h]) => t + w * (typeof h === 'string' ? (h === heritageId ? 1 : 0) : (h[heritageId] ?? 0)), 0) / total;
+}
+
+/** Below this share, a heritage counts as having come from elsewhere: the family's roots are abroad. */
+const LOCAL = 0.05;
+
+/** A country where a heritage is common, drawn by how common it is there: a homeland for a family that came from it. */
+export function homeland(heritageId, salt = '') {
+  const places = Object.keys(COUNTRY_HERITAGE).map((id) => [id, shareIn(id, heritageId)]).filter(([, s]) => s >= 0.5);
+  if (!places.length) return null;
+  return heritageDice(`home:${heritageId}:${salt}`).weighted(places, ([, s]) => s ** 3)[0];
+}
+
+/**
+ * The roots of someone with no known family, born in a place: that place for each part of their heritage common there;
+ * for a part that is not, a homeland where it is (their family came from there). Most important first.
+ * @returns {string[]} country ids
+ */
+export function rootsFor(heritage, countryId) {
+  const x = cleanHeritage(heritage);
+  if (!x || !countryId) return countryId ? [countryId] : [];
+  const out = [];
+  for (const [id] of Object.entries(x).sort((p, q) => q[1] - p[1])) {
+    const r = shareIn(countryId, id) >= LOCAL ? countryId : homeland(id, countryId) ?? countryId;
+    if (!out.includes(r)) out.push(r);
+  }
+  return out;
+}
+
+/** A child's roots: both parents', in turn, at most four. */
+export function blendRoots(a, b) {
+  const x = Array.isArray(a) ? a : []; const y = Array.isArray(b) ? b : [];
+  const out = [];
+  for (let i = 0; i < Math.max(x.length, y.length); i++) for (const r of [x[i], y[i]]) if (r && !out.includes(r)) out.push(r);
+  return out.slice(0, 4);
+}
+
+/**
+ * The heritage a player's designed face most likely comes from, given where they are born: each heritage weighed by how
+ * common it is there and by how well it explains the face's skin, hair and eyes. A face like the people of the place
+ * gets their heritage; one unlike them, the heritage it looks like (their family came from elsewhere).
+ * @param {{skin:string, hairColor:string, hairTexture:string, eyeColor:string}} inherited
+ */
+export function inferHeritage(inherited, countryId, values) {
+  const weights = HERITAGE_IDS.map((id) => {
+    const one = { [id]: 1 };
+    let w = Math.max(shareIn(countryId, id), 0.01);
+    for (const [key, list] of Object.entries(values)) {
+      const v = inherited?.[key];
+      if (!v) continue;
+      const f = featureWeights(one, key, list);
+      w *= f[v] / Object.values(f).reduce((t, n) => t + n, 0);
+    }
+    return w;
+  });
+  const id = heritageDice(`infer:${countryId}`).weighted(HERITAGE_IDS, (h) => weights[HERITAGE_IDS.indexOf(h)]);
+  return { [id]: 1 };
+}
+
+/** Every value of each colored feature a face is born with, for inferHeritage. */
+export const FACE_VALUES = {
+  skin: SKIN_TONE_IDS,
+  hairColor: NATURAL_HAIR,
+  hairTexture: ['straight', 'wavy', 'curly', 'coily'],
+  eyeColor: ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray'],
+};

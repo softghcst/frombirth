@@ -4,7 +4,7 @@
 import { rng } from '../js/rng.js';
 import { PLACES } from '../js/data/world.js';
 import { HERITAGE_BY_ID } from '../js/data/heritage.js';
-import { placeMix, heritageFor, blendHeritage, heritageLabel, mainHeritage, cleanHeritage } from '../js/avatar/heritage.js';
+import { placeMix, shareIn as shareOf, heritageFor, blendHeritage, heritageLabel, mainHeritage, cleanHeritage } from '../js/avatar/heritage.js';
 import { randomAppearance, randomInherited, inheritAppearance } from '../js/avatar/inherit.js';
 import { normalize, part } from '../js/avatar/catalog.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
@@ -62,6 +62,28 @@ rng.seed(12345); randomInherited(undefined, { east_asian: 1 }); const withHer = 
 check(plain === withHer, 'a heritage takes no extra rolls of the game\'s dice');
 rng.seed(777); const a1 = heritageFor('us'); rng.seed(777); const a2 = heritageFor('us');
 check(JSON.stringify(a1) === JSON.stringify(a2), 'the same game state gives the same heritage');
+
+// Family roots, as places: a heritage common where someone is born roots them there; one that is not roots them in a
+// homeland where it is. A child carries both parents' roots. A designed face's family is of the heritage the face looks.
+{
+  const { rootsFor, blendRoots, inferHeritage, FACE_VALUES } = await import('../js/avatar/heritage.js');
+  const { rootsText } = await import('../js/ui/roots.js');
+  check(JSON.stringify(rootsFor({ east_asian: 1 }, 'jp')) === '["jp"]', 'an East Asian family in Japan has its roots there');
+  const away = rootsFor({ african: 1 }, 'jp');
+  check(away.length === 1 && away[0] !== 'jp' && shareOf(away[0], 'african') >= 0.5, `an African family in Japan has its roots where African heritage is common (${away})`);
+  check(JSON.stringify(blendRoots(['jp'], ['ng'])) === '["jp","ng"]', 'a child carries both parents\' roots');
+  check(rootsText({ inherited: { roots: ['jp', 'ng'] } }) === 'Family roots: Japan and Nigeria.', 'shown as places');
+  check(rootsText({ inherited: { roots: ['jp'] } }, 'jp') === '', 'nothing to add when the roots are where they were born');
+  const typical = inferHeritage({ skin: 'beige', hairColor: 'black', hairTexture: 'straight', eyeColor: 'dark_brown' }, 'jp', FACE_VALUES);
+  const unlike = inferHeritage({ skin: 'espresso', hairColor: 'black', hairTexture: 'coily', eyeColor: 'dark_brown' }, 'jp', FACE_VALUES);
+  check(typical.east_asian === 1 && unlike.african === 1, `a designed face's family: like the people of the place, or like the face (${JSON.stringify(typical)} ${JSON.stringify(unlike)})`);
+  const face = randomAppearance(undefined, 'female');
+  Object.assign(face.inherited, { skin: 'espresso', hairColor: 'black', hairTexture: 'coily', eyeColor: 'dark_brown' });
+  store.state = createLife({ countryId: 'jp', appearance: face, gender: 'female' });
+  const mom = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
+  check(mainHeritage(mom.appearance.inherited.heritage) === 'african' && (store.state.player.appearance.inherited.roots ?? []).every((r) => r !== 'jp'),
+    'a player who designs a face unlike the place is born there to a family that looks like them, with roots elsewhere');
+}
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n${problems.map((p) => ` ✗ ${p}`).join('\n')}`); process.exit(1); }
 console.log(`Heritage is sound: ${Object.keys(PLACES).length} places, people look like where they come from, children carry half of each parent's, and the dice are untouched.`);

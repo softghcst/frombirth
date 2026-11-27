@@ -65,7 +65,8 @@ export function generateFamily(c, lastName, opts = {}) {
       const age = parent.age + rng.int(21, 35);
       if (age > 88 || !rng.chance(clamp(1.35 - age / 70, 0.05, 0.95))) continue;
       const g = member({ role: 'grandparent', countryId: c.id, gender, lastName: surname, age,
-        relationship: rng.int(45, 90), skinHint: skinDepth(parent.appearance), heritage: oneOf(parent.appearance?.inherited?.heritage) ?? undefined });
+        relationship: rng.int(45, 90), skinHint: skinDepth(parent.appearance), heritage: oneOf(parent.appearance?.inherited?.heritage) ?? undefined,
+        roots: parent.appearance?.inherited?.roots });
       g.flags.side = side;
       grandparents.push(g);
     }

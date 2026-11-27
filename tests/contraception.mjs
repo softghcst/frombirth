@@ -609,9 +609,10 @@ section('pregnancy planning and life stages: preferences, removals, menopause ti
 // ---------- A long life ----------
 {
   for (const step of [3, 12]) {
-    rng.seed(900 + step);
     const p = life({ age: 20, year: 2000 });
     const n = partner(p); n.role = 'spouse';
+    // Seeded once the life is made, so how a life is drawn (faces, families) never changes the thirty years that follow.
+    rng.seed(900 + step);
     store.state.settings.step = step;
     C.startMethod('coc', { provider: prov('prescribe') });
     let bad = '';

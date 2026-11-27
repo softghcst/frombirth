@@ -7,7 +7,7 @@
 import { rng } from '../rng.js';
 import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender, fittedFor, hairSuits, hairTextureOf, hash } from './catalog.js';
 import { RESTING, OUTFITS, HAIR_COVERS_FACE, TEXTURES } from './curation.js';
-import { cleanHeritage, blendHeritage, featureWeights, NATURAL_HAIR, heritageDice } from './heritage.js';
+import { cleanHeritage, blendHeritage, blendRoots, featureWeights, NATURAL_HAIR, heritageDice } from './heritage.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -141,6 +141,9 @@ export function inheritAppearance(a, b) {
   // Half of each parent's heritage (none is recorded where neither parent's is known).
   const her = blendHeritage(pa.heritage, pb.heritage);
   if (her) g.heritage = her;
+  // And both parents' roots (the places the family comes from).
+  const roots = blendRoots(pa.roots, pb.roots);
+  if (roots.length) g.roots = roots;
   return { v: 3, inherited: g, style: { hair: null, hairDye: null, glasses: null, makeup: null, lipColor: null, jewelry: [], outfit: null, outfitColor: null, hat: null } };
 }
 
