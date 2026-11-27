@@ -244,3 +244,12 @@
 .grad-step-emoji { font-size: 1.35rem; flex: none; }
 @media (prefers-reduced-motion: reduce) { .grad-confetti i { animation: none; } }
 @media (max-width: 360px) { .grad-word { font-size: 2.15rem; } .grad-name { font-size: 1.6rem; } }
+/* The cap on the card: one place at a time (grad cap-toss | cap-photo | cap-diploma). */
+.grad .grad-cap { position: absolute; display: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); pointer-events: none; }
+.grad.cap-toss .grad-cap-toss { display: block; width: 52px; top: 168px; z-index: 1; animation: grad-toss 1s ease-out both; }
+.grad.cap-toss .grad-cap-toss.t1 { left: 26px; --r: -24deg; }
+.grad.cap-toss .grad-cap-toss.t2 { right: 26px; width: 44px; top: 146px; --r: 20deg; animation-delay: 0.15s; }
+@keyframes grad-toss { from { transform: translateY(40px) rotate(0deg); opacity: 0; } to { transform: translateY(0) rotate(var(--r)); opacity: 1; } }
+.grad.cap-photo .grad-cap-photo { display: block; width: 62px; top: -12px; right: -26px; transform: rotate(18deg); z-index: 1; }
+.grad.cap-diploma .grad-cap-diploma { display: block; width: 58px; top: -22px; left: -10px; transform: rotate(-16deg); z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .grad .grad-cap-toss { animation: none !important; transform: rotate(var(--r)); } }

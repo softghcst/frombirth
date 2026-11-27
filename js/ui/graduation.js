@@ -67,25 +67,38 @@ function awardLine(card) {
   return stageLabel(s);
 }
 
+/** A graduation cap with a gold tassel, as decoration on the card (where it goes is up to the stylesheet). */
+const capSvg = (cls) => `<svg class="${cls}" viewBox="0 0 120 80" aria-hidden="true">
+  <path d="M34 34v16c0 8 12 13 26 13s26-5 26-13V34Z" fill="#3a3644"/>
+  <path d="M60 6 114 28 60 48 6 28Z" fill="#26232e" stroke="#15131a" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M60 27 96 34v22" stroke="#f2c14e" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="60" cy="27" r="3.2" fill="#f2c14e"/><path d="M92 54h8l3 16H89Z" fill="#f2c14e"/></svg>`;
+
 /** Confetti pieces scattered over the card. Fixed spots, so the card looks the same every time it is opened. */
 const CONFETTI = [[5, 6, -20, 'a'], [10, 24, 30, 'b'], [90, 5, 15, 'c'], [93, 24, -35, 'a'], [8, 42, 50, 'c'], [91, 40, -10, 'b'],
   [4, 60, 25, 'b'], [95, 58, 40, 'a'], [20, 34, 60, 'c'], [80, 32, -45, 'b'], [26, 26, 10, 'a'], [72, 24, 20, 'c'], [3, 80, -30, 'a']];
 const confettiHtml = () => `<div class="grad-confetti" aria-hidden="true">${CONFETTI.map(([x, y, r, k], i) =>
   `<i class="c${k}" style="left:${x}%;top:${y}%;--r:${r}deg;--d:${(i % 5) * 0.12}s"></i>`).join('')}</div>`;
 
+/** Where the cap goes on the card: tossed in the air, perched on the photo, or on the diploma. */
+export let CAP_SPOT = 'toss';
+export const setCapSpot = (v) => { CAP_SPOT = v; };
+
 /** The card. */
 export function graduationCardHtml(p, card) {
   const st = STYLE[card.stage] ?? { shade: 'blue', seal: '🎓' };
-  const face = avatarSvg({ age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: 92, size: 104, ...dressOfPlayer(p), mortarboard: true });
+  const face = avatarSvg({ age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: 92, size: 104, ...dressOfPlayer(p) });
   const where = card.school ?? (card.stage === 'high' ? 'School' : stageLabel(card.stage));
-  return `<div class="grad grad-${st.shade}">
+  return `<div class="grad grad-${st.shade} cap-${CAP_SPOT}">
     ${confettiHtml()}
+    ${capSvg('grad-cap grad-cap-toss t1')}${capSvg('grad-cap grad-cap-toss t2')}
     <div class="grad-class">Class of ${esc(String(card.year ?? ''))}</div>
     <div class="grad-word">${esc(headline(card))}</div>
     <svg class="grad-flourish" viewBox="0 0 200 14" aria-hidden="true"><path d="M4 8c30-8 60 6 96 0s66-8 96 0"/></svg>
-    <div class="grad-photo"><div class="grad-face">${face}</div></div>
+    <div class="grad-photo"><div class="grad-face">${face}</div>${capSvg('grad-cap grad-cap-photo')}</div>
     <div class="grad-diploma">
       <span class="grad-ribbon" aria-hidden="true"></span>
+      ${capSvg('grad-cap grad-cap-diploma')}
       <div class="grad-certify">This certifies that</div>
       <div class="grad-name">${esc(`${p.firstName} ${p.lastName}`)}</div>
       <div class="grad-certify">has completed</div>

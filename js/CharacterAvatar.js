@@ -121,20 +121,6 @@ export function ageStage(age = 25) {
  * and it never leaves the picture. `scale`: its size against the width of the head, by age.
  */
 const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
-/**
- * A graduation cap (ctx.mortarboard: the graduation card, ui/graduation.js), worn the way a crown is (crownAt): drawn
- * in a 512 frame, the middle of the band's lower edge at `seat`, the board's far corner at `top`. Tilted a little.
- */
-const MORTARBOARD = { seats: { seat: 178, top: 66 }, svg: `<g transform="rotate(-7 256 150)">
-  <path d="M176 128v34c0 14 36 24 80 24s80-10 80-24v-34Z" fill="#3a3644"/>
-  <path d="M256 66 416 116 256 166 96 116Z" fill="#26232e" stroke="#15131a" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M256 74 400 116" stroke="#4a4556" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <path d="M256 116 372 136v58" stroke="#f2c14e" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="116" r="8" fill="#f2c14e"/>
-  <path d="M362 190h20l6 40h-32Z" fill="#f2c14e"/></g>` };
-/** Top buns and tall updos, and how each is worn under a graduation cap instead. */
-const CAP_HAIR = { messy_top_bun: 'elder_low_bun', elder_beehive: 'elder_low_bun', man_bun: 'swept_back_waves', hair_boy_updo_01_manbun: 'swept_back_waves',
-  hair_boy_updo_10_surfer_bun: 'rocker_waves', hair_boy_updo_05_loc_bun: 'shoulder_length_locs', locs_top_knot: 'shoulder_length_locs' };
 /** Make-up and lipstick are worn from this age (the editor offers them from it too). */
 export const MAKEUP_AGE = 16;
 const STAGE_HEAD = { baby: 'head_00_toddler', toddler: 'head_00_toddler', kid: 'head_00_kid' };
@@ -399,7 +385,7 @@ function colorVars(look, ctx) {
  * Where a crown goes on this person: on the top of their hair as it is drawn on their head (see CROWN).
  * @returns {string} an SVG transform attribute, with a leading space
  */
-function crownAt(d, stage, fitted, hf, frame, seats = CROWN_SEATS[d.crown]) {
+function crownAt(d, stage, fitted, hf, frame) {
   const fit = PART_BY_ID[d.head]?.fit;
   if (!fit) return '';
   const wr = fit.w / T.face.w;
@@ -407,8 +393,8 @@ function crownAt(d, stage, fitted, hf, frame, seats = CROWN_SEATS[d.crown]) {
   let top = fit.top;
   if (fitted && HAIR_TOPS[fitted] != null) top = Math.min(top, HAIR_TOPS[fitted]);
   const k = wr * (CROWN.scale[stage] ?? CROWN.scale.adult);
-  const seat = seats?.seat ?? CROWN.seat;
-  const crownTop = seats?.top ?? seat - CROWN.height;
+  const seat = CROWN_SEATS[d.crown]?.seat ?? CROWN.seat;
+  const crownTop = CROWN_SEATS[d.crown]?.top ?? seat - CROWN.height;
   let y = Math.max(top, fit.top - CROWN.lift * wr) + CROWN.dip * wr;
   const over = frame.y + 3 - (y - (seat - crownTop) * k);
   if (over > 0) y += over;
@@ -422,8 +408,6 @@ function crownAt(d, stage, fitted, hf, frame, seats = CROWN_SEATS[d.crown]) {
  * @param {{size?:number|string, className?:string, viewBox?:string}} [opts]  viewBox zooms in on part of the 512 frame
  */
 export function characterAvatarSvg(look, ctx = {}, opts = {}) {
-  // Under a graduation cap a bun on top of the head would be squashed flat: it is worn lower, or let down, that day.
-  if (ctx.mortarboard && CAP_HAIR[look.hair]) look = { ...look, hair: CAP_HAIR[look.hair] };
   const d = dressFor(look, ctx);
   const n = ++serial;
   const hatOn = !!d.hat;
@@ -513,8 +497,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     earrings.map((j) => use(j, f.ears)).join(''),
     piercings.map((j) => use(j, f.lips)).join(''),
     d.glasses ? use(d.glasses, f.glasses) : '',
-    ctx.mortarboard ? `<g${crownAt(d, ageStage(ctx.age ?? 25), fitted, hf, frameFor(d.head), MORTARBOARD.seats)}>${MORTARBOARD.svg}</g>`
-      : d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, crownAt(d, ageStage(ctx.age ?? 25), fitted, hf, frameFor(d.head))) : '',
+    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, crownAt(d, ageStage(ctx.age ?? 25), fitted, hf, frameFor(d.head))) : '',
     d.emotion ? use(d.emotion, f.emotion) : '',
   ];
   const size = opts.size != null ? ` width="${opts.size}" height="${opts.size}"` : '';
