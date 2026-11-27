@@ -1,4 +1,5 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
+import { birthGlobeOn, openBirthGlobe } from '../birthGlobe.js';
 import { idolWork } from '../../engine/kpop.js';
 import { openWorld } from '../world.js';
 import { openSettings, cloudLine } from '../settings.js';
@@ -99,7 +100,12 @@ export function renderTitle(app, hooks) {
         ${graves.length ? `<button type="button" class="lp-epitaphs" data-epitaphs>Epitaphs Earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</section>
     </main>`;
 
-  app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));
+  // A random life begins on the birth globe, unless it is turned off in Settings (js/ui/birthGlobe.js).
+  app.querySelector('[data-random]').addEventListener('click', async () => {
+    const life = createLife();
+    if (birthGlobeOn()) await openBirthGlobe(life);
+    hooks.onPlay(life);
+  });
   app.querySelector('[data-design]').addEventListener('click', () => hooks.onDesign());
   app.querySelector('.title-screen').addEventListener('click', async (e) => {
     const cmp = e.target.closest('[data-compare]');

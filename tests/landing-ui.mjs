@@ -170,7 +170,7 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   await page.waitForTimeout(300);
   check(!(await page.locator('[data-random]').count()), 'Design a Life opens the creator');
   await page.evaluate(() => { sessionStorage.clear(); localStorage.removeItem('frombirth.session.playing'); }); await page.goto(`http://localhost:${port}/index.html`); await toTitle(page);
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]', { timeout: 8000 }).catch(() => {});
   check(await page.locator('[data-year]').count() > 0, 'Begin a Random Life starts a life');
   check(!page.errors.length, `lives: no page errors (${page.errors.join('; ')})`);

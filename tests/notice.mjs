@@ -44,7 +44,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(!(await page.$('[data-notice]')), `${label}: then the title screen, by itself`);
   // A tab that was only away (the phone put it to sleep and brought it back: the page loads again, the session kept)
   // comes back without the notice, to the life.
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   const name = await page.evaluate(async () => (await import('/js/state.js')).store.state.player.firstName);
   await page.goto(`http://localhost:${port}/index.html?notice`); // a load that is not a refresh, in the same tab
