@@ -246,6 +246,7 @@
  * @property {Milestone[]} milestones
  * @property {LifeCounters} counters
  * @property {number} generation
+ * @property {{gender:string, appearance:object, seed:string, dress:object}} [portrait]  the face, for the shareable card
  *
  * @typedef {Object} GameState
  * @property {number} schemaVersion
