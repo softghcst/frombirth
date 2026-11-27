@@ -1577,3 +1577,8 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .appicon-opt strong { font-size: .95rem; }
 .appicon-opt small { color: var(--muted); font-size: .72rem; line-height: 1.25; }
 .appicon-note { margin: 12px 0 0; font-size: .85rem; }
+
+/* A line under a row's name that is still long wraps to a second line rather than being cut off mid-word. */
+.row .main small, .nav-row .nr-main small, .sec-row .nr-main small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.nr-bar small { display: inline; -webkit-line-clamp: unset; }
+.row .main strong { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
