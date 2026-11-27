@@ -29,6 +29,8 @@ import { recordEvent } from './chronicle.js';
 import { ADOPTION_FROM, DEFAULT_ADOPTION_FROM, RECORDS_AGE, recordsAccessShares, serviceFrom, REASONS, CONTACT,
   contactShares, tellingShares, CURIOSITY, SURPRISE, kinWord, SAME_SEX_ADOPTION_FROM, sameSexUsShare, SAME_SEX_SHARE } from '../data/origins.js';
 import { rule } from './rules.js';
+import { regionOf, CITY_ROWS } from '../data/cities.js';
+import { US_STATE_LAW, stateObc, stateSameSex } from '../data/usAdoptionLaw.js';
 
 export const VERSION = 1;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -55,12 +57,14 @@ export const adoptionFrom = (countryId) => ADOPTION_FROM[countryId] ?? DEFAULT_A
 export const adoptionLegal = (countryId, year) => year >= adoptionFrom(countryId);
 
 /**
- * Whether a same-sex couple could adopt jointly here and now. `stateSeed` places the life in an unnamed US state,
- * which matters only before 2016, when it depended on the state.
+ * Whether a same-sex couple could adopt jointly here and now. In the United States it depended on the state until
+ * 2016: `where` is the state (its id in js/data/cities.js), or, for a city the game has no state for, a number that
+ * stands in for one.
  */
-export function sameSexAdoptionLegal(countryId, year, stateSeed = 0.5) {
+export function sameSexAdoptionLegal(countryId, year, where = 0.5) {
+  if (countryId === 'us' && typeof where === 'string' && US_STATE_LAW[where]) return stateSameSex(where, year);
   const from = SAME_SEX_ADOPTION_FROM[countryId];
-  if (from != null) return year >= from || (countryId === 'us' && stateSeed < sameSexUsShare(year));
+  if (from != null) return year >= from || (countryId === 'us' && typeof where === 'number' && where < sameSexUsShare(year));
   // Not researched here: not before same-sex couples could marry there (the law of the year being lived, Historical Eras).
   try { return !!rule('sameSexMarriage', countryId); } catch { return false; }
 }
@@ -198,7 +202,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
       carers = [aunt];
       aunt.flags.title = auntGender === 'female' ? 'Aunt' : 'Uncle';
       if (rng.chance(0.55)) {
-        const same = sameSexAdoptionLegal(c.id, year, accessSeed) && rng.chance(SAME_SEX_SHARE);
+        const same = sameSexAdoptionLegal(c.id, year, stateHere(c.id, p.city) ?? accessSeed) && rng.chance(SAME_SEX_SHARE);
         const partner = makeNpc({ role: 'parent', countryId: c.id, gender: same ? auntGender : auntGender === 'female' ? 'male' : 'female', age: aunt.age + rng.int(-4, 5), relationship: rng.int(55, 90), lastName: aunt.lastName });
         partner.flags.title = partner.gender === 'female' ? 'Aunt' : 'Uncle';
         carers.push(partner);
@@ -241,7 +245,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
       adoptiveParentIds: legal === 'adoption' ? carers.map((g) => g.id) : [], guardianIds: legal === 'adoption' ? [] : carers.map((g) => g.id),
       legalParentIds: legal === 'adoption' ? carers.map((g) => g.id) : [mother.id], carerIds: carers.map((g) => g.id),
       birthSiblingIds: fam.siblings.map((s) => s.id), placementYear: year, placementAge: 0, finalizedYear: legal === 'kinship-care' ? null : year + 1,
-      status: 'final', birthCountryId: c.id, birthCity: p.city, jurisdiction: c.id, contact: 'open', accessSeed, telling: 'early',
+      status: 'final', birthCountryId: c.id, birthCity: p.city, birthState: stateHere(c.id, p.city), jurisdiction: c.id, contact: 'open', accessSeed, telling: 'early',
       birthName: null, legalName: { first: p.firstName, last: p.lastName } });
     o.self = { recordId: rec.id, aware: false, awareAge: rng.int(3, 5), telling: 'early', facts: {}, people: {}, curiosity: 'none', done: {} };
     o.parentsKnow = { [rec.id]: { people: { [mother.id]: 'named', ...(father && !fatherUnidentified ? { [father.id]: 'named' } : {}) } } };
@@ -258,7 +262,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
     giveMotherAge(reason); keepSiblings();
     const contact = pickW(contactShares('birth', year), contactSeed);
     const lastName = rng.pick(c.names.last);
-    const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, mother.firstName, ...fam.siblings.map((s) => s.firstName)] }), c, year, accessSeed, rng.next());
+    const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, mother.firstName, ...fam.siblings.map((s) => s.firstName)] }), c, year, stateHere(c.id, p.city) ?? accessSeed, rng.next());
     // A twin is placed with you; a twin generated for the adoptive family is not real.
     const fakeTwin = adopt.siblings.find((s) => s.flags.twin);
     if (fakeTwin) adopt.siblings = adopt.siblings.filter((s) => s !== fakeTwin);
@@ -293,7 +297,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
       birthFather: father ? (fatherUnidentified ? 'unidentified' : 'known') : 'unknown', fatherNamed,
       adoptiveParentIds: parents.map((x) => x.id), legalParentIds: parents.map((x) => x.id),
       birthSiblingIds: fam.siblings.map((s) => s.id), placementYear: year, placementAge: 0, finalizedYear: year + 1, status: 'final',
-      birthCountryId: c.id, birthCity: p.city, jurisdiction: c.id, contact, accessSeed, telling, birthName,
+      birthCountryId: c.id, birthCity: p.city, birthState: stateHere(c.id, p.city), jurisdiction: c.id, contact, accessSeed, telling, birthName,
       legalName: { first: p.firstName, last: p.lastName }, agency: agencyName(c, p.city, rng.next()) });
     o.self = { recordId: rec.id, aware: false, awareAge: awareAgeFor(telling, rng.next()), telling, facts: {}, people: {}, curiosity: 'none', done: {} };
     o.parentsKnow = { [rec.id]: { people: { ...(contact === 'open' ? { [mother.id]: 'named' } : contact === 'mediated' ? { [mother.id]: 'first' } : {}) } } };
@@ -325,7 +329,7 @@ export function applyOrigin(state, { fam, c, year, origin, journal }) {
   const rec = newRecord(o, { adopteeId: p.id, kind: 'childhood', legal: 'adoption', reason, birthParentIds: [mother.id, ...(father ? [father.id] : [])],
     birthFather: father ? 'known' : 'unknown', fatherNamed: !!father,
     birthSiblingIds: fam.siblings.map((s) => s.id), placementYear: year + placementAge, placementAge, finalizedYear: year + placementAge + 1, status: 'planned',
-    birthCountryId: c.id, birthCity: p.city, jurisdiction: c.id, contact, accessSeed, telling, birthName: { first: p.firstName, last: p.lastName },
+    birthCountryId: c.id, birthCity: p.city, birthState: stateHere(c.id, p.city), jurisdiction: c.id, contact, accessSeed, telling, birthName: { first: p.firstName, last: p.lastName },
     agency: agencyName(c, p.city, rng.next()),
     placementHistory: reason === 'after_foster' ? [{ kind: 'foster', fromAge: Math.max(1, placementAge - rng.int(1, 2)), toAge: placementAge }] : [] });
   o.self = { recordId: rec.id, aware: false, awareAge: placementAge, telling, facts: {}, people: {}, curiosity: 'none', done: {} };
@@ -368,8 +372,22 @@ function agencyName(c, city, r) {
 
 /** The records rules that apply to a request made this year. */
 export function recordsAccess(rec, year = S().year) {
+  const law = obcLaw(rec, year);
+  if (law) return law.kind;
   return pickW(recordsAccessShares(rec.jurisdiction, year), rec.accessSeed ?? 0.5);
 }
+/** The US state whose law governs the original birth certificate: the state the adoptee was born in. */
+export const birthStateOf = (rec) => (rec.birthCountryId ?? rec.jurisdiction) === 'us' ? rec.birthState ?? regionOf('us', rec.birthCity) : null;
+/** That state's rule for a request made in `year`, with its name and note: null outside the United States. */
+export function obcLaw(rec, year = S().year) {
+  const st = birthStateOf(rec);
+  const law = st && stateObc(st, year);
+  if (!law) return null;
+  const name = Object.values(CITY_ROWS.us).find((v) => v.regionId === st)?.region ?? st;
+  return { ...law, state: st, name, note: US_STATE_LAW[st].note, disputed: !!US_STATE_LAW[st].disputed };
+}
+/** Where the family lives now: the US state whose adoption law applies to them. */
+const stateHere = (countryId, city) => (countryId === 'us' ? regionOf('us', city) : null);
 export const serviceOpen = (service, rec, year = S().year) => { const from = serviceFrom(service, rec.jurisdiction); return from != null && year >= from; };
 
 /** Whether the player can search for themselves: an adult, who knows. Minors go through their parents. */
@@ -482,7 +500,7 @@ function place(rec) {
   }
   if (rec.reason === 'health') for (const n of birth.filter((x) => x.flags.birthKin === 'mother')) n.meters.health = Math.min(n.meters.health, rng.int(25, 45));
   const lastName = rng.pick(c.names.last);
-  const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, ...p.npcIds.map((id) => npcOf(id)?.firstName).filter(Boolean)] }), c, state.year, rec.accessSeed, rng.next());
+  const adopt = maybeSameSex(generateFamily(c, lastName, { avoidNames: [p.firstName, ...p.npcIds.map((id) => npcOf(id)?.firstName).filter(Boolean)] }), c, state.year, stateHere(c.id, p.city) ?? rec.accessSeed, rng.next());
   adopt.siblings = adopt.siblings.filter((s) => !s.flags.twin);
   const parents = [adopt.mother, adopt.father].filter(Boolean);
   for (const par of parents) { par.age = Math.max(par.age, rng.int(28 + p.age, 36 + p.age) - p.age); par.flags.adoptiveParent = true; par.flags.originsStance = stance(par); }
@@ -642,7 +660,7 @@ function recordsAnswer(rec, r) {
     learnFacts.push(['motherPrivacy', 'Your birth mother has filed a request that her name be kept private.']);
     text = 'The office sends what it can: the background in your file, and a note. Your birth mother has filed a request for her name to be withheld. The law here honors it. You can still register to be found, and she can change her mind.';
   } else {
-    text = `The records are sealed in ${COUNTRIES[rec.jurisdiction] ? theCountry(COUNTRIES[rec.jurisdiction].name) : 'this jurisdiction'}. You are sent the non-identifying background in your file, and told that names can be shared only through an intermediary, a registry where both sides agree, or a court.`;
+    text = `The records are sealed in ${obcLaw(rec, r.made)?.name ?? (COUNTRIES[rec.jurisdiction] ? theCountry(COUNTRIES[rec.jurisdiction].name) : null) ?? 'this jurisdiction'}. You are sent the non-identifying background in your file, and told that names can be shared only through an intermediary, a registry where both sides agree, or a court.`;
   }
   inbox({ key: `records:${r.id}`, scene: 'org_agency', words: { what: text }, learn: learnFacts.filter(([, t]) => t), people });
 }
@@ -881,7 +899,8 @@ export function originActions() {
   const elig = searchEligible(p);
   const s = state.origins.search;
   add('review', 'Review Available Information', 'What you hold, and what is on file', '');
-  add('records', 'Request Eligible Records', recordsLine(rec), elig.why || (open('records') ? 'Waiting for an answer' : lastOf('records') && state.year - lastOf('records').made < 5 ? 'Asked recently: the law may change in time' : ''));
+  const obcAge = obcLaw(rec)?.minAge ?? RECORDS_AGE;
+  add('records', 'Request Eligible Records', recordsLine(rec), elig.why || (p.age < obcAge ? `From age ${obcAge} in ${obcLaw(rec).name}` : '') || (open('records') ? 'Waiting for an answer' : lastOf('records') && state.year - lastOf('records').made < 5 ? 'Asked recently: the law may change in time' : ''));
   add('agency', 'Contact the Adoption Agency', 'Leave a letter on file, or ask for news', elig.why || (rec.kind === 'kinship' ? 'There was no agency' : open('agencyLetter') ? 'Waiting for an answer' : once('agency')));
   add('registry', 'Join a Reunion Registry', 'A match only if they register too', elig.why || (!serviceOpen('registry', rec) ? 'Not available here yet' : self.registered ? `Registered in ${self.registered}` : ''));
   add('intermediary', 'Ask an Authorized Intermediary', 'They find and ask, confidentially', elig.why || (!serviceOpen('intermediary', rec) ? 'Not available here yet' : open('intermediary') ? 'Already looking' : lastOf('intermediary') && state.year - lastOf('intermediary').made < 3 ? 'Asked recently' : ''));
@@ -894,6 +913,8 @@ export function originActions() {
 }
 function recordsLine(rec) {
   const access = recordsAccess(rec);
+  const law = obcLaw(rec);
+  if (law) return { open: `Open in ${law.name}: your original birth certificate`, conditional: `${law.name}: open, unless a birth parent filed to withhold their name`, restricted: `Sealed in ${law.name}: background only` }[access];
   return { open: 'Your original birth certificate, if the law allows', conditional: 'Open, unless a birth parent asked for privacy', restricted: 'Sealed here: background only' }[access];
 }
 const namedKin = () => birthKin().filter((n) => knows(n.id, 'named'));
@@ -1228,6 +1249,7 @@ export function originsView(state = S()) {
     if (rec.status === 'final' && rec.finalizedYear && rec.kind !== 'kinship') story.push(['Adoption made final', String(rec.finalizedYear)]);
     story.push(['Legal parents', rec.legalParentIds.map((id) => state.npcs[id]).filter(Boolean).map((n) => n.firstName).join(' and ') || 'Not recorded']);
     story.push(['Contact arrangement', CONTACT[rec.contact]?.label ?? 'Not recorded']);
+    if (obcLaw(rec)) story.push(['Birth records held in', obcLaw(rec).name]);
     if (self.facts.birthName && rec.birthName) story.push(['Name at birth', `${rec.birthName.first} ${rec.birthName.last}`]);
     else if (rec.kind === 'childhood' && rec.birthName && (rec.birthName.last !== p.lastName)) story.push(['Name before adoption', `${rec.birthName.first} ${rec.birthName.last}`]);
     story.push(['Legal name', `${p.firstName} ${p.lastName}`]);
@@ -1267,7 +1289,7 @@ export function originsView(state = S()) {
   const search = aware ? {
     status: { none: 'Not searching', active: 'Searching', paused: 'Paused' }[s.status], curiosity: CURIOSITY[self.curiosity] ?? '',
     pending, registered: self.registered ?? null, dna: self.dnaTested ?? null,
-    access: p.age >= RECORDS_AGE ? { open: 'Original birth records are open to adult adoptees here.', conditional: 'Original birth records are open here, unless a birth parent has asked for privacy.', restricted: 'Original birth records are sealed here; names come only through an intermediary, a registry or a court.' }[recordsAccess(rec)] : `At ${RECORDS_AGE} you can ask for records yourself. Until then, your parents can help.`,
+    access: obcLaw(rec) ? lawWords(obcLaw(rec), p.age) : p.age >= RECORDS_AGE ? { open: 'Original birth records are open to adult adoptees here.', conditional: 'Original birth records are open here, unless a birth parent has asked for privacy.', restricted: 'Original birth records are sealed here; names come only through an intermediary, a registry or a court.' }[recordsAccess(rec)] : `At ${RECORDS_AGE} you can ask for records yourself. Until then, your parents can help.`,
   } : null;
   const messages = [];
   if (aware) for (const [id, k] of Object.entries(state.origins.contacts)) {
@@ -1281,6 +1303,14 @@ export function originsView(state = S()) {
   const memories = aware ? state.origins.log.slice(-20).reverse().map((m) => ({ age: m.age, text: m.text })) : [];
   return { aware, kindLine, story, family, birth, search, messages: messages.slice(0, 12), connections, memories,
     known: aware ? Object.values(self.facts).map((f) => f.text) : [], why: aware ? '' : 'Not something you know about yet.' };
+}
+/** What a state's law means for this adoptee, in a sentence, with where it comes from. */
+function lawWords(law, age) {
+  const since = law.since ? ` since ${law.since}` : '';
+  const what = { open: `In ${law.name}, adult adoptees can get their original birth certificate${law.minAge !== 18 ? ` from age ${law.minAge}` : ''}${since}.`,
+    conditional: `In ${law.name}, original birth certificates are open${since}, with conditions: a birth parent may have their name withheld, or it depends on the year.`,
+    restricted: `In ${law.name}, original birth certificates are sealed: names come only through an intermediary, a registry where both agree, or a court.` }[law.kind];
+  return `${what} ${law.note}${law.disputed ? ' (Sources disagree about this state.)' : ''}${age < law.minAge ? ` You can ask from ${law.minAge}; until then, your parents can help.` : ''}`;
 }
 function contactLabel(k) {
   if (!k) return '';

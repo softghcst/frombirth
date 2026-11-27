@@ -41,6 +41,17 @@ About one adoptive couple in twenty is two women or two men, where and when the 
 end of 2005; and so on). Elsewhere, not before same-sex marriage was legal there. Applies to adoption at birth, in
 childhood, and an aunt's or uncle's partner in kinship care.
 
+## US states
+
+Every US life is in a real state: the game has a city in each of the 50 states and D.C. (`js/data/cities.js`,
+coordinates from GeoNames via `scripts/build-coordinates.py`, which now matches US cities within their own state).
+`js/data/usAdoptionLaw.js` gives each state's rule for the original birth certificate over time (open, open with
+conditions such as redaction or a veto, or sealed; minimum ages such as Alabama 19 and Louisiana 24; Alaska and Kansas
+never sealed) and the year same-sex couples could adopt together there. The birth state decides the records; the state
+the adoptive family lives in decides same-sex adoption. The table was written from public summaries; the primary
+trackers could not be opened when it was written, and states where sources disagree are marked `disputed` and read
+conservatively (Arizona, Iowa, South Dakota, Texas, Utah, Vermont). Check a statute before relying on a row.
+
 ## Law and history
 
 United States: legal adoption from 1851; original-birth-certificate access by period (sealed in most states from the
@@ -54,7 +65,4 @@ kinship care.
 - International adoption (birth country, immigration and citizenship history, and language are not modeled; the
   option is not offered rather than offered wrongly).
 - Foster care as a system: a foster stay before adoption is recorded as history only.
-- Per-state US law by name: there are no US states in the game, so each adopted life gets a fixed, unnamed state
-  "profile" (`accessSeed`). It decides whether that state's original birth records are open, open with conditions,
-  or sealed (by the year asked, as states changed their laws), and before 2016 whether a same-sex couple could adopt there.
 - A birth parent's sentence is a fact of the history, not a case in the Justice system (no facility, no visits).

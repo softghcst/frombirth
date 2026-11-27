@@ -151,7 +151,7 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
   check(couples('us', 1985, 120).same === 0, 'none in the US before any state allowed it');
   check(couples('uk', 2000, 120).same === 0 && couples('uk', 2010, 250).same > 0, 'England and Wales: from the 2002 Act coming into force (end of 2005)');
   check(couples('jp', 2020, 120).same === 0, 'none where same-sex couples still cannot adopt together');
-  check(O.sameSexAdoptionLegal('us', 2010, 0.1) && !O.sameSexAdoptionLegal('us', 2010, 0.9) && O.sameSexAdoptionLegal('us', 2017, 0.9), 'before 2016 it depended on the (unnamed) US state the adoption was in');
+  check(O.sameSexAdoptionLegal('us', 2010, 'massachusetts') && !O.sameSexAdoptionLegal('us', 2010, 'texas') && O.sameSexAdoptionLegal('us', 2017, 'texas'), 'before 2016 it depended on the state the family lived in');
   section('same-sex adoptive couples, by country and year', n);
 }
 
@@ -246,26 +246,40 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
   check(!O.serviceOpen('dna', { jurisdiction: 'us' }, 1995) && O.serviceOpen('dna', { jurisdiction: 'us' }, 2015), 'consumer DNA matching only from its time');
   // A restricted state: background only, never a name.
   adoptee('birth', (r) => r.contact === 'closed');
-  rec().accessSeed = 0.99; // the state sealed records
+  rec().birthState = 'new_york'; // born in New York in 2000: sealed until the 2020 law
   S().origins.self.awareAge = 4;
   ageTo(17); S().origins.self.aware = true;
   years(1);
   check(O.doOriginAction('records').ok, 'an adult can request records');
   years(2);
-  check(O.recordsAccess(rec()) === 'restricted' && !O.knows(mother().id, 'named'), 'sealed records give no name');
-  rec().accessSeed = 0.01;
-  S().origins.search.requests.forEach((r) => { r.made -= 10; });
+  check(O.recordsAccess(rec(), S().year - 2) === 'restricted' && !O.knows(mother().id, 'named'), `sealed records give no name (New York in ${S().year - 2})`);
   years(4);
-  check(O.doOriginAction('records').ok, 'and the request can be made again years later');
+  check(O.recordsAccess(rec()) === 'open' && O.doOriginAction('records').ok, `after New York opened its records in 2020, the request can be made again (${S().year})`);
   years(2);
   check(O.knows(mother().id, 'named'), 'open records give the birth mother\'s name');
+  // Real states, their own rules.
+  const { stateObc, stateSameSex, US_STATE_LAW } = await import('../js/data/usAdoptionLaw.js');
+  const { CITY_ROWS } = await import('../js/data/cities.js');
+  const { COORDINATES } = await import('../js/data/coordinates.js');
+  const { COUNTRIES } = await import('../js/data/countries.js');
+  const states = new Set(COUNTRIES.us.cities.map((c) => CITY_ROWS.us[c]?.regionId));
+  check(states.size === 51 && [...states].every((st) => US_STATE_LAW[st]), `a US city in every state and D.C., each with its adoption law (${states.size})`);
+  check(COUNTRIES.us.cities.every((c) => COORDINATES.us.cities[c]), 'every US city is on the map');
+  check(stateObc('alabama', 2010).minAge === 19 && stateObc('louisiana', 2023).minAge === 24 && stateObc('louisiana', 2020).kind === 'restricted', 'Alabama from 19, Louisiana from 24 (since 2022)');
+  check(stateObc('alaska', 1980).kind === 'open' && stateObc('kansas', 1990).kind === 'open' && stateObc('ohio', 1960).kind === 'restricted', 'Alaska and Kansas never sealed; Ohio did');
+  check(stateObc('new_york', 2019).kind === 'restricted' && stateObc('new_york', 2020).kind === 'open' && stateObc('illinois', 2012).kind === 'conditional', 'reforms take effect in their year');
+  check(stateSameSex('massachusetts', 1995) && !stateSameSex('texas', 2010) && !stateSameSex('mississippi', 2015) && stateSameSex('mississippi', 2016), 'same-sex couples could adopt state by state, everywhere from 2016');
+  adoptee('birth', () => true, { city: 'Birmingham' });
+  ageTo(18); S().origins.self.aware = true;
+  check(/From age 19 in Alabama/.test(O.originActions().find((a) => a.id === 'records').why), 'an 18-year-old born in Alabama waits a year');
+  check(/Alabama/.test(O.originsView().search.access), 'My Origins names the state and its law');
   section('search eligibility and records access by jurisdiction and year', n);
 }
 
 /** A grown adoptee who knows, with a records request already answered (the birth mother named). */
 function grownNamed(want = () => true) {
   adoptee('birth', (r) => r.contact === 'closed' && want(r));
-  rec().accessSeed = 0.01;
+  rec().birthState = 'oregon'; // open since 2000
   S().origins.self.awareAge = 4;
   ageTo(18); S().origins.self.aware = true;
   for (const k of O.birthKin()) k.flags.registered = undefined;
@@ -317,7 +331,7 @@ function grownNamed(want = () => true) {
   check(!mm.flags.originSentence.offense && !mm.legal && !mm.flags.inmate, 'and no crime is invented for it');
   adoptee('birth', (x) => x.reason !== 'incarcerated');
   const before = JSON.stringify(O.birthKin().map((x) => x.flags.originSentence ?? null));
-  ageTo(18); S().origins.self.aware = true; rec().accessSeed = 0.01;
+  ageTo(18); S().origins.self.aware = true; rec().birthState = 'oregon'; // open since 2000
   O.doOriginAction('records'); O.doOriginAction('intermediary'); years(3);
   check(JSON.stringify(O.birthKin().filter((x) => x.age > 0).map((x) => x.flags.originSentence ?? null)).replace(/null,?/g, '') === before.replace(/null,?/g, ''), 'searching never gives anyone a prison record');
   section('deceased and incarcerated relatives come from saved history only', n);
@@ -427,7 +441,7 @@ function makeHalf(m) {
 {
   const n = problems.length;
   adoptee('birth', (r) => r.contact !== 'open');
-  rec().accessSeed = 0.01;
+  rec().birthState = 'oregon'; // open since 2000
   S().origins.self.awareAge = 4;
   ageTo(18); S().origins.self.aware = true;
   const start = structuredClone(S());
@@ -472,7 +486,7 @@ function makeHalf(m) {
   check(childhood.includes('org_story') || childhood.includes('org_learn_late'), 'an origins conversation in childhood');
   check(O.originsView().aware && O.originsView().birth.every((b) => b.name === 'Unknown to you' || !b.id || O.knows(b.id, 'first')), 'My Origins shows only what is known');
   ageTo(18);
-  r.accessSeed = 0.01;
+  r.birthState = 'oregon'; // open since 2000
   const m = mother();
   m.alive = true; m.flags.openness = 85; m.flags.disputes = false;
   check(O.doOriginAction('records').ok, 'records requested at 18');
