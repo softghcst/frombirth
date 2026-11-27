@@ -10,10 +10,8 @@ export const NOTICE_KEY = 'pathways.notice';
 const VERSION = '1';
 
 const PARAGRAPHS = [
-  'Pathways is a work of fiction. Every person in it is invented: you, your family, and everyone you meet, unless you add someone you know yourself. Any resemblance to real people, living or dead, is a coincidence.',
-  'Real countries, cities and history are the backdrop. The lives lived in them are made up, and so are the companies, schools, hospitals and teams.',
-  'A life here can bring hard things: illness, loss, crime, money trouble, relationships, and choices about health and family. They are told plainly, without graphic detail, and some can be turned down in Settings.',
-  'Nothing in the game is medical, legal or financial advice. If something in your own life needs help, talk to someone qualified.',
+  'All characters and events in Pathways are fictional. Any resemblance to real people is coincidental.',
+  'Nothing here is medical, legal or financial advice.',
 ];
 const body = () => PARAGRAPHS.map((t) => `<p>${t}</p>`).join('');
 
@@ -35,10 +33,9 @@ export function renderNotice(app, onDone) {
   app.innerHTML = `
     <main class="title-screen notice-screen">
       <div class="notice">
-        <div class="title-hero">${markSvg()}<h1>Before you begin</h1></div>
+        <div class="title-hero">${markSvg()}<h1>Just so you know</h1></div>
         <div class="card notice-card">${body()}</div>
         <button class="btn peach big" data-notice-ok>I understand</button>
-        <p class="muted notice-foot">You'll see this once. It's always in Settings → About Pathways.</p>
       </div>
     </main>`;
   const ok = app.querySelector('[data-notice-ok]');

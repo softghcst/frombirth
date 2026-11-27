@@ -35,7 +35,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.reload();
   await page.waitForSelector('[data-notice-ok]');
   const text = await page.innerText('main');
-  check(/Before you begin/i.test(text) && /work of fiction/.test(text) && /coincidence/.test(text) && /not medical, legal or financial advice|Nothing in the game is medical, legal or financial advice/.test(text), `${label}: the notice says it is fiction and not advice`);
+  check(/fictional/.test(text) && /coincidental/.test(text) && /not medical, legal or financial advice|Nothing here is medical, legal or financial advice/.test(text) && text.length < 400, `${label}: the notice says it is fiction and not advice`);
   check(!(await page.$('[data-random]')), `${label}: it comes before the title screen`);
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${label}: no sideways scrolling`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/notice-${label}.png` });
@@ -50,7 +50,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.locator('#modal-root .choice-btn', { hasText: 'About Pathways' }).click();
   await page.waitForTimeout(100);
   const about = await page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
-  check(/About Pathways/i.test(about) && /work of fiction/.test(about), `${label}: Settings shows it again`);
+  check(/About Pathways/i.test(about) && /fictional/.test(about), `${label}: Settings shows it again`);
   // An automated browser on a fresh device (the other checks) goes straight to the title screen.
   const fresh = await browser.newPage({ viewport });
   await fresh.goto(`http://localhost:${port}/index.html`);
