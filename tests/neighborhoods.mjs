@@ -654,7 +654,8 @@ function coherent(where) {
   const n = problems.length;
   const MOMENT_IDS = ['hood_wrong_parcel', 'hood_power_cut', 'hood_lost_pet', 'hood_yard_sale', 'hood_storm_tree', 'hood_locked_out', 'hood_book_box'];
   const seen = {};
-  for (const [c, city] of [['us', 'Chicago'], ['us', 'Boston'], ['gb', 'London']]) {
+  // (Four lives: a few kinds over a sample this size, whichever way the rolls of a given run happen to fall.)
+  for (const [c, city] of [['us', 'Chicago'], ['us', 'Boston'], ['gb', 'London'], ['ca', 'Toronto']]) {
     life(c, city);
     P().age = 25; P().flags.livesWithParents = false;
     N.settle(S());

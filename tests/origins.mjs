@@ -478,6 +478,9 @@ function makeHalf(m) {
 // The first playable slice, end to end.
 {
   const n = problems.length;
+  // This is about a search across years, not about dying young: a death by chance would end the story it follows.
+  const { deathRoll } = await import('../js/engine/death.js');
+  deathRoll.spared = true;
   const p = adoptee('birth', (r) => r.contact === 'closed' && r.birthParentIds.length);
   const r = rec();
   const start = { ids: [...p.npcIds], parents: [...r.adoptiveParentIds], kin: O.birthKin().map((x) => x.id) };
@@ -509,6 +512,7 @@ function makeHalf(m) {
   check(new Set(keys).size === keys.length && Object.keys(S().origins.told).length - told <= 6, 'three, six and twelve months on: no multiplied events or opportunities');
   check(Object.values(S().origins.contacts).every((x) => typeof x.status === 'string') && start.kin.every((id) => npc(id)), 'relationships and contact boundaries remain valid');
   section('the first playable slice, from birth to reunion and beyond', n);
+  deathRoll.spared = false;
 }
 
 console.log(ok.map((m) => `  ✓ ${m}`).join('\n'));
