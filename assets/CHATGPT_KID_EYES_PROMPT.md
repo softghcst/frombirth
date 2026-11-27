@@ -23,6 +23,29 @@ wears the kid version of the eyes they will have from 14.
 **Color.** Draw the irises in one warm brown: the game recolors them to each kid's own eye color (blue, green, hazel,
 ...), keeping the shading. Whites stay white, pupils and outlines dark, highlights white.
 
+## Reference eyes (the easiest way to get the style right)
+
+ChatGPT copies a picture far better than a description. These are the current girl kid eyes (`baby_eyes_6`), the
+style every new shape should match: an iris black on top and warm brown below, with a black pupil, two big white
+highlights, a thick dark upper lid with soft lashes, and only a crescent of white:
+
+- `assets/clothes_templates/kid_eyes_reference_on_face.png`: the eyes on the kid face (where they sit).
+- `assets/clothes_templates/kid_eyes_reference.png`: the eyes alone, at the same size and position.
+
+Upload `kid_eyes_template.png` and `kid_eyes_reference_on_face.png` together, with:
+
+````text
+The second image shows the eyes I want, on the face. Draw new eyes for the first image (the same face, with no eyes),
+in EXACTLY the same style, size and position as the second image: the same big iris, black on top and warm brown
+below, with a black pupil and two big white highlights; the same thick dark upper lid; the same small crescent of
+white. Change ONLY the shape of the eyelids and corners, to make them [DESCRIBE THE SHAPE]. [For a boy: no eyelashes,
+just the thick upper lid line.] Output a 1254 x 1254 PNG with a fully transparent background, with only the eyes
+drawn, in exactly the same place as in the second image.
+````
+
+The shapes to describe are listed below (round, almond, monolid, hooded, upturned, downturned). For each boy's version,
+keep the bracketed sentence about lashes.
+
 ## Prompt
 
 Upload `kid_eyes_template.png` with this, and replace `[DESCRIBE THE EYES]`:
