@@ -55,7 +55,8 @@ export const ALLIED = {
     find(p) {
       const live = (s) => ['probation', 'suspended', 'community'].includes(s.type) && s.status === 'active' && npc(s.defendantId)?.alive;
       let s = Object.values(k.J().sentences).find((x) => live(x) && !(x.supervisedBy));
-      for (let i = 0; i < 6 && !s; i++) { npcCourtCase(p); s = Object.values(k.J().sentences).find((x) => live(x) && !x.supervisedBy); }
+      // Most court cases end otherwise: enough of them that someone is on probation to supervise.
+      for (let i = 0; i < 20 && !s; i++) { npcCourtCase(p); s = Object.values(k.J().sentences).find((x) => live(x) && !x.supervisedBy); }
       if (!s) return null;
       s.supervisedBy = me(p);
       return { subject: s.id, words: `${nm(s.defendantId)}, serving ${s.type === 'community' ? 'community service' : s.type === 'suspended' ? 'a suspended sentence' : 'probation'}` };

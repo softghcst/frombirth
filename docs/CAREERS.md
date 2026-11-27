@@ -22,7 +22,7 @@ salaries or legal advice.
 | Side job | Part-time work beside (or instead of) a main job | `p.career.partTime`, `p.career.sides`, `js/engine/sideJobs.js` |
 | Freelance practice | Services, prices, reputation, clients, contracts | `p.career.freelance`, `js/engine/freelance.js` |
 | Workplace | The boss, coworkers, direct reports and mentors: ordinary NPCs with working lives of their own | `js/engine/workplace.js` |
-| Recruiter | An NPC who brings real openings to someone with a record | `js/engine/recruiters.js` |
+| Recruiter | The job recruiter on Find a Job (three looks a year); for someone with a record, some looks are a headhunter's step up, from an NPC recruiter kept for good | `js/engine/jobSearch.js`, `js/engine/recruiters.js` |
 | Record | Every job with its employer and dates; experience by track; milestones; the family's careers | `js/engine/careerRecord.js` |
 
 The career engine itself (`js/engine/career.js`) is the one that was already there: requirements, interviews and
@@ -62,7 +62,7 @@ something real.
    managers; mentors found; mentees promoted.
 6. Freelance contracts finish or fail (`tickFreelance`).
 7. Stress, satisfaction and burnout settle (`tickWorkLife`); long hours are felt at home.
-8. Recruiters and old mentors bring leads (`tickRecruiters`).
+8. Old leads lapse, and an old mentor may bring one (`tickRecruiters`). Headhunting comes through the job recruiter.
 9. Milestones are checked (`checkAchievements`).
 
 Payroll runs afterward in `tickFinance`, through `runPayroll` (`js/engine/worklife.js`): every source (main job,
@@ -73,6 +73,31 @@ A job lost during the review is not paid for the following year.
 
 Actions during a year are keyed to the year of age (as the rest of the game does). The tick and payroll look
 back at `age − 1`, the year just lived.
+
+## Finding ordinary work
+
+Work that is not a special career is found from Work → Find work (the hub's Find a job section,
+`js/engine/jobSearch.js`). The whole market is not shown at once; there are two ways in:
+
+- **This year's openings**: a list of about a dozen drawn once a year from the openings in the player's city and
+  remote ones in the country, one per line of work. About twelve in a steady year, fourteen in a boom, nine in a
+  recession. Most are jobs the player can apply for; the rest are greyed with what they would need. The list stays
+  the same all year (`p.flags.jobList`, keyed to the year of age), and most of it is new the next year.
+  Prominent openings (`prominent()`: a large or major employer, or a senior post) stay: once listed they are held
+  open for `PROMINENT_YEARS` (3) years, nobody else takes them and they do not lapse (`post.featuredUntil`, which
+  the employer tick respects), and the list shows when they were first listed. Other openings someone takes during
+  the year stay on that year's list, marked closed.
+- **The job recruiter**: brings one opening the player qualifies for, mostly in their city, never one already on
+  the list. Not keen? Ask for another, twice more: three looks a year (`RECRUITER_LOOKS`), then nothing until
+  next year (`p.flags.jobRecruiter`). The last pitch can still be looked at again. A recruiter's opening gets a
+  small word put in at the interview (`RECRUITER_BONUS`). Someone with a record (a civilian job, age 20 or more,
+  two years' experience) is sometimes headhunted instead: a look, at odds that grow with good reviews,
+  experience, seniority and fame (`headhuntOdds`), is a named recruiter's step up in their own line of work,
+  often a rung higher, sometimes in another city or abroad (`stepUp`), with a stronger word at the interview
+  (`STEP_UP_BONUS`). Recruiters no longer write in on their own; the Offers & contacts page keeps offers, and
+  leads from old mentors who have moved on.
+
+Either way, applying is the same interview or audition, then an offer under Offers & recruiters.
 
 ## Time
 

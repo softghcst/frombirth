@@ -53,7 +53,8 @@ export function psychYear(p = player()) {
   if (open) { F.work.push({ id: `pw_${open.id}`, kind: 'consult', invId: open.id, status: 'open', at: now() }); out.push(`A detective asks for your view on ${open.file.title}.`); }
   // A risk assessment for the parole board: a real prisoner, serving a real custodial sentence.
   let sen = Object.values(k.J().sentences).find((s) => s.type === 'custody' && s.status === 'active' && npc(s.defendantId)?.alive && !F.work.some((x) => x.sentenceId === s.id));
-  for (let i = 0; i < 3 && !sen; i++) { const inv = npcCourtCase(p); const c = inv && k.J().cases[inv.file.courtCaseId]; const s = c?.sentenceId && k.J().sentences[c.sentenceId]; if (s?.type === 'custody') sen = s; }
+  // Few burglaries end in prison: the board's cases are serious ones, as many as it takes for someone to be inside.
+  for (let i = 0; i < 20 && !sen; i++) { const inv = npcCourtCase(p, { serious: true }); const c = inv && k.J().cases[inv.file.courtCaseId]; const s = c?.sentenceId && k.J().sentences[c.sentenceId]; if (s?.type === 'custody') sen = s; }
   if (sen) { F.work.push({ id: `pw_${sen.id}`, kind: 'risk', sentenceId: sen.id, personId: sen.defendantId, status: 'open', at: now() }); out.push(`The parole board asks for a risk assessment of ${nm(sen.defendantId)}.`); }
   // An officer after a critical incident.
   const officer = (a.officerIds ?? []).map(npc).find((n) => n?.alive && !F.work.some((x) => x.personId === n.id));
