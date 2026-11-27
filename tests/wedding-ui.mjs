@@ -36,7 +36,7 @@ await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEac
 // An engagement to a best friend from school.
 const setUp = () => page.evaluate(async () => {
   const { store } = await import('/js/state.js'); const { makeNpc } = await import('/js/engine/npcFactory.js');
-  const p = store.state.player; p.age = 30; p.finance.cash = 1e10; p.legal.incarceration = null;
+  const p = store.state.player; p.age = 30; p.finance.cash = 1e15; p.legal.incarceration = null;
   for (const n of Object.values(store.state.npcs)) if (['partner', 'spouse'].includes(n.role)) n.role = 'friend';
   const n = makeNpc({ role: 'partner', age: 30, countryId: p.countryId, gender: p.gender === 'male' ? 'female' : 'male' });
   n.flags.engaged = true; n.flags.title = 'Best friend'; n.meters.relationship = 80;
