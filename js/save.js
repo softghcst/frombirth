@@ -21,6 +21,7 @@ import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
 import { giveBirthday } from './engine/birthday.js';
 import { giveNativeLanguages } from './engine/languages.js';
+import { migrateOrigins } from './engine/origins.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'frombirth.index';
@@ -203,6 +204,8 @@ function migrate(state) {
   ensureEra(state, { legacy: true });
   // One sports system: a professional career kept under the old separate system becomes the player's sports record.
   if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
+  // Adoption and birth families (engine/origins.js): adopted children get a record of their adoption; nothing is invented.
+  migrateOrigins(state);
   // Neighborhoods: an older life gets the neighborhood it lives in now, with today's neighbors and no invented past.
   try { settleHood(state, { quiet: true }); } catch (e) { console.warn('neighborhood', e); }
   state.schemaVersion = SCHEMA_VERSION;

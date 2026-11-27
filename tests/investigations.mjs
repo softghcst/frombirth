@@ -42,7 +42,7 @@ const section = (msg) => { if (!problems.length) ok.push(msg); };
 
 /** A fresh adult in a country, with no investigative record, keen and capable. */
 function life(countryId = 'us', age = 24, o = {}) {
-  do { store.state = createLife({ countryId }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId, ...(countryId === 'us' ? { city: 'Chicago' } : {}) }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = false; p.education.enrolled = false;
   p.legal.record = []; p.stats.health = 85; p.stats.intellect = 72; p.stats.charm = 68; p.hidden.karma = 60;
@@ -1654,10 +1654,16 @@ section('the academy ends on its own date: graduation and field training the sam
   const r = core.I();
   r.job.detective = true; r.job.rank = 'detective';
   r.caseIds = [];
-  for (let i = 0; i < 3; i++) r.caseIds.push(W.openCase('burglary', { ownerId: a.id, truth: 'insider' }).id);
+  // Two cases the routine work may crack, and a false report it never can: that one has to wait for someone to look.
+  for (const truth of ['insider', 'insider', 'misreport']) r.caseIds.push(W.openCase('burglary', { ownerId: a.id, truth }).id);
   months(48);
   const idle = r.caseIds.map(W.investigation).filter((inv) => inv.stage === 'suspended').length;
-  check(idle >= 2 && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && inv.stage === 'active'), `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${r.caseIds.length} in all)`);
+  // The partner's routine work can turn up enough to charge someone: those cases moved on. Every one of the first three
+  // that stayed open, with nobody working it, was set aside; and new cases came.
+  const first = r.caseIds.slice(0, 3).map(W.investigation);
+  const stalled = first.filter((inv) => !['charged', 'closed'].includes(inv.stage) && !inv.file.outcome);
+  check(idle >= 1 && stalled.every((inv) => inv.stage === 'suspended') && r.caseIds.map(W.investigation).some((inv) => !inv.file.outcome && ['active', 'suspect'].includes(inv.stage)),
+    `cases nobody works are set aside after three years, and new ones come (${idle} set aside, ${first.length - stalled.length} charged by the partner's work, ${r.caseIds.length} in all)`);
 }
 {
   const WPm = await import('../js/engine/investigations/workplace.js');

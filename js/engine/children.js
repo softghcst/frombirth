@@ -17,6 +17,7 @@ import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, addedTa
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
 import { childGenome, genomeOf } from './health/heredity.js';
 import { quickAdopt } from './animalCare.js';
+import { recordPlayerAdoption } from './origins.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -234,6 +235,7 @@ export function adopt() {
   child.birthday ??= birthdayFor(child.id);
   child.adoptionInfo = adoptionInfoFor(child, { date: dateNow(), countryId: c.id, city: p.city, by: [p.id, ...(partner ? [partner.id] : [])] });
   child.flags.adoptionCard = 'new';
+  recordPlayerAdoption(child, child.adoptionInfo.by); // a record of the adoption, apart from any birth family (engine/origins.js)
   child.stats = { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
   child.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60),
     singing: rng.int(0, 60), dance: rng.int(0, 60) };

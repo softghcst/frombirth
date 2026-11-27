@@ -16,7 +16,7 @@ import * as clubs from '../engine/clubs.js';
 import { clubTitle } from '../data/clubs.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
-import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
+import { messageModal, pickModal, confirmModal, inputModal, openModal, selectModal } from './modals.js';
 import { openAppearanceEditor } from '../avatar/editor.js';
 import * as money from '../engine/currency.js';
 import * as towns from '../engine/cities.js';
@@ -148,9 +148,19 @@ export async function moveCity(api) {
   const block = towns.moveBlock();
   if (block) return messageModal({ body: block });
   const now = towns.hereCity();
-  const name = await pickModal({ title: 'Move to another city',
-    body: `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`,
-    options: towns.moveOptions().map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
+  const body = `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`;
+  let opts = towns.moveOptions();
+  // A country with many cities (the United States has one in every state): the state first, from a dropdown, then its cities.
+  if (opts.length > 12 && opts.every((k) => k.region)) {
+    const states = [...new Set(opts.map((k) => k.region))].sort((a, b) => a.localeCompare(b));
+    const word = opts[0].regionWord ?? 'Region';
+    const region = await selectModal({ title: 'Move to another city', body, label: word, button: 'Next',
+      options: states.map((r) => { const n = opts.filter((k) => k.region === r).length; return { value: r, label: n > 1 ? `${r} (${n} cities)` : r }; }) });
+    if (!region) return undefined;
+    opts = opts.filter((k) => k.region === region);
+  }
+  const name = await pickModal({ title: 'Move to another city', body,
+    options: opts.map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
   if (!name) return undefined;
   const sure = await confirmModal({ title: `Move to ${name}?`, body: `It costs ${fmtMoney(towns.moveCost(), c)}. Property you own stays where it is.`, yes: 'Move' });
   return sure ? report(api, towns.relocate(name)) : undefined;

@@ -27,7 +27,7 @@ import { coverageOf } from '../../data/investigations.js';
 export { coverageOf };
 
 /** How big a city's department is (0 small, 1 mid, 2 large). Gameplay configuration. */
-const BIG = { 'us/New York': 2, 'us/Chicago': 2, 'us/Seattle': 1, 'us/Atlanta': 1, 'us/Austin': 1, 'us/Denver': 1, 'us/Orlando': 1 };
+const BIG = { 'us/New York': 2, 'us/Chicago': 2, 'us/Los Angeles': 2, 'us/Houston': 2, 'us/Philadelphia': 2, 'us/Seattle': 1, 'us/Atlanta': 1, 'us/Austin': 1, 'us/Denver': 1, 'us/Orlando': 1 };
 export function deptSize(countryId, city) {
   const known = BIG[`${countryId}/${city}`];
   if (known != null) return DEPT_SIZE(known);

@@ -12,7 +12,7 @@ const { CAREER_BY_ID } = await import('../js/data/careers.js');
 const problems = [];
 const check = (c, m) => { if (!c) problems.push(m); console.log(`${c ? ' ✓' : ' ✗'} ${m}`); };
 const life = (id, perf) => {
-  do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId: 'us', city: 'New York' }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = 26; p.birthYear = store.state.year - 26; p.education.enrolled = false; p.education.stage = 'none';
   p.education.degrees.push({ type: 'high', gpa: 3.5, age: 18 }, { type: 'university', majorId: 'education', gpa: 3.5, age: 22 });

@@ -4,6 +4,7 @@ import { store, player } from '../state.js';
 import { esc } from '../util.js';
 import { roleLabel } from '../engine/relationships.js';
 import { openModal } from './modals.js';
+import { birthKin, knowLevel, knownName, birthLabel } from '../engine/origins.js';
 
 const all = () => player().npcIds.map((id) => store.state.npcs[id]).filter(Boolean);
 
@@ -43,6 +44,9 @@ export function openFamilyTree(onPick, onHistory) {
     section('Parents', of('parent').map((n) => line(n, 0)).join('')),
     section('Your generation', you + loves.map((n) => line(n, 0)).join('') + of('sibling').map((n) => branch(n, 0, people)).join('')),
     section('Your children and their families', of('child').map((n) => branch(n, 0, people)).join('')),
+    // The birth family, as far as you know it (engine/origins.js): nobody you have not learned of is shown.
+    section('Birth family', birthKin().filter((n) => knowLevel(n.id) && knowLevel(n.id) !== 'exists' && !(p.npcIds.includes(n.id) && ['parent', 'sibling'].includes(n.role)))
+      .map((n) => (p.npcIds.includes(n.id) ? line(n, 0) : `<div class="tree-row" style="padding-left:12px"><strong>${esc(knownName(n).replace(/^your /, ''))}</strong><small>${esc(birthLabel(n))}</small></div>`)).join('')),
   ].join('');
 
   const m = openModal(`
