@@ -71,6 +71,7 @@ EDGE_START = 4       # that outline starts this far below the top of the shoulde
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
 LOCK_MAX_Y = 400     # ... and on the face (down to about the mouth): hair over the neck always goes behind it
 MIN_LOCK = 150       # a piece of hair over the face below the ears must be this big (square units) to stay in front
+TEMPLE_FRONT = 20    # hair over the face this far below the tops of the ears stays in front (every head is the same there)
 WIDER_MIN = 10       # a cheek or jaw this much wider (units) than the drawn-on head's has the hair fall in front of it
 FACE_MARGIN = 12     # below the ears, hair stays in front of the face only this far inside the head's outline
 
@@ -359,6 +360,9 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front', drawn=None):
     face = head & (x > left) & (x < right) & (y > BASE_EAR_Y * PX) & (y < shoulder_y * PX) & ~shoulders
     ears = head & in_rows & ~((x > left) & (x < right))
     face &= ~ndi.binary_dilation(ears, iterations=int(EAR_PAD * PX))  # hair over an ear covers all of it, lobe included
+    # Just below the tops of the ears every adult head is still the same (the shared skull), so hair drawn over the
+    # temple there stays in front, as drawn, instead of being cut off in a step where the face's own region begins.
+    face &= ~(mask & (y < (BASE_EAR_Y + TEMPLE_FRONT) * PX))
     behind |= face
     # A style marked data-sides="behind": all of it below the tops of the ears that overlaps the head (but not the
     # shoulders) goes behind the head, so the side lengths show only where they reach past each face's own cheek and
@@ -446,6 +450,29 @@ def jaw_shift(drawn, target, drawn_lobe, target_lobe):
         ramp = np.clip((rows - (y0 - 28 * PX)) / (28 * PX), 0, 1)  # eased in from above the lobes
         d = np.where(rows < y0, (d[y0] if y0 < SIZE else 0) * ramp, d)
         out.append(np.clip(ndi.gaussian_filter1d(d, 6 * PX), -25 * PX, 40 * PX))
+    return out[0], out[1]
+
+
+def widen_shift(drawn, target):
+    """How far to move hair OUT at each row (pixels, left side and right side) on a head whose cheeks or jaw are wider
+    than the one it was drawn on, so the hair keeps the same distance from that face it was drawn with.
+
+    From the ears down, each row compares the two heads' edges; the most the target is wider so far is used and held
+    below, so the whole side of the hair moves out together (keeping its shape) rather than bending around the cheek."""
+    def edges(mask):
+        l = np.full(SIZE, np.nan); r = np.full(SIZE, np.nan)
+        any_ = mask.any(axis=1)
+        l[any_] = mask[any_].argmax(axis=1)
+        r[any_] = SIZE - 1 - mask[any_][:, ::-1].argmax(axis=1)
+        return l, r
+    (dl, dr), (tl, tr) = edges(drawn), edges(target)
+    y0 = int(BASE_EAR_Y * PX)
+    out = []
+    for diff in (dl - tl, tr - dr):  # > 0 where the target reaches further out
+        d = np.zeros(SIZE)
+        seg = np.clip(np.nan_to_num(diff[y0:]), 0, 40 * PX)
+        d[y0:] = np.maximum.accumulate(seg)
+        out.append(ndi.gaussian_filter1d(d, 6 * PX))
     return out[0], out[1]
 
 
@@ -557,11 +584,17 @@ def build(style, force=False):
             svg = hair_svg(style, tags, oparts, omask, head, lobe_y, shoulder_y, neck_y, bm + brest, name)
             print(f'  {name}: its own drawing, {ostats}')
         else:
-            left, right = (np.maximum(d, 0) for d in jaw_shift(drawn_head, head, drawn_lobe, lobe_y)) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
+            if name != base_name:
+                # In on a narrower jaw, out on rounder cheeks or a wider jaw: the hair keeps the spacing it was drawn with.
+                inl, inr = (np.maximum(d, 0) for d in jaw_shift(drawn_head, head, drawn_lobe, lobe_y))
+                outl, outr = widen_shift(drawn_head, head)
+                left, right = inl - outl, inr - outr
+            else:
+                left, right = np.zeros(SIZE), np.zeros(SIZE)
             hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
             hmask = squeeze(fmask, left, right)
             bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
-            svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name, None if name == base_name else drawn_head)
+            svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
