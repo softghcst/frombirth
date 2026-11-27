@@ -1493,6 +1493,20 @@ graves and people are joined, and deletions are carried over. The code is in
 `js/sync/`: `bundle.js` packs, combines and unpacks saves; `cloud.js` handles
 accounts and syncing; `config.js` holds the project address and public key.
 
+Transfer codes are read back before they are given out, and a load is all or
+nothing: if the device runs out of room, everything is put back as it was.
+
+## The iOS app
+
+The same game, wrapped by Capacitor 8 for iOS. The website is unchanged.
+`npm run build:app` makes `www/` from the game's own files (with the fonts kept
+in the app, so it plays offline) and copies it into the Xcode project in `ios/`;
+building and running it needs a Mac with Xcode. The website and the app keep
+their saves separately: move lives across with Transfer saves or Cloud saves.
+How it works, how saves are protected and recovered, and what to check on a
+device: [docs/IOS_APP.md](docs/IOS_APP.md). What is still needed before
+TestFlight and the App Store: [docs/APP_STORE_READINESS.md](docs/APP_STORE_READINESS.md).
+
 ## Adding events
 
 Add an object to a file in `js/data/events/` (or a new file registered in
