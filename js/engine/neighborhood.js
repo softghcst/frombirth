@@ -32,7 +32,7 @@ import { inFamilyHome } from './kinship.js';
 import { clamp, cap } from '../util.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
-import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, MOMENTS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
+import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, MOMENTS, NEIGHBOR_NEEDS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
 import { needs as accessNeeds, homeRecord as accessHome } from './health/access.js';
 import { STREETS } from '../data/properties.js';
 import { seeded } from './sportsPlay.js';
@@ -891,7 +891,7 @@ export function forget(state = store.state) {
 
 /** Scenes that are all, at heart, "a neighbor would like your company": one of these is plenty for a while. */
 const COMPANY = new Set(['hood_invitation', 'hood_invitation_upstairs', 'hood_different_neighbor', 'hood_unexpected_friendship', 'hood_kindness_returned', 'hood_block_party', 'hood_building_gathering', 'hood_community_event', 'hood_friend_across_street']);
-const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
+const sceneSort = (id) => { const s = STORY_OF[id] ?? id; return COMPANY.has(s) ? 'company' : s; };
 
 /** Queues one neighborhood scene for the player, once per story key, one a year at most. */
 /** Years before the same neighborhood scene can come again, whoever it is about. */
@@ -899,7 +899,12 @@ const SCENE_GAP = 10;
 /** Years between any two neighborhood scenes: the neighborhood is background, and the rest of life comes first. */
 const ANY_GAP = 2;
 /** Scenes that are the same story told about a different occasion: one gap for all of them. */
-const STORY_OF = { hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation' };
+const STORY_OF = {
+  hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation',
+  // Each community event and each kind of help has its own scene, but they are one story each for the gaps above.
+  ...Object.fromEntries(Object.values(COMMUNITY_EVENTS).filter((x) => x.scene).map((x) => [x.scene, 'hood_community_event'])),
+  ...Object.fromEntries(Object.values(NEIGHBOR_NEEDS).map((x) => [x.scene, 'hood_need_hand'])),
+};
 
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
@@ -1072,7 +1077,7 @@ export function planYear(state, hood, y) {
     const pAge = p.age + (y - state.year);
     if (known.length && r.chance(0.45)) { const n = r.pick(known); if (H.res[n.id] && n.meters.relationship >= 40 && n.age >= 6) ev.push({ m: r.int(0, 11), k: 'invite', res: n.id }); }
     const nearAdults = near.filter((x) => x.prox.near >= 3).flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && age(x) >= 25);
-    if (pAge >= 12 && nearAdults.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'help', res: r.pick(nearAdults).id, need: r.pick(['move', 'meal', 'garden', 'pet', 'errand']) });
+    if (pAge >= 12 && nearAdults.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'help', res: r.pick(nearAdults).id, need: r.pick(Object.keys(NEIGHBOR_NEEDS).filter((k) => y >= (NEIGHBOR_NEEDS[k].from ?? 0))) });
     const adjacent = near.filter((x) => x.prox.near >= 4).flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && age(x) >= 21);
     if (pAge >= 18 && adjacent.length && r.chance(0.16)) {
       const who = r.pick(adjacent);
@@ -1283,7 +1288,7 @@ function apply(state, hood, e, y, quiet = false) {
       if (repeated === 2) note(state, { t, h: hood.id, k: 'tradition', kind: e.kind, text: `The ${eventName(e.kind, hood.c).toLowerCase()} has become a neighborhood tradition.` });
       const pAge = p.age - (state.year - y);
       if (playerHere && (ev.who !== 'adult' || pAge >= 16) && pAge >= 4) {
-        queueAbout(state, e.kind === 'street_party' ? 'hood_block_party' : e.kind === 'building' ? 'hood_building_gathering' : 'hood_community_event', org.id,
+        queueAbout(state, e.kind === 'street_party' ? 'hood_block_party' : e.kind === 'building' ? 'hood_building_gathering' : ev.scene ?? 'hood_community_event', org.id,
           { event: eventName(e.kind, hood.c).toLowerCase(), what: ev.text, eventId: id, kind: e.kind }, `event/${id}`, t);
       }
       return;
@@ -1314,7 +1319,8 @@ function apply(state, hood, e, y, quiet = false) {
     case 'help': {
       const r = H.res[e.res];
       if (!playerHere || !r || r.dead || H.homes[H.hhs[r.hh]?.home]?.h !== hood.id) return;
-      queueAbout(state, 'hood_need_hand', r.id, { need: { move: 'move a wardrobe up the stairs', meal: 'have a hot meal brought round while they recover from an operation', garden: 'get the garden back under control', pet: 'have someone feed the animals while they are away', errand: 'get a few things from the shops this week' }[e.need] }, `help/${r.id}/${y}`, t);
+      const need = NEIGHBOR_NEEDS[e.need];
+      queueAbout(state, need?.scene ?? 'hood_need_hand', r.id, { need: need?.words ?? 'lend a hand' }, `help/${r.id}/${y}`, t);
       return;
     }
     case 'dispute': {
