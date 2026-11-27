@@ -113,5 +113,31 @@ check(['math_club', 'book_club', 'astronomy', 'animal_rights', 'gaming_club', 'd
   check(!cl.houseParty().ok, 'not in middle school');
 }
 
+// A class, with teachers, for every child: home schooling is not open yet, and a child taught at home in an older save
+// starts at the local school.
+{
+  const sch = await import('../js/engine/schooling.js');
+  const { KIND_BY_ID } = await import('../js/data/education.js');
+  check(!sch.HOME_SCHOOLING && KIND_BY_ID.public.class >= 8, 'home schooling is closed for now, and a class has eight or more');
+  let homes = 0;
+  for (let i = 0; i < 30; i++) {
+    do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+    for (let y = 0; y < 7; y++) { store.state.pendingEvents = []; advanceYear(); }
+    if (sch.school()?.kind === 'home') homes += 1;
+  }
+  check(homes === 0, `no child is taught at home (${homes} of 30)`);
+  const p = store.state.player;
+  check(!!sch.school(), 'a seven-year-old is at school');
+  if (sch.school()) {
+    const home = sch.placeFor('home', p.education.stage, p.city, p.countryId);
+    p.education.place = { schoolId: home.id, since: p.age };
+    sch.ensure();
+    const now = sch.school();
+    const mates = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'classmate').length;
+    const teachers = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.flags?.tag === 'teacher').length;
+    check(now?.kind === 'public' && mates >= 8 && teachers === 2, `a child taught at home in an older save starts at the local school, with a class and teachers (${now?.kind}, ${mates}, ${teachers})`);
+  }
+}
+
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('School is a place with people in it.');

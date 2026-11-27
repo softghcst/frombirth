@@ -37,6 +37,11 @@ import { preferredKind } from './royaled.js';
 import { localSchoolPatterns, fillName } from '../data/localNames.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
+/**
+ * Whether a family may teach a child at home. Not yet: a child taught at home has no class and no teachers, which the
+ * game does not yet make up for. Set to true to bring it back; ensure() then stops moving home-schooled children.
+ */
+export const HOME_SCHOOLING = false;
 const SCHOOL = ['elementary', 'middle', 'high'];
 export const atSchool = (p = player()) => p.education.enrolled && SCHOOL.includes(p.education.stage);
 const schools = () => (store.state.schools ??= {});
@@ -150,7 +155,7 @@ function parentsChoose(stage) {
   if (ok('law') && rng.chance(0.2)) return 'law';
   if (ok('selective') && rng.chance(0.5)) return 'selective';
   if (ok('religious') && rng.chance(0.14)) return 'religious';
-  if (stage === 'elementary' && rng.chance(0.03)) return 'home';
+  if (stage === 'elementary' && rng.chance(0.03) && HOME_SCHOOLING) return 'home'; // the roll stays, so lives play the same either way
   return 'public';
 }
 
@@ -202,7 +207,7 @@ function fillClass(s) {
     n.flags.schoolId = s.id; n.flags.alsoNeighbor = true;
     taken.add(n.firstName);
   }
-  for (let guard = 0; classmates().length < kind.class && guard < 20; guard++) {
+  for (let guard = 0; classmates().length < kind.class && guard < kind.class * 4; guard++) {
     const mate = makeNpc({ role: 'classmate', countryId: p.countryId, age: p.age, relationship: rng.int(30, 62) });
     if (taken.has(mate.firstName)) continue;
     taken.add(mate.firstName);
@@ -299,6 +304,13 @@ export function ensure() {
     delete e.joinSchoolId;
     if (want && want.stage === e.stage) { enrollAt(want, 0); seedMarks(); return; }
     enter(e.stage); return;
+  }
+  // Home schooling is not open yet (HOME_SCHOOLING): a child taught at home in an older save starts at the local school.
+  if (s.kind === 'home' && !HOME_SCHOOLING) {
+    const next = findOrFound('public', e.stage, p.city, p.countryId);
+    enrollAt(next, 0);
+    log(`You started at ${next.name}, with a class of your own and real teachers.`, 'system', 'good');
+    return;
   }
   // A young trainee or idol who lives in another country (in the agency's dorm, on a trainee visa) goes to school there.
   const lives = livesAt(p);

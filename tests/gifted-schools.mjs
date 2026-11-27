@@ -118,6 +118,8 @@ check(workEdge(CAREER_BY_ID.lawyer, built) > 0.3 && workEdge(CAREER_BY_ID.engine
   const k = life();
   k.age = 14; k.birthYear = store.state.year - 14; k.education.enrolled = true; k.education.stage = 'high'; k.education.clubs = [];
   k.skills = {};
+  // A family that can pay for a camp (this checks what the camp teaches, not what a family can afford).
+  for (const n of Object.values(store.state.npcs)) if (n.alive && n.role === 'parent' && k.npcIds.includes(n.id)) { n.wealth = 60; n.meters.money = 60; }
   const opts = summer.summerOptions(k);
   check(opts.some((o) => o.id === 'coding_camp') && opts.find((o) => o.id === 'robotics_comp')?.why, 'camps are open; the robotics competition needs the team');
   summer.goToSummer('coding_camp', k);
