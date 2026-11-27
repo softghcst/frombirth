@@ -322,7 +322,7 @@ legacyDead.alive = false; legacyDead.age = 11;
 for (const n of [legacyLive, legacyDead]) { S().npcs[n.id] = n; p.npcIds.push(n.id); }
 delete S().animals; for (const j of S().journal) delete j.animal;
 saveGame(S());
-const raw = JSON.parse(disk.get(`pathways.slot.${S().slotId}`)); delete raw.animals; disk.set(`pathways.slot.${S().slotId}`, JSON.stringify(raw));
+const raw = JSON.parse(disk.get(`frombirth.slot.${S().slotId}`)); delete raw.animals; disk.set(`frombirth.slot.${S().slotId}`, JSON.stringify(raw));
 store.state = loadGame(S().slotId); p = P();
 const m1 = zoo.animalById(legacyLive.id); const m2 = zoo.animalById(legacyDead.id);
 check(!!m1 && !!m2 && zoo.allAnimals().length === 2, 'an old save loads, and each animal in it is entered once');

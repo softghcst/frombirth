@@ -1,6 +1,6 @@
 // Offline support. Network-first so a new deploy is picked up immediately;
 // the cache is only used when the network is unavailable.
-const CACHE = 'pathways-v1';
+const CACHE = 'frombirth-v1';
 
 self.addEventListener('install', () => self.skipWaiting());
 

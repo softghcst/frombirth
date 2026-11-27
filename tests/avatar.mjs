@@ -32,7 +32,7 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
     const file = new URL(`assets/${p.file}`, root);
     if (!existsSync(file)) { check(false, `missing file ${p.file}`); continue; }
     const svg = readFileSync(file, 'utf8');
-    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
+    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-frombirth="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
     if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
     if (folder === 'heads') {
       // No straight edge runs across a head: two pieces of a path meeting edge to edge show as a hairline across the

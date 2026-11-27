@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#F1EBFA">
   <script>
     // Appearance chosen in Settings (js/theme.js), applied before the first paint so there is no flash.
-    try { var t = localStorage.getItem('pathways.theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    try { var t = localStorage.getItem('frombirth.theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
       document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#231C2D' : '#F1EBFA'); } catch (e) {}
   </script>

@@ -222,7 +222,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   life(); turns.setStep(3);
   for (let i = 0; i < 16; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; }
   const { UNDO_BUDGET, saveGame } = await import('../js/save.js');
-  const held = JSON.parse(localStorage.getItem(`pathways.undo.${S().slotId}`) ?? '[]');
+  const held = JSON.parse(localStorage.getItem(`frombirth.undo.${S().slotId}`) ?? '[]');
   check(undoDepth(S().slotId) >= 2 && undoDepth(S().slotId) <= 12 && held.reduce((n, x) => n + x.length, 0) <= UNDO_BUDGET, `undo keeps as many turns as fit its share of storage (${undoDepth(S().slotId)})`);
   // A full browser: five million characters for everything. The life's own save always wins over its undo history.
   const room = 5000000; const real = { set: localStorage.setItem };

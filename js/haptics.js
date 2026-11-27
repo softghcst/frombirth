@@ -7,7 +7,7 @@
 //     when an on/off switch (<input type="checkbox" switch>) is flipped, so a hidden one is flipped during a tap.
 //     One light tick, only from a real tap; not an official feature, so it may stop working in a later iOS.
 //   Desktops: nothing, quietly.
-export const HAPTICS_KEY = 'pathways.haptics';
+export const HAPTICS_KEY = 'frombirth.haptics';
 
 /** Patterns, in milliseconds: buzz, pause, buzz… On iPhone each is a single light tick. */
 const PATTERNS = {

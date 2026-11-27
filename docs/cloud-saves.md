@@ -15,7 +15,7 @@ a menu may have a slightly different name from the one below.
 
 1. Go to [supabase.com](https://supabase.com) and sign up (signing in with GitHub is quickest).
 2. Choose **New project**.
-   - Name: `pathways`
+   - Name: `from-birth`
    - Database password: press **Generate a password** and keep it somewhere safe.
      The game never needs it.
    - Region: the one nearest to you.
