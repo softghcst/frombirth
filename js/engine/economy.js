@@ -13,6 +13,7 @@ import { SPOKEN } from '../data/skills.js';
 import { FREE_MOVEMENT } from '../data/immigration.js';
 import { PHASES, TURN, WORLD_DOWNTURN, CRISIS_END, CRISIS_START, WAR_START, CRISIS_FX, MOVES, ROOTS, NEWS_MAX } from '../data/economy.js';
 import { SINGLE } from '../data/citizenship.js';
+import { mainHeritage, shareIn } from '../avatar/heritage.js';
 import { surnameFor } from '../data/countries.js';
 
 const world = () => (store.state.world ??= { places: {}, news: [] });
@@ -221,7 +222,12 @@ const pickName = (id, gender) => { const names = COUNTRIES[id].names; return rng
  * @returns {string} the id of the country they are from
  */
 export function fromAbroad(n, hereId, { settled = false, keepSurname = false, year = store.state?.year ?? 0 } = {}) {
-  const from = rng.pick(COUNTRY_LIST.filter((c) => c.id !== hereId && (c.place?.nationalityOf ?? c.id) !== (COUNTRIES[hereId].place?.nationalityOf ?? hereId))).id;
+  const abroad = COUNTRY_LIST.filter((c) => c.id !== hereId && (c.place?.nationalityOf ?? c.id) !== (COUNTRIES[hereId].place?.nationalityOf ?? hereId));
+  // From a country where people of their heritage are common (any country, for someone whose heritage is not known).
+  const her = mainHeritage(n.appearance?.inherited?.heritage);
+  const likely = her ? abroad.filter((c) => shareIn(c.id, her) >= 0.1) : [];
+  const from = rng.pick(likely.length ? likely : abroad).id;
+  if (n.appearance?.inherited && her) n.appearance.inherited.roots = [from];
   const issuerOf = (id) => COUNTRIES[id].place?.nationalityOf ?? id;
   n.bornIn = from;
   n.firstName = pickName(from, n.gender);

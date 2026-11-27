@@ -26,9 +26,14 @@ const people = () => store.state.player.npcIds.map((id) => store.state.npcs[id])
 const year = () => { const p = store.state.player; p.stats.health = 95; store.state.pendingEvents = []; advanceYear(); p.alive = true; p.legal.incarceration = null; p.legal.pending = null; delete p.flags.care; };
 
 function teen(age = 15, countryId = 'us', year0 = null) {
-  let s; do { s = createLife({ countryId, ...(year0 ? { year: year0 - age } : {}) }); } while (s.player.royal);
-  store.state = s;
-  for (let i = 0; i < age; i++) year();
+  // A teenager still living where they were born (now and then a family moves abroad while the child is young).
+  let s;
+  for (;;) {
+    do { s = createLife({ countryId, ...(year0 ? { year: year0 - age } : {}) }); } while (s.player.royal);
+    store.state = s;
+    for (let i = 0; i < age; i++) year();
+    if (s.player.countryId === countryId) break;
+  }
   const p = s.player;
   p.flags.livesWithParents = true;
   for (const n of people()) if (n.role === 'parent') { n.alive = true; delete n.flags.livesApart; }

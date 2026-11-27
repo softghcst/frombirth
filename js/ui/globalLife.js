@@ -33,6 +33,7 @@ import * as fam from '../engine/familyMove.js';
 import * as bizEngine from '../engine/business.js';
 const regFor = (q) => creds.REGULATED[q.careerId] ?? {};
 import { COORDINATES } from '../data/coordinates.js';
+import { rootsText } from './roots.js';
 
 const SECTIONS = [
   ['discover', 'Discover'], ['plan', 'Plan a Trip'], ['trips', 'My Trips'], ['documents', 'Passport & Documents'],
@@ -422,7 +423,8 @@ export function openExplore(api, start = {}) {
 
     lived() {
       const list = story.placesLived();
-      return `<p class="muted">Every place became part of your story.</p>${list.map((l) => `<button type="button" class="row world-row" data-residence="${l.index}"><div class="world-flag">${l.flag}</div>
+      const roots = rootsText(player().appearance);
+      return `<p class="muted">Every place became part of your story.${roots ? ` ${esc(roots)}` : ''}</p>${list.map((l) => `<button type="button" class="row world-row" data-residence="${l.index}"><div class="world-flag">${l.flag}</div>
         <div class="main"><strong>${esc(l.city ? `${l.city}, ` : '')}${esc(l.jurisdiction.name)}</strong><small>${esc(`${l.from ?? '?'}${l.to ? `–${l.to}` : l.current ? ' to now' : ''}`)}${l.reason ? ` · ${esc(l.reason)}` : ''}${l.derived ? ' · from older records' : ''}</small></div></button>`).join('')}
         <div class="btn-stack" style="margin-top:10px">${btn('Our Global Story', 'data-story', 'primary')}</div>`;
     },

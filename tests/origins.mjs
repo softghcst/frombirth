@@ -198,7 +198,8 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
   const m = mother();
   check(m && (!m.alive || (P().npcIds.includes(m.id) && m.role === 'relative' && O.knows(m.id, 'contact')) || S().origins.contacts[m.id].status === 'lapsed'), 'open: the birth mother is part of the child\'s life, as their birth mother');
   check(!P().npcIds.some((id) => npc(id).role === 'parent' && npc(id).flags.birthKin), 'open: she is never made a household parent');
-  adoptee('birth', (r) => r.contact === 'mediated');
+  // Parents who tell their child what they know (with 'limited' telling, nothing is said before 16).
+  adoptee('birth', (r) => r.contact === 'mediated' && r.telling !== 'limited');
   S().origins.self.awareAge = 4;
   years(10);
   O.doOriginAction('askBirth');

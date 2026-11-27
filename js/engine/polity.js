@@ -22,6 +22,7 @@ import { SYSTEMS } from '../data/politics.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { PARTY_KINDS, RULING_PARTY, VOTERS, DISTRICT_SEATS, ONE_ROUND, TERMS, LEVERS, POLITICAL_SCANDALS, ISSUES } from '../data/parties.js';
 import { randomAppearance, ensureStyled } from '../avatar/inherit.js';
+import { heritageFor } from '../avatar/heritage.js';
 import { vote, proportional, districts, firstRound, formGovernment } from './elections.js';
 import { formCabinet, tickCabinet, floorVote, toDo } from './government.js';
 import { post as postNews } from './news.js';
@@ -40,7 +41,7 @@ export function newFigure(w, partyId, age) {
   const gender = rng.chance(0.62) ? 'male' : 'female';
   w.seq += 1;
   const f = { id: `f${w.seq}`, name: `${rng.pick(c.names[gender])} ${rng.pick(c.names.last)}`, gender, born: yearNow() - (age ?? rng.int(36, 62)), died: null,
-    partyId, look: ensureStyled(randomAppearance(undefined, gender), gender), t: { ambition: trait(), integrity: trait(), charisma: trait(), skill: trait() }, post: null, history: [] };
+    partyId, look: ensureStyled(randomAppearance(undefined, gender, heritageFor(w.countryId)), gender), t: { ambition: trait(), integrity: trait(), charisma: trait(), skill: trait() }, post: null, history: [] };
   w.figures[f.id] = f;
   return f;
 }

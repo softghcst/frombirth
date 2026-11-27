@@ -98,13 +98,20 @@ const answer = (id, choice) => { const pe = store.state.pendingEvents.find((e) =
 // The same in 3-, 6- and 12-month turns: the yearly step uses keyed dice.
 {
   const { advanceTurn } = await import('../js/engine/turns.js');
-  const p = adult(30);
-  const f = add({ role: 'friend', age: 30, relationship: 20 }); f.flags.metAt = 'Lincoln High';
-  const start = JSON.stringify(store.state);
-  const run = (step) => { const s = JSON.parse(start); store.state = s; s.settings = { ...(s.settings ?? {}), step }; s.month = 0; for (let i = 0; i < 12 * (12 / step); i++) { s.pendingEvents = []; s.player.stats.health = 95; const ff = s.npcs[f.id]; if (ff) { ff.lastInteractionAge = s.player.age; ff.meters.relationship = 25; } advanceTurn(); } return JSON.stringify(s.player.flags.callbacks ?? {}); };
-  const a = run(3); const b = run(6); const c = run(12);
-  check(a === b && b === c && /cb_school_friend/.test(c), `the same callbacks however the years are cut, and one did come (${c})`);
-  void p;
+  // A callback comes in some years and not others, so a few lives are tried until one comes; every one of them must give
+  // the same callbacks in all three turn lengths.
+  let same = true; let came = ''; let last = '';
+  for (let tries = 0; tries < 6 && !came; tries++) {
+    const p = adult(30);
+    const f = add({ role: 'friend', age: 30, relationship: 20 }); f.flags.metAt = 'Lincoln High';
+    const start = JSON.stringify(store.state);
+    const run = (step) => { const s = JSON.parse(start); store.state = s; s.settings = { ...(s.settings ?? {}), step }; s.month = 0; for (let i = 0; i < 12 * (12 / step); i++) { s.pendingEvents = []; s.player.stats.health = 95; const ff = s.npcs[f.id]; if (ff) { ff.lastInteractionAge = s.player.age; ff.meters.relationship = 25; } advanceTurn(); } return JSON.stringify(s.player.flags.callbacks ?? {}); };
+    const a = run(3); const b = run(6); const c = run(12);
+    same &&= a === b && b === c;
+    last = c;
+    if (/cb_school_friend/.test(c)) came = c;
+  }
+  check(same && !!came, `the same callbacks however the years are cut, and one did come (${came || last})`);
 }
 
 if (problems.length) { console.log(`PROBLEMS:\n - ${problems.join('\n - ')}`); process.exit(1); }

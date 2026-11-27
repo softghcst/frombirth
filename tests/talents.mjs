@@ -53,6 +53,7 @@ section('the years bring a talent on toward half the gift; practice takes it fur
 {
   let known = 0; let hints = 0; let lives = 0;
   const tried = []; const idle = [];
+  // Enough lives that the comparison below is not decided by one run of the dice (40 could flip it).
   for (let k = 0; k < 80; k++) {
     const p = life({ talent: 'sports' }); lives++;
     const practice = k % 2 === 0;

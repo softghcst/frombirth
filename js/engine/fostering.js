@@ -134,7 +134,8 @@ function referralNow({ age = null, reason = null } = {}) {
   const p = player();
   const c = COUNTRIES[p.countryId];
   const last = rng.pick(c.names.last);
-  const mother = makeNpc({ role: 'fosterfamily', countryId: p.countryId, gender: 'female', lastName: last, age: rng.int(22, 44), relationship: rng.int(30, 55) });
+  // A child of a given age has a mother old enough to have had them.
+  const mother = makeNpc({ role: 'fosterfamily', countryId: p.countryId, gender: 'female', lastName: last, age: rng.int(Math.min(44, Math.max(22, (age ?? 0) + 16)), 44), relationship: rng.int(30, 55) });
   const father = rng.chance(0.55) ? makeNpc({ role: 'fosterfamily', countryId: p.countryId, gender: 'male', lastName: last, age: mother.age + rng.int(-2, 6), relationship: rng.int(25, 50) }) : null;
   const kidAge = age ?? rng.int(1, 15);
   const child = makeNpc({ role: 'fosterchild', countryId: p.countryId, lastName: last, age: Math.min(kidAge, mother.age - 16), relationship: rng.int(30, 50),

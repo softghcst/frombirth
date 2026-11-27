@@ -7,6 +7,7 @@
 import { rng } from '../rng.js';
 import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender, fittedFor, hairSuits, hairTextureOf, hash } from './catalog.js';
 import { RESTING, OUTFITS, HAIR_COVERS_FACE, TEXTURES } from './curation.js';
+import { cleanHeritage, blendHeritage, blendRoots, featureWeights, NATURAL_HAIR, heritageDice } from './heritage.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -16,8 +17,14 @@ const FOLDER = { eyes: 'eyes', brows: 'eyebrows', nose: 'noses', lips: 'lips' };
 // Eyes traced from pictures (eyes_f_*, eyes_m_*) are resting faces too.
 const pool = (key) => (FOLDER[key] ? CATALOG[key].filter((x) => RESTING[FOLDER[key]].includes(x.id) || (key === 'eyes' && /^eyes_[fm]_/.test(x.id))) : CATALOG[key]);
 
-/** A face with no parents to take after. Hair and eye color lean with skin depth. */
-export function randomInherited(skinDepthHint) {
+/**
+ * A face with no parents to take after. With a heritage (js/avatar/heritage.js), skin, hair and eye color are drawn from
+ * its leanings, near `skinDepthHint` (a relative's skin depth) when there is one; without, hair and eye color lean with
+ * skin depth, as before heritage.
+ */
+export function randomInherited(skinDepthHint, heritage) {
+  const her = cleanHeritage(heritage);
+  if (her) return heritageInherited(skinDepthHint, her);
   const depth = skinDepthHint == null ? rng.int(0, SKIN_TONES.length - 1) : clampDepth(skinDepthHint + rng.int(-1, 1));
   const g = {};
   for (const key of INHERITED_KEYS) g[key] = rng.pick(pool(key)).id;
@@ -36,6 +43,29 @@ export function randomInherited(skinDepthHint) {
   g.marks = [];
   if (depth <= DEPTH.golden && rng.chance(0.14)) g.marks.push(rng.chance(0.3) ? 'dense_freckles' : 'freckles');
   if (rng.chance(0.06)) g.marks.push('beauty_mark');
+  return g;
+}
+
+/**
+ * randomInherited for someone of a known heritage: drawn exactly as anyone else (the same rolls of the game's dice), then
+ * given the skin, hair and eye colors and hair texture of their heritage, drawn with heritage's own dice.
+ */
+function heritageInherited(skinDepthHint, her) {
+  const g = randomInherited(skinDepthHint);
+  const dice = heritageDice(`face:${Object.keys(her).join(',')}`);
+  const draw = (key, values, near) => {
+    const w = featureWeights(her, key, values);
+    return dice.weighted(values, (v) => w[v] * (near ? near(values.indexOf(v)) : 1));
+  };
+  // A relative's skin pulls a new family member's toward it (a shade or two either way), within their own heritage.
+  const near = skinDepthHint == null ? null : (i) => Math.exp(-((i - skinDepthHint) ** 2) / 2);
+  g.skin = draw('skin', SKIN_TONES.map((t) => t.id), near);
+  g.hairColor = draw('hairColor', NATURAL_HAIR);
+  g.hairTexture = draw('hairTexture', TEXTURES);
+  g.eyeColor = draw('eyeColor', ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray']);
+  g.heritage = her;
+  // Freckles were rolled for the skin first drawn: they stay only on skin light enough to show them.
+  if (part('skin', g.skin).depth > DEPTH.golden) g.marks = g.marks.filter((m) => !/freckles/.test(m));
   return g;
 }
 
@@ -61,9 +91,9 @@ export function defaultStyle(inherited, gender) {
     jewelry: [], outfit: rng.pick(wardrobe), outfitColor: null, hat: null };
 }
 
-/** A complete appearance for someone with no known parents. */
-export function randomAppearance(skinDepthHint, gender) {
-  const inherited = randomInherited(skinDepthHint);
+/** A complete appearance for someone with no known parents (of a heritage, when one is given). */
+export function randomAppearance(skinDepthHint, gender, heritage) {
+  const inherited = randomInherited(skinDepthHint, heritage);
   // A man is born with one of the men's mouths, so every one of them turns up (it is drawn to suit a daughter: lipsFor).
   if (gender === 'male') inherited.lips = rng.pick(CATALOG.lips.filter((x) => RESTING.lipsMasc.includes(x.id))).id;
   const style = defaultStyle(inherited, gender);
@@ -88,8 +118,8 @@ export function inheritAppearance(a, b) {
   const one = a ? normalize(a, 'parent-a').inherited : null;
   const two = b ? normalize(b, 'parent-b').inherited : null;
   const depthOf = (g) => part('skin', g.skin).depth;
-  const pa = one ?? randomInherited(two ? depthOf(two) : undefined);
-  const pb = two ?? randomInherited(depthOf(pa));
+  const pa = one ?? randomInherited(two ? depthOf(two) : undefined, two?.heritage);
+  const pb = two ?? randomInherited(depthOf(pa), pa.heritage);
 
   const g = {};
   for (const key of INHERITED_KEYS) {
@@ -108,6 +138,12 @@ export function inheritAppearance(a, b) {
     const n = (pa.marks?.includes(id) ? 1 : 0) + (pb.marks?.includes(id) ? 1 : 0);
     return rng.chance(n === 2 ? 0.8 : n === 1 ? 0.5 : 0.03);
   });
+  // Half of each parent's heritage (none is recorded where neither parent's is known).
+  const her = blendHeritage(pa.heritage, pb.heritage);
+  if (her) g.heritage = her;
+  // And both parents' roots (the places the family comes from).
+  const roots = blendRoots(pa.roots, pb.roots);
+  if (roots.length) g.roots = roots;
   return { v: 3, inherited: g, style: { hair: null, hairDye: null, glasses: null, makeup: null, lipColor: null, jewelry: [], outfit: null, outfitColor: null, hat: null } };
 }
 

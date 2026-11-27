@@ -58,7 +58,9 @@ for (const id of ['us', 'jp', 'ng', 'fr', 'br']) {
   check(next.length - stayed.length >= next.length / 2, `${id}: most of the list is new the next year (${stayed.length} of ${next.length} stayed)`);
   check(stayed.every((v) => search.prominent(v.post)), `${id}: only prominent openings stay from one year to the next`);
   const big = list.filter((v) => search.prominent(v.post) && v.post.status === 'open');
-  check(big.every((v) => next.some((w) => w.post.id === v.post.id)) || big.length > 5, `${id}: prominent openings are still listed the next year`);
+  // At most half of a year's list is carried over (fewer in a quiet year with a short list), so with more than that,
+  // some of them cannot all be listed again.
+  check(big.every((v) => next.some((w) => w.post.id === v.post.id)) || big.length > Math.min(5, Math.floor(next.length / 2)), `${id}: prominent openings are still listed the next year`);
   prominentSeen += big.length;
   check(search.recruiter().left === 3 && !search.recruiter().view, `${id}: the recruiter has three new looks the next year`);
 }

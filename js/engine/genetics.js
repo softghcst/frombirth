@@ -1,6 +1,7 @@
 // Heredity: what a child takes from its parents, and what it is born with.
 import { rng } from '../rng.js';
 import { randomAppearance as avatarRandom, inheritAppearance as avatarInherit } from '../avatar/inherit.js';
+import { oneOf, heritageFor, heritageDice } from '../avatar/heritage.js';
 import { skinDepth } from '../avatar/catalog.js';
 import { clamp } from '../util.js';
 import { ADDED_TALENTS, LATER_TALENTS } from '../data/talents.js';
@@ -15,7 +16,7 @@ export const EYE_COLORS = 4;
 const stat = (mean, spread) => Math.round(clamp(rng.around(mean, spread)));
 
 /** A face for someone with no known parents. skinHint is a skin depth (see js/avatarPalettes.js). */
-export const randomAppearance = (skinHint, gender) => avatarRandom(skinHint, gender);
+export const randomAppearance = (skinHint, gender, heritage) => avatarRandom(skinHint, gender, heritage);
 
 export const randomTraits = (n = rng.int(1, 2)) => {
   const pool = TRAITS.map((t) => t.id);
@@ -50,10 +51,23 @@ export function addedTalents(t, mean, lo = 0, hi = 100, spread = 24, giftChance 
   return t;
 }
 
+/**
+ * A heritage for someone's partner: most often one of the person's own heritages, otherwise one common where the person
+ * was born. Null when the person's heritage is not known (an older save): the partner is then drawn as before heritage.
+ * @param {{appearance?:object, bornIn?:string, countryId?:string}} person
+ */
+export function partnerHeritage(person) {
+  const own = person?.appearance?.inherited?.heritage;
+  if (!own) return null;
+  const where = person.bornIn ?? person.countryId;
+  return where && heritageDice('partner').chance(0.2) ? heritageFor(where) : oneOf(own);
+}
+
 /** Stand-in genome for a parent who is not in the picture. */
 export function unknownParent(other) {
   return {
-    appearance: randomAppearance(skinDepth(other.appearance)),
+    // Most often of the other parent's heritage (one of theirs, if they are of several), sometimes of their country's.
+    appearance: randomAppearance(skinDepth(other.appearance), undefined, partnerHeritage(other)),
     traits: randomTraits(1),
     talents: randomTalents(),
     meters: { intellect: stat(55, 35), charm: stat(55, 35), health: stat(80, 20), crazy: stat(30, 35) },

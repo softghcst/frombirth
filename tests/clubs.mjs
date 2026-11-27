@@ -85,11 +85,12 @@ section('the past: only clubs that existed then');
 {
   // The book club opens at 14 and clubs end at 17, so there is one vote for chair: as charming as can be (about nine in ten),
   // and on dice of its own, so the vote does not hang on everything run before it.
-  rng.seed(4242);
   const p = life(14);
   p.stats.charm = 100;
   cl.join('book');
   check(!cl.standFor('book').ok && cl.nextRank('book').why, 'not before a year as a member');
+  // Seeded here, after the life is made, so how a life is drawn (faces, families) never changes the votes.
+  rng.seed(4242);
   let rank = 0;
   for (let i = 0; i < 4 && rank < 2; i++) { year(); cl.standFor('book'); rank = cl.clubsOf().now.book?.rank ?? 0; }
   check(rank === 2, `a charming, loyal member is voted onto the committee, then to chair the club (rank ${rank})`);

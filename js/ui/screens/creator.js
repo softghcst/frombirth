@@ -11,6 +11,7 @@ import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openWorld } from '../world.js';
 import { browse } from '../../engine/world.js';
 import { randomAppearance } from '../../avatar/inherit.js';
+import { heritageFor } from '../../avatar/heritage.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
@@ -110,6 +111,11 @@ export function renderCreator(app, hooks) {
           <div class="field" data-city-field hidden><label for="f-city" data-city-label>City</label>
             <select id="f-city"><option value="">Random</option></select><p class="muted" data-city-note style="margin-top:4px"></p></div>
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
+          <div class="field"><label for="f-roots">Family roots</label>
+            <select id="f-roots"><option value="">Decided by your look</option><option value="here">Only where I'm born</option>
+              <optgroup label="Where I'm born, and…">${COUNTRY_LIST.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>
+            </select>
+            <p class="muted" data-roots-note style="margin-top:4px">Where your family comes from. Your family looks the part, and so do you, unless you design your look.</p></div>
           <div class="btn-stack"><button type="button" class="btn" data-browse-world>Explore the world</button></div>
         </div>
         <div class="card"><h3>Appearance</h3>
@@ -212,6 +218,19 @@ export function renderCreator(app, hooks) {
     if (list.length === 1) { q('#f-city').value = list[0]; cityNote(); }
   };
   q('#f-region').addEventListener('change', regionChanged);
+  // Family roots read as both places: "Japan and Ghana", or "Where I'm born and Ghana" while the country is on Random.
+  const rootsLabels = () => {
+    const here = COUNTRIES[q('#f-country').value];
+    for (const o of q('#f-roots').querySelectorAll('optgroup option')) {
+      const c = COUNTRIES[o.value];
+      o.textContent = `${c.flag} ${here ? here.name : 'Where I\'m born'} and ${c.name}`;
+      o.disabled = !!here && here.id === c.id;
+    }
+    q('#f-roots').querySelector('option[value="here"]').textContent = here ? `Only ${here.name}` : 'Only where I\'m born';
+    if (q('#f-roots').selectedOptions[0]?.disabled) q('#f-roots').value = 'here';
+  };
+  rootsLabels();
+  q('#f-country').addEventListener('change', rootsLabels);
   q('#f-country').addEventListener('change', (e) => {
     const c = COUNTRIES[e.target.value];
     q('[data-region-field]').hidden = !twoStep(c);
@@ -263,7 +282,7 @@ export function renderCreator(app, hooks) {
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
     rollName('first');
     rollName('last');
-    look = randomAppearance(undefined, choice.sex || grownGender()); // the face they are born with: a trans boy's changes with hormones, later
+    look = randomAppearance(undefined, choice.sex || grownGender(), heritageFor(c.id)); // the face they are born with: a trans boy's changes with hormones, later
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
     setPick('origin', weightedKey({ none: 94, birth: 3, childhood: 1.5, kinship: 1.5 }).replace('none', ''));
@@ -290,6 +309,7 @@ export function renderCreator(app, hooks) {
       // A state chosen with its city left on Random: a city in that state.
       city: q('#f-city').value || (q('#f-region').value ? pickFrom(COUNTRIES[q('#f-country').value].cities.filter((city) => regionOfCity(COUNTRIES[q('#f-country').value], city) === q('#f-region').value)) : undefined),
       appearance: look ?? undefined,
+      roots: q('#f-roots').value || undefined,
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,

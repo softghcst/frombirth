@@ -8,6 +8,7 @@ import { getPeople } from '../people.js';
 import { ensureStyled } from '../avatar/inherit.js';
 import { OCCUPATIONS, BACKGROUNDS, PETS } from '../data/traits.js';
 import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
+import { heritageFor, rootsFor } from '../avatar/heritage.js';
 
 // Kept in step with ORIENTATIONS in engine/identity.js (which cannot be imported here without a loop).
 const ORIENTATION_WEIGHTS = [['straight', 86], ['gay', 5], ['bisexual', 5.5], ['pansexual', 1.5], ['asexual', 2]];
@@ -49,9 +50,17 @@ function freshName(pool) {
  * @param {number} [o.relationship]
  * @param {object} [o.appearance]  defaults to a random one
  * @param {number} [o.skinHint]    keeps relatives looking related
+ * @param {object} [o.heritage]    where their family comes from (js/avatar/heritage.js); defaults to one common in o.countryId
  * @param {string} [o.background]  key of BACKGROUNDS; parents only
  * @returns {import('../types.js').NPC}
  */
+/** A face for someone with no family in the game: of their heritage (from where they are born, if not given), with its roots. */
+function stranger(o, gender) {
+  const a = ensureStyled(randomAppearance(o.skinHint, gender, o.heritage ?? heritageFor(o.countryId)), gender);
+  if (!a.inherited.roots) a.inherited.roots = o.roots ?? rootsFor(a.inherited.heritage, o.countryId);
+  return a;
+}
+
 export function makeNpc(o) {
   const country = COUNTRIES[o.countryId];
   const names = country.names;
@@ -71,7 +80,7 @@ export function makeNpc(o) {
       money: meter(45), crazy: meter(30), intellect: meter(), charm: meter(),
       health: meter(80, 20), generosity: meter(),
     },
-    appearance: ensureStyled(o.appearance ?? randomAppearance(o.skinHint, gender), gender),
+    appearance: o.appearance ? ensureStyled(o.appearance, gender) : stranger(o, gender),
     traits: randomTraits(),
     lastInteractionAge: -1,
     flags: known ? { known: true, knownId: known.id } : {},
