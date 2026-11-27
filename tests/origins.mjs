@@ -110,6 +110,14 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
     check(mother() && p.npcIds.includes(mother().id) && mother().role === 'relative', 'the birth mother is known, and lives apart');
   }
   check(seen.has('adoption') && seen.has('guardianship'), `both kinship adoption and guardianship happen (${[...seen]})`);
+  // A guardian's estate goes to their own children first, not to the child as if they were a legal parent.
+  for (let i = 0; i < 60 && rec().legal !== 'guardianship'; i++) adoptee('kinship');
+  if (rec().legal === 'guardianship') {
+    const g = npc(rec().guardianIds[0]); g.savings = 300000; g.life = { savings: 300000 };
+    const cash = P().finance.cash;
+    inheritFrom(g);
+    check(P().finance.cash === cash, 'a legal guardian\'s estate does not pass to the child by a parent\'s right');
+  }
   store.state = createLife({ countryId: 'us', origin: 'kinship', year: 1830 });
   check(rec()?.legal === 'kinship-care', 'before legal adoption existed, it is a family arrangement');
   section('raised by relatives: kinship care, guardianship and adoption kept apart', n);

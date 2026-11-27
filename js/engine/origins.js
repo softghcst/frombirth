@@ -460,8 +460,8 @@ function place(rec) {
     n.flags.title = kinWord(n.flags.birthKin, n.gender);
   }
   const keepOpen = rec.contact === 'open' ? birth.filter((n) => n.alive && n.flags.birthKin === 'mother') : [];
-  const pets = p.npcIds.map(npcOf).filter((n) => n?.role === 'pet');
-  for (const pet of pets) { pet.alive = false; }
+  // The family's animals stay with the birth family: they leave the child's list, not the world.
+  for (const pet of p.npcIds.map(npcOf).filter((n) => n?.role === 'pet')) pet.flags.stayedWith = birth[0]?.id ?? null;
   for (const n of [...parents, ...adopt.siblings, ...adopt.grandparents, ...adopt.pets]) state.npcs[n.id] = n;
   p.npcIds = [...parents, ...adopt.siblings, ...together, ...adopt.grandparents, ...adopt.pets, ...keepOpen].map((n) => n.id);
   p.flags.parentsStatus = adopt.status;
@@ -679,7 +679,7 @@ function answerFor(rec, n, channel, key) {
   }
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-const channelWords = (ch) => ({ intermediary: 'through the intermediary', registry: 'through the registry', dna: 'through the DNA service\'s messages', agency: 'through the agency', direct: 'by letter', open: 'as always', reach: 'in their own words' }[ch] ?? 'through the agency');
+const channelWords = (ch) => ({ intermediary: 'through the intermediary', registry: 'through the registry', dna: 'through the DNA service\'s messages', agency: 'through the agency', direct: 'by a letter forwarded through a tracing service', open: 'as always', reach: 'in their own words' }[ch] ?? 'through the agency');
 
 function contactAnswer(rec, r) {
   const n = npcOf(r.target);
@@ -1254,6 +1254,24 @@ function contactLabel(k) {
 
 /** The label for a birth relative on the family tree and elsewhere. */
 export const birthLabel = (n) => kinWord(n.flags.birthKin, n.gender);
+
+/**
+ * A legal guardian (not an adoptive parent) is not the child's legal parent: their estate goes to their own children
+ * first (for a grandparent, the birth mother), not to the child they raised as if by a parent's right.
+ * @returns {boolean} true if this estate was dealt with here
+ */
+export function guardianEstate(npc) {
+  if (!npc?.flags?.guardian || npc.flags.adoptiveParent) return false;
+  const rec = myRecord();
+  const mother = rec && npcOf(rec.birthParentIds.find((id) => npcOf(id)?.flags.birthKin === 'mother'));
+  const fromGrandparent = npc.flags.title === 'Grandmother' || npc.flags.title === 'Grandfather';
+  const amount = Math.max(0, npc.life?.savings ?? npc.savings ?? 0);
+  if (fromGrandparent && mother?.alive && amount) { mother.savings = (mother.savings ?? 0) + amount; }
+  if (npc.life) npc.life.savings = 0;
+  npc.savings = 0;
+  if (amount) log(`${npc.firstName}'s estate goes to ${fromGrandparent && mother?.alive ? `${npc.gender === 'male' ? 'his' : 'her'} daughter, your birth mother` : `${npc.gender === 'male' ? 'his' : 'her'} own family`}: a guardian is not a legal parent.`, 'system', 'neutral');
+  return true;
+}
 
 // ---------- The other side: when the player adopts ----------
 
