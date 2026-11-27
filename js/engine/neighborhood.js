@@ -31,7 +31,7 @@ import { store, player } from '../state.js';
 import { clamp, cap } from '../util.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
-import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
+import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, MOMENTS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
 import { needs as accessNeeds, homeRecord as accessHome } from './health/access.js';
 import { STREETS } from '../data/properties.js';
 import { seeded } from './sportsPlay.js';
@@ -1049,6 +1049,13 @@ export function planYear(state, hood, y) {
     }
     const elders = residentsOf(state, hood.id).filter((x) => age(x) >= 70 && y - yearOf(H.hhs[x.hh]?.from ?? T(y)) >= 25 && !state.npcs[x.id]);
     if (pAge >= 14 && elders.length && r.chance(0.2)) ev.push({ m: r.int(0, 11), k: 'elder', res: r.pick(elders).id });
+    // A small everyday moment with a neighbor (a parcel at the wrong door, a power cut, a pet gone missing).
+    if (pAge >= 8 && nearAdults.length && r.chance(0.3)) {
+      const bk = H.blocks[here.b].kind;
+      const who = r.pick(nearAdults);
+      const kinds = Object.entries(MOMENTS).filter(([, x]) => y >= (x.from ?? 0) && (!x.blocks || x.blocks.includes(bk)) && (!x.pet || H.hhs[who.hh]?.pet)).map(([k]) => k);
+      if (kinds.length) ev.push({ m: r.int(0, 11), k: 'moment', res: who.id, kind: r.pick(kinds) });
+    }
   }
   // The neighborhood itself changes: new homes go up, old ones are done up, prices and how close-knit it is drift.
   const growing = { suburban: 0.05, mixed: 0.04, urban: 0.03, apartments: 0.04, downtown: 0.03, university: 0.03, coastal: 0.02, smalltown: 0.02, rural: 0.01, historic: 0.005, gated: 0.02 }[hood.p] ?? 0.02;
@@ -1277,6 +1284,12 @@ function apply(state, hood, e, y, quiet = false) {
       const pAge = p.age - (state.year - y);
       if (!playerHere || !r || r.dead || state.npcs[r.id] || pAge < 4 || pAge > 13) return;
       queueAbout(state, 'hood_friend_across_street', r.id, { where: H.blocks[here.b].kind === 'building' ? 'in the courtyard' : 'across the street' }, `kid/${r.id}`, t);
+      return;
+    }
+    case 'moment': {
+      const r = H.res[e.res];
+      if (!playerHere || !r || r.dead || H.homes[H.hhs[r.hh]?.home]?.h !== hood.id) return;
+      queueAbout(state, MOMENTS[e.kind].scene, r.id, {}, `moment/${e.kind}/${r.id}`, t);
       return;
     }
     case 'kindness': {

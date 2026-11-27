@@ -624,7 +624,7 @@ export function settleLabs(inv) {
       text = `${d.name}: ${LAB_RESULTS[req.result].toLowerCase()}.${req.result === 'more' ? ' Another discipline may do better.' : ''}`;
       if (req.result === 'more') { it.examined = false; }
     }
-    if (it.integrity === 'gap') text += ' The evidence log is missing one transfer signature; the defense may question the chain of custody.';
+    if (it.integrity === 'gap') text += ' The evidence log is missing one transfer signature; the defense may ask whether anyone could have tampered with it.';
     req.text = text;
     it.custody.push({ at: now(), by: req.analystId, act: `examined: ${LAB_RESULTS[req.result].toLowerCase()}` });
     f.log.push({ at: now(), text: `Laboratory report: ${text}` });
@@ -733,7 +733,7 @@ export function crossQuestions(inv) {
   const ev = (k.J().cases[f.courtCaseId]?.evidenceIds ?? []).map((id) => k.J().evidence[id]).filter(Boolean);
   return [
     { id: 'custody', q: '"Was every transfer of the evidence signed for?"', weak: f.items.some((it) => it.integrity === 'gap'),
-      options: [['Say what the log shows, gap included', 'honest'], ['Say the chain of custody was complete', 'deny']] },
+      options: [['Say what the log shows, gap included', 'honest'], ['Say every handover of the evidence was logged', 'deny']] },
     { id: 'pressure', q: '"Did you put pressure on any witness?"', weak: ev.some((e) => e.tainted),
       options: [['Answer it straight', 'honest'], ['Say no, never', 'deny']] },
     { id: 'lab', q: '"Did the laboratory ever fail to reach a conclusion in this case?"', weak: f.labs.some((l) => l.status === 'reported' && l.result !== 'consistent' && l.result !== 'excluded'),

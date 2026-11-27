@@ -649,6 +649,30 @@ function coherent(where) {
   section('neighbors are background: one scene a year, nothing to keep up', n);
 }
 
+// Small everyday moments (a parcel at the wrong door, a power cut, a lost pet) turn up, each no more than once in ten years.
+{
+  const n = problems.length;
+  const MOMENT_IDS = ['hood_wrong_parcel', 'hood_power_cut', 'hood_lost_pet', 'hood_yard_sale', 'hood_storm_tree', 'hood_locked_out', 'hood_book_box'];
+  const seen = {};
+  for (const [c, city] of [['us', 'Chicago'], ['us', 'Boston'], ['gb', 'London']]) {
+    life(c, city);
+    P().age = 25; P().flags.livesWithParents = false;
+    N.settle(S());
+    const at = {};
+    for (let i = 0; i < 30 && P().alive; i++) {
+      turns.advanceTurn();
+      for (const e of S().pendingEvents) if (MOMENT_IDS.includes(e.id)) {
+        seen[e.id] = (seen[e.id] ?? 0) + 1;
+        if (at[e.id] != null) check(S().year - at[e.id] >= 10, `${e.id} came round again after ${S().year - at[e.id]} years`);
+        at[e.id] = S().year;
+      }
+      S().pendingEvents = [];
+    }
+  }
+  check(Object.keys(seen).length >= 3, `everyday moments turn up, several kinds (${JSON.stringify(seen)})`);
+  section('everyday moments with neighbors, none repeating within ten years', n);
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 for (const m of [...new Set(problems)].slice(0, 60)) console.log(`FAIL ${m}`);
 console.log(problems.length ? `${problems.length} problem(s).` : 'Neighborhoods remember.');
