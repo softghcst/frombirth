@@ -20,7 +20,9 @@ const isPlayer = (x) => !!x && x === player();
 export function bioParentIdsOf(x) {
   const p = player();
   if (isPlayer(x)) return [...(p.family?.bioParentIds ?? p.npcIds.filter((id) => { const n = npc(id); return n?.role === 'parent' && !n.flags.step && !n.adopted; }))];
-  if (!x || x.adopted) return [];
+  if (!x) return [];
+  // An adopted child's birth parents are kept apart from their legal ones, where they are known (engine/fostering.js).
+  if (x.adopted) return [...(x.flags?.birthParentIds ?? [])];
   if (x.parentIds?.length) {
     // The player's own children keep only their other parent: the player is the other.
     return x.role === 'child' ? [...new Set([...x.parentIds, p.id])] : [...x.parentIds];

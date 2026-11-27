@@ -42,6 +42,8 @@ export function roleLabel(npc) {
       return of ? `${byGender(of, 'Your father', 'Your mother', 'Your parent')}'s partner` : 'A parent\'s partner';
     }
     case 'stepsibling': return byGender(npc, 'Stepbrother', 'Stepsister', 'Stepsibling');
+    case 'fosterchild': return npc.flags.kinCare ? 'In your care' : byGender(npc, 'Foster son', 'Foster daughter', 'Foster child');
+    case 'ward': return 'Your ward';
     case 'child': return byGender(npc, 'Son', 'Daughter', 'Child') + (npc.adopted ? ' (adopted)' : '');
     case 'grandchild': return byGender(npc, 'Grandson', 'Granddaughter', 'Grandchild');
     case 'greatgrandchild': return byGender(npc, 'Great-grandson', 'Great-granddaughter', 'Great-grandchild');
@@ -71,9 +73,9 @@ export function roleLabel(npc) {
 }
 
 /** Family, by role: their deaths are always told. */
-const KIN_ROLES = ['parent', 'stepparent', 'stepsibling', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
+const KIN_ROLES = ['parent', 'stepparent', 'stepsibling', 'fosterchild', 'ward', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
 
-const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, stepparent: 2, stepsibling: 3, friend: 4, classmate: 5, coworker: 4, partner: 3,
+const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, stepparent: 2, stepsibling: 3, fosterfamily: 3, friend: 4, classmate: 5, coworker: 4, partner: 3,
   neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
@@ -195,7 +197,7 @@ export function tickRelationships() {
     // Who the player lives with is the household's business (engine/kinship.js); a parent seen every other weekend or
     // half the time under the care arrangement (engine/blended.js) is not neglected either.
     const atHome = (p.flags.livesWithParents && (inFamilyHome(npc) || (npc.role === 'sibling' && !npc.flags.livesApartWith))) || seenOften(npc)
-      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
+      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || !!npc.flags.placementId || (npc.role === 'ward' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }

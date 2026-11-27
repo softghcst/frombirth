@@ -58,6 +58,7 @@ const spend = (amount, why) => { const p = player(); if (p.finance.cash < amount
 const PARENT = ['parent'];
 const SIBLING = ['sibling'];
 const STEP = ['stepparent'];
+const CARED = ['fosterchild', 'ward'];
 const STEPSIB = ['stepsibling'];
 /** What a sleepover can be. `if`: only where it makes sense (video games need a television, from 1980). */
 const SLEEPOVER = [
@@ -276,6 +277,14 @@ export const BONDS = [
       bump(n, rng.int(4, 8)); remember(n, 'keptTheirSecret', 'You listened, and kept what they told you.');
       return trouble ? `${n.firstName} told you ${trouble}. You promised to keep it to yourself, and you will.` : `${n.firstName} talked about nothing in particular for an hour, then thanked you as if it had been something.`;
     } },
+  // ---------- A child in your care (engine/fostering.js) ----------
+  { id: 'careTime', group: 'together', roles: CARED, age: [21, 120], label: 'Do something together',
+    run: (n) => { bump(n, rng.int(3, 6)); mood(2); return rng.pick([`You and ${n.firstName} went to the park and stayed until the lights came on.`, `${n.firstName} showed you a game. You lost, repeatedly, and ${he(n)} laughed for the first time in a while.`, `You and ${n.firstName} cooked together. It was mostly ${n.firstName}'s idea.`]); } },
+  { id: 'careHomework', group: 'together', roles: CARED, age: [21, 120], if: (n) => n.age >= 6 && n.age <= 17, label: 'Help with homework',
+    run: (n) => { bump(n, rng.int(2, 5)); n.meters.intellect = clamp(n.meters.intellect + 1); return `You sat with ${n.firstName} over homework. ${cap(he(n))} got further than ${he(n)} expected.`; } },
+  { id: 'careFamily', group: 'talk', roles: CARED, age: [21, 120], label: 'Talk about their family',
+    run: (n) => { bump(n, rng.int(3, 6)); for (const id of n.parentIds ?? []) { const x = npcs()[id]; if (x?.alive) x.meters.relationship = clamp(x.meters.relationship + 2); }
+      return `${n.firstName} talked about home. You listened, and helped ${him(n)} make a card for ${his(n)} family.`; } },
   // ---------- A blended family (engine/blended.js) ----------
   { id: 'askLiveWith', group: 'ask', roles: PARENT, age: [12, 17], if: (n) => !!n.flags.livesApart && !!blendedArrangement(), label: 'Ask to live with them',
     run: (n) => { const r = askToLiveWith(n.id); return { text: r.text, tone: r.tone }; } },

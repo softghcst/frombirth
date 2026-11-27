@@ -17,7 +17,7 @@
 // Runs once a world year (engine/yearProcessor.js 'blended'), so 3-, 6- and 12-month turns come to the same family.
 // The care arrangement is a simplified model: where the child mainly lives and how often they see the other parent.
 // It is not decided by money or by who the child likes more, and it is labeled as simplified outside the United States.
-import { rng } from '../rng.js';
+import { keyedDice, onOwnDice } from './keyedDice.js';
 import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
@@ -30,6 +30,12 @@ import { recordEvent } from './chronicle.js';
 import { houseApart, homeAgain, syncHousehold } from './neighborhood.js';
 import { bioParentIdsOf, legalParentIdsOf, livesApart } from './kinship.js';
 import { COUNTRIES } from '../data/countries.js';
+
+/** This file's dice: keyed to the life, the year and what is being decided (engine/keyedDice.js), never the game's own. */
+let rng = keyedDice('family');
+const roll = (tag) => { const s = store.state; rng = keyedDice(`family/${s.slotId}/${s.player.id}/${s.year}/${tag}`); };
+/** Makes people on dice of their own: the game's sequence of rolls is left where it was. */
+const people = (tag, fn) => onOwnDice(`family-people/${store.state.slotId}/${store.state.year}/${tag}`, fn);
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npc = (id) => store.state.npcs[id] ?? null;
@@ -113,6 +119,7 @@ function chooseSchedule(home, away, year, farAway) {
 export function tickBlended() {
   const p = player();
   if (!p.alive) return;
+  roll('year');
   fam();
   upkeep(p);
   separate(p);
@@ -143,6 +150,7 @@ function separate(p) {
  * Exported for the vertical-slice tests and for any later story that separates them on purpose.
  */
 export function separateParents(staying, leaving, { legal = 'divorce', farAway = false } = {}) {
+  roll(`separate/${leaving.id}`);
   const p = player();
   const f = fam();
   const year = store.state.year;
@@ -196,6 +204,7 @@ function upkeep(p) {
 
 /** The child asks to live mainly with the other parent. From twelve, they are listened to; not always agreed with. */
 export function askToLiveWith(parentId) {
+  roll(`live/${parentId}`);
   const p = player();
   const a = arrangement();
   const n = npc(parentId);
@@ -226,6 +235,7 @@ function swapHome(a, toParent, why) {
 
 /** Asks to see the other parent more often: a step up the schedule. */
 export function askToSeeMore(parentId) {
+  roll(`more/${parentId}`);
   const a = arrangement();
   const n = npc(parentId);
   if (!a || a.otherId !== n?.id) return result(false, 'You live with them already.', 'neutral');
@@ -244,7 +254,7 @@ export function askToSeeMore(parentId) {
 /** Whether the other parent is seen often enough that time together does not fade (engine/relationships.js). */
 export function seenOften(n) {
   const a = arrangement();
-  return !!a && a.otherId === n.id && ['shared', 'weekends', 'legacy'].includes(a.schedule ?? '');
+  return !!a && a.otherId === n.id && ['shared', 'weekends'].includes(a.schedule ?? ''); // an arrangement from an older save keeps how it always worked
 }
 
 // ---------- A parent's new partner ----------
@@ -267,7 +277,11 @@ function newPartners(p) {
 }
 
 /** A parent begins a serious relationship. Exported for the vertical-slice tests. */
-export function meetParentPartner(parent, { kids = null } = {}) {
+export function meetParentPartner(parent, o = {}) {
+  roll(`partner/${parent.id}`);
+  return people(`partner/${parent.id}`, () => meetPartnerNow(parent, o));
+}
+function meetPartnerNow(parent, { kids = null } = {}) {
   const p = player();
   const year = store.state.year;
   const same = rng.chance(rule('sameSexMarriage', p.countryId) ? 0.05 : 0.01);
@@ -320,6 +334,7 @@ function partnersMoveOn(p) {
 
 /** The partner moves in with the parent: into the family home if that is where the child mainly lives. */
 export function moveIn(partner, parent) {
+  roll(`movein/${partner.id}`);
   const p = player();
   partner.flags.liveIn = true;
   partner.flags.livedInSince = store.state.year;
@@ -377,6 +392,10 @@ function newHalfSiblings(p) {
 
 /** A baby for a parent and their new partner: the player's half-brother or half-sister. */
 export function halfSibling(parent, partner) {
+  roll(`baby/${partner.id}`);
+  return people(`baby/${partner.id}`, () => halfSiblingNow(parent, partner));
+}
+function halfSiblingNow(parent, partner) {
   const p = player();
   const c = COUNTRIES[p.countryId];
   const mother = [parent, partner].find((x) => x.gender === 'female') ?? parent;

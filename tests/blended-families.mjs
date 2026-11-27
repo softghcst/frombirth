@@ -80,7 +80,7 @@ check(Object.values(N.hoods().hhs).filter((h) => h.m.includes(N.hoods().cur && `
 check(chron.events((e) => e.type === 'family_separation').length === 1, 'the separation is a canonical event, once');
 check(store.state.pendingEvents.some((e) => e.id === 'blend_separation'), 'the separation scene is waiting');
 check(K.livesApart(dad) && !K.livesApart(mom), 'the household rule knows who lives apart');
-check(B.seenOften(dad) === ['shared', 'weekends', 'legacy'].includes(a.schedule), 'time with the father counts as seeing him, under the schedule');
+check(B.seenOften(dad) === ['shared', 'weekends'].includes(a.schedule), 'time with the father counts as seeing him, under the schedule');
 
 // Answering the scene.
 const sep = store.state.pendingEvents.find((e) => e.id === 'blend_separation');

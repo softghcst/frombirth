@@ -500,6 +500,8 @@ function housemates(state, d) {
     for (const n of npcs) {
       if (n.role === 'spouse' || (n.role === 'partner' && n.flags.livingTogether)) out.push(n.id);
       else if (n.role === 'child' && n.age < 18 && !n.flags.abroad && !n.flags.custody) out.push(n.id);
+      // A child placed with the player in foster or kinship care, or under their guardianship (engine/fostering.js).
+      else if ((n.flags.placementId || (n.role === 'ward' && n.age < 18)) && !n.flags.abroad) out.push(n.id);
       else if (n.id === hoods(state).roommate) out.push(n.id);
     }
   }

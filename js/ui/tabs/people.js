@@ -41,14 +41,16 @@ import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
+import * as fostering from '../../engine/fostering.js';
+import { openFostering } from '../fostering.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
+const ORDER = ['spouse', 'partner', 'child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 /** Roles always shown at the top of People. */
-const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
-  ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
+  ['Children and grandchildren', ['child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
@@ -58,7 +60,7 @@ const GROUPS = [
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
   ['Your care team', ['clinician']],
-  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
+  ['Others', ['ex', 'fosterfamily', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 export const portrait = (npc) => (npc.role === 'pet'
@@ -517,12 +519,16 @@ export function loveFamilyGroup() {
   else if (!love.partner()) rows.push(lockedRow('Look for Love', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now', 'heart'));
   if (kids.canAdopt()) rows.push(navRow({ attrs: 'data-lovefam="adopt"', label: 'Adopt a Child', sub: fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), ico: 'child' }));
   else rows.push(lockedRow('Adopt a Child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large', 'child'));
+  // Foster and kinship care (engine/fostering.js): open to look at from 21; applying needs a home of your own.
+  if (pp.age >= 21) rows.push(navRow({ attrs: 'data-lovefam="foster"', label: 'Fostering', sub: fostering.activePlacements().length ? `${fostering.activePlacements().length} living with you` : fostering.fostering().status === 'approved' ? 'Approved carer' : 'Give a child a home for a while', ico: 'child' }));
+  else rows.push(lockedRow('Fostering', fromAge(pp.age, 21), 'child'));
   return navGroup(rows, 'Love and Family');
 }
 
 /** Opens what a Love and Family row starts. */
 export async function openLoveFamily(id, api) {
   if (id === 'love') return lookForLove(api);
+  if (id === 'foster') return openFostering(api);
   if (id === 'adopt') {
     const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
     if (yes) return adoptAndWelcome(api);

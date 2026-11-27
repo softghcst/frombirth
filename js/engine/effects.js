@@ -14,6 +14,7 @@ import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { blendedChoice } from './blended.js';
+import { fosterChoice } from './fostering.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
@@ -214,6 +215,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'blended': ctx.note = blendedChoice(e.value, ctx.cast); break;
+      case 'foster': ctx.note = fosterChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
       case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
