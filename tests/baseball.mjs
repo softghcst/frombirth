@@ -12,6 +12,7 @@ const { BASEBALL, INJURIES, DRAFTS, INTL_SIGNING } = await import('../js/data/sp
 const { ILLNESSES } = await import('../js/data/health/ailments.js');
 const { ROOTS } = await import('../js/data/economy.js');
 const sl = await import('../js/engine/sportsLife.js');
+const nations = await import('../js/engine/nations.js');
 const sp = await import('../js/engine/sports.js');
 const dr = await import('../js/engine/draft.js');
 const tr = await import('../js/engine/trades.js');
@@ -404,20 +405,22 @@ scenario('the Classic', () => {
   need(sp.internals.overall(e, P()) >= 80 && e.level === 'pro');
   const R = bb.record(e);
   const caps = e.caps ?? 0;
+  // The Classic is played by invitation: the nation through its qualifier, then a place on the roster (engine/nations.js).
+  const classicYear = () => { nations.yearInternational(S(), a, e); for (const d of sl.openDecisions().filter((x) => x.kind === 'classicInvite')) sl.answer(d.id, 'yes'); };
   while (bb.classicYear(S().year)) S().year += 1;
-  bb.baseballYear(S(), a, e, {});
+  classicYear();
   check(R.classic.length === 0, 'no Classic in a year without one');
   while (!bb.classicYear(S().year)) S().year += 1;
-  bb.baseballYear(S(), a, e, {});
+  classicYear();
   const c = R.classic[0];
   check(R.classic.length === 1 && c.year === S().year && ['champions', 'runners-up', 'semifinalists', 'out in the quarterfinals', 'out in the pool round'].includes(c.result), `one of his country's best plays in the Classic (${c?.result})`);
   check((e.caps ?? 0) > caps && S().sports.moments.some((m) => /World Baseball Classic/.test(m.text)) && S().journal.some((j) => /World Baseball Classic/.test(j.text)), 'with caps for his country, and the story told');
-  bb.baseballYear(S(), a, e, {});
+  classicYear();
   check(R.classic.length === 1, 'once a tournament');
   // Not good enough for a strong country's team.
   aim(e, 72);
   S().year += 1; while (!bb.classicYear(S().year)) S().year += 1;
-  bb.baseballYear(S(), a, e, {});
+  classicYear();
   check(R.classic.length === 1, 'a strong country leaves an ordinary player at home');
 });
 scenario('a rehab assignment', () => {
