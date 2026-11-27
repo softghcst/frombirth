@@ -2435,10 +2435,11 @@ export function pressWrite(a) {
   const n = npc(o.seniorId)?.alive ? npc(o.seniorId) : npc(o.editorId);
   const id = nextId('pub');
   const verified = (a.accuracy ?? 'verified') === 'verified' || a.accuracy === 'correction';
-  const pub = { id, storyId: null, reporterId: n?.id ?? null, byline: n ? nameOf(n) : o.name, outletId: o.id, outlet: o.name, medium: o.medium, at: now(), year: year(), beat: a.beat ?? 'local',
-    headline: a.headline, body: a.body ?? a.headline, claims: [{ id: `${id}c0`, text: a.headline, asFact: verified }], sources: [], errors: verified && a.truth === false ? [`${id}c0`] : [],
-    quality: 55, readers: Math.round(o.audience * 0.3), complaint: null, corrections: [], links: { ...(a.links ?? {}), ...(a.aboutId ? { aboutId: a.aboutId } : {}) },
-    kind: a.kind ?? 'news', tone: a.tone ?? 'neutral', accuracy: a.accuracy ?? 'verified', press: true };
+  // A press item is kept lean (a save holds many): what a screen shows, and what a correction needs.
+  const pub = { id, reporterId: n?.id ?? null, byline: n ? nameOf(n) : o.name, outletId: o.id, outlet: o.name, at: now(), year: year(), beat: a.beat ?? 'local', headline: a.headline,
+    ...(a.body && a.body !== a.headline ? { body: a.body } : {}), claims: [], sources: [], errors: verified && a.truth === false ? ['c0'] : [], corrections: [],
+    links: { ...(a.links ?? {}), ...(a.aboutId ? { aboutId: a.aboutId } : {}) }, ...(a.kind ? { kind: a.kind } : {}), ...(a.tone && a.tone !== 'neutral' ? { tone: a.tone } : {}),
+    ...(a.accuracy && a.accuracy !== 'verified' ? { accuracy: a.accuracy } : {}), press: true };
   S().pubs[id] = pub;
   prunePress();
   return pub;
@@ -2447,11 +2448,11 @@ export function pressWrite(a) {
 function prunePress() {
   const P = S().pubs;
   const n = (S().pressCount = (S().pressCount ?? 0) + 1);
-  if (n % 50) return;
+  if (n % 25) return;
   const family = new Set([player().id, ...Object.keys(S().legacy ?? {}), ...Object.keys(store.state.archive?.people ?? {})]);
   const keep = (x) => !x.press || family.has(x.reporterId) || family.has(x.links?.aboutId) || x.links?.caseId || x.links?.invId;
   const old = Object.values(P).filter((x) => !keep(x)).sort((a, b) => a.at - b.at);
-  for (const x of old.slice(0, Math.max(0, old.length - 600))) delete P[x.id];
+  for (const x of old.slice(0, Math.max(0, old.length - 250))) delete P[x.id];
 }
 /** An outlet anywhere in the game by its id (a newsroom), for screens that only have the id. */
 export const pressOutlet = (id) => S().outlets[id] ?? null;
