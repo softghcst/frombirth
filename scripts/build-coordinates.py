@@ -46,6 +46,7 @@ ALIASES = {
     ('kw', 'Farwaniya'): 'Al Farwaniyah',
     ('us', 'Portland, Maine'): 'Portland',
     ('us', 'Charleston, West Virginia'): 'Charleston',
+    ('eg', 'Faiyum'): 'Al Fayyum',
 }
 
 # The postal code GeoNames uses for each US state (admin1code), by the state's name in js/data/cities.js.
