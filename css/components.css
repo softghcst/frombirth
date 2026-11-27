@@ -1560,6 +1560,24 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .share-preview { text-align: center; }
 .share-preview img { width: 100%; max-width: 360px; max-height: 52vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow); }
 
+/* Text for screen readers only. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Settings → Appearance → App Icon: the three icons as they are, three to a row. */
+.appicon-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.appicon-opt { display: grid; justify-items: center; gap: 4px; padding: 10px 6px 12px; border-radius: 16px; border: 2px solid var(--line); background: var(--raised); color: var(--ink);
+  font: inherit; cursor: pointer; text-align: center; min-width: 0; transition: border-color .15s ease, box-shadow .15s ease; }
+.appicon-opt:hover { border-color: var(--accent-soft); }
+.appicon-opt:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.appicon-opt.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.appicon-img { position: relative; display: block; width: 100%; max-width: 96px; }
+.appicon-img img { display: block; width: 100%; height: auto; border-radius: 22%; box-shadow: 0 6px 14px -8px rgba(60, 30, 90, .5); }
+.appicon-check { position: absolute; right: -6px; top: -6px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center; font-size: .85rem; font-weight: 800; border: 2px solid var(--surface); }
+.appicon-opt strong { font-size: .95rem; }
+.appicon-opt small { color: var(--muted); font-size: .72rem; line-height: 1.25; }
+.appicon-note { margin: 12px 0 0; font-size: .85rem; }
+
 /* A line under a row's name that is still long wraps to a second line rather than being cut off mid-word. */
 .row .main small, .nav-row .nr-main small, .sec-row .nr-main small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .nr-bar small { display: inline; -webkit-line-clamp: unset; }
