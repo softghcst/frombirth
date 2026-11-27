@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR_BY_TEXTURE, KID_HAIR, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_HAIR, KID_EYES, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 import { cleanHeritage } from './heritage.js';
@@ -68,7 +68,7 @@ export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'an
 
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
-  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying).map((e) => (/^eyes_[fm]_/.test(e.id) ? { ...e, name: e.name.replace(/^[FM] /, '').replace(/^./, (ch) => ch.toUpperCase()) } : e)), // crying eyes appear only when something sad is happening
+  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying && !/^eyes_kid_/.test(p.id)).map((e) => (/^eyes_[fm]_/.test(e.id) ? { ...e, name: e.name.replace(/^[FM] /, '').replace(/^./, (ch) => ch.toUpperCase()) } : e)), // crying eyes appear only when something sad is happening
   eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'),
@@ -153,6 +153,19 @@ export function hash(str) {
   return h >>> 0;
 }
 const seeded = (list, seed, salt) => list[hash(`${seed}:${salt}`) % list.length];
+/**
+ * A child's drawn kid eyes (curation.KID_EYES): each design weighs 1, plus 3 for each share of the child's heritage among
+ * those it is tagged with, so a shape common in a heritage turns up more often for it, and any child can have any.
+ * The same one for the same person (seeded). Null while there are none for their gender.
+ */
+function kidEyesFor(sex, heritage, seed) {
+  const list = Object.entries(KID_EYES[sex] ?? {});
+  if (!list.length) return null;
+  const w = list.map(([, tags]) => 1 + 3 * tags.reduce((t, h) => t + (heritage?.[h] ?? 0), 0));
+  let roll = (hash(`${seed}:kideyes`) % 100000) / 100000 * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < list.length; i++) { roll -= w[i]; if (roll < 0) return list[i][0]; }
+  return list[list.length - 1][0];
+}
 const resting = (key) => {
   const folder = { eyes: 'eyes', brows: 'eyebrows', nose: 'noses', lips: 'lips' }[key];
   return CATALOG[key].filter((x) => RESTING[folder].includes(x.id));
@@ -328,6 +341,8 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: st.browStyle ?? g.brows, nose: g.nose, lips, beard: st.beard ?? null,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: st.babyHair ?? (babyHair.length ? seeded(babyHair, seed, 'babyhair') : null),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
+    // Eyes drawn for the kid head (curation.KID_EYES), weighed toward those common in the child's heritage.
+    kidDrawnEyes: kidEyesFor(sex, g.heritage, seed),
     // Hair drawn for the kid head (curation.KID_HAIR), for this child's gender and texture, when there is some.
     kidDrawnHair: ((own) => (own.length ? seeded(own, seed, 'kiddrawnhair') : null))(KID_HAIR[sex]?.[g.hairTexture] ?? KID_HAIR[sex]?.straight ?? []),
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the

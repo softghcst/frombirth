@@ -491,6 +491,8 @@ def recolour(folder, name, elements):
         candidates = {c: w for c, w in candidates.items() if lum(c) >= INK}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
         candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
+    if folder == 'eyes' and name.startswith('eyes_kid_'):  # drawn on the kid template: the dark browns are the outline and pupil
+        candidates = {c: w for c, w in candidates.items() if lum(c) >= 0.2}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
         candidates = {c: w for c, w in candidates.items() if (hls(c)[0] * 360 > 330 or hls(c)[0] * 360 < 30) and hls(c)[1] > 0.55}
     if not candidates:
@@ -640,7 +642,7 @@ def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
     # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
     # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
-    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and re.match(r'hair_(baby|kid)_', name))) and vb:
+    if ((folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name)) or (folder == 'hair' and re.match(r'hair_(baby|kid)_', name)) or (folder == 'eyes' and name.startswith('eyes_kid_'))) and vb:
         s = 512 / vb[2]
         transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
         return 'as drawn on the child template'
@@ -1373,7 +1375,7 @@ def process(path, folder, force=False):
     # Solid white backgrounds, and the white "sticker" outline some packs put round a garment.
     # Not on parts drawn on a template (children's clothes, baby hair): their background is already transparent, and a
     # white garment would be taken for one.
-    box = None if re.match(r'(outfit_(baby|kid)_|hair_(baby|kid)_)', os.path.basename(path)) else bbox_of(elements)
+    box = None if re.match(r'(outfit_(baby|kid)_|hair_(baby|kid)_|eyes_kid_)', os.path.basename(path)) else bbox_of(elements)
     if box:
         bw, bh = box[2] - box[0], box[3] - box[1]
         full = lambda e: (lambda b: b and (b[2] - b[0]) >= bw * 0.9 and (b[3] - b[1]) >= bh * 0.9)(bbox_of([e]))

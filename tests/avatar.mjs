@@ -332,7 +332,7 @@ check(normalize({ v: 2, inherited: { face: 'oval' }, style: { hair: 'long_straig
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
 const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
-const drawnEyes = (list) => list.map((e) => e.id ?? e).filter((id) => !/^eyes_[fm]_/.test(id));  // traced eyes (eyes_f_*, eyes_m_*) come and go
+const drawnEyes = (list) => list.map((e) => e.id ?? e).filter((id) => !/^eyes_([fm]|kid)_/.test(id));  // traced eyes (eyes_f_*, eyes_m_*) and kid eyes come and go
 check(drawnEyes(AVATAR_MANIFEST.eyes).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(drawnEyes(CATALOG.eyes).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
 check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
@@ -610,11 +610,14 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
   check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10', 'female')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10', 'female')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
   // Children (to 13) keep the toddler eyes; their own eyes come back at fourteen, with the grown-up head.
-  for (const age of [5, 9, 13]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10', 'female')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  // (From seven, a girl may instead have eyes drawn for the kid head, curation.KID_EYES.)
+  const kidEye = (svg) => new RegExp(`eyes/${CUR.babyEyes('eyes_10', 'female')}\\.svg|eyes/eyes_kid_`).test(svg);
+  for (const age of [5, 9, 13]) check(kidEye(eyed(age)) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
   check(eyed(14).includes('eyes/eyes_10.svg'), 'a fourteen-year-old does not have the eyes they were born with');
   // A girl has the round eyes with lashes, a boy eyes_22, whatever eyes they were born with.
   const eyedAs = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender });
-  for (const age of [1, 5, 10]) check(eyedAs(age, 'female').includes('baby_eyes_6.svg') && eyedAs(age, 'male').includes('eyes/eyes_22.svg'), `a ${age}-year-old girl has baby_eyes_6 and a boy eyes_22`);
+  const own = (age, g, file) => eyedAs(age, g).includes(file) || (age >= 7 && Object.keys(CUR.KID_EYES[g] ?? {}).length && /eyes\/eyes_kid_/.test(eyedAs(age, g)));
+  for (const age of [1, 5, 10]) check(own(age, 'female', 'baby_eyes_6.svg') && own(age, 'male', 'eyes/eyes_22.svg'), `a ${age}-year-old girl has baby_eyes_6 and a boy eyes_22 (or, from seven, eyes drawn for the kid head)`);
   // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
   for (const skin of ['porcelain', 'umber', 'ebony']) {
     const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });
@@ -853,6 +856,23 @@ const { BABY_HAIR_FIT: BABY_FIT } = await import('../js/avatar/babyHairFit.js');
     const bf = BABY_FIT[id];
     check(bf ? out.includes(`scale(${bf.sx} ${bf.sy})`) && bf.sx >= 0.9 && bf.sx <= 1.15 && bf.sy >= 0.9 && bf.sy <= 1.15
       : new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is snapped onto the head (${JSON.stringify(bf)})`);
+  }
+}
+
+// Kid eyes, by gender, drawn on the kid template: worn from 7 to 13 only, placed as drawn, the iris in the kid's own eye
+// color, each tagged with heritages that are known; a child of those heritages gets them more often.
+{
+  const { HERITAGE_BY_ID } = await import('../js/data/heritage.js');
+  for (const [sex, byId] of Object.entries(CUR.KID_EYES)) for (const [id, tags] of Object.entries(byId)) {
+    check(PART_BY_ID[id] && !CATALOG.eyes.some((e) => e.id === id), `${id} exists, and is not offered to grown-ups`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(svg.includes('var(--eye-color'), `${id} takes the kid's eye color`);
+    check(tags.length && tags.every((t) => HERITAGE_BY_ID[t]), `${id}: tagged with known heritages (${tags})`);
+    const look = { ...resolveLook({ v: 3, inherited: {} }, 'ke', sex), kidDrawnEyes: id };
+    const at = (age) => dressFor(look, { age, gender: sex }).eyes;
+    check(at(10) === id && at(5) !== id && at(16) !== id, `${id} is a kid's (${sex}): worn at 10, not at 5 or 16`);
+    const out = characterAvatarSvg(look, { age: 10, gender: sex });
+    check(new RegExp(`<g clip-path="url\\(#pw-l-\\d+\\)"><use href="[^"]*${id}`).test(out), `${id} is placed as drawn`);
   }
 }
 

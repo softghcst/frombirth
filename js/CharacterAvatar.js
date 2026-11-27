@@ -151,6 +151,7 @@ export function dressFor(look, ctx = {}) {
     out.eyes = babyEyes(out.eyes, gender);  // and round, open eyes: a girl's with lashes, a boy's without (curation.BABY_EYES_BY_GENDER)
   } else if (stage === 'kid') {
     out.eyes = babyEyes(out.eyes, gender);  // children keep the round toddler eyes (curation.BABY_EYES) until the grown-up head at 14
+    if (look.kidDrawnEyes) out.eyes = look.kidDrawnEyes;  // or eyes drawn for the kid head (curation.KID_EYES), when there are some
     // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
     if (look.kidHairChosen || (out.hair && !kidsMayWear(out.hair))) out.hair = look.kidHair ?? null;  // or the one chosen for their childhood
     // Hair drawn for the kid head (curation.KID_HAIR), once there is some for this child's gender and hair: worn in place of
@@ -484,7 +485,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
-    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)),
+    // Eyes drawn on the kid template are placed as drawn; any others are fitted to this face.
+    /^eyes_kid_/.test(d.eyes ?? '') ? pair(d.eyes, '', '', weigh(READABLE.line)) : pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)),
     // A baby's, toddler's or child's brows: one soft pair, lifted, set as wide as their eyes.
     youngFace ? pair(d.eyebrows, f.browsL, f.browsR) : use(d.eyebrows, f.eyebrows),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
