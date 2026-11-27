@@ -6,6 +6,8 @@
 import { avatarSvg, faceGenderOf } from '../avatar/render.js';
 import { normalize, hash } from '../avatar/catalog.js';
 import * as love from '../engine/romance.js';
+import * as wg from '../engine/weddingGuests.js';
+import { roleLabel } from '../engine/relationships.js';
 import * as travel from '../engine/travel.js';
 import { COUNTRIES } from '../data/countries.js';
 import { MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
@@ -68,7 +70,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     const themFace = (mood = 90, o = {}) => avatarSvg({ appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, mood, label: npc.firstName, ...o });
     const chosen = (k) => plan[k] ?? love.WEDDING_PLAN[k][0].id;
     const themeHex = () => love.WEDDING_PLAN.theme.find((t) => t.id === chosen('theme')).hex;
-    const filled = () => Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)]));
+    const filled = () => ({ ...Object.fromEntries(love.PLAN_STEPS.map((k) => [k, chosen(k)])), ...(plan.invited ? { invited: plan.invited } : {}) });
     /** "at the castle", "on the beach", "at city hall": where, for the banner. */
     const venueAt = () => { const v = love.WEDDING_PLAN.venue.find((o) => o.id === plan.venue); return /^On /.test(v.name) ? v.name.toLowerCase() : `at ${v.name.replace(/^A /, 'a ').replace(/^An /, 'an ').replace(/^City hall/, 'city hall')}`; };
     const totals = () => { const t = love.planTotals(filled(), npc, c); const h = hmQuote(); return { ...t, wedding: t.cost, honeymoon: h, cost: t.cost + (h?.cost ?? 0) }; };
@@ -142,6 +144,34 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
     };
 
     /** One step of the plan: its options as tiles, the stage changing as each is tried. */
+    const guestsOf = (count) => wg.guestList(npc, count);
+    /** The guest list, to tick: everyone who could be asked, as many as the wedding has seats for. */
+    function whoIsInvited(count) {
+      const seats = wg.seatsFor(count);
+      const pool = wg.invitable(npc);
+      const picked = new Set((plan.invited ?? guestsOf(count)).slice(0, seats));
+      return new Promise((resolve) => {
+        const m = openModal(`<h2>Who's invited</h2>
+          <p class="body">Room for ${seats}. Family first, then whoever you are closest to. Anyone invited who does not come will be noticed.</p>
+          <p class="muted" data-count></p>
+          <div class="mo-guests" role="group" aria-label="Guests">${pool.map((n) => `<label class="row mo-guest">
+            <span class="main"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(roleLabel(n))}</small></span>
+            <input type="checkbox" value="${n.id}" ${picked.has(n.id) ? 'checked' : ''}></label>`).join('') || '<p class="muted">There is nobody to invite.</p>'}</div>
+          <div class="btn-row" style="margin-top:12px"><button class="btn" data-cancel>Cancel</button><button class="btn primary" data-ok>Done</button></div>`,
+        { dismissable: true, onDismiss: () => resolve(null) });
+        const sync = () => {
+          const n = m.el.querySelectorAll('input:checked').length;
+          m.el.querySelector('[data-count]').textContent = `${n} of ${seats} seats.${n > seats ? ' Too many: choose a bigger wedding, or fewer people.' : ''}`;
+          m.el.querySelector('[data-ok]').disabled = n > seats;
+        };
+        sync();
+        m.el.addEventListener('change', sync);
+        m.el.addEventListener('click', (e) => {
+          if (e.target.closest('[data-cancel]')) { m.close(); resolve(null); }
+          if (e.target.closest('[data-ok]') && !e.target.closest('[data-ok]').disabled) { const ids = [...m.el.querySelectorAll('input:checked')].map((x) => x.value); m.close(); resolve(ids); }
+        });
+      });
+    }
     function step(i) {
       const key = love.PLAN_STEPS[i];
       const opts = love.WEDDING_PLAN[key];
@@ -164,6 +194,8 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
         body: dots + tiles + form,
         replies: [
           ...(i > 0 ? [{ label: 'Back', go: () => step(i - 1) }] : []),
+          // The guest list itself: who is asked, ticked by the planner from the closest, changed by the player.
+          ...(key === 'guests' && guests > 2 ? [{ label: `Who's invited (${(plan.invited ?? guestsOf(guests)).length})`, go: async () => { const ids = await whoIsInvited(guests); if (ids) plan.invited = ids; step(i); } }] : []),
           { label: i === love.PLAN_STEPS.length - 1 ? 'That\'s the plan' : 'Next', primary: true, disabled: !plan[key] || (key === 'honeymoon' && !!hmTrip() && !hmQuote()), go: () => (i === love.PLAN_STEPS.length - 1 ? prenupAsk() : step(i + 1)) },
         ],
       });

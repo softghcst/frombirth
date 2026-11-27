@@ -13,6 +13,7 @@ import { SYSTEMS } from '../data/politics.js';
 import { HEALTH_PATHS } from './health/story.js';
 import { hasRecord } from './records.js';
 import { conditionIdsOf } from './health/ailments.js';
+import { fromMemory, hasSentiment } from './sentiments.js';
 
 /** A young child at home: what a scene costs comes from the parents, not the child's own pocket. */
 export const parentsPay = (p = player()) => p.age < 13 && !!p.flags.livesWithParents && parentsAtHome(p).length > 0;
@@ -128,7 +129,7 @@ export const hasMemory = (npc, key) => !!npc?.memories?.some((m) => m.key === ke
 export function remember(npc, key, text) {
   if (!npc) return;
   npc.memories ??= [];
-  if (!hasMemory(npc, key)) npc.memories.push({ key, text, age: player().age });
+  if (!hasMemory(npc, key)) { npc.memories.push({ key, text, age: player().age }); fromMemory(npc, key); } // and some of it leaves the player a feeling (engine/sentiments.js)
 }
 
 export function resolve(path, cast = {}) {
@@ -138,6 +139,8 @@ export function resolve(path, cast = {}) {
   const parts = path.split('.');
   // A trait, as a number a check can weigh: 100 if the player has it, 50 (no effect) if not.
   if (parts[0] === 'trait') return p.traits?.includes(parts[1]) ? 100 : 50;
+  // How the player feels about someone cast: sentiment.<castKey>.<kind> is 100 if they feel it, 0 if not.
+  if (parts[0] === 'sentiment') return hasSentiment(store.state.npcs[cast[parts[1]]], parts[2]) ? 100 : 0;
   if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {
     const npc = store.state.npcs[cast[parts[1]]];

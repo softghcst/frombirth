@@ -219,6 +219,7 @@ export function continueAs(npcId) {
     const was = n.role;
     n.role = role;
     n.memories = [];
+    n.sentiments = []; // what the last life felt about them is not the heir's
     n.lastInteractionAge = h.age;
     delete n.flags.title;
     const [lo, hi] = CLOSENESS[role] ?? [35, 65];

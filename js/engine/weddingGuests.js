@@ -7,6 +7,7 @@
 import { store, player } from '../state.js';
 import { remember } from './conditions.js';
 import { keyedDice } from './keyedDice.js';
+import { feel } from './sentiments.js';
 
 const npc = (id) => store.state.npcs[id] ?? null;
 
@@ -14,15 +15,19 @@ const npc = (id) => store.state.npcs[id] ?? null;
 const ORDER = ['child', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'ward', 'grandchild', 'niece', 'relative', 'inlaw', 'friend', 'roommate', 'mentor', 'coworker', 'boss', 'neighbor', 'classmate', 'teammate'];
 const rank = (n) => { const i = ORDER.indexOf(n.role); return i < 0 ? ORDER.length : i; };
 
-/** The guest list for a wedding of this many people (two of them are the couple). */
-export function guestList(partner, count = 40) {
+/** Seats for guests at a wedding of this many people (two of them are the couple). */
+export const seatsFor = (count) => Math.max(0, count - 2);
+/** Everyone who could be asked, family first, then the closest: the list the planner's "Who's invited" shows. */
+export function invitable(partner) {
   const p = player();
-  const seats = Math.max(0, count - 2);
-  if (!seats) return [];
-  const people = p.npcIds.map(npc).filter((n) => n && n.alive && n.id !== partner.id && n.role !== 'pet' && n.role !== 'ex' && n.role !== 'enemy'
-    && (ORDER.includes(n.role) || n.flags?.title === 'Former roommate') && (n.meters.relationship >= 30 || ['parent', 'child', 'sibling'].includes(n.role)));
   // The partner's own family, where the player knows them (engine/together.js meetFamily, in-laws).
-  return people.sort((a, b) => rank(a) - rank(b) || b.meters.relationship - a.meters.relationship).slice(0, seats).map((n) => n.id);
+  return p.npcIds.map(npc).filter((n) => n && n.alive && n.id !== partner.id && n.role !== 'pet' && n.role !== 'ex' && n.role !== 'enemy'
+    && (ORDER.includes(n.role) || n.flags?.title === 'Former roommate') && (n.meters.relationship >= 30 || ['parent', 'child', 'sibling'].includes(n.role)))
+    .sort((a, b) => rank(a) - rank(b) || b.meters.relationship - a.meters.relationship);
+}
+/** The guest list for a wedding of this many people: as many as there are seats, family first, then the closest. */
+export function guestList(partner, count = 40) {
+  return invitable(partner).slice(0, seatsFor(count)).map((n) => n.id);
 }
 
 /** Why someone could not come, or '' if they come. */
@@ -40,13 +45,18 @@ function absence(n, d, here) {
   return '';
 }
 
-/** Sends the invitations and settles who came. Once a wedding: kept on the spouse's record. */
-export function holdWedding(partner, count) {
+/**
+ * Sends the invitations and settles who came. Once a wedding: kept on the spouse's record. `chosen` is the player's
+ * own list from the planner, if they made one (never more than the seats); otherwise the closest are asked.
+ * Someone invited who simply did not come, with no reason that would keep anyone away, leaves the player hurt.
+ */
+export function holdWedding(partner, count, chosen = null) {
   const p = player();
   const w = (partner.flags.wedding ??= { year: store.state.year });
   if (w.guestList) return w.guestList;
   const d = keyedDice(`wedding/${store.state.slotId}/${p.id}/${partner.id}/${store.state.year}`);
-  const invited = guestList(partner, count);
+  const ok = new Set(invitable(partner).map((n) => n.id));
+  const invited = Array.isArray(chosen) ? [...new Set(chosen)].filter((id) => ok.has(id)).slice(0, seatsFor(count)) : guestList(partner, count);
   const came = [];
   const couldNot = [];
   for (const id of invited) {
@@ -56,6 +66,7 @@ export function holdWedding(partner, count) {
   }
   w.guestList = { invited, came, couldNot };
   for (const id of came) remember(npc(id), 'cameToWedding', `Was at your wedding to ${partner.firstName}.`);
+  for (const x of couldNot) if (x.why === 'did not come') feel(npc(x.id), 'hurt', 'they did not come to your wedding', ['parent', 'child', 'sibling'].includes(npc(x.id)?.role) ? 70 : 50);
   return w.guestList;
 }
 

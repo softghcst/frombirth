@@ -20,6 +20,7 @@ import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
 import { guardianEstate } from './origins.js';
 import { traitK } from './traits.js';
+import { decayK as sentimentDecayK, argueK as sentimentArgueK, canClearAir, clearTheAir } from './sentiments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -206,7 +207,7 @@ export function tickRelationships() {
       // How fast it fades is a little the player's own nature too: the loyal and the outgoing keep friends longer (engine/traits.js).
       const k = ['friend', 'classmate', 'coworker'].includes(npc.role) ? traitK('friendDecayK') : ['partner', 'spouse'].includes(npc.role) ? traitK('partnerDecayK')
         : ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'relative', 'stepparent', 'stepsibling', 'stepchild'].includes(npc.role) ? traitK('familyDecayK') : 1;
-      npc.meters.relationship = clamp(npc.meters.relationship - Math.round(((DECAY[npc.role] ?? 2) + (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)) * k)); // (roles that never fade, like neighbors, do not fade by moving away either)
+      npc.meters.relationship = clamp(npc.meters.relationship - Math.round(((DECAY[npc.role] ?? 2) + (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)) * k * sentimentDecayK(npc))); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       drifted.push(npc.firstName);
@@ -279,6 +280,7 @@ export function basicActions(npc) {
   if (p.age >= 6) a.push({ id: 'gift', label: 'Give a gift' });
   if (p.age >= 8 && GIVERS.includes(npc.role) && npc.age >= 18) a.push({ id: 'askMoney', label: 'Ask for money' });
   if (npc.role === 'enemy' || npc.role === 'ex') a.push({ id: 'makePeace', label: 'Try to make peace' });
+  if (p.age >= 8 && canClearAir(npc)) a.push({ id: 'clearAir', label: 'Clear the air' }); // something between you (engine/sentiments.js)
   if (p.age >= 6 && npc.age >= 5) {
     a.push({ id: 'argue', label: 'Argue', danger: true }, { id: 'insult', label: 'Insult', danger: true });
   }
@@ -421,6 +423,11 @@ export function interact(npcId, action, option) {
       }
       break;
     }
+    case 'clearAir': {
+      const r = clearTheAir(npc);
+      text = r.text; tone = r.tone;
+      break;
+    }
     case 'makePeace': {
       const went = rng.chance(clamp(0.3 + (p.stats.charm - 50) / 150 + (p.hidden.karma - 50) / 200, 0.05, 0.85));
       if (went && npc.role === 'enemy') {
@@ -439,13 +446,13 @@ export function interact(npcId, action, option) {
       break;
     }
     case 'argue':
-      bump(npc, -Math.round(rng.int(5, 14) * traitK('argueK')));
+      bump(npc, -Math.round(rng.int(5, 14) * traitK('argueK') * sentimentArgueK(npc)));
       p.stats.mood = clamp(p.stats.mood - 3);
       tone = 'bad';
       text = `You and ${name} had a blazing row.${sour(npc)}`;
       break;
     case 'insult':
-      bump(npc, -Math.round(rng.int(10, 22) * traitK('argueK')));
+      bump(npc, -Math.round(rng.int(10, 22) * traitK('argueK') * sentimentArgueK(npc)));
       p.hidden.karma = clamp(p.hidden.karma - 3);
       tone = 'bad';
       text = `You told ${name} exactly what you think of them.${sour(npc)}`;

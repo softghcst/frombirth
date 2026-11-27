@@ -45,6 +45,7 @@ import * as fostering from '../../engine/fostering.js';
 import { friendGroups as friendGroupsOf } from '../../engine/friendGroups.js';
 import { openFostering } from '../fostering.js';
 import { originsRow, openOrigins } from '../origins.js';
+import * as feelings from '../../engine/sentiments.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -332,6 +333,9 @@ export function openNpc(npc, api, back, o = {}) {
     ? `<div class="chips" style="margin-top:10px">${known.map((t) => `<span class="chip">${esc(t.name)}</span>`).join('')}</div>` : '';
   const rival = store.state.npcs[npc.flags.feudWith];
   const feudNote = rival?.alive ? `<p class="muted" style="margin-top:8px">Not speaking to ${esc(rival.firstName)} at the moment.</p>` : '';
+  // How you feel about them, and why: the strongest feeling only, on one line (engine/sentiments.js).
+  const feeling = feelings.strongest(npc);
+  const feelNote = feeling ? `<p class="muted" style="margin-top:6px"><span aria-hidden="true">${feelings.toneOf(feeling) === 'good' ? '💛' : '💢'}</span> ${esc(feelings.profileLine(npc))}</p>` : '';
   const expecting = player().flags.pregnancy?.otherId === npc.id
     ? '<p class="muted" style="margin-top:8px">You are expecting a baby together.</p>' : '';
   // What is between the two of you, as the player knows it (engine/bonds.js): never shown as anybody else's knowledge.
@@ -408,7 +412,7 @@ export function openNpc(npc, api, back, o = {}) {
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
       ${gear}
     </div>
-    ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
+    ${clinic || `${traitChips}${owns}${feelNote}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
     ${grouped(actions)}
     ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}

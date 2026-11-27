@@ -21,6 +21,7 @@ import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
 import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
 import { stakesWorth } from './business.js';
+import { feel } from './sentiments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -444,7 +445,7 @@ export function marry(npcId, weddingId, prenup) {
   npc.flags.wedding = w.plan ? { ...w.plan, year: store.state.year } : { tier: w.id, year: store.state.year };
   // Real guests: the people in the player's life, asked by closeness, and who of them came (engine/weddingGuests.js).
   const size = w.plan ? planTotals(w.plan, npc, c).guests : palace && !palace.leaves ? 300 : ({ registry: 12, classic: 80, lavish: 250 })[w.id] ?? 40;
-  const guests = holdWedding(npc, size);
+  const guests = holdWedding(npc, size, w.plan?.invited ?? null); // the planner's own list, if one was made (ui/weddingPlanner.js)
   recordEvent({ key: `wedding:${archiveIdOf(p)}:${npc.id}`, type: 'wedding', title: `Married ${npc.firstName}`, people: [npc.id, ...guests.came], significance: 3, privacy: 'family',
     text: guestLine(guests) });
   remember(npc, 'weddingDay', w.plan ? `You married them at ${w.name.replace(/^a wedding at /, '')}.` : `You married them with ${w.name.toLowerCase()}.`);
@@ -462,6 +463,8 @@ export function breakUp(npcId) {
   const p = player();
   const npc = npcOf(npcId);
   const wasEngaged = npc.flags.engaged;
+  // Parting while still fond of each other leaves an old flame; otherwise nothing much.
+  if (npc.meters.relationship >= 60) feel(npc, 'old_flame', 'you parted on good terms', 55);
   npc.role = 'ex';
   npc.flags.engaged = false;
   npc.meters.relationship = Math.max(5, npc.meters.relationship - 40);
@@ -549,6 +552,7 @@ export function leftBy(npcId) {
   const p = player();
   const npc = store.state.npcs[npcId];
   if (!npc) return;
+  feel(npc, 'hurt', 'they ended things', npc.role === 'spouse' ? 75 : 55);
   if (npc.role === 'spouse') { endMarriage(npc, false); return; }
   npc.role = 'ex';
   npc.flags.engaged = false;

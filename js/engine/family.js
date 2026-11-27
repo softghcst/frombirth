@@ -17,6 +17,7 @@ import { familyHelp, spendable, takeFrom } from './npcMoney.js';
 import { openBusinesses, valuation } from './business.js';
 import { book, ledgerOf, toMinor, fromMinor } from './ledger.js';
 import { move, banksHere, accounts, rateAt, shareOf } from './banking.js';
+import { feel } from './sentiments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const home = () => country().currency.code;
@@ -214,7 +215,7 @@ function tickLent() {
       l.missed += 1;
       n.meters.relationship = clamp(n.meters.relationship - 2); // owing money sits between people
       if (l.missed === 1) log(`${n.firstName} did not pay anything back this year.`, 'system', 'neutral');
-      if (l.missed === 3) log(`${n.firstName} has paid nothing for three years. You may have to decide what the money is worth to you.`, 'system', 'bad');
+      if (l.missed === 3) { log(`${n.firstName} has paid nothing for three years. You may have to decide what the money is worth to you.`, 'system', 'bad'); feel(n, 'resentful', 'they never paid back what you lent', 55); }
     }
   }
 }
@@ -258,6 +259,7 @@ export function tickFamilyMoney() {
   if (help) {
     log(`${help.npc.firstName} heard things were hard and sent you ${fmtMoney(help.amount, country())}. "Pay me back when you can. Or don't."`, 'system', 'good');
     help.npc.lastInteractionAge = p.age;
+    feel(help.npc, 'grateful', 'they sent money when things were hard', 70);
     book({ cat: 'giftIn', src: 'year', desc: `Help from ${help.npc.firstName}` });
   }
   for (const a of jointAccounts()) {

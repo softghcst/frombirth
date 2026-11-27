@@ -92,6 +92,7 @@ import { tickOrigins } from './origins.js';
 import { tickTraits } from './traits.js';
 import { tickLifeStage } from './lifeStages.js';
 import { tickGoals } from './goals.js';
+import { tickSentiments } from './sentiments.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -190,7 +191,8 @@ export const YEARLY = [
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['lifeStage', tickLifeStage], // 13, 18, 45: who are you becoming? (engine/lifeStages.js)
-  ['traits', tickTraits], // what a person's nature does to a year: a loner living alone, a parent with children at home (engine/traits.js)
+  ['traits', tickTraits],
+  ['sentiments', tickSentiments], // feelings about people fade a little (engine/sentiments.js) // what a person's nature does to a year: a loner living alone, a parent with children at home (engine/traits.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)

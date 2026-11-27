@@ -22,6 +22,7 @@ import { remember } from './conditions.js';
 import { employer, chronicle, placeAt, openPosting, payAt } from './employers.js';
 import { career as careerState } from './worklife.js';
 import { unmet, recordJob, promote, nextStep } from './career.js';
+import { feel } from './sentiments.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
@@ -364,6 +365,7 @@ export function applyForPromotion() {
     rival.life.job.title = car.levels[rival.life.job.level]?.title ?? rival.life.job.title;
     rival.occupation = rival.life.job.title.toLowerCase();
     rival.meters.relationship = clamp(rival.meters.relationship - 4);
+    feel(rival, 'resentful', `they got the ${next.title.toLowerCase()} job you went for`, 50);
     return result(false, `The ${next.title.toLowerCase()} job went to ${rival.firstName} ${rival.lastName}. You were told it was close.`);
   }
   // What held them back, as the boss would put it.

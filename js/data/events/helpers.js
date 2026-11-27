@@ -6,6 +6,8 @@ export const cash = (delta) => ({ type: 'cash', delta });
 export const rel = (target, delta) => ({ type: 'relationship', target, delta });
 /** Someone takes on a trait (engine/traits.js): within the limit, and never one that clashes. */
 export const trait = (value) => ({ type: 'trait', value });
+/** The player comes to feel something about someone cast (engine/sentiments.js): feel('them', 'grateful', 'they covered for you'). */
+export const feel = (target, value, why, strength = 60) => ({ type: 'feel', target, value, why, strength });
 export const flag = (target, value = true) => ({ type: 'flag', target, value });
 export const cond = (value) => ({ type: 'condition', value });
 export const gpa = (delta) => ({ type: 'gpa', delta });

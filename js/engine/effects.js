@@ -63,6 +63,7 @@ import { journalismChoice } from './journalism.js';
 import { originsChoice } from './origins.js';
 import { addTrait } from './traits.js';
 import { stageChoice } from './lifeStages.js';
+import { feel } from './sentiments.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -272,6 +273,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'origins': { const note = originsChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'trait': addTrait(e.value, 'scene'); break;
+      case 'feel': feel(store.state.npcs[ctx.cast[e.target]], e.value, e.why ?? '', e.strength ?? 60); break; // a feeling about someone cast (engine/sentiments.js)
       case 'stage': { const note = stageChoice(e.value); if (note) ctx.note = note; break; } // a turning point's answer (engine/lifeStages.js) // a scene that changes who someone is (engine/traits.js)
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
