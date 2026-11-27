@@ -194,17 +194,12 @@ export function renderCreator(app, hooks) {
   const cityNote = () => { const id = q('#f-country').value; const n = q('#f-city').value; q('[data-city-note]').textContent = id && n ? cityLine(id, n).replace(/^./, (x) => x.toUpperCase()) + '.' : ''; };
   q('#f-city').addEventListener('change', cityNote);
   // Where in the country: shown once a country is chosen. A country with many cities (the United States, with one in
-  // every state) asks for the state first, then the cities in it. Everywhere else it is one list, named for what the
-  // country is divided into (Province, Prefecture, State...), or simply City.
+  // every state) asks for the state first, then the cities in it. Everywhere else it is one list of cities.
   const twoStep = (c) => !!c && !!CITY_ROWS[c.id] && c.cities.length > 12;
   const regionOfCity = (c, city) => CITY_ROWS[c.id]?.[city]?.region ?? null;
   const fillCities = (c, list, label) => {
-    const word = REGION_WORD[c.id];
     q('[data-city-label]').textContent = label;
-    q('#f-city').innerHTML = '<option value="">Random</option>' + list.map((city) => {
-      const region = !twoStep(c) && word ? regionOfCity(c, city) : null;
-      return `<option value="${esc(city)}">${esc(region && region !== city ? `${region}: ${city}` : city)}</option>`;
-    }).join('');
+    q('#f-city').innerHTML = '<option value="">Random</option>' + list.map((city) => `<option value="${esc(city)}">${esc(city)}</option>`).join('');
     q('[data-city-field]').hidden = false;
     cityNote();
   };
@@ -226,11 +221,7 @@ export function renderCreator(app, hooks) {
       const regions = [...new Set(c.cities.map((city) => regionOfCity(c, city)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
       q('[data-region-label]').textContent = REGION_WORD[c.id] ?? 'Region';
       q('#f-region').innerHTML = '<option value="">Random</option>' + regions.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
-    } else if (c) {
-      const word = REGION_WORD[c.id];
-      const list = word ? [...c.cities].sort((a, b) => (regionOfCity(c, a) ?? '').localeCompare(regionOfCity(c, b) ?? '') || a.localeCompare(b)) : c.cities;
-      fillCities(c, list, word && word !== 'City' ? `${word} and city` : 'City');
-    }
+    } else if (c) fillCities(c, c.cities, 'City');
     ranks();
     q('[data-country-info]').textContent = c
       ? `${c.currency.code} (${c.currency.symbol}) · income tax ${Math.round(c.incomeTax * 100)}% · ${c.freeHealthcare ? 'public' : 'private'} health care`

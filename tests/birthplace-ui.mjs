@@ -1,5 +1,5 @@
 // Choosing where to be born, in the life designer: a country, then (for the United States) a state and the cities in it,
-// or one list named for what the country is divided into. And moving city in the US: a state, then its cities.
+// or, everywhere else, one list of cities. And moving city in the US: a state, then its cities.
 // Needs Playwright. Run with: node tests/birthplace-ui.mjs
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -46,7 +46,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('#f-city').inputValue() === 'Anchorage', `${label}: a state with one city has it chosen`);
   await page.selectOption('#f-country', 'ca'); await page.waitForTimeout(80);
   const caOpts = await page.locator('#f-city option').allInnerTexts();
-  check(!(await shown('#f-region')) && /Province/.test(await page.locator('[data-city-label]').innerText()) && caOpts.includes('Ontario: Toronto'), `${label}: Canada is one list, by province (${caOpts.slice(0, 3)})`);
+  check(!(await shown('#f-region')) && /^city$/i.test((await page.locator('[data-city-label]').innerText()).trim()) && caOpts.includes('Toronto') && !caOpts.some((x) => x.includes(':')), `${label}: Canada is one list of cities (${caOpts.slice(0, 3)})`);
+  await page.selectOption('#f-country', 'jp'); await page.waitForTimeout(80);
+  const jp = await page.locator('#f-city option').allInnerTexts();
+  check(!(await shown('#f-region')) && ['Tokyo', 'Osaka', 'Kyoto', 'Sapporo', 'Fukuoka', 'Nagoya'].every((x) => jp.includes(x)), `${label}: Japan lists its cities (${jp.slice(1)})`);
   await page.selectOption('#f-country', 'eg'); await page.waitForTimeout(80);
   check((await page.locator('[data-city-label]').innerText()).trim().toLowerCase() === 'city', `${label}: a country without regions in the game just asks for the city`);
   // A state chosen, its city left to chance: born in that state.
@@ -75,4 +78,4 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
 await browser.close();
 server.close();
 if (problems.length) { console.log(`PROBLEMS:\n${problems.map((p) => ` - ${p}`).join('\n')}`); process.exit(1); }
-console.log('Birthplace: country, then state and city, or one list named for the country.');
+console.log('Birthplace: country, then state and city in the US, or a list of cities.');
