@@ -62,11 +62,19 @@ const name = await page.evaluate(async () => { const { store } = await import('/
 check((await page.locator('.grad-name').textContent()) === name, 'the player\'s name is on the diploma');
 check(await page.locator('.grad-face svg').count() === 1, 'the player\'s face is on the card');
 const steps = await page.locator('[data-step]').evaluateAll((b) => b.map((x) => x.dataset.step));
-check(steps.includes('uni') && steps.includes('work') && steps.includes('rest'), `the next steps are university, work and time off (${steps})`);
+check(steps.includes('keep') && !steps.includes('uni') && steps.includes('work') && steps.includes('rest'), `the next steps are keep studying, work and time off (${steps})`);
 check(await page.evaluate(async () => { const { store } = await import('/js/state.js'); return !store.state.player.flags.gradCard; }), 'the card is shown once');
 const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 check(!wide, 'nothing runs off the side of the phone');
-await page.click('[data-step="uni"]');
+await page.click('[data-step="keep"]');
+const kinds = await page.locator('#modal-root .choice-btn').allInnerTexts();
+check(kinds.length === 2 && /Go to (College|University)/.test(kinds[0]) && /Trade School & More/.test(kinds[1]), `Keep Studying asks: university, or trade school and more (${kinds.join(' | ')})`);
+// Back returns to the card.
+await page.click('#modal-root [data-cancel]');
+await page.waitForSelector('.grad');
+check(await page.locator('.grad').count() === 1, 'Back from Keep Studying returns to the card');
+await page.click('[data-step="keep"]');
+await page.locator('#modal-root .choice-btn').first().click();
 await page.waitForSelector('.dyn-modal h2:has-text("University")', { timeout: 4000 }).catch(() => {});
 check(await page.locator('.dyn-modal h2:has-text("University")').count() === 1, 'Go to university opens the university planner');
 await page.click('.dyn-modal .modal-back');
@@ -88,7 +96,7 @@ await page.evaluate(async () => {
 });
 check(await ageUpToCard(), 'finishing university brings up the graduation card');
 const steps2 = await page.locator('[data-step]').evaluateAll((b) => b.map((x) => x.dataset.step));
-check(steps2.includes('study') && !steps2.includes('uni'), `after a degree it offers more study, not university again (${steps2})`);
+check(steps2.includes('study') && !steps2.includes('uni') && !steps2.includes('keep'), `after a degree it offers more study straight away, not university again (${steps2})`);
 check((await page.locator('.grad-school').textContent()).includes('Marlowe College'), 'the university is named on the diploma');
 await page.click('[data-step="rest"]');
 await page.waitForTimeout(150);
