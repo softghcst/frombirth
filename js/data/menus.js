@@ -71,7 +71,7 @@ export const MENU_RULES = [
   [/^staying safe$/i, '🩺', 'Health class, a talk, a private doctor'],
   [/^pocket money$/i, '🪙', 'Allowance, chores and small jobs'],
   [/^charm and confidence$/i, '✨', 'A stylist, public speaking, dance'],
-  [/^martial arts$/i, '🥋', 'Belts, moves and learning to defend yourself'],
+  [/^martial arts$/i, '🥋', 'Belts, moves and self-defense'],
   [/^things to do$/i, '🎟️', 'Gym, library, movies and more'],
   [/^riding$/i, '🏇', 'Lessons, horses and shows'],
   [/^photocards$/i, '💿', 'Albums, cards and your favorite group'],

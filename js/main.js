@@ -120,7 +120,8 @@ if ('serviceWorker' in navigator && secure) {
     .then(() => navigator.serviceWorker.ready)
     .then((reg) => {
       const here = new URL('./', location.href).href;
-      const extra = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png']
+      const extra = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png', './icons/favicon-16.png',
+        './assets/branding/from_birth_logo-640.png', ...['afterglow', 'midnight', 'daydream'].flatMap((x) => [`./icons/icon-${x}-256.png`, `./icons/icon-${x}-32.png`])]
         .map((u) => new URL(u, here).href);
       const loaded = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => u.startsWith(here));
       reg.active?.postMessage({ type: 'precache', urls: [...new Set([...extra, ...loaded])] });

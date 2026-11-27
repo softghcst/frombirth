@@ -14,6 +14,8 @@ import * as kit from '../engine/teamIdentity.js';
 import { jerseySvg, inkOn } from './jersey.js';
 import { JERSEY_COLORS } from '../data/sports.js';
 import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
+import { APP_ICONS, APP_ICON_BY_ID, DEFAULT_ICON, getAppIcon, setAppIcon, restoreDefaultIcon, iconSrc } from '../appIcon.js';
+import { applyAppIcon } from '../platform/appIcon.js';
 import { weddingScenesOn, setWeddingScenes } from './weddingPlanner.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
@@ -63,7 +65,7 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
-        { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
+        { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]} · ${APP_ICON_BY_ID[getAppIcon()].name} icon` },
         { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
         { value: 'weddings', label: 'Interactive weddings', sub: weddingScenesOn() ? 'On: plan your wedding with a planner, then live the day.' : 'Off: plan it on one page, then a "Just married!" card.' },
         // Only while a life is being played: how far each turn moves the calendar.
@@ -104,16 +106,67 @@ export async function openSettings(hooks = {}) {
   }
 }
 
-/** Light, Dark or System. Kept on this device for every life, and applied at once. */
+/** Light, Dark or System, and the app icon. Kept on this device for every life, and applied at once. */
 async function openAppearance() {
-  const now = getTheme();
-  const pick = await pickModal({
-    title: 'Appearance',
-    cancel: 'Back',
-    options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
-      })),
+  for (;;) {
+    const now = getTheme();
+    const pick = await pickModal({
+      title: 'Appearance',
+      cancel: 'Back',
+      options: [...THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}` })),
+        { value: 'icon', label: 'App Icon', sub: `${APP_ICON_BY_ID[getAppIcon()].name}${getAppIcon() === DEFAULT_ICON ? ' (default)' : ''}` }],
+    });
+    if (!pick) return;
+    if (pick === 'icon') { await openAppIcon(); continue; }
+    setTheme(pick);
+    return;
+  }
+}
+
+/**
+ * Settings → Appearance → App Icon: the three icons, as they are, in a grid. The choice is kept apart from Light and
+ * Dark. What the platform does with it (js/platform/appIcon.js) is said plainly: a web app cannot change an icon
+ * that is already on a home screen.
+ */
+export function openAppIcon() {
+  return new Promise((resolve) => {
+    let note = '';
+    const m = openModal('<div data-appicon></div>', { dismissable: true, title: 'App Icon', onDismiss: () => resolve() });
+    const root = m.el.querySelector('[data-appicon]');
+    const render = () => {
+      const now = getAppIcon();
+      root.innerHTML = `<h2 style="margin:0 0 6px">App Icon</h2>
+        <p class="muted" style="margin:0 0 12px">Choose the icon for From Birth. Your choice is kept on this device, whatever the light or dark setting.</p>
+        <div class="appicon-grid" role="radiogroup" aria-label="App icon">
+          ${APP_ICONS.map((x) => `<button type="button" class="appicon-opt${x.id === now ? ' on' : ''}" role="radio" aria-checked="${x.id === now}" tabindex="${x.id === now ? 0 : -1}" data-icon="${x.id}">
+            <span class="appicon-img"><img src="./${iconSrc(x.id, 256)}" width="256" height="256" alt="">${x.id === now ? '<span class="appicon-check" aria-hidden="true">✓</span>' : ''}</span>
+            <strong>${esc(x.name)}</strong><small>${x.id === DEFAULT_ICON ? 'Default' : esc(x.blurb)}</small></button>`).join('')}
+        </div>
+        ${note ? `<p class="muted appicon-note" role="status">${esc(note)}</p>` : ''}
+        <div class="btn-stack" style="margin-top:14px">
+          <button type="button" class="btn" data-restore${now === DEFAULT_ICON ? ' disabled' : ''}>Restore Default</button>
+          <button type="button" class="btn primary" data-done>Done</button>
+        </div>`;
+    };
+    const choose = (id) => { setAppIcon(id); note = applyAppIcon(id).note; render(); root.querySelector(`[data-icon="${id}"]`)?.focus(); };
+    root.addEventListener('click', (e) => {
+      const opt = e.target.closest('[data-icon]');
+      if (opt) return choose(opt.dataset.icon);
+      if (e.target.closest('[data-restore]')) { restoreDefaultIcon(); note = applyAppIcon(DEFAULT_ICON).note || 'Afterglow, the default, is restored.'; render(); return undefined; }
+      if (e.target.closest('[data-done]')) { m.close(); resolve(); }
+      return undefined;
+    });
+    // A radio group: the arrow keys move the choice, as they do for any set of radio buttons.
+    root.addEventListener('keydown', (e) => {
+      const opt = e.target.closest('[data-icon]');
+      if (!opt || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+      e.preventDefault();
+      const ids = APP_ICONS.map((x) => x.id);
+      const i = ids.indexOf(opt.dataset.icon);
+      choose(ids[(i + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : ids.length - 1)) % ids.length]);
+    });
+    render();
   });
-  if (pick) setTheme(pick);
 }
 
 // ---------- People you know ----------
