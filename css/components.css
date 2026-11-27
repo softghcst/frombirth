@@ -1582,3 +1582,10 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .row .main small, .nav-row .nr-main small, .sec-row .nr-main small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .nr-bar small { display: inline; -webkit-line-clamp: unset; }
 .row .main strong { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+
+/* Settings → Appearance → Landing Page: a small view of each scene. */
+.lpk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lpk-img { max-width: none; }
+.lpk-thumb { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; background: center bottom / cover no-repeat; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.lpk-auto { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.lpk-auto span { background: center bottom / cover no-repeat; }
