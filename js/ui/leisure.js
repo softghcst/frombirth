@@ -149,13 +149,18 @@ export async function moveCity(api) {
   if (block) return messageModal({ body: block });
   const now = towns.hereCity();
   const body = `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: ${now.housingWord}, ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`;
-  const opts = towns.moveOptions();
-  // A country with many cities (the United States has one in every state) is chosen from a dropdown, by state.
-  const name = opts.length > 12
-    ? await selectModal({ title: 'Move to another city', body, label: 'City', button: 'Choose', options: [...opts].sort((a, b) => (a.region ?? '').localeCompare(b.region ?? '') || a.name.localeCompare(b.name))
-      .map((k) => ({ value: k.name, label: `${k.region && !k.name.includes(k.region) ? `${k.region}: ` : ''}${k.name} (homes ${k.versus.match(/homes ([^,]+)/)?.[1] ?? ''}, pay ${k.versus.match(/pay ([^.]+)/)?.[1] ?? ''})${k.ownsHome ? ' · your home' : ''}` })) })
-    : await pickModal({ title: 'Move to another city', body,
-      options: opts.map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
+  let opts = towns.moveOptions();
+  // A country with many cities (the United States has one in every state): the state first, from a dropdown, then its cities.
+  if (opts.length > 12 && opts.every((k) => k.region)) {
+    const states = [...new Set(opts.map((k) => k.region))].sort((a, b) => a.localeCompare(b));
+    const word = opts[0].regionWord ?? 'Region';
+    const region = await selectModal({ title: 'Move to another city', body, label: word, button: 'Next',
+      options: states.map((r) => { const n = opts.filter((k) => k.region === r).length; return { value: r, label: n > 1 ? `${r} (${n} cities)` : r }; }) });
+    if (!region) return undefined;
+    opts = opts.filter((k) => k.region === region);
+  }
+  const name = await pickModal({ title: 'Move to another city', body,
+    options: opts.map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
   if (!name) return undefined;
   const sure = await confirmModal({ title: `Move to ${name}?`, body: `It costs ${fmtMoney(towns.moveCost(), c)}. Property you own stays where it is.`, yes: 'Move' });
   return sure ? report(api, towns.relocate(name)) : undefined;

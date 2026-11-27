@@ -16,6 +16,7 @@ import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 import { ORIGINS } from '../../data/origins.js';
+import { CITY_ROWS, REGION_WORD } from '../../data/cities.js';
 
 const TALENTS = Object.fromEntries(TALENT_LIST.map((t) => [t.id, t.name]));
 
@@ -104,7 +105,9 @@ export function renderCreator(app, hooks) {
             ${picker('birthRank', 'Born into', 'Random', [])}
             <p class="muted" data-rank-note></p>
           </div>
-          <div class="field"><label for="f-city">City</label>
+          <div class="field" data-region-field hidden><label for="f-region" data-region-label>State</label>
+            <select id="f-region"><option value="">Random</option></select></div>
+          <div class="field" data-city-field hidden><label for="f-city" data-city-label>City</label>
             <select id="f-city"><option value="">Random</option></select><p class="muted" data-city-note style="margin-top:4px"></p></div>
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
           <div class="btn-stack"><button type="button" class="btn" data-browse-world>Explore the world</button></div>
@@ -190,10 +193,44 @@ export function renderCreator(app, hooks) {
     onChoose: (id) => { q('#f-country').value = id; q('#f-country').dispatchEvent(new Event('change')); } }));
   const cityNote = () => { const id = q('#f-country').value; const n = q('#f-city').value; q('[data-city-note]').textContent = id && n ? cityLine(id, n).replace(/^./, (x) => x.toUpperCase()) + '.' : ''; };
   q('#f-city').addEventListener('change', cityNote);
+  // Where in the country: shown once a country is chosen. A country with many cities (the United States, with one in
+  // every state) asks for the state first, then the cities in it. Everywhere else it is one list, named for what the
+  // country is divided into (Province, Prefecture, State...), or simply City.
+  const twoStep = (c) => !!c && !!CITY_ROWS[c.id] && c.cities.length > 12;
+  const regionOfCity = (c, city) => CITY_ROWS[c.id]?.[city]?.region ?? null;
+  const fillCities = (c, list, label) => {
+    const word = REGION_WORD[c.id];
+    q('[data-city-label]').textContent = label;
+    q('#f-city').innerHTML = '<option value="">Random</option>' + list.map((city) => {
+      const region = !twoStep(c) && word ? regionOfCity(c, city) : null;
+      return `<option value="${esc(city)}">${esc(region && region !== city ? `${region}: ${city}` : city)}</option>`;
+    }).join('');
+    q('[data-city-field]').hidden = false;
+    cityNote();
+  };
+  const regionChanged = () => {
+    const c = COUNTRIES[q('#f-country').value];
+    const region = q('#f-region').value;
+    if (!c || !region) { q('[data-city-field]').hidden = true; q('#f-city').value = ''; cityNote(); return; }
+    const list = c.cities.filter((city) => regionOfCity(c, city) === region);
+    fillCities(c, list, 'City');
+    if (list.length === 1) { q('#f-city').value = list[0]; cityNote(); }
+  };
+  q('#f-region').addEventListener('change', regionChanged);
   q('#f-country').addEventListener('change', (e) => {
     const c = COUNTRIES[e.target.value];
-    q('#f-city').innerHTML = '<option value="">Random</option>'
-      + (c?.cities ?? []).map((city) => `<option>${esc(city)}</option>`).join('');
+    q('[data-region-field]').hidden = !twoStep(c);
+    q('[data-city-field]').hidden = true;
+    q('#f-city').innerHTML = '<option value="">Random</option>';
+    if (twoStep(c)) {
+      const regions = [...new Set(c.cities.map((city) => regionOfCity(c, city)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      q('[data-region-label]').textContent = REGION_WORD[c.id] ?? 'Region';
+      q('#f-region').innerHTML = '<option value="">Random</option>' + regions.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+    } else if (c) {
+      const word = REGION_WORD[c.id];
+      const list = word ? [...c.cities].sort((a, b) => (regionOfCity(c, a) ?? '').localeCompare(regionOfCity(c, b) ?? '') || a.localeCompare(b)) : c.cities;
+      fillCities(c, list, word && word !== 'City' ? `${word} and city` : 'City');
+    }
     ranks();
     q('[data-country-info]').textContent = c
       ? `${c.currency.code} (${c.currency.symbol}) · income tax ${Math.round(c.incomeTax * 100)}% · ${c.freeHealthcare ? 'public' : 'private'} health care`
@@ -226,7 +263,9 @@ export function renderCreator(app, hooks) {
     const c = pickFrom(COUNTRY_LIST);
     q('#f-country').value = c.id;
     q('#f-country').dispatchEvent(new Event('change'));
-    q('#f-city').value = pickFrom(c.cities);
+    const city = pickFrom(c.cities);
+    if (twoStep(c)) { q('#f-region').value = regionOfCity(c, city); regionChanged(); }
+    q('#f-city').value = city;
     cityNote();
     setPick('sex', Math.random() < 0.5 ? 'female' : 'male');
     setPick('trans', weightedKey({ no: 95, yes: 3, nonbinary: 2 }));
@@ -257,7 +296,8 @@ export function renderCreator(app, hooks) {
       trans: choice.trans === '' ? undefined : choice.trans !== 'no',
       orientation: choice.orientation || undefined,
       countryId: q('#f-country').value || undefined,
-      city: q('#f-city').value || undefined,
+      // A state chosen with its city left on Random: a city in that state.
+      city: q('#f-city').value || (q('#f-region').value ? pickFrom(COUNTRIES[q('#f-country').value].cities.filter((city) => regionOfCity(COUNTRIES[q('#f-country').value], city) === q('#f-region').value)) : undefined),
       appearance: look ?? undefined,
       talent: choice.talent || undefined,
       background: choice.background || undefined,
