@@ -466,6 +466,10 @@ FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|heir|royal|prince|princess|quee
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
 
 
+# Kid hairstyles with faded sides (a buzz cut, a high top, a curly top or frohawk with faded sides).
+FADED_KID_HAIR = re.compile(r'^hair_kid_.*(buzz|high_top|curly_top|frohawk|fade)')
+
+
 def recolour(folder, name, elements):
     var = RECOLOUR.get(folder)
     if not var or (folder == 'clothes' and FIXED_OUTFITS.search(name)):
@@ -508,7 +512,10 @@ def recolour(folder, name, elements):
                 mapping[c] = f'var(--lip-upper,{mapping[c]})'
         else:
             p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
-            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
+            # On a faded kid's cut the lighter tones at the sides are skin showing through short hair: they blend toward
+            # the kid's own skin, not toward white (which read as a grey streak on dark hair).
+            toward = 'var(--skin-color,#fff)' if folder == 'hair' and FADED_KID_HAIR.search(name) else '#fff'
+            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,{toward})'
     for e in elements:
         if e['fill'] in mapping:
             e['paint'] = mapping[e['fill']]
