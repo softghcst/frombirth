@@ -350,12 +350,14 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front'):
     ears = head & in_rows & ~((x > left) & (x < right))
     face &= ~ndi.binary_dilation(ears, iterations=int(EAR_PAD * PX))  # hair over an ear covers all of it, lobe included
     behind |= face
-    # A style marked data-sides="behind" (hair swept back off the face): all of it below the tops of the ears that
-    # overlaps the head goes behind the head, so the side lengths show only where they reach past the face.
+    # A style marked data-sides="behind": all of it below the tops of the ears that overlaps the head (but not the
+    # shoulders) goes behind the head, so the side lengths show only where they reach past each face's own cheek and
+    # jaw, and long hair still falls in front of the shoulders. Every adult head has the same skull and ears
+    # (scripts/share_adult_skull.mjs), so this is what fits one drawing to every face shape.
     # data-sides="jaw" (a bun or knot at the nape drawn beside the jaw): nothing below the ears is kept in front as a lock
     # over the face, so it goes behind the jaw and peeks out past it.
     if sides == 'behind':
-        behind |= head & (y > (BASE_EAR_Y - SIDES_ABOVE_EAR) * PX)
+        behind |= head & (y > (BASE_EAR_Y - SIDES_ABOVE_EAR) * PX) & ~shoulders
     # Locks drawn well over the face (not the neck) stay in front: whole pieces of hair, not slivers or the ends of strand lines.
     # Judged on the base head the hair was drawn on, so hair drawn beside a jaw is not taken for a lock on a wider one.
     over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX) & (sides == 'front')  # the face, not the neck
