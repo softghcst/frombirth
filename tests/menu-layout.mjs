@@ -28,7 +28,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`http://localhost:${port}/index.html`);
 await page.evaluate(() => localStorage.clear()); await page.reload();
-await page.click('[data-random]'); await page.waitForSelector('[data-year]');
+await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
 // Answers or closes whatever is open: a scene's first choice, a notice's OK, a yes/no question (answered no), or else
 // any other pop-up's last button. Notices come one after another (a scene, then a birth, then the year's update), each
 // opening a moment after the last has closed: it stops only once nothing has opened for a while.

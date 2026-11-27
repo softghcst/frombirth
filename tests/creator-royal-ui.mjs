@@ -34,7 +34,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.click('[data-design]');
+  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-design]');
   await page.waitForSelector('#f-country');
   for (const id of ['f-sex', 'f-trans', 'f-orientation', 'f-talent', 'f-background', 'f-health']) check(await page.locator(`select#${id}`).count() === 1, `${label}: ${id.slice(2)} is a dropdown`);
   check(!(await page.locator('.picker').count()), `${label}: no rows of option buttons left`);

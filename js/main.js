@@ -1,4 +1,5 @@
 // Boot and screen routing.
+import { birthGlobeOn, openBirthGlobe } from './ui/birthGlobe.js';
 import { watchTaps } from './haptics.js';
 import { store } from './state.js';
 import { renderTitle } from './ui/screens/title.js';
@@ -81,7 +82,8 @@ function showTitle() {
   renderTitle(app, {
     onPlay: play,
     onDesign: () => renderCreator(app, {
-      onCreate: (opts) => play(createLife(opts)),
+      // A designed life lands on the chosen country, without the odds (js/ui/birthGlobe.js).
+      onCreate: async (opts) => { const life = createLife(opts); if (birthGlobeOn()) await openBirthGlobe(life, { designed: true }); play(life); },
       onCancel: showTitle,
     }),
     onViewGrave: (entry) => { onTitle = false; renderObituary(app, entry, { onDone: showTitle }); },

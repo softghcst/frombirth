@@ -227,6 +227,7 @@ async function extras() {
   page.on('pageerror', (e) => errors.push(`extras: ${e.message}`));
   await page.goto(url);
   await page.waitForSelector('[data-design]');
+  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); // straight into the designed life (the globe has its own check)
   const continueModal = async () => { const ok = page.locator('#modal-root [data-ok]').last(); await ok.waitFor(); const t = await page.locator('#modal-root .modal').last().innerText(); await ok.click(); return t; };
   // A life designed to begin in 1850.
   await page.click('[data-design]');
