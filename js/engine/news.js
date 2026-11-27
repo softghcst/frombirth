@@ -8,9 +8,17 @@
 import { rng } from '../rng.js';
 import { store } from '../state.js';
 import { OUTLETS, HEADLINES } from '../data/news.js';
+import { nationalPress, pressWrite } from './journalism.js';
 
-/** The outlets of a country, made the first time they are needed. */
+/**
+ * The outlets of a country: its national press, which are newsrooms like any other (engine/journalism.js
+ * nationalPress), with editors and reporters a journalist can work beside. An older save keeps the names it had.
+ */
 export function press(w) {
+  const KIND = { national: 'broadsheet', tabloid: 'tabloid', network: 'broadcaster' };
+  const list = nationalPress(w.countryId, w.press ?? null).filter((o) => KIND[o.kind]).map((o) => ({ id: o.id, name: o.name, kind: KIND[o.kind], lean: o.lean ?? 0 }));
+  if (list.length) { w.press = list; return list; }
+  // (Before any national press exists in this era: the names alone, as before.)
   if (!w.press) {
     const side = rng.chance(0.5) ? 1 : -1;
     const pick = (kind, taken) => rng.pick(OUTLETS[kind].filter((n) => !taken.includes(n)));
@@ -21,10 +29,11 @@ export function press(w) {
   return w.press;
 }
 
-/** Adds an item to the country's news. */
+/** Adds an item to the country's news: one article in the press archive, with the line the news screen shows. */
 export function post(w, text, o = {}) {
-  const outlet = o.outlet ?? press(w).find((x) => x.kind === 'broadcaster');
-  (w.news ??= []).push({ year: store.state.year, outlet: outlet.name, text, tone: o.tone ?? 'neutral', you: !!o.you, ...(o.kind ? { kind: o.kind } : {}) });
+  const outlet = o.outlet ?? press(w).find((x) => x.kind === 'broadcaster') ?? press(w)[0];
+  const pub = /^n\d$/.test(outlet.id) ? null : pressWrite({ countryId: w.countryId, outletId: outlet.id, headline: text, tone: o.tone ?? 'neutral', aboutId: o.you ? store.state.player.id : null, kind: o.kind ?? 'politics', beat: 'politics' });
+  (w.news ??= []).push({ year: store.state.year, outlet: outlet.name, text, tone: o.tone ?? 'neutral', you: !!o.you, ...(o.kind ? { kind: o.kind } : {}), ...(pub ? { pubId: pub.id } : {}) });
   if (w.news.length > 80) w.news.shift();
 }
 

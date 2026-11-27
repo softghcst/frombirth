@@ -71,6 +71,7 @@ const nextId = (prefix) => `${prefix}_${(S().seq += 1).toString(36)}`;
 function kindExists(kind, y = year()) {
   const k = OUTLET_KINDS[kind];
   if (y < k.from) return false;
+  if (kind === 'network') return exists('radio', y) || exists('tv', y);
   if (k.medium === 'radio') return exists('radio', y);
   if (k.medium === 'television') return exists('tv', y);
   if (k.medium === 'online') return exists('digital', y);
@@ -78,11 +79,11 @@ function kindExists(kind, y = year()) {
 }
 
 /** A newsroom, with an editor and a senior reporter who are real people, kept for good. */
-function makeOutlet(kind, countryId, city, r) {
+function makeOutlet(kind, countryId, city, r, opt = {}) {
   const k = OUTLET_KINDS[kind];
   const word = r.pick(k.words);
-  // Broadcasters are known by their channel or station, papers by "The ...".
-  const name = kind === 'regional' ? `The ${COUNTRIES[countryId].name} ${word}` : kind === 'tv' ? (r.chance(0.4) ? `Channel ${r.int(2, 13)} ${city}` : `${city} ${word}`)
+  // Broadcasters are known by their channel or station, papers by "The ...". The national press has its own names.
+  const name = opt.name ? opt.name : k.national ? (kind === 'magazine' ? `${word} Magazine` : word) : kind === 'regional' ? `The ${COUNTRIES[countryId].name} ${word}` : kind === 'tv' ? (r.chance(0.4) ? `Channel ${r.int(2, 13)} ${city}` : `${city} ${word}`)
     : k.medium === 'radio' ? `${city} ${word}` : `The ${city} ${word}`;
   const e = registerEmployer({ name, family: 'media', tracks: ['journalist', 'publishing', 'broadcast'], countryId, city, owned: false });
   const id = nextId('outlet');
@@ -94,7 +95,8 @@ function makeOutlet(kind, countryId, city, r) {
     store.state.npcs[n.id] = n;
     return n.id;
   };
-  const o = { id, kind, name, medium: k.medium, countryId, city, founded: year() - r.int(kind === 'digital' || kind === 'investigative' ? 1 : 10, kind === 'local' ? 120 : 60),
+  const medium = kind === 'network' && !exists('tv') ? 'radio' : k.medium;
+  const o = { id, kind, name, medium, lean: opt.lean ?? 0, national: !!k.national, countryId, city, founded: year() - r.int(kind === 'digital' || kind === 'investigative' ? 1 : 10, kind === 'local' ? 120 : 60),
     employerId: e.id, editorId: staff('Editor', r.int(38, 61)), seniorId: staff('Senior reporter', r.int(30, 55)),
     standards: Math.round((k.standards[0] + r.next() * (k.standards[1] - k.standards[0])) * 100) / 100,
     reputation: r.int(40, 85), audience: Math.round(k.reach * r.int(8000, 30000)), history: [] };
@@ -106,7 +108,9 @@ function makeOutlet(kind, countryId, city, r) {
 export function outletsHere(p = player()) {
   const key = `${p.countryId}/${p.city}`;
   const list = (S().byCity[key] ??= []);
+  if (p.city === COUNTRIES[p.countryId]?.cities[0]) nationalPress(p.countryId); // the national press is here too
   for (const kind of Object.keys(OUTLET_KINDS)) {
+    if (OUTLET_KINDS[kind].national) continue;
     if (!kindExists(kind) || list.some((id) => S().outlets[id]?.kind === kind)) continue;
     if (kind === 'investigative' && !seeded(`${key}/investigative`).chance(0.5)) continue;
     list.push(makeOutlet(kind, p.countryId, p.city, seeded(`${key}/${kind}`)).id);
@@ -2375,3 +2379,79 @@ function hospitalStory(p, o, r, w = { countryId: p.countryId, city: p.city }) {
   addSource(s, { npcId: pt.id, name: nameOf(pt), role: 'A patient who chose to talk', type: 'community', willing: 0.75, knows: [{ claimId: c3.id, says: true }] });
   return s;
 }
+
+// ---------- One press world ----------
+//
+// Every newspaper, broadcaster, magazine and podcast in the game is a newsroom here, with real editors and
+// reporters, and every article is one record in S().pubs. The national press of a country (two broadsheets that lean
+// opposite ways, a tabloid, a national broadcaster, an entertainment magazine) sits in its biggest city: politics
+// (engine/news.js), the entertainment world (engine/entertainment.js, press.js), Digital Life's media offers and
+// true-crime shows all write through pressWrite, so the same article is what the court record, a career's press
+// page, the family archive and the newsroom's archive show.
+
+/** The national press of a country, made once (adopting the names an older save's politics already used). */
+export function nationalPress(countryId, adopt = null) {
+  const N = (S().national ??= {});
+  const city = COUNTRIES[countryId]?.cities[0];
+  if (!city) return [];
+  const ids = (N[countryId] ??= []);
+  const have = (kind, lean) => ids.map((id) => S().outlets[id]).find((o) => o?.kind === kind && (lean == null || o.lean === lean));
+  const r = seeded(`${countryId}/national`);
+  const old = adopt ?? store.state.polities?.[countryId]?.press ?? null;
+  const oldName = (kind, lean) => old?.find((x) => x.kind === kind && (lean == null || x.lean === lean))?.name;
+  const side = old?.find((x) => x.kind === 'broadsheet')?.lean ?? (r.chance(0.5) ? 1 : -1);
+  const want = [['national', side, oldName('broadsheet', side)], ['national', -side, oldName('broadsheet', -side)], ['tabloid', old?.find((x) => x.kind === 'tabloid')?.lean ?? (r.chance(0.5) ? 1 : -1), oldName('tabloid')], ['network', 0, oldName('broadcaster')], ['magazine', 0, null]];
+  const key = `${countryId}/${city}`;
+  const list = (S().byCity[key] ??= []);
+  const used = new Set(ids.map((id) => S().outlets[id]?.name));
+  for (const [kind, lean, name] of want) {
+    if (!kindExists(kind) || have(kind, kind === 'national' ? lean : null)) continue;
+    const words = OUTLET_KINDS[kind].words.filter((x) => !used.has(x) && !used.has(`${x} Magazine`));
+    const o = makeOutlet(kind, countryId, city, seeded(`${key}/${kind}/${lean}`), { name: name ?? (kind === 'magazine' ? `${r.pick(words)} Magazine` : r.pick(words)), lean });
+    used.add(o.name);
+    ids.push(o.id);
+    if (!list.includes(o.id)) list.push(o.id);
+  }
+  return ids.map((id) => S().outlets[id]).filter(Boolean);
+}
+/** The outlet to carry a story of this kind in this country: by preference of kind, and lean where it matters. */
+export function pressFor(countryId, prefer = ['network'], lean = null) {
+  const all = nationalPress(countryId);
+  for (const kind of prefer) {
+    const xs = all.filter((o) => o.kind === kind && !o.closed);
+    const o = (lean != null && xs.find((x) => x.lean === lean)) || xs[0];
+    if (o) return o;
+  }
+  return all[0] ?? null;
+}
+/**
+ * Writes one article, for any part of the game: the outlet's real reporter is the byline. Returns the article.
+ * @param {{countryId:string, outletId?:string, prefer?:string[], lean?:number, headline:string, body?:string, aboutId?:string,
+ *   tone?:string, kind?:string, beat?:string, accuracy?:string, truth?:boolean, links?:object}} a
+ */
+export function pressWrite(a) {
+  const o = (a.outletId && S().outlets[a.outletId]) || pressFor(a.countryId, a.prefer ?? ['network', 'national'], a.lean);
+  if (!o) return null;
+  const n = npc(o.seniorId)?.alive ? npc(o.seniorId) : npc(o.editorId);
+  const id = nextId('pub');
+  const verified = (a.accuracy ?? 'verified') === 'verified' || a.accuracy === 'correction';
+  const pub = { id, storyId: null, reporterId: n?.id ?? null, byline: n ? nameOf(n) : o.name, outletId: o.id, outlet: o.name, medium: o.medium, at: now(), year: year(), beat: a.beat ?? 'local',
+    headline: a.headline, body: a.body ?? a.headline, claims: [{ id: `${id}c0`, text: a.headline, asFact: verified }], sources: [], errors: verified && a.truth === false ? [`${id}c0`] : [],
+    quality: 55, readers: Math.round(o.audience * 0.3), complaint: null, corrections: [], links: { ...(a.links ?? {}), ...(a.aboutId ? { aboutId: a.aboutId } : {}) },
+    kind: a.kind ?? 'news', tone: a.tone ?? 'neutral', accuracy: a.accuracy ?? 'verified', press: true };
+  S().pubs[id] = pub;
+  prunePress();
+  return pub;
+}
+/** Keeps the archive to a size: the oldest ordinary items go first; the family's, and anything a record points at, stay. */
+function prunePress() {
+  const P = S().pubs;
+  const n = (S().pressCount = (S().pressCount ?? 0) + 1);
+  if (n % 50) return;
+  const family = new Set([player().id, ...Object.keys(S().legacy ?? {}), ...Object.keys(store.state.archive?.people ?? {})]);
+  const keep = (x) => !x.press || family.has(x.reporterId) || family.has(x.links?.aboutId) || x.links?.caseId || x.links?.invId;
+  const old = Object.values(P).filter((x) => !keep(x)).sort((a, b) => a.at - b.at);
+  for (const x of old.slice(0, Math.max(0, old.length - 600))) delete P[x.id];
+}
+/** An outlet anywhere in the game by its id (a newsroom), for screens that only have the id. */
+export const pressOutlet = (id) => S().outlets[id] ?? null;

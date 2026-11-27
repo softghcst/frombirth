@@ -77,6 +77,8 @@ const VIEWS = {
     return `<div class="card"><h3>${esc(p.career.title)}, ${esc(o.name)}</h3>${kv([['Beat', BEATS[j.beat].name], ['Since', String(j.since)], ['Time left this year', `${jn.actionsLeft(p)} of ${ACTIONS_A_YEAR} actions`], ['Workload', jn.workload(p).text], ['Stories published', String(jn.myPubs(p).length)]])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Your editor', `${Math.round(ed.meters.relationship)}%`, ed) : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('beat', 'Change beat', { sub: BEATS[j.beat].blurb })}</div>
+        ${(() => { const theirs = Object.values(jn.S().pubs).filter((x) => x.outletId === o.id && x.reporterId !== p.id).sort((a, b) => b.at - a.at).slice(0, 4);
+    return theirs.length ? `<div class="section-label">Recently in ${esc(o.name)}</div>${theirs.map((x) => `<div class="kv"><span>"${esc(x.headline)}"</span><span>${esc(x.byline)}, ${x.year}</span></div>`).join('')}` : ''; })()}
         ${j.leave === store.state.year ? '<p class="muted" style="margin:6px 0 0">You are on leave this year. No assignments; the desk is kept for you.</p>' : ''}</div>
       ${jn.isEditor(p) ? `<div class="card"><h3>Your desk</h3>${kv([['Leadership', `${Math.round(j.rep.leadership ?? 50)}/100`]])}<p class="muted" style="margin:6px 0">Your reporters' drafts, with what their notes support. What you let through, you answer for.</p>
         ${jn.desk(p).map((d) => { const n = npc(d.reporterId); return `<div class="card"><h3>${esc(d.title)}</h3><p class="muted" style="margin:0 0 6px">By ${esc(n ? `${n.firstName} ${n.lastName}` : 'a reporter')}</p>

@@ -4,6 +4,7 @@
 //
 // The player may be asked to take part: as the investigator who worked it, or as a descendant of the one who did.
 // Speaking to what was public is fine; telling what was in the case file is a breach. Declining is always allowed.
+import { pressWrite } from '../journalism.js';
 import { store, player } from '../../state.js';
 import * as k from '../cases.js';
 import { W, rec, now, year, me, result, seeded, regard, legacies, nameOfId } from './core.js';
@@ -34,6 +35,10 @@ export function mediaYear(p = player()) {
   const id = `media_${inv.id}`;
   const kind = roll.pick(['podcast', 'documentary']);
   const show = { id, invId: inv.id, kind, title: `${roll.pick(SHOWS)}: ${f.title}`, year: year(), cold: !!f.coldSince };
+  // Made by a real outlet in the national press (engine/journalism.js), and kept in the press archive: the case's
+  // public record lists it with the rest of the coverage.
+  const pub = pressWrite({ countryId: p.countryId, prefer: kind === 'documentary' ? ['network', 'national'] : ['national', 'network'], headline: `${show.title} (a ${kind})`, kind, beat: 'court', links: { caseId: f.courtCaseId ?? null, invId: inv.id } });
+  if (pub) { show.outletId = pub.outletId; show.outlet = pub.outlet; show.pubId = pub.id; }
   media()[id] = show;
   f.mediaId = id;
   f.publicAttention = year();
