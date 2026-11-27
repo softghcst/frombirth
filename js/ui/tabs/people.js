@@ -44,13 +44,13 @@ import * as together from '../../engine/together.js';
 import * as fostering from '../../engine/fostering.js';
 import { openFostering } from '../fostering.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
+const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 /** Roles always shown at the top of People. */
-const CLOSE_ROLES = ['spouse', 'partner', 'child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
-  ['Children and grandchildren', ['child', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild']],
+  ['Children and grandchildren', ['child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.

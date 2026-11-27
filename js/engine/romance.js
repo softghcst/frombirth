@@ -1,5 +1,8 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { holdWedding, guestLine } from './weddingGuests.js';
+import { stepchildrenOnMarriage } from './blended.js';
+import { recordEvent, archiveIdOf } from './chronicle.js';
 import { platformOpen } from './digital/tech.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { may } from './rules.js';
@@ -248,6 +251,7 @@ export function meetSomeone(place) {
 /** Asks out someone from meetSomeone. On a yes they join the player's life. */
 export function askOutStranger(npc) {
   const p = player();
+  if (!npc || !ageFits(npc)) return result(false, 'That would not be right.', 'neutral');
   const chance = clamp(0.5 + (p.stats.charm - npc.meters.charm) / 140, 0.08, 0.92);
   if (!rng.chance(chance)) {
     p.stats.mood = clamp(p.stats.mood - 3);
@@ -294,6 +298,9 @@ export function romanceActions(npc) {
 export function askOut(npcId) {
   const p = player();
   const npc = npcOf(npcId);
+  // The age rule lives here as well as in the menus: no path asks out someone outside it (teens date teens, adults adults).
+  if (!npc || !ageFits(npc)) return result(false, 'That would not be right.', 'neutral');
+  if (partner()) return result(false, 'You are already with someone.', 'neutral');
   if (!spendAction(npc, 'askOut')) return result(false, `You already asked ${npc.firstName} this year.`, 'neutral');
   const chance = clamp(0.15 + (npc.meters.relationship - 40) / 90 + (p.stats.charm - 50) / 160, 0.05, 0.9);
   if (!rng.chance(chance)) {
@@ -358,6 +365,9 @@ export function propose(npcId, ringId) {
   const c = country();
   const npc = npcOf(npcId);
   const ring = RINGS.find((r) => r.id === ringId);
+  // Only two adults, already together, can be engaged: whatever asks.
+  if (!npc || !ring || npc.role !== 'partner' || p.age < ADULT || npc.age < ADULT) return result(false, 'A proposal is for two adults who are together.', 'neutral');
+  if (npc.flags.engaged) return result(false, 'You are already engaged.', 'neutral');
   const cost = localMoney(ring.cost, c);
   if (p.finance.cash < cost) return result(false, 'You cannot afford that ring.', 'neutral');
   if (!spendAction(npc, 'propose')) return result(false, `You already proposed to ${npc.firstName} this year.`, 'neutral');
@@ -430,13 +440,19 @@ export function marry(npcId, weddingId, prenup) {
   p.stats.mood = clamp(p.stats.mood + 15);
   p.counters.spouses += 1;
   if (p.flags.livesWithParents) p.flags.livesWithParents = false;
-  if (w.plan) npc.flags.wedding = { ...w.plan, year: store.state.year };
+  stepchildrenOnMarriage(npc); // their children are the player's step-children now (engine/blended.js)
+  npc.flags.wedding = w.plan ? { ...w.plan, year: store.state.year } : { tier: w.id, year: store.state.year };
+  // Real guests: the people in the player's life, asked by closeness, and who of them came (engine/weddingGuests.js).
+  const size = w.plan ? planTotals(w.plan, npc, c).guests : palace && !palace.leaves ? 300 : ({ registry: 12, classic: 80, lavish: 250 })[w.id] ?? 40;
+  const guests = holdWedding(npc, size);
+  recordEvent({ key: `wedding:${archiveIdOf(p)}:${npc.id}`, type: 'wedding', title: `Married ${npc.firstName}`, people: [npc.id, ...guests.came], significance: 3, privacy: 'family',
+    text: guestLine(guests) });
   remember(npc, 'weddingDay', w.plan ? `You married them at ${w.name.replace(/^a wedding at /, '')}.` : `You married them with ${w.name.toLowerCase()}.`);
   const wed = `${crown.npcName(npc)} ${npc.lastName}`;
   const after = palace ? crown.afterWedding(npc, palace.leaves) : crown.afterMarryingOut(npc);
   const text = palace && !palace.leaves
     ? `${palace.text} You married ${wed} in the cathedral, under a marriage contract drawn up by the palace's lawyers.${after}`
-    : `${palace ? `${palace.text} ` : ''}You married ${wed}: ${w.name.toLowerCase()}${prenup ? ', with a prenup in the drawer' : ''}. It cost ${fmtMoney(cost, c)}.${after}`;
+    : `${palace ? `${palace.text} ` : ''}You married ${wed}: ${w.name.toLowerCase()}${prenup ? ', with a prenup in the drawer' : ''}. It cost ${fmtMoney(cost, c)}. ${guestLine(guests)}${after}`;
   log(text, 'system', 'good');
   milestone(`Married ${wed}.`, 'family');
   return result(true, text);
@@ -468,6 +484,8 @@ function endMarriage(npc, yours) {
   const p = player();
   const c = country();
   const joint = splitJoint(npc.id); // what was held in both names is divided first
+  // Their children were the player's step-children: they still are people the player knows, and may stay close.
+  for (const k of p.npcIds.map((id) => store.state.npcs[id]).filter((x) => x?.role === 'stepchild' && x.flags.stepVia === npc.id)) { k.flags.formerStep = store.state.year; k.flags.liveIn = false; }
   const owed = settlement(npc.id);
   const fee = localMoney(DIVORCE_FEE, c);
   if (p.flags.moneyWith) p.flags.moneyWith = 'separate';

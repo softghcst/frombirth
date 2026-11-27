@@ -502,6 +502,8 @@ function housemates(state, d) {
       else if (n.role === 'child' && n.age < 18 && !n.flags.abroad && !n.flags.custody) out.push(n.id);
       // A child placed with the player in foster or kinship care, or under their guardianship (engine/fostering.js).
       else if ((n.flags.placementId || (n.role === 'ward' && n.age < 18)) && !n.flags.abroad) out.push(n.id);
+      // A spouse's child who mainly lives with them (engine/blended.js stepchildrenOnMarriage).
+      else if (n.role === 'stepchild' && n.age < 18 && n.flags.liveIn && !n.flags.abroad) out.push(n.id);
       else if (n.id === hoods(state).roommate) out.push(n.id);
     }
   }

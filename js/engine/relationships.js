@@ -44,6 +44,7 @@ export function roleLabel(npc) {
     case 'stepsibling': return byGender(npc, 'Stepbrother', 'Stepsister', 'Stepsibling');
     case 'fosterchild': return npc.flags.kinCare ? 'In your care' : byGender(npc, 'Foster son', 'Foster daughter', 'Foster child');
     case 'ward': return 'Your ward';
+    case 'stepchild': return npc.flags.formerStep ? byGender(npc, 'Former stepson', 'Former stepdaughter', 'Former stepchild') : byGender(npc, 'Stepson', 'Stepdaughter', 'Stepchild');
     case 'child': return byGender(npc, 'Son', 'Daughter', 'Child') + (npc.adopted ? ' (adopted)' : '');
     case 'grandchild': return byGender(npc, 'Grandson', 'Granddaughter', 'Grandchild');
     case 'greatgrandchild': return byGender(npc, 'Great-grandson', 'Great-granddaughter', 'Great-grandchild');
@@ -73,9 +74,9 @@ export function roleLabel(npc) {
 }
 
 /** Family, by role: their deaths are always told. */
-const KIN_ROLES = ['parent', 'stepparent', 'stepsibling', 'fosterchild', 'ward', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
+const KIN_ROLES = ['parent', 'stepparent', 'stepsibling', 'stepchild', 'fosterchild', 'ward', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
 
-const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, stepparent: 2, stepsibling: 3, fosterfamily: 3, friend: 4, classmate: 5, coworker: 4, partner: 3,
+const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, stepparent: 2, stepsibling: 3, stepchild: 2, fosterfamily: 3, friend: 4, classmate: 5, coworker: 4, partner: 3,
   neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {

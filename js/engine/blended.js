@@ -446,3 +446,35 @@ export function blendedChoice(value, cast = {}) {
     default: return '';
   }
 }
+
+// ---------- The player's own step-children ----------
+
+/**
+ * The player marries someone who already has children: those children are the player's step-children. Children the
+ * player already knows (with the spouse among their parents) take the role; children the spouse's life says they
+ * have, but who were never met, are made now, once, as the people they are: the spouse's, with their own lives.
+ */
+export function stepchildrenOnMarriage(spouse) {
+  const p = player();
+  const known = p.npcIds.map(npc).filter((n) => n?.alive && n.parentIds?.includes(spouse.id) && n.role !== 'child');
+  for (const k of known) { k.flags.wasRole = k.role; k.role = 'stepchild'; k.flags.stepVia = spouse.id; }
+  const want = Math.max(0, (spouse.life?.kids ?? 0) - known.length - p.npcIds.map(npc).filter((n) => n?.role === 'child' && n.parentIds?.includes(spouse.id)).length);
+  if (!want) return known;
+  roll(`stepkids/${spouse.id}`);
+  const made = people(`stepkids/${spouse.id}`, () => {
+    const out = [];
+    for (let i = 0; i < want; i++) {
+      const age = clamp(rng.int(0, Math.max(0, spouse.age - 20)), 0, 30);
+      const kid = makeNpc({ role: 'stepchild', countryId: p.countryId, lastName: spouse.lastName, age, relationship: rng.int(30, 55), appearance: inheritAppearance(spouse, spouse) });
+      kid.parentIds = [spouse.id];
+      kid.flags.stepVia = spouse.id;
+      kid.flags.liveIn = age < 18 && rng.chance(0.55);
+      store.state.npcs[kid.id] = kid;
+      p.npcIds.push(kid.id);
+      out.push(kid);
+    }
+    return out;
+  });
+  if (made.length) log(`${spouse.firstName}'s ${made.length === 1 ? 'child' : 'children'}, ${made.map((k) => k.firstName).join(' and ')}, ${made.length === 1 ? 'is' : 'are'} your step${made.length === 1 ? word(made[0], 'son', 'daughter', 'child') : 'children'} now.`, 'system', 'neutral');
+  return [...known, ...made];
+}
