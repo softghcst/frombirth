@@ -39,13 +39,21 @@ EXACT SIZE AND POSITION (the image is 1254 x 1254 pixels; x is from the left, y 
 - Lashes and lids may reach a little further, but stay within x = 403 to 612 and x = 643 to 852, and between y = 690
   and y = 870. Nothing touches the eyebrows (they end at y = 690) or the nose (between x = 600 and 655).
 - Both eyes are the same size and shape, mirrored, looking straight ahead.
+- Keep them at exactly this height: the middle of each eye at y = 764. Not lower.
 
 STYLE:
 - Draw ONLY the two eyes (with their lids and lashes). No eyebrows, nose, mouth, face or skin; leave all of that
   transparent.
-- The same cute, rounded cartoon style as the face: big expressive eyes, a bold dark brown outline (#23140f) as thick as
-  the face's lines, white eye whites, a large iris in ONE warm brown (#7a4a2a) with a darker ring and a dark pupil, and
-  one or two white highlights. Flat colors, simple soft shading, no gradients, no texture, no background, no shadow.
+- CUTE, NOT STARING. This is what makes a cartoon child's eyes sweet rather than scary:
+  - The IRIS IS VERY LARGE: it fills most of the eye, about 75 to 85 percent of its height, and its top is tucked UNDER
+    the upper lid (the upper lid line overlaps the top of the iris). NEVER a small iris floating in the middle with white
+    showing all the way around it. Only a small crescent of white shows, at the sides and below.
+  - A THICK, DARK UPPER LID / LASH LINE (#23140f) and a much THINNER lower line, or a lower line only at the outer half.
+    Never one even, thick ring around the whole eye.
+  - The iris in ONE warm brown (#7a4a2a), darker toward the top (the lid's shadow), with a large soft dark pupil that
+    blends into it, and ONE BIG white highlight near the top (plus at most one small one). No hard tiny black dot pupil.
+  - Soft and round, the same rounded cartoon style as the face. Flat colors, simple soft shading, no gradients, no
+    texture, no background, no shadow.
 - Every eye shape is drawn as friendly and appealing as every other, at the same size: a natural shape, never
   squinting, narrowed, sleepy or exaggerated.
 ````
