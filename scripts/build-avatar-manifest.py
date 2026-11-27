@@ -467,7 +467,7 @@ FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|heir|royal|prince|princess|quee
 
 
 # Kid hairstyles with faded sides (a buzz cut, a high top, a curly top or frohawk with faded sides).
-FADED_KID_HAIR = re.compile(r'^hair_kid_.*(buzz|high_top|curly_top|frohawk|fade)')
+FADED_KID_HAIR = re.compile(r'^hair_kid_.*(buzz|high_top|curly_top|frohawk|fade|twists|textured_crop)')
 
 
 def recolour(folder, name, elements):
