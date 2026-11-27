@@ -88,6 +88,7 @@ import { tickJournalism, pressRequestYear } from './journalism.js';
 import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 import { directYear, yearSteps } from './storyDirector.js';
+import { tickOrigins } from './origins.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -112,8 +113,9 @@ export const YEARLY = [
   ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
-  ['blended', tickBlended],
-  ['fostering', tickFostering], // a foster carer's application, placements and their reviews (engine/fostering.js) // parents who separate, a parent's new partner, step- and half-siblings (engine/blended.js)
+  ['blended', tickBlended], // parents who separate, a parent's new partner, step- and half-siblings (engine/blended.js)
+  ['fostering', tickFostering], // a foster carer's application, placements and their reviews (engine/fostering.js)
+  ['origins', tickOrigins], // adoption and birth families: the birth family's own year, what the player learns, one revelation at most (engine/origins.js)
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
   ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
@@ -131,7 +133,8 @@ export const YEARLY = [
   ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
   ['banking', tickBanking],
   ['insurance', () => booked('insurance', 'Insurance premiums', tickInsurance)],
-  ['independence', tickIndependence], ['finance', tickFinance], // a lease that has ended returns its deposit (engine/independence.js) ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
+  ['independence', tickIndependence], // a lease that has ended returns its deposit (engine/independence.js)
+  ['finance', tickFinance], ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
   ['illness', () => booked('health', 'Health', tickHealth)],
   ['health', () => booked('health', 'Health care', () => healthYear(player()))],
   ['prison', () => booked('legal', 'Prison', tickPrison)],

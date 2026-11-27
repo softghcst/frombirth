@@ -199,8 +199,11 @@ export const REGION_RULES = {
   'ae/dubai': { drinkingAge: 21 },
   'ae/abu_dhabi': { drinkingAge: 21 },
   'ae/ajman': { drinkingAge: 21 },
-  // Nigeria: the northern states prohibit alcohol.
-  'ng/around:Kano': { alcohol: false },
+  // Nigeria: the northern states that adopted Sharia penal codes prohibit alcohol (of the game's cities: Kano, Sokoto, Maiduguri).
+  // Kaduna applies it only in part, and is left at the national law.
+  'ng/kano': { alcohol: false },
+  'ng/sokoto': { alcohol: false },
+  'ng/borno': { alcohol: false },
 };
 
 /**

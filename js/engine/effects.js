@@ -60,6 +60,7 @@ import { hoodChoice } from './neighborhoodLife.js';
 import { medicineChoice } from './medicine/drama.js';
 import { musicChoice } from './music.js';
 import { journalismChoice } from './journalism.js';
+import { originsChoice } from './origins.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -266,6 +267,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'military': { const note = militaryChoice(e.value); if (note) ctx.note = note; break; }
       case 'law': { const note = lawChoice(e.value); if (note) ctx.note = note; break; }
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'origins': { const note = originsChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;

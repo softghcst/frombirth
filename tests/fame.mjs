@@ -23,7 +23,7 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id = 'uk', age = 22) => {
-  do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId: id, ...(id === 'us' ? { city: 'New York' } : {}) }); } while (store.state.player.royal); // a US life in a showbiz city: the US has a city in every state
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = false; p.education.enrolled = false; p.education.stage = 'none';
   p.legal.record = []; p.stats.health = 85; p.stats.charm = 65; p.finance.cash = 50000;

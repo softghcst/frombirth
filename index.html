@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>From Birth</title>
-  <meta name="description" content="From Birth: a text life simulation. One year at a time.">
+  <meta name="description" content="From Birth: your life, your choices, your story. A text life simulation, one year at a time.">
   <meta name="theme-color" content="#F1EBFA">
   <script>
     // Appearance chosen in Settings (js/theme.js), applied before the first paint so there is no flash.
@@ -17,11 +17,31 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="From Birth">
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" href="./icons/icon-192.png">
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <!-- Afterglow is the icon an install uses; a different icon chosen in Settings shows in the browser tab (js/platform/appIcon.js). -->
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <script>
+    try { var ic = localStorage.getItem('frombirth.appIcon'); if (ic === 'midnight' || ic === 'daydream') document.querySelector('link[rel="icon"]').setAttribute('href', './icons/icon-' + ic + '-32.png'); } catch (e) {}
+  </script>
+  <link rel="preload" as="image" href="./assets/branding/from_birth_logo-640.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="From Birth">
+  <meta property="og:title" content="From Birth">
+  <meta property="og:description" content="Your life. Your choices. Your story. A text life simulation, one year at a time.">
+  <meta property="og:url" content="https://softghcst.github.io/frombirth/">
+  <meta property="og:image" content="https://softghcst.github.io/frombirth/icons/icon-afterglow-1024.png">
+  <meta property="og:image:width" content="1024">
+  <meta property="og:image:height" content="1024">
+  <meta property="og:image:alt" content="The From Birth signpost icon">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="From Birth">
+  <meta name="twitter:description" content="Your life. Your choices. Your story.">
+  <meta name="twitter:image" content="https://softghcst.github.io/frombirth/icons/icon-afterglow-1024.png">
+  <link rel="canonical" href="https://softghcst.github.io/frombirth/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Great+Vibes&family=Lobster&family=Sacramento&family=Abril+Fatface&family=Bebas+Neue&family=Playfair+Display:ital,wght@1,600&family=Montserrat:wght@600&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Great+Vibes&family=Lobster&family=Sacramento&family=Abril+Fatface&family=Bebas+Neue&family=Playfair+Display:ital,wght@1,600&family=Montserrat:wght@600&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito:wght@700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap">
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/layout.css">
   <link rel="stylesheet" href="./css/components.css">

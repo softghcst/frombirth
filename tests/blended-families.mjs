@@ -232,13 +232,30 @@ check([...startIds].every((id) => back.npcs[id]), 'everyone from the start of th
   check(c.appeal.outcome === 'upheld' ? q.family.arrangement.primaryId === m.id : q.family.arrangement.primaryId === d.id, 'and the arrangement follows the appeal court');
   // At fourteen, the child asks the court to look again.
   const other = store.state.npcs[q.family.arrangement.otherId];
-  const asked = B.askCourtToLookAgain(other.id);
+  let asked = B.askCourtToLookAgain(other.id);
+  if (/too new/.test(asked.text)) { year(); asked = B.askCourtToLookAgain(store.state.npcs[q.family.arrangement.otherId].id); } // an overturned decision is a new one
   check(asked.ok, `a teenager can ask the court to look again (${asked.text})`);
-  check(!B.askCourtToLookAgain(other.id).ok, 'once at a time');
+  check(!B.askCourtToLookAgain(store.state.npcs[q.family.arrangement.otherId].id).ok, 'once at a time');
   year();
   const rv = C.familyCases(q)[0].reviews.at(-1);
   check(['changed', 'unchanged'].includes(rv.outcome), `the court looked again (${rv.outcome})`);
-  check(rv.outcome === 'changed' ? q.family.arrangement.primaryId === other.id : q.family.arrangement.primaryId !== other.id, 'and where the child lives follows it');
+  const wanted = rv.wish;
+  check(rv.outcome === 'changed' ? q.family.arrangement.primaryId === wanted : q.family.arrangement.primaryId !== wanted, 'and where the child lives follows it');
+}
+
+// ---------- 4d. A life begun in adoption (engine/origins.js): birth parents and adoptive parents kept apart ----------
+{
+  let s; let rec = null;
+  for (let i = 0; i < 8 && !rec; i++) { s = createLife({ countryId: 'us', origin: 'birth' }); rec = Object.values(s.origins?.records ?? {}).find((r) => r.adopteeId === s.player.id && r.legal === 'adoption'); }
+  if (rec) {
+    store.state = s;
+    const q = s.player;
+    const home = q.npcIds.map((id) => s.npcs[id]).filter((n) => n?.role === 'parent');
+    check(q.family.bioParentIds.join() === rec.birthParentIds.join(), 'an adopted child\'s biological parents are the birth parents on the record');
+    check(home.length && home.every((n) => q.family.legalParentIds.includes(n.id) && K.isLegalParent(n) && !K.isBioParent(n)), 'the parents who raise them are their legal parents, not their biological ones');
+    const sib = q.npcIds.map((id) => s.npcs[id]).find((n) => n?.role === 'sibling' && !n.flags.birthKin);
+    if (sib) check(K.siblingKind(q, sib) === 'adoptive', `a brother or sister in the adoptive family is an adoptive sibling (${K.siblingKind(q, sib)})`);
+  } else check(false, 'a life begun in adoption could be made');
 }
 
 // ---------- 5. Old saves: brothers and sisters without parent links ----------

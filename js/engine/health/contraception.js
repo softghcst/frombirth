@@ -992,7 +992,8 @@ function month(abs, p, c) {
     if (rec.status === 'awaiting_confirmation' && rec.confirmAbs === abs) {
       pay(`bc:${rec.id}:test`, m.cost.test ?? 100, 'care', `${m.name}: confirmation test`, 1, p);
       // CDC: about 80% are clear at the 12-week test; the rest are tested again.
-      if (seeded('confirm', p.id, rec.id).chance(0.8)) { rec.status = 'active'; note(rec, 'The confirmation test shows it has worked.', 'confirmed'); log(`The follow-up test confirms your ${m.name.toLowerCase()} has worked.`, 'system', 'good'); }
+      // Each test is its own roll: the same roll every time would retest an unclear result forever.
+      if (seeded('confirm', p.id, rec.id, abs).chance(0.8)) { rec.status = 'active'; note(rec, 'The confirmation test shows it has worked.', 'confirmed'); log(`The follow-up test confirms your ${m.name.toLowerCase()} has worked.`, 'system', 'good'); }
       else { rec.confirmAbs = abs + 3; rec.protectFrom = abs + 3; note(rec, 'The test is not clear yet: another in three months, with another method meanwhile.', 'retest'); }
     }
     for (const e of rec.effects ?? []) if (!e.noticed && e.noticeAbs === abs) {

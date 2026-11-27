@@ -64,12 +64,22 @@ export function migrateFamilyLife(state = store.state) {
   const parents = all.filter((n) => n.role === 'parent' && !n.flags.step && !n.adopted);
   f.bioParentIds ??= parents.map((n) => n.id);
   f.legalParentIds ??= [...f.bioParentIds];
+  // A life that began in adoption or kinship care (engine/origins.js): its birth parents are the record's, its legal
+  // parents the adoptive ones where there was an adoption; the household it grows up in is the adoptive family.
+  const rec = Object.values(state.origins?.records ?? {}).find((r) => r.adopteeId === p.id);
+  if (rec && !f.fromOrigins) {
+    f.bioParentIds = [...(rec.birthParentIds ?? [])];
+    f.legalParentIds = rec.legal === 'adoption' ? (rec.adoptiveParentIds?.length ? [...rec.adoptiveParentIds] : parents.map((n) => n.id)) : [...(rec.legalParentIds?.length ? rec.legalParentIds : rec.birthParentIds ?? [])];
+    f.fromOrigins = true;
+  }
   f.separations ??= [];
   f.arrangement ??= null;
   // Brothers and sisters made with the life were made from the player's own parents (engine/familyGen.js).
   for (const s of all) {
     if (s.role !== 'sibling' || s.parentIds?.length || s.adopted) continue;
     if (s.flags.half === true) continue; // an old half-sibling whose shared parent was never written down: left unknown
+    // An adopted player's brothers and sisters in the household are the adoptive parents' children, not the birth parents'.
+    if (rec && !s.flags.birthKin) { const home = parents.map((n) => n.id); if (home.length) s.parentIds = home; continue; }
     if (f.bioParentIds.length) s.parentIds = [...f.bioParentIds];
   }
   // Parents who were apart from the start: the father lived elsewhere (that is what the life has always said).

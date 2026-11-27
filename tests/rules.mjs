@@ -144,7 +144,7 @@ section(`change: enacted law is kept in the save; ${changes} reforms across six 
   check(at('gamblingAge', 'de', 'bavaria') === 21 && at('gamblingAge', 'de', 'berlin') === 18, 'Germany: casinos from 21 in Bavaria, 18 in Berlin');
   check(at('drinkingAge', 'in', 'delhi') === 25 && at('drinkingAge', 'in', 'maharashtra') === 25 && at('drinkingAge', 'in', 'west_bengal') === 21, 'India: 25 in Delhi and Maharashtra, 21 elsewhere');
   check(at('alcohol', 'ae', 'sharjah') === false && at('drinkingAge', 'ae', 'dubai') === 21 && at('drinkingAge', 'ae', 'ras_al_khaimah') === 18, 'UAE: dry Sharjah, 21 in Dubai, 18 in Ras Al Khaimah');
-  check(at('alcohol', 'ng', 'around:Kano') === false && at('alcohol', 'ng', 'around:Lagos') === true, 'Nigeria: alcohol banned in Kano, not in Lagos');
+  check(at('alcohol', 'ng', 'kano') === false && at('alcohol', 'ng', 'sokoto') === false && at('alcohol', 'ng', 'lagos') === true && at('alcohol', 'ng', 'kaduna') === true, 'Nigeria: alcohol banned in Kano and Sokoto states, not in Lagos (or Kaduna, which applies Sharia only in part)');
   check(law.rule('drinkingAge', 'my', { region: null }) === 21 && law.rule('drinkingAge', 'py', { region: null }) === 20, 'Malaysia 21 and Paraguay 20');
   for (const key of Object.keys(REGION_RULES)) {
     const [place, region] = key.split('/');

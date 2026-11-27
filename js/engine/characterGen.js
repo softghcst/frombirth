@@ -30,6 +30,7 @@ import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 import { LATER_TALENTS } from '../data/talents.js';
+import { applyOrigin } from './origins.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -283,6 +284,12 @@ function createOnce(opts = {}) {
   if (seat) dress(seat.dynasty, state);
   // Genomes for the family and the child, and what the child is born with (not yet recognized by anyone).
   healthAtBirth(state, opts.health);
+  // Starting life adopted, or raised by relatives (engine/origins.js): the family just made is the birth family, and the
+  // child is given the family that raises them. Looks, traits and health above came from the birth parents.
+  if (opts.origin && opts.origin !== 'standard' && !seat && !player.royal) {
+    const out = applyOrigin(state, { fam, c, year, origin: opts.origin, journal });
+    if (out?.parents?.length && out.journal) player.flags.moneySense = startingSense(out.parents);
+  }
   // The family's animals were there first: they go on the family's record with the line that introduces them.
   for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
   reconcileAnimals(state);

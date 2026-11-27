@@ -88,8 +88,12 @@ caseOf('college seasons count: the draft grade, and what a club pays', () => {
 });
 
 caseOf('the university team: a college program won by a walk-on tryout, a club elsewhere', () => {
-  store.state = createLife({ countryId: 'us', city: 'Chicago' });
-  for (let i = 0; i < 18; i++) year({ integrity: 'refuse' });
+  // A life still in the United States at eighteen (a family can emigrate on the way; that is another story).
+  for (let tries = 0; tries < 5; tries++) {
+    store.state = createLife({ countryId: 'us', city: 'Chicago' });
+    for (let i = 0; i < 18; i++) year({ integrity: 'refuse' });
+    if (P().countryId === 'us') break;
+  }
   const p = P();
   const u = atUniversity(p, 'us', (x) => divisionOf(S(), x) === 'D3');
   sp.takeUp('basketball'); const e = sp.entryOf('basketball'); maxOut(e, 70);

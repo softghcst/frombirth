@@ -47,7 +47,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('[data-rank-field]').isVisible(), `${label}: choosing the United Kingdom shows "Born into"`);
   const ranks = await page.locator('#f-birthRank option').allInnerTexts();
   check(ranks.some((x) => /Princess/.test(x)) && ranks.some((x) => /Heir/.test(x)) && ranks.some((x) => /Commoner/.test(x)), `${label}: with that country's titles for a girl (${ranks.join(' | ')})`);
-  const pos = await page.evaluate(() => { const a = document.querySelector('#f-country').getBoundingClientRect().top; const b = document.querySelector('#f-birthRank').getBoundingClientRect().top; const c = document.querySelector('#f-city').getBoundingClientRect().top; return a < b && b < c; });
+  const pos = await page.evaluate(() => { const a = document.querySelector('#f-country').getBoundingClientRect().top; const b = document.querySelector('#f-birthRank').getBoundingClientRect().top; const next = [...document.querySelectorAll('#f-region, #f-city')].find((x) => x.offsetParent); const c = next.getBoundingClientRect().top; return a < b && b < c; }); // the next box below: the region in a country that asks for it first, else the city
   check(pos, `${label}: "Born into" sits right under the country`);
   if (process.env.SHOT) { await page.locator('#f-country').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.SHOT}/creator-${label}.png` }); }
   // Japan: only men inherit, so no heir option for a girl.

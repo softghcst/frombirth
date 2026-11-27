@@ -44,7 +44,20 @@ ALIASES = {
     ('mc', 'Monaco-Ville'): 'Monaco',
     ('kw', 'Jahra'): 'Al Jahra',
     ('kw', 'Farwaniya'): 'Al Farwaniyah',
+    ('us', 'Portland, Maine'): 'Portland',
+    ('us', 'Charleston, West Virginia'): 'Charleston',
+    ('eg', 'Faiyum'): 'Al Fayyum',
 }
+
+# The postal code GeoNames uses for each US state (admin1code), by the state's name in js/data/cities.js.
+US_STATES = {'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT',
+    'Delaware': 'DE', 'District of Columbia': 'DC', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL',
+    'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+    'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO', 'Montana': 'MT',
+    'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+    'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA',
+    'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+    'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'}
 
 
 def fold(s):
@@ -56,11 +69,12 @@ def game_data():
     script = """
       const { PLACES } = await import('./js/data/world.js');
       const { COUNTRIES } = await import('./js/data/countries.js');
+      const { CITY_ROWS } = await import('./js/data/cities.js');
       const out = {};
       for (const [id, p] of Object.entries(PLACES)) {
         const c = COUNTRIES[id];
         if (!c) continue;
-        out[id] = { iso2: p.iso2, capital: p.capital, cities: c.cities };
+        out[id] = { iso2: p.iso2, capital: p.capital, cities: c.cities, regions: Object.fromEntries(Object.entries(CITY_ROWS[id] ?? {}).map(([k, v]) => [k, v.region])) };
       }
       console.log(JSON.stringify(out));
     """
@@ -76,8 +90,11 @@ def main():
     for c in gc.get_cities().values():
         by_cc.setdefault(c['countrycode'], []).append(c)
 
-    def find(cc, name):
+    def find(cc, name, admin1=None):
         pool = by_cc.get(cc, [])
+        # A US city is looked for in its own state: there is a Portland in Oregon and in Maine, a Burlington in Vermont and in North Carolina.
+        if admin1:
+            pool = [c for c in pool if c.get('admin1code') == admin1]
         want = fold(name)
         exact = [c for c in pool if fold(c['name']) == want]
         if not exact:
@@ -94,7 +111,8 @@ def main():
         names = list(dict.fromkeys([p['capital'], *p['cities']]))
         for name in names:
             look = ALIASES.get((pid, name), name)
-            hit = find(cc, look)
+            admin1 = US_STATES.get(p.get('regions', {}).get(name)) if pid == 'us' else None
+            hit = find(cc, look, admin1)
             if not hit and ',' in look:
                 hit = find(cc, look.split(',')[0])
             if not hit:
