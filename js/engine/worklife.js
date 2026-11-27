@@ -36,6 +36,7 @@ import { CULTURES } from '../data/employers.js';
 import { employer } from './employers.js';
 import { hereCity } from './cities.js';
 import { payouts, markPaid } from './business.js';
+import { traitK } from './traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -308,7 +309,7 @@ export function tickWorkLife() {
     stressTarget = (young ? 10 : 14) + Math.max(0, load.total - (young ? 34 : 35)) * (young ? 2.2 : 1.3) + pressure
       + (load.paid ? 4 : 0) + (broke ? (young ? 4 : 18) : 0) - (warmth - 55) / 8;
   }
-  c.stress = Math.round(clamp(c.stress + (clamp(stressTarget) - c.stress) * 0.5));
+  c.stress = Math.round(clamp(c.stress + (clamp(stressTarget * traitK('stressK', p)) - c.stress) * 0.5)); // the laid-back feel less of it (engine/traits.js)
 
   if (car) {
     let sat = 52 + valuesFit(c, car) * 22 + (cult?.satisfaction ?? 0) + (bandPosition(c, car) - 0.5) * 14 + (warmth - 55) / 4

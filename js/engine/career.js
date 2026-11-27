@@ -60,6 +60,7 @@ import { recordOdds, bestCompetitiveYears } from './sports.js';
 import { leaveNewsroom } from './journalism.js';
 import { gift as giftLevel, maturity } from './talentGrowth.js';
 import { managerOf, coachingYear } from './childEarnings.js';
+import { traitAdd } from './traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "a teacher", "an ensemble member". */
@@ -796,7 +797,7 @@ export function tickCareer() {
   const heart = (c.satisfaction - 55) / 20;
   const away = c.leave && c.leave.age === p.age - 1 ? -3 : 0;
   c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
-    + (p.hidden.discipline - 50) / 12 + craft + gift + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
+    + (p.hidden.discipline - 50) / 12 + craft + gift + mentor + strain + heart + away + traitAdd('workPerf', p) + rng.int(-6, 6) - workBarrier(p)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
   else if (career.skill === 'modelLook') p.talents.modeling = clamp((p.talents.modeling ?? 0) + 1);
   else if (career.giftFor) {

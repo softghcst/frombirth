@@ -19,6 +19,7 @@ import { stageChoice } from './pregnancyStages.js';
 import { tickFamilyStories, familyChoice, FAMILY_IDS } from './familyStories.js';
 import { storyBeat } from './storyDirector.js';
 import * as contra from './health/contraception.js';
+import { traitK } from './traits.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -67,7 +68,7 @@ export function tickLoveStories() {
   }
   let n = 0;
   for (const c of can.map((x) => [rng.next(), x]).sort((a, b) => a[0] - b[0]).map(([, x]) => x)) {
-    if (n >= d.most || !rng.chance(d.chance)) continue;
+    if (n >= d.most || !rng.chance(Math.min(0.95, d.chance * traitK('loveK')))) continue; // romantics live more of them (engine/traits.js)
     if (told()[`story/${c.s.id}`] === year) continue; // never the same story twice in a year
     told()[c.key] = year;
     told()[`story/${c.s.id}`] = year;

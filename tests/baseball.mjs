@@ -169,7 +169,8 @@ scenario('a closer', () => {
   e.skills.stamina = 30; e.ceiling.stamina = 30;
   const y = season(e);
   need(!sp.myAthlete().injuries.some((i) => i.year === S().year)); // a full season
-  check(e.bb.role === 'closer' && y.GS === 0 && y.SV >= 10 && y.IP < 90 && Math.abs(y.IP - y.GP) < 0.01, `a closer's line: saves, an inning at a time (${bb.lineText(y)})`);
+  // Saves come from the team's close leads: a full season runs from about 9 on a weak team to 30-odd on a strong one.
+  check(e.bb.role === 'closer' && y.GS === 0 && y.SV >= 5 && y.IP < 90 && Math.abs(y.IP - y.GP) < 0.01, `a closer's line: saves, an inning at a time (${bb.lineText(y)})`);
 });
 section('lines and totals, milestones, two-way players, roles, the innings limit, the All-Star Game, October');
 

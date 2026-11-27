@@ -15,6 +15,7 @@ import { recordLoss } from './insurance.js';
 import { recentDefault } from './credit.js';
 import { phaseOf } from './economy.js';
 import { comfortOf, upkeepOf } from './renovations.js';
+import { traitK } from './traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -455,7 +456,7 @@ export function tickProperties() {
     log(`Rent from your property abroad came to about ${fmtMoney(rentAbroad, c)}, paid into your account there after ${fmtMoney(taxAbroad, c)} of local tax.`, 'system', 'good');
   }
   const h = home();
-  if (h) p.stats.mood = clamp(p.stats.mood + Math.round((PROPERTY_BY_ID[h.catalogId].comfort + comfortOf(h)) / 3));
+  if (h) p.stats.mood = clamp(p.stats.mood + Math.round((PROPERTY_BY_ID[h.catalogId].comfort + comfortOf(h)) * traitK('homeComfortK', p) / 3));
 }
 
 export { describe as conditionWord };

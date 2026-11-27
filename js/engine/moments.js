@@ -26,6 +26,7 @@ import { missedAnniversary } from './together.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
 import { techAvailable } from './digital/tech.js';
 import { storyBeat } from './storyDirector.js';
+import { traitK, traitAdd } from './traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const YOU = 'you';
@@ -195,7 +196,7 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
   if (o.guests === 'date') {
     for (const n of [...people]) {
       if (['partner', 'spouse'].includes(n.role)) continue;
-      const yes = clamp(0.3 + (n.meters.relationship - 40) / 80 + (p.stats.charm - 50) / 200, 0.1, 0.9);
+      const yes = clamp((0.3 + (n.meters.relationship - 40) / 80 + (p.stats.charm - 50) / 200) * traitK('dateK'), 0.1, 0.9);
       if (!keyedDice(`date/${store.state.slotId}/${store.state.year}/${key}/${n.id}`).chance(yes)) { declined.push(n); people.splice(people.indexOf(n), 1); }
     }
   }
@@ -302,7 +303,7 @@ function deal() {
   if (s.invites.length || p.legal?.incarceration || !p.alive) return;
   // The newest way the time and place have: a message where mobile phones have arrived, then a call, a card, or word of mouth.
   const how = INVITE_WAYS.find((w) => (!w.tech || techAvailable(w.tech, store.state.year, p.countryId)) && p.age >= (w.minAge ?? 0)).id;
-  const n = rng.int(0, 2);
+  const n = Math.max(0, Math.min(3, rng.int(0, 2) + traitAdd('invites'))); // the outgoing are asked to more, a loner to less (engine/traits.js)
   for (let i = 0; i < n; i++) {
     const kind = rng.pick(INVITES.filter((x) => p.age >= x.minAge));
     if (!kind) break;

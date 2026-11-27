@@ -22,6 +22,7 @@ import { tickCards } from './cards.js';
 import { billShare } from './family.js';
 import { contribute } from './retirement.js';
 import { holdChildPay, releaseChildPay } from './childEarnings.js';
+import { traitK } from './traits.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
@@ -149,7 +150,7 @@ export function tickFinance() {
       if (!p.flags.sharedHousing) log('On what you earn here, a place of your own is out of reach. You share a room, as most people your age do.', 'system', 'neutral');
     }
     p.flags.sharedHousing = crowded;
-    const paid = afford(base + lifestyle);
+    const paid = afford(Math.round((base + lifestyle) * traitK('costK', p))); // the frugal live on a little less, a big spender on more (engine/traits.js)
     f.cash -= paid;
     everyday = Math.max(0, paid - base);
     book({ cat: 'living', src: 'year', desc: p.homeId ? 'Bills and everyday spending' : 'Rent, bills and everyday spending',

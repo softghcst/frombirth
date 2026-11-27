@@ -61,6 +61,7 @@ import { medicineChoice } from './medicine/drama.js';
 import { musicChoice } from './music.js';
 import { journalismChoice } from './journalism.js';
 import { originsChoice } from './origins.js';
+import { addTrait } from './traits.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -269,6 +270,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'origins': { const note = originsChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'trait': addTrait(e.value, 'scene'); break; // a scene that changes who someone is (engine/traits.js)
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;

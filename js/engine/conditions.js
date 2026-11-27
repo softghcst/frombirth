@@ -136,6 +136,8 @@ export function resolve(path, cast = {}) {
   if (SPECIAL[path]) return SPECIAL[path](p);
   if (HEALTH_PATHS[path]) return HEALTH_PATHS[path](p);
   const parts = path.split('.');
+  // A trait, as a number a check can weigh: 100 if the player has it, 50 (no effect) if not.
+  if (parts[0] === 'trait') return p.traits?.includes(parts[1]) ? 100 : 50;
   if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {
     const npc = store.state.npcs[cast[parts[1]]];

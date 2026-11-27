@@ -4,6 +4,8 @@ export const hid = (target, delta) => ({ type: 'hidden', target, delta });
 export const tal = (target, delta) => ({ type: 'talent', target, delta });
 export const cash = (delta) => ({ type: 'cash', delta });
 export const rel = (target, delta) => ({ type: 'relationship', target, delta });
+/** Someone takes on a trait (engine/traits.js): within the limit, and never one that clashes. */
+export const trait = (value) => ({ type: 'trait', value });
 export const flag = (target, value = true) => ({ type: 'flag', target, value });
 export const cond = (value) => ({ type: 'condition', value });
 export const gpa = (delta) => ({ type: 'gpa', delta });

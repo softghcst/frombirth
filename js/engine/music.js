@@ -259,6 +259,7 @@ export function openings(countryId = player().countryId) {
       const position = rng.pick(g.lineup);
       const bar = rng.pick([35, 45, 55, 65, 75]);
       const crew = pool.filter((n) => !n.flags.star.bandOpening).sort(() => rng.next() - 0.5).slice(0, Math.min(g.lineup.length - 1, rng.int(2, 3)));
+      if (!crew.length) break; // no musicians left looking: no "band" of nobody to join
       for (const n of crew) n.flags.star.bandOpening = true;
       list.push({ id: nextId('open'), actId: null, name: actName(), genre: g.id, position, bar, fans: Math.round(bar ** 2 / 10 * rng.around(1, 0.4)), labelId: null, crew: crew.map((n) => n.id), status: 'open' });
     }
@@ -938,8 +939,9 @@ export function tickMusic() {
     lines.push(`${store.state.npcs[mg.npcId]?.firstName ?? 'Your manager'} has stopped managing you: nothing new in three years.`);
     dropManager();
   }
-  // A deal ends when its albums are delivered.
-  if (a?.deal && a.deal.albumsOwed <= 0) { a.history.push({ year: year(), text: `Finished the deal with ${ent().orgs[a.deal.labelId]?.name}.` }); a.deal = null; lines.push(`${a.name} has delivered every album the deal asked for, and is free.`); }
+  // A deal ends when its albums are delivered and its years have run: "so much a year for so many years" is paid in
+  // full, even when the albums come early (a one-album deal finished in its first year used to end unpaid).
+  if (a?.deal && a.deal.albumsOwed <= 0 && year() >= (a.deal.until ?? 0)) { a.history.push({ year: year(), text: `Finished the deal with ${ent().orgs[a.deal.labelId]?.name}.` }); a.deal = null; lines.push(`${a.name} has delivered every album the deal asked for, and is free.`); }
   // Old rival records are forgotten; the player's acts' are kept.
   const keep = new Set([...musicOf(p).acts.flatMap((id) => act(id)?.releases ?? []), ...(p.fame?.songCredits ?? []).map((c) => c.releaseId), ...(musicOf(p).sessionCredits ?? []).map((c) => c.releaseId).filter(Boolean)]);
   // Records the player played on come out: a line, and a little standing among musicians.

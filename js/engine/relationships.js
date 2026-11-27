@@ -19,6 +19,7 @@ import { SPECIES } from '../data/animals.js';
 import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
 import { guardianEstate } from './origins.js';
+import { traitK } from './traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -202,7 +203,10 @@ export function tickRelationships() {
     const atHome = (p.flags.livesWithParents && (inFamilyHome(npc) || (npc.role === 'sibling' && !npc.flags.livesApartWith))) || seenOften(npc)
       || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || !!npc.flags.placementId || (npc.role === 'ward' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
-      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
+      // How fast it fades is a little the player's own nature too: the loyal and the outgoing keep friends longer (engine/traits.js).
+      const k = ['friend', 'classmate', 'coworker'].includes(npc.role) ? traitK('friendDecayK') : ['partner', 'spouse'].includes(npc.role) ? traitK('partnerDecayK')
+        : ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'relative', 'stepparent', 'stepsibling', 'stepchild'].includes(npc.role) ? traitK('familyDecayK') : 1;
+      npc.meters.relationship = clamp(npc.meters.relationship - Math.round(((DECAY[npc.role] ?? 2) + (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)) * k)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       drifted.push(npc.firstName);
@@ -389,7 +393,7 @@ export function interact(npcId, action, option) {
       const cost = localMoney(gift.cost, c);
       p.finance.cash -= cost;
       const liked = rng.chance(0.85);
-      bump(npc, liked ? rng.int(gift.gain[0], gift.gain[1]) : 1);
+      bump(npc, liked ? Math.round(rng.int(gift.gain[0], gift.gain[1]) * traitK('giftK')) : 1);
       p.hidden.karma = clamp(p.hidden.karma + 1);
       if (gift.id === 'lavish' && liked) remember(npc, 'lavishGift', 'You once gave them a gift they still talk about.');
       tone = liked ? 'good' : 'neutral';
@@ -435,13 +439,13 @@ export function interact(npcId, action, option) {
       break;
     }
     case 'argue':
-      bump(npc, -rng.int(5, 14));
+      bump(npc, -Math.round(rng.int(5, 14) * traitK('argueK')));
       p.stats.mood = clamp(p.stats.mood - 3);
       tone = 'bad';
       text = `You and ${name} had a blazing row.${sour(npc)}`;
       break;
     case 'insult':
-      bump(npc, -rng.int(10, 22));
+      bump(npc, -Math.round(rng.int(10, 22) * traitK('argueK')));
       p.hidden.karma = clamp(p.hidden.karma - 3);
       tone = 'bad';
       text = `You told ${name} exactly what you think of them.${sour(npc)}`;

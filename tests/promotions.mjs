@@ -34,8 +34,11 @@ for (const id of ['teacher', 'office', 'nurse', 'software']) {
   check(strong >= solid - 1, `${id}: strong work about as often or more (${strong} of 6)`);
 }
 // The title follows the rank, in the career's own words.
-rng.seed(7); const t = life('teacher', 85); const first = t.career.title; years(t, 15, 85);
-check(t.career.level >= 1 && t.career.title !== first && CAREER_BY_ID.teacher.levels.some((l) => l.title === t.career.title || t.career.title.includes(l.title.split(' ').pop())), `a teacher's title changes with the rank (${first} → ${t.career.title})`);
+rng.seed(7); const t = life('teacher', 85); const first = t.career.title; const jt = store.state.journal.length; years(t, 15, 85);
+// The title last promoted to: a layoff in a downturn later ends the job, not the promotion.
+const rose = store.state.journal.slice(jt).map((e) => /You were promoted to ([^,]+),/.exec(e.text)?.[1]).filter(Boolean).at(-1);
+const title = t.career.careerId === 'teacher' ? t.career.title : rose ? rose.charAt(0).toUpperCase() + rose.slice(1) : null;
+check(title && title !== first && CAREER_BY_ID.teacher.levels.some((l) => l.title === title || title.includes(l.title.split(' ').pop())), `a teacher's title changes with the rank (${first} → ${title})`);
 // At the top, raises carry on.
 rng.seed(8); const top = life('office', 85);
 const C = CAREER_BY_ID.office; top.career.level = C.levels.length - 1; top.career.title = C.levels.at(-1).title; top.career.yearsInRole = 0;

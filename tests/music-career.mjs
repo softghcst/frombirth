@@ -44,9 +44,10 @@ const year = () => { advanceYear(); store.state.pendingEvents = []; const p = st
   check(!music.record('single').ok, 'one record a year');
   check(music.gig().ok || true, 'concerts');
   check(music.setStageName('Nova').ok && a.name === 'Nova' && p.flags.stageName === 'Nova', 'a stage name names the solo act');
-  const cash = p.finance.cash;
+  // What the deal pays, not what is left after rent and bills (a one-album deal can end once the album is delivered).
+  const earned = p.finance.lifetimeEarned; const perYear = a.deal.perYear;
   year(); year();
-  check(p.finance.cash > cash, 'the contract pays, year by year');
+  check(p.finance.lifetimeEarned - earned >= perYear, `the contract pays, year by year (${p.finance.lifetimeEarned - earned} earned; ${perYear} a year)`);
   check(music.practiceMusic().ok !== undefined, 'practice');
   section('solo: an audition, a contract (money, years, a genre), a record a year with no songs needed, a stage name');
 }

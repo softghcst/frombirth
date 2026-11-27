@@ -30,9 +30,13 @@ const refunds = (p) => (p.finance.receipts ?? []).filter((t) => t.kind === 'refu
 /** A young adult living with both parents, out of school, with some savings. */
 function youngAdult(age = 19, countryId = 'us', year0 = null) {
   let s;
-  do { s = createLife({ countryId, ...(year0 ? { year: year0 - age } : {}) }); } while (s.player.royal || s.player.flags.parentsStatus !== 'together');
-  store.state = s;
-  for (let i = 0; i < age; i++) { s.player.stats.health = 95; year(); s.player.alive = true; s.player.legal.incarceration = null; s.player.legal.pending = null; }
+  // Grown up where the check is about: a family that emigrated along the way is someone else's check.
+  for (let tries = 0; tries < 10; tries++) {
+    do { s = createLife({ countryId, ...(year0 ? { year: year0 - age } : {}) }); } while (s.player.royal || s.player.flags.parentsStatus !== 'together');
+    store.state = s;
+    for (let i = 0; i < age; i++) { s.player.stats.health = 95; year(); s.player.alive = true; s.player.legal.incarceration = null; s.player.legal.pending = null; }
+    if (s.player.countryId === countryId) break;
+  }
   const p = s.player;
   p.flags.livesWithParents = true; delete p.flags.care;
   p.education.enrolled = false; p.education.housing = 'home';

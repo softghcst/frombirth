@@ -37,7 +37,7 @@ export default {
   render(el, api) {
     const p = player();
     const traits = p.traits.map((id) => TRAIT_BY_ID[id]).filter(Boolean);
-    const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)' })[p.traitSources?.[id]] ?? '';
+    const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)', teen: ' (as a teenager)', adult: ' (as a young adult)', midlife: ' (in midlife)' })[p.traitSources?.[id]] ?? '';
     const born = (p.birth ?? []).map((id) => BIRTH_BY_ID[id]).filter(Boolean);
     // One health record: the ailments, and the long-term conditions a clinician has diagnosed (the rest is in My Health).
     const ails = ailmentsOf(p).map((c) => ({ name: c.name, since: c.sinceAge, treated: c.treated }));

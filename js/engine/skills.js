@@ -9,6 +9,9 @@ import { guardians } from './childhood.js';
 import { nativeLanguages } from './languages.js';
 import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS, SKILL_USES, SPOKEN } from '../data/skills.js';
 import { COUNTRIES } from '../data/countries.js';
+import { traitK } from './traits.js';
+/** Skills that count as creative, besides instruments and the performing arts. */
+const CREATIVE = ['drawing', 'painting', 'photography', 'writing', 'cooking'];
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -122,7 +125,10 @@ export function practice(id, lesson = false) {
   const kind = s.group === 'instrument' || ['singing', 'music_theory', 'rap'].includes(id) ? 'music' : ['dance', 'yoga', 'martial_arts', 'sports'].includes(id) ? 'movement' : id === 'swimming' ? 'water' : id === 'writing' ? 'books' : id === 'public_speaking' ? 'people' : null;
   const head = before === 0 && kind && !(p.flags.earlyUsed ?? []).includes(id) ? (p.flags.childhood?.early?.[kind] ?? 0) : 0;
   if (head) p.flags.earlyUsed = [...(p.flags.earlyUsed ?? []), id];
-  const gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135))) + Math.min(6, head);
+  let gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135))) + Math.min(6, head);
+  // The creative pick up the arts faster; a green thumb, gardening (engine/traits.js).
+  const nature = id === 'gardening' ? traitK('gardenK', p) : (s.group === 'instrument' || s.group === 'performing' || CREATIVE.includes(id)) ? traitK('creativeK', p) : 1;
+  if (nature !== 1) gained = Math.max(1, Math.round(gained * nature));
   const after = Math.min(100, before + gained);
   if (s.talent) {
     p.talents[s.talent] = after;

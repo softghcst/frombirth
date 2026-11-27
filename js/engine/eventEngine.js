@@ -21,6 +21,7 @@ import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
 import { turnSeasons } from './calendar.js';
 import { feltRecently } from './disasters.js';
+import { traitWeight } from './traits.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -169,7 +170,7 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
     }
     const queued = [];
     if (pool.length && rng.chance(chance)) {
-      const pick = rng.weighted(pool, (x) => x.ev.weight ?? 1);
+      const pick = rng.weighted(pool, (x) => (x.ev.weight ?? 1) * traitWeight(x.ev));
       state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast, ...asideOf(pick.ev) });
       queued.push(pick.ev.id);
     }
@@ -184,7 +185,7 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
         if (cast) ordinary.push({ ev, cast });
       }
       if (ordinary.length) {
-        const pick = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
+        const pick = rng.weighted(ordinary, (x) => (x.ev.weight ?? 1) * traitWeight(x.ev));
         state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast, ...asideOf(pick.ev) });
         queued.push(pick.ev.id);
       }
@@ -226,7 +227,7 @@ export function drawEvents() {
     : rng.weighted([1, 2, 3], (n) => ({ 1: 50, 2: 35, 3: 15 })[n]);
   const ordinary = pool.filter((x) => !x.ev.priority && (x.ev.weight ?? 1) > 0 && !groups.has(x.ev.exclusive));
   for (let i = 0; i < rolled - stories && ordinary.length; i++) {
-    const pickd = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
+    const pickd = rng.weighted(ordinary, (x) => (x.ev.weight ?? 1) * traitWeight(x.ev));
     ordinary.splice(ordinary.indexOf(pickd), 1);
     if (pickd.ev.exclusive) {
       if (groups.has(pickd.ev.exclusive)) continue;

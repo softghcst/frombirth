@@ -89,6 +89,7 @@ import * as hood from './neighborhood.js';
 import * as hoodLife from './neighborhoodLife.js';
 import { directYear, yearSteps } from './storyDirector.js';
 import { tickOrigins } from './origins.js';
+import { tickTraits } from './traits.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -186,6 +187,7 @@ export const YEARLY = [
   ['military', tickMilitary], // contracts, national service (engine/military.js)
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
+  ['traits', tickTraits], // what a person's nature does to a year: a loner living alone, a parent with children at home (engine/traits.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['storyDirector', () => { directYear(); }], // every storyline's beats, paced together by the life's drama setting (engine/storyDirector.js)

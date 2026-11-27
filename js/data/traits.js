@@ -1,6 +1,12 @@
 // Heritable traits, parent occupations and pets used when a life begins.
 
-/** Traits pass from parent to child. Mods apply once, at birth. */
+/**
+ * Traits pass from parent to child, and a few more are taken on through life (engine/traits.js): at most MAX_TRAITS.
+ * `stats`, `hidden`, `talents` apply once, when the trait is had. `effects` go on working, small and steady, through
+ * the hooks in engine/traits.js: a key ending in K multiplies (0.8 is a fifth less), any other adds. `opposite` is a
+ * trait it cannot be held with.
+ */
+export const MAX_TRAITS = 5;
 export const TRAITS = [
   { id: 'bookish', name: 'Bookish', desc: 'Picks things up quickly.', stats: { intellect: 10 } },
   { id: 'radiant', name: 'Radiant', desc: 'People notice you.', stats: { charm: 10 } },
@@ -16,6 +22,39 @@ export const TRAITS = [
   { id: 'sly', name: 'Sly', desc: 'Notices what is unattended.', talents: { crime: 14 }, hidden: { karma: -6 } },
   { id: 'delicate', name: 'Delicate', desc: 'Catches everything going round.', stats: { health: -10 } },
   { id: 'worrier', name: 'Worrier', desc: 'Prepared for the worst, always.', stats: { mood: -8 }, hidden: { discipline: 8 } },
+  // Personality: what they change goes on all life, a little at a time.
+  { id: 'outgoing', name: 'Outgoing', desc: 'Makes friends anywhere. More invitations; friendships fade more slowly.', opposite: 'loner', stats: { charm: 3 },
+    effects: { invites: 1, friendDecayK: 0.8 } },
+  { id: 'loner', name: 'Loner', desc: 'Happiest alone. Fewer invitations; living alone suits them.', opposite: 'outgoing',
+    effects: { invites: -1, friendDecayK: 0.85, aloneMood: 2 } },
+  { id: 'romantic', name: 'Romantic', desc: 'Falls hard. More love stories, and dates go better.',
+    effects: { loveK: 1.25, dateK: 1.15 } },
+  { id: 'family_minded', name: 'Family-Minded', desc: 'Family first. Family stays close, and children at home lift the mood.',
+    effects: { familyDecayK: 0.7, kidsMood: 1 } },
+  { id: 'ambitious', name: 'Ambitious', desc: 'Wants the top job. Works harder for promotions, and hates standing still.', opposite: 'laid_back',
+    effects: { workPerf: 2, idleMood: -4 } },
+  { id: 'laid_back', name: 'Laid-Back', desc: 'Nothing is that urgent. Less stress at work, a little slower to rise.', opposite: 'ambitious',
+    effects: { stressK: 0.8, workPerf: -1 } },
+  { id: 'hothead', name: 'Hothead', desc: 'Quick to anger. Arguments go worse.', opposite: 'gentle',
+    effects: { argueK: 1.3 } },
+  { id: 'jealous', name: 'Jealous', desc: 'Wants all of someone. A partner\'s closeness slips faster when you are apart.', opposite: 'loyal',
+    effects: { partnerDecayK: 1.25 } },
+  { id: 'loyal', name: 'Loyal', desc: 'There for people, for good. Friends and family stay close.', opposite: 'jealous',
+    effects: { friendDecayK: 0.8, familyDecayK: 0.9 } },
+  { id: 'generous', name: 'Generous', desc: 'Gives freely. Gifts mean more to people.', opposite: 'frugal', hidden: { karma: 4 },
+    effects: { giftK: 1.3 } },
+  { id: 'frugal', name: 'Frugal', desc: 'Counts every penny. Lives on a little less each year.', opposite: 'big_spender',
+    effects: { costK: 0.95 } },
+  { id: 'big_spender', name: 'Big Spender', desc: 'Life is for living. Costs more to live, and enjoys it more.', opposite: 'frugal',
+    effects: { costK: 1.08, yearMood: 2 } },
+  { id: 'adventurous', name: 'Adventurous', desc: 'Needs to see somewhere new. A trip lifts them; a year at home drags.', opposite: 'homebody',
+    effects: { tripMood: 3, stuckMood: -1 } },
+  { id: 'homebody', name: 'Homebody', desc: 'Home is the best place. A good home lifts them more.', opposite: 'adventurous',
+    effects: { homeComfortK: 1.5 } },
+  { id: 'creative', name: 'Creative', desc: 'Always making something. Creative skills come faster.',
+    effects: { creativeK: 1.15 } },
+  { id: 'green_thumb', name: 'Green Thumb', desc: 'Things grow for them. Gardening comes faster, and a garden lifts them.',
+    effects: { gardenK: 1.3, gardenMood: 1 } },
 ];
 export const TRAIT_BY_ID = Object.fromEntries(TRAITS.map((t) => [t.id, t]));
 

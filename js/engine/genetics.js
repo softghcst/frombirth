@@ -6,6 +6,7 @@ import { clamp } from '../util.js';
 import { ADDED_TALENTS, LATER_TALENTS } from '../data/talents.js';
 import { TRAITS, TRAIT_BY_ID } from '../data/traits.js';
 import { BIRTH_CONDITIONS } from '../data/birthConditions.js';
+import { clashes } from './traits.js';
 
 export const SKIN_TONES = 6;
 export const HAIR_COLORS = 5;
@@ -19,7 +20,13 @@ export const randomAppearance = (skinHint, gender) => avatarRandom(skinHint, gen
 
 export const randomTraits = (n = rng.int(1, 2)) => {
   const pool = TRAITS.map((t) => t.id);
-  return Array.from({ length: n }, () => pool.splice(rng.int(0, pool.length - 1), 1)[0]);
+  const out = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    const id = pool.splice(rng.int(0, pool.length - 1), 1)[0];
+    if (clashes(id, out)) continue; // never two opposites (an outgoing loner)
+    out.push(id);
+  }
+  return out;
 };
 
 export const randomTalents = () => {
@@ -80,7 +87,8 @@ export function inheritTraits(mother, father) {
     const fresh = TRAITS.map((t) => t.id).filter((id) => !sources[id]);
     sources[rng.pick(fresh)] = 'self';
   }
-  const traits = Object.keys(sources).slice(0, 3);
+  // Never two opposites: the first one wins (a child can take after one parent's temper and not the other's calm).
+  const traits = Object.keys(sources).reduce((list, id) => (clashes(id, list) ? list : [...list, id]), []).slice(0, 3);
   return { traits, sources: Object.fromEntries(traits.map((id) => [id, sources[id]])) };
 }
 
