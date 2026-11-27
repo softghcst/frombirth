@@ -39,6 +39,15 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     store.notify();
   });
   await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
+  if (label === 'phone') {
+    // Every special career's row, the law and medicine included, in one list, each description read in full.
+    await page.evaluate(() => [...document.querySelectorAll('.sec-row')].find((x) => /Special Careers/i.test(x.innerText))?.click()); await page.waitForTimeout(250);
+    const cut = await page.evaluate(() => [...document.querySelectorAll('.nav-row .nr-main small')].filter((s) => s.offsetParent && s.scrollWidth > s.clientWidth + 1).map((s) => s.innerText));
+    check(!cut.length, `${label}: no special career's description is cut off (${cut.join('; ')})`);
+    check(!/training and ranks/i.test(await page.locator('body').innerText()), `${label}: one list, not two`);
+    await page.evaluate(() => document.querySelector('.tab-btn[data-tab="self"]').click()); await page.waitForTimeout(150);
+    await page.evaluate(() => document.querySelector('.tab-btn[data-tab="work"]').click()); await page.waitForTimeout(250);
+  }
   const direct = page.locator('.sec-row[data-act="sc:music"]');
   check(await direct.count() >= 1 && /Music/.test(await direct.first().innerText()) && /Your career/.test(await direct.first().innerText()), `${label}: the Work row is the special career, by name`);
   check(/🎸/.test(await direct.first().innerText()) && !/^\s*My /m.test(await direct.first().innerText()), `${label}: with the field's picture, and no "My" in the name`);

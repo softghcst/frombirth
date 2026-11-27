@@ -544,7 +544,7 @@ export function lawRowSub() {
   const t = lp.trackOf(p);
   const open = (p.law?.caseIds ?? []).map(lc.caseById).filter((c) => c && !c.done);
   if (t) return `${open.length} open case${open.length === 1 ? '' : 's'}${open.some((c) => c.awaiting) ? ' · one needs you' : ''}`;
-  if (p.education.enrolled && p.education.stage === 'law') return 'Law school: classes, exams, clinics, internships';
+  if (p.education.enrolled && p.education.stage === 'law') return 'Law school: classes and exams';
   if (ls.hasLawDegree(p) && !ls.admitted(p)) return 'The bar exam';
   return 'Law school, the bar, and practice';
 }
