@@ -202,3 +202,60 @@
 .adopt-face svg { width: 100%; height: 100%; }
 .adopt-house { font-size: 1.5rem; margin-top: 4px; }
 .adopt-note { font-size: 1.15rem; margin: 2px 0; }
+
+/* The graduation card (ui/graduation.js): confetti on fine paper, the player in a cap, a little diploma with a gold
+   seal. A paper card, so it keeps its own light colors in the dark theme too. */
+.grad { --paper: #fff6fa; --edge: #f0b8cf; --deep: #c2577f; --ink: #2d2436; --pen: #2546a8;
+  position: relative; overflow: hidden; border-radius: 16px; padding: 16px 14px 14px; text-align: center; color: var(--ink);
+  background: radial-gradient(circle at 50% 0%, #fff 0, var(--paper) 70%); border: 2px solid var(--edge);
+  box-shadow: 0 2px 0 var(--edge), 0 10px 26px rgba(30, 30, 60, 0.18); }
+.grad-blue { --paper: #f1f7ff; --edge: #a9c8ef; --deep: #2f5ea8; }
+.grad-mint { --paper: #effaf4; --edge: #9fd3bb; --deep: #2c8462; }
+.grad-lilac { --paper: #f7f2ff; --edge: #c8b4ee; --deep: #6a46b5; }
+.grad-gold { --paper: #fffaee; --edge: #e8cd8a; --deep: #9a6a12; }
+.grad-confetti { position: absolute; inset: 0; pointer-events: none; }
+.grad-confetti i { position: absolute; width: 8px; height: 13px; border-radius: 2px; transform: rotate(var(--r)); opacity: 0.85;
+  animation: grad-fall 0.9s ease-out var(--d) both; }
+.grad-confetti i.ca { background: #f48bb3; }
+.grad-confetti i.cb { background: #ffcc3d; width: 8px; height: 8px; border-radius: 50%; }
+.grad-confetti i.cc { background: #6cc0f0; }
+@keyframes grad-fall { from { translate: 0 -40px; opacity: 0; } to { translate: 0 0; opacity: 0.85; } }
+.grad-class { position: relative; font: 800 0.68rem/1 var(--sans); letter-spacing: 0.22em; text-transform: uppercase; color: var(--deep); }
+.grad-word { position: relative; font-family: 'Great Vibes', 'Snell Roundhand', cursive; font-size: 2.6rem; line-height: 1.05; margin-top: 6px; color: var(--deep); }
+.grad-flourish { position: relative; width: 62%; height: 12px; margin: -2px auto 8px; display: block; }
+.grad-flourish path { fill: none; stroke: var(--deep); stroke-width: 1.1; stroke-linecap: round; }
+.grad-photo { position: relative; width: 120px; height: 120px; margin: 2px auto 4px; }
+.grad-face { position: absolute; left: 0; bottom: 0; width: 120px; height: 120px; border-radius: 50%; overflow: hidden; background: #fff;
+  border: 3px solid #fff; box-shadow: 0 0 0 2px var(--edge), 0 4px 12px rgba(30, 30, 60, 0.15); display: grid; place-items: center; }
+.grad-face svg { width: 112px; height: 112px; }
+.grad-diploma { position: relative; margin: 6px 4px 0; padding: 12px 12px 14px; background: #fffdf7; border-radius: 6px;
+  border: 1px solid rgba(45, 36, 54, 0.15); box-shadow: inset 0 0 0 4px #fffdf7, inset 0 0 0 5px var(--edge); transform: rotate(0.6deg); }
+.grad-ribbon { position: absolute; top: -7px; left: 50%; width: 46px; height: 14px; transform: translateX(-50%); border-radius: 3px; background: var(--edge); opacity: 0.9; }
+.grad-certify { font: italic 600 0.78rem/1.3 var(--serif); opacity: 0.75; }
+.grad-name { font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive; font-size: 1.85rem; line-height: 1.05; color: var(--pen); font-weight: 600; margin: 1px 0 3px; }
+.grad-award { font: 700 1rem/1.25 var(--serif); margin-top: 2px; padding: 0 30px; text-wrap: balance; }
+.grad-school { font: 800 0.66rem/1.3 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; color: var(--deep); padding: 0 34px; }
+.grad-marks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; font: 700 0.74rem/1 var(--sans); }
+.grad-marks span { padding: 4px 9px; border-radius: 999px; background: var(--paper); border: 1px solid var(--edge); }
+.grad-honors { color: var(--deep); }
+.grad-seal { position: absolute; right: 6px; bottom: 6px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 1.1rem;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #e0a92a 70%); box-shadow: 0 0 0 3px #f7d56f, 0 2px 4px rgba(0, 0, 0, 0.2); transform: rotate(-12deg); }
+.grad-seal::before, .grad-seal::after { content: ''; position: absolute; bottom: -12px; width: 10px; height: 16px; background: var(--deep); z-index: -1; }
+.grad-seal::before { left: 9px; transform: rotate(18deg); }
+.grad-seal::after { right: 9px; transform: rotate(-18deg); }
+.grad-next { margin-top: 14px; }
+.grad-step { display: flex; align-items: center; gap: 10px; text-align: left; }
+.grad-step-emoji { font-size: 1.35rem; flex: none; }
+@media (prefers-reduced-motion: reduce) { .grad-confetti i { animation: none; } }
+@media (max-width: 360px) { .grad-word { font-size: 2.15rem; } .grad-name { font-size: 1.6rem; } }
+/* The cap on the card: one place at a time (grad cap-toss | cap-photo | cap-diploma). */
+.grad .grad-cap { position: absolute; display: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); pointer-events: none; }
+.grad.cap-toss .grad-cap-toss { display: block; width: 52px; top: 168px; z-index: 1; animation: grad-toss 1s ease-out both; }
+.grad.cap-toss .grad-cap-toss.t1 { left: 26px; --r: -24deg; }
+.grad.cap-toss .grad-cap-toss.t2 { right: 26px; width: 44px; top: 146px; --r: 20deg; animation-delay: 0.15s; }
+@keyframes grad-toss { from { transform: translateY(40px) rotate(0deg); opacity: 0; } to { transform: translateY(0) rotate(var(--r)); opacity: 1; } }
+/* Worn by the circle: the band seated on its rim, at about one o'clock, tilted the way a cap sits on a head. */
+.grad.cap-photo .grad-photo { margin-top: 44px; }
+.grad.cap-photo .grad-cap-photo { display: block; width: 88px; left: 44px; top: -36px; transform-origin: 50% 79%; transform: rotate(26deg); z-index: 1; }
+.grad.cap-diploma .grad-cap-diploma { display: block; width: 58px; top: -22px; left: -10px; transform: rotate(-16deg); z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .grad .grad-cap-toss { animation: none !important; transform: rotate(var(--r)); } }
