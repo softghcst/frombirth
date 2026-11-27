@@ -244,7 +244,7 @@ export async function openJourney(o) {
       if (e.target.closest('[data-board]') && phase === 'pass') { takeOff(); return; }
       const ch = e.target.closest('[data-choice]');
       if (ch && phase === 'moment') { answered(flight.chooseFlightMoment(o.tripId, Number(ch.dataset.choice))); return; }
-      if (e.target.closest('[data-onward]') && phase === 'moment') { card('[data-moment]').hidden = true; phase = 'fly'; base = progress; t0 = performance.now() - (fly * 0); return; }
+      if (e.target.closest('[data-onward]') && phase === 'moment') { card('[data-moment]').hidden = true; card('[data-moment]').innerHTML = ''; phase = 'fly'; base = progress; t0 = performance.now() - (fly * 0); return; }
       if (e.target.closest('.jg-card')) return; // the cards' own buttons only
       // A tap skips ahead: boarding takes the window, flying goes to the moment or the landing, landed goes on.
       if (phase === 'pass') { if (pass.chooseSeat) { flight.chooseSeat(o.tripId, 'window'); o.onChange?.(); } takeOff(); base = moment ? momentAt - 0.001 : 1; return; }
