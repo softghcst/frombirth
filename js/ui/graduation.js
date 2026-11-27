@@ -81,7 +81,7 @@ const confettiHtml = () => `<div class="grad-confetti" aria-hidden="true">${CONF
   `<i class="c${k}" style="left:${x}%;top:${y}%;--r:${r}deg;--d:${(i % 5) * 0.12}s"></i>`).join('')}</div>`;
 
 /** Where the cap goes on the card: tossed in the air, perched on the photo, or on the diploma. */
-export let CAP_SPOT = 'toss';
+export let CAP_SPOT = 'photo';
 export const setCapSpot = (v) => { CAP_SPOT = v; };
 
 /** The card. */
