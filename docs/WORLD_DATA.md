@@ -1,6 +1,6 @@
 # World data: what is real, what is game, and what still needs checking
 
-Pathways has 103 places to live: the 102 on the reference list, plus Ghana, which was already in the game.
+From Birth has 103 places to live: the 102 on the reference list, plus Ghana, which was already in the game.
 This page says where each kind of information about them comes from and how far it can be trusted.
 
 ## Three kinds of statement

@@ -24,7 +24,7 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const dancer = (age, skill, o = {}) => {
-  do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId: 'us', city: 'New York' }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year - age; p.stats.health = 85; p.finance.cash = 20000; p.legal.record = [];
   p.talents.dance = skill; p.talents.singing = o.sing ?? 40; p.talents.acting = o.act ?? 40;
@@ -164,8 +164,10 @@ const offerOf = (kind, p) => {
     let won = 0, n = 0;
     for (let i = 0; i < 80; i++) {
       const p = dancer(25, 85, { sing: 40, act: 40 });
-      const prod = ent.makeProduction('musical', 'regional', 'us');
-      const r = kind === 'dance_ensemble' ? prod.cast.find((x) => x.kind === 'dance_ensemble') : prod.cast.find((x) => x.kind === 'ensemble');
+      // Whether a musical holds a dance call is luck keyed to its id, and a fresh life numbers its productions from the
+      // start: a few productions are made, so the check does not hang on which id comes first.
+      let prod; let r;
+      for (let t = 0; t < 8 && !r; t++) { prod = ent.makeProduction('musical', 'regional', 'us'); r = kind === 'dance_ensemble' ? prod.cast.find((x) => x.kind === 'dance_ensemble') : prod.cast.find((x) => x.kind === 'ensemble'); }
       if (!r) continue;
       r.open = true; r.ages = [20, 35];
       if (ent.whyNot(prod, r, p)) continue;
@@ -260,7 +262,7 @@ const offerOf = (kind, p) => {
 // 12. A musician who dances well stars in their own music video, and it sells better.
 {
   const run = (skill) => {
-    do { store.state = createLife({ countryId: 'us' }); } while (store.state.player.royal);
+    do { store.state = createLife({ countryId: 'us', city: 'New York' }); } while (store.state.player.royal);
     const p = store.state.player;
     p.age = 24; p.birthYear = store.state.year - 24; p.finance.cash = 100000; p.talents.music = 75; p.talents.singing = 75; p.talents.dance = skill;
     const ms = music.musicians(p.countryId);
