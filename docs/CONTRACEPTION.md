@@ -1,6 +1,6 @@
 # Contraception, reproductive health and family planning
 
-How birth control works in Pathways, where its numbers come from, and what has not been reviewed. Pathways is a
+How birth control works in From Birth, where its numbers come from, and what has not been reviewed. From Birth is a
 game. Nothing in it is medical advice. The screens never tell a player how to use, start or stop a real method.
 
 ## Clinical review status

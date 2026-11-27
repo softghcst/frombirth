@@ -80,7 +80,7 @@ export async function openSettings(hooks = {}) {
         ...(store.state?.player?.alive ? [{ value: 'everyday', label: 'Everyday moments', sub: store.state.settings?.everydayScenes === 'popup' ? 'Shown as they happen' : 'In your life story, to answer if you want' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
-        { value: 'about', label: 'About Pathways', sub: 'Fictional characters and events' },
+        { value: 'about', label: 'About From Birth', sub: 'Fictional characters and events' },
       ],
     });
     if (!pick) return;
@@ -262,7 +262,7 @@ async function copyText(text) {
 function download(text) {
   const day = new Date().toISOString().slice(0, 10);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: `pathways-saves-${day}.txt` });
+  const a = Object.assign(document.createElement('a'), { href: url, download: `from-birth-saves-${day}.txt` });
   document.body.appendChild(a);
   a.click();
   a.remove();

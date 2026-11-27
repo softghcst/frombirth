@@ -1,6 +1,6 @@
 # Careers, jobs and working life
 
-How work is modeled in Pathways: what an occupation, an employer, a job and a contract are; how people get
+How work is modeled in From Birth: what an occupation, an employer, a job and a contract are; how people get
 hired, paid, promoted and laid off; who they work with; how work fits around the rest of a life; and what the
 family remembers of it afterward.
 
@@ -246,11 +246,11 @@ purpose:
 | Politician | Elected office goes through the politics and elections systems |
 
 Intentionally excluded: mafia, dealer and street hustler (crime system, not employment, as above). Reference-game
-salaries and promotion tables were not copied; every pay band and ladder here was written for Pathways.
+salaries and promotion tables were not copied; every pay band and ladder here was written for From Birth.
 
 ### Every named occupation, and where it lives
 
-| Named in the specification | Where it lives in Pathways |
+| Named in the specification | Where it lives in From Birth |
 |---|---|
 | Receptionist | `office (alias)` |
 | Administrative assistant | `admin_support (rung 2)` |

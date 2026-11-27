@@ -266,7 +266,7 @@ export function moveOut() {
  * What a lender would offer to take over a mortgage: a rate that follows the
  * borrower's standing and the state of the economy, over the years it has
  * left, for a fee. Worth it only if it is cheaper.
- * @param {?number} standing  the Pathways standing with lenders, 0 to 100, or null where none is kept
+ * @param {?number} standing  the credit standing with lenders, 0 to 100, or null where none is kept
  */
 export function remortgageOffer(id, standing = null) {
   const p = player();

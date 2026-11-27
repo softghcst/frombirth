@@ -1,4 +1,4 @@
--- Cloud saves for Pathways. Paste all of this into Supabase's SQL Editor and press Run.
+-- Cloud saves for From Birth. Paste all of this into Supabase's SQL Editor and press Run.
 -- It makes one table, `saves`, with one row per player, and rules so that each
 -- signed-in player can only ever see or change their own row.
 

@@ -1,12 +1,12 @@
 # Credits
 
-Pathways © 2026 Andre Subero. All rights reserved, except the third-party parts listed below, which keep
+From Birth © 2026 Andre Subero. All rights reserved, except the third-party parts listed below, which keep
 their own licenses.
 
 ## Avatar art
 
 All avatar art in `assets/` (heads, faces, eyes, eyebrows, lips, hair, clothes, jewelry, crowns, aging and emotions) was
-made for Pathways:
+made for From Birth:
 
 - Base heads, templates and the fitting tools (`scripts/`) were drawn and written for this project.
 - Hair, clothing and some accessory shapes were generated with ChatGPT (OpenAI) from the prompts in
@@ -44,4 +44,4 @@ universities, royal families, brands and leagues in the game are invented.
 
 ## Code
 
-Pathways uses no third-party code libraries: everything in `js/` was written for the game.
+From Birth uses no third-party code libraries: everything in `js/` was written for the game.

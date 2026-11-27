@@ -1,7 +1,7 @@
 // What a year can hold besides work and school: birthdays, school dances,
 // family occasions, holidays, traditions, invitations and evenings with friends.
 //
-// Pathways is lived a year at a time, so none of this has a date. Each entry
+// From Birth is lived a year at a time, so none of this has a date. Each entry
 // says who it is for, when in a life it can happen, and, so that a life set in
 // another time or place gets the right things, the first year it exists and the
 // countries it belongs to.

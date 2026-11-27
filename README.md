@@ -1,4 +1,4 @@
-# Pathways
+# From Birth
 
 A text life simulation. One life, one year at a time.
 
@@ -146,7 +146,7 @@ node tests/investigations-ui.mjs # My Investigations and a case file, at phone a
 
 People → **My Moments** lists what this year holds: birthdays, school dances and proms, family occasions,
 holidays, the family's traditions, invitations and evenings with friends. Choose one and it happens at once;
-Age Up keeps the traditions nobody organized. No calendar: Pathways is still lived a year at a time.
+Age Up keeps the traditions nobody organized. No calendar: From Birth is still lived a year at a time.
 Details: [docs/MOMENTS.md](docs/MOMENTS.md).
 
 ## Money
@@ -199,7 +199,7 @@ are modeled in full; the other twenty-odd sports use shared scoring for goals, p
 strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow toward a
 fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
 real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
-and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+and champions are counted from completed games only. Clubs, leagues and the Player Rating (PR) are invented.
 
 Above recreational play, women and men compete in their own divisions: separate clubs' teams, leagues, tours and
 events, with names and teammates to match. Women's professional play starts in its own years (later than men's in
@@ -438,7 +438,7 @@ to a stable replacement instead of breaking.
 
 ## The world
 
-Pathways has 103 places to live: the 102 on the reference list (16 in North America, 11 in South America, 28 in Europe,
+From Birth has 103 places to live: the 102 on the reference list (16 in North America, 11 in South America, 28 in Europe,
 13 in Africa, 12 under "Middle East", 18 in Asia, 4 in Oceania) and Ghana. Not all are sovereign states, and the game
 says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
 jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school

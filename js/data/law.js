@@ -4,7 +4,7 @@
 // The United States is modeled in depth; other countries use the justice system family they already have
 // (data/justice.js) with a simplified, clearly labeled profile.
 
-export const SIMULATION_NOTE = 'Real laws are cited by name and year where Pathways lists them. How a case plays out is simplified, and none of it is legal advice.';
+export const SIMULATION_NOTE = 'Real laws are cited by name and year where From Birth lists them. How a case plays out is simplified, and none of it is legal advice.';
 
 // ---------- Jurisdictions ----------
 
@@ -26,7 +26,7 @@ export const LAW_PROFILES = {
     admission: 'admission to practice', juries: { criminal: true, civil: false, family: false, immigration: false, juvenile: false },
     da: 'appointed', ag: { state: 'appointed', federal: 'a government minister or law officer' },
     judges: 'appointed', titles: { prosecutorChief: 'Chief Crown or State Prosecutor', defenderChief: 'Head of Public Defense' },
-    note: 'In many of these countries law is a first degree, followed by practical training. Pathways plays it as a three-year law program.',
+    note: 'In many of these countries law is a first degree, followed by practical training. From Birth plays it as a three-year law program.',
   },
   bench: {
     depth: 'simplified', name: 'Common law, decided by judges', degree: 'law degree', degreeYears: 3, afterBachelor: false,
@@ -64,7 +64,7 @@ export const COUNTRY_LAW = {
   ca: { name: 'Canada', degree: 'Juris Doctor (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'lsat', name: 'law school entrance test', required: true },
     exam: 'provincial bar admission exams', training: 10, trainingName: 'articling', admission: 'call to the bar of the province' },
   uk: { name: 'England and Wales', degree: 'law degree (or a degree and a conversion course)', exam: 'Solicitors Qualifying Examination (SQE)', training: 24,
-    trainingName: 'qualifying work experience', admission: 'admission as a solicitor', note: 'Barristers qualify differently: the Bar course and a pupillage. Pathways plays the solicitors\' route.' },
+    trainingName: 'qualifying work experience', admission: 'admission as a solicitor', note: 'Barristers qualify differently: the Bar course and a pupillage. From Birth plays the solicitors\' route.' },
   au: { name: 'Australia', degree: 'law degree (LLB or JD)', exam: 'Practical Legal Training assessment', training: 6, trainingName: 'Practical Legal Training', admission: 'admission by the Supreme Court of the state' },
   jp: { name: 'Japan', degree: 'law school degree', degreeYears: 3, afterBachelor: true, exam: 'national bar examination', training: 12, trainingName: 'the Legal Training and Research Institute', admission: 'registration with the bar association' },
   kr: { name: 'South Korea', degree: 'law school degree (J.D.)', degreeYears: 3, afterBachelor: true, entrance: { id: 'leet', name: 'law school entrance test', required: true }, exam: 'bar examination', training: 6, trainingName: 'practical training', admission: 'registration with the Korean Bar Association' },
@@ -79,7 +79,7 @@ export const COUNTRY_LAW = {
 /**
  * Contingency fees (a share of what the client recovers), by country. Never in criminal, family or child matters,
  * anywhere (in the US, ABA Model Rule 1.5(d)). cap: the largest share allowed or usual; byKind for case-specific caps.
- * Countries not listed are treated as not allowing them: Pathways does not model their rules.
+ * Countries not listed are treated as not allowing them: From Birth does not model their rules.
  */
 export const CONTINGENCY = {
   us: { allowed: true, cap: 0.33, note: 'Usual in civil claims, never in criminal or family matters.' },
