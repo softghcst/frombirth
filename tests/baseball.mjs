@@ -129,7 +129,7 @@ scenario('a hitter\'s season', () => {
   check(C.H === x.H && C.HR === x.HR && C.seasons === 1, 'big league seasons add up to career totals');
   check(e.bb.allStar.includes(S().year), 'one of the best players in the league is an All-Star');
   const played = S().sports.seasons[x.seasonId];
-  check(played.playoffs.length && played.playoffs.every((f) => Object.values(BASEBALL.rounds.MLB).includes(f.label)) && played.finalName === 'World Series', 'the postseason is played by its own names, down to the World Series');
+  check(played.playoffs.length && played.playoffs.every((f) => Object.values(BASEBALL.rounds.MLB).includes(f.label)) && played.finalName === 'Championship Series', 'the postseason is played by its own names, down to the World Series');
   // Twelve clubs: the best four rest while the other eight play the wild card round.
   const seeds = sp.standings(played).map((t) => t.teamId);
   const wild = played.playoffs.filter((f) => f.round === 'Wild Card');

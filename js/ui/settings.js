@@ -368,6 +368,8 @@ async function openAccount(hooks) {
         <button class="btn" data-password>Change password</button>
         <button class="btn" data-out>Sign out</button>
         <button class="btn danger" data-wipe>Delete my saves from the cloud</button>
+        <button class="btn danger" data-delete-account>Delete my account</button>
+        <a class="btn" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
         <button class="btn" data-close>Done</button>
       </div>`, { dismissable: true, onDismiss: () => { stop(); resolve(); } });
     const line = m.el.querySelector('[data-line]');
@@ -389,6 +391,10 @@ async function openAccount(hooks) {
       if (e.target.closest('[data-out]')) {
         if (!(await confirmModal({ title: 'Sign out?', body: 'Your lives stay on this device. Changes stop being sent to your account until you sign in again.', yes: 'Sign out' }))) return undefined;
         return then(async () => messageModal({ body: (await cloud.signOut()).text }));
+      }
+      if (e.target.closest('[data-delete-account]')) {
+        if (!(await confirmModal({ title: 'Delete your account?', body: 'Your email address, password and cloud saves are deleted for good. The lives on this device stay, and you can keep playing without an account.', yes: 'Delete my account', danger: true }))) return undefined;
+        return then(async () => { const r = await cloud.deleteAccount(); await messageModal({ body: r.text, tone: r.tone }); });
       }
       if (e.target.closest('[data-wipe]')) {
         if (!(await confirmModal({ title: 'Delete your cloud saves?', body: 'The copy in your account is removed and you are signed out. The lives on this device stay. Other devices keep theirs too, until they sign in again.', yes: 'Delete', danger: true }))) return undefined;
@@ -414,6 +420,7 @@ function openSignIn(hooks) {
           <button type="button" class="btn" data-forgot>Forgot your password?</button>
           <button type="button" class="btn" data-cancel>Back</button>
         </div>
+        <p class="muted" style="margin-top:10px;font-size:0.85rem">Making an account means agreeing to the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>: your email and saves are kept only to sync your lives, and you can delete them at any time.</p>
       </form>`, { dismissable: true, onDismiss: resolve });
     const q = (sel) => m.el.querySelector(sel);
     const note = (t) => { q('[data-note]').textContent = t; };

@@ -16,7 +16,7 @@ import * as draft from '../engine/draft.js';
 import * as nations from '../engine/nations.js';
 import * as bb from '../engine/baseball.js';
 import { classOf, eligibility as collegeLeft } from '../engine/college.js';
-import { DIVISIONS } from '../data/sports.js';
+import { DIVISIONS, leagueLabel } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -218,7 +218,7 @@ function draftSection() {
       ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
       ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
       ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
-      ${e.minor ? kv('Minor leagues', `${esc((e.minor.ladder ?? D.minors)[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc(leagueLabel((e.minor.ladder ?? D.minors)[e.minor.level]))}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
       ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
         ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
         ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
@@ -237,7 +237,7 @@ function baseballSection(st, e) {
   const era = C.IP ? (C.ER * 9 / C.IP).toFixed(2) : null;
   return `${label('Baseball: the record')}
     ${R.role ? kv('Role', `${R.role[0].toUpperCase()}${R.role.slice(1)}${R.twoWay ? ', and a hitter: a two-way player' : ''}`) : R.twoWay ? kv('Role', 'A two-way player: hitting and pitching') : ''}
-    ${shown.map((x) => kv(`${x.year} · ${esc(x.level === 'other' ? x.team : x.level)}`, `${x.G ?? x.GP} games · ${esc(bb.lineText(x))}${x.capped ? ' · innings limit' : ''}`)).join('')}
+    ${shown.map((x) => kv(`${x.year} · ${esc(x.level === 'other' ? x.team : leagueLabel(x.level))}`, `${x.G ?? x.GP} games · ${esc(bb.lineText(x))}${x.capped ? ' · innings limit' : ''}`)).join('')}
     ${C.seasons ? kv(`Big league career (${C.seasons} ${C.seasons === 1 ? 'season' : 'seasons'})`, [avg ? `${avg}, ${C.H.toLocaleString('en-US')} hits, ${C.HR} home runs, ${C.RBI.toLocaleString('en-US')} RBI, ${C.SB} stolen bases` : '', era ? `${C.W}–${C.L}, ${C.SV} saves, ${era} ERA, ${C.K.toLocaleString('en-US')} strikeouts` : ''].filter(Boolean).join(' · ')) : ''}
     ${R.allStar.length ? kv('All-Star', `${R.allStar.length} ${R.allStar.length === 1 ? 'time' : 'times'} (${R.allStar.slice(-6).join(', ')})`) : ''}
     ${R.derby.length ? kv('Home Run Derby', `${R.derby.length} ${R.derby.length === 1 ? 'appearance' : 'appearances'}${R.derby.some((x) => x.won) ? `, won ${R.derby.filter((x) => x.won).map((x) => x.year).join(', ')}` : ''}`) : ''}
@@ -264,7 +264,7 @@ function intlSection(st, e) {
     ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
     ${X.signed && X.english != null ? kv('English', X.english >= 60 ? 'Fluent enough for interviews' : X.english >= 35 ? 'Getting by' : 'A few words') : ''}
     ${X.remit === 'yearly' ? kv('Money home', '15% of your salary each year') : ''}
-    ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
+    ${e.minor?.ladder ? kv('Minor leagues', `${esc(leagueLabel(e.minor.ladder[e.minor.level]))}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
 }
 
 /** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
