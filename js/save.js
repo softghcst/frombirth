@@ -214,15 +214,34 @@ function migrate(state) {
   return state;
 }
 
-/** @returns {import('./types.js').SaveSlotMeta[]} newest first */
-export const listSlots = () =>
-  read(K_INDEX, []).sort((a, b) => b.updatedAt - a.updatedAt);
+/** Every key in storage, or null where the storage cannot list them (the tests' stand-in). */
+function storedKeys() {
+  try {
+    if (typeof localStorage.length !== 'number' || typeof localStorage.key !== 'function') return null;
+    const keys = new Set();
+    for (let i = 0; i < localStorage.length; i++) keys.add(localStorage.key(i));
+    return keys;
+  } catch { return null; }
+}
 
-export function saveGame(state) {
-  state.rngSeed = rng.state();
-  state.updatedAt = Date.now();
+/**
+ * @returns {import('./types.js').SaveSlotMeta[]} newest first, each life once. (An entry whose save cannot be opened
+ * is still listed: the title screen says so when it is chosen, and nothing is hidden or removed.)
+ */
+export function listSlots() {
+  const seen = new Map();
+  for (const m of read(K_INDEX, [])) {
+    if (!m?.slotId) continue;
+    const had = seen.get(m.slotId);
+    if (!had || (m.updatedAt ?? 0) > (had.updatedAt ?? 0)) seen.set(m.slotId, m);
+  }
+  return [...seen.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** What the list of saved lives shows for a life. */
+function metaOf(state) {
   const p = state.player;
-  const meta = {
+  return {
     slotId: state.slotId,
     name: `${p.firstName} ${p.lastName}`,
     age: p.age,
@@ -236,6 +255,12 @@ export function saveGame(state) {
     updatedAt: state.updatedAt,
     timeline: state.timeline ?? null,
   };
+}
+
+export function saveGame(state) {
+  state.rngSeed = rng.state();
+  state.updatedAt = Date.now();
+  const meta = metaOf(state);
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
   index.push(meta);
   forgetDeleted('slots', state.slotId);
@@ -247,10 +272,45 @@ export function saveGame(state) {
   return write(K_INDEX, index);
 }
 
+/**
+ * A stored life brought up to date, or null if it is missing, unreadable, or cannot be brought up to date. Nothing is
+ * written: a life that fails here stays in storage exactly as it was, to be opened by a later version or recovered.
+ */
+function readLife(slotId) {
+  let raw = null;
+  try { raw = localStorage.getItem(K_SLOT + slotId); } catch { return null; }
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch { console.error(`Saved life ${slotId} is damaged (it is not readable); it has been left as it is.`); return null; }
+  if (!state?.player) { console.error(`Saved life ${slotId} has no player; it has been left as it is.`); return null; }
+  try { return migrate(state); } catch (e) { console.error(`Saved life ${slotId} could not be brought up to date; it has been left as it is.`, e); return null; }
+}
+
 /** A saved life as it stands, without starting to play it: for comparing timelines. */
 export function peekGame(slotId) {
-  const state = read(K_SLOT + slotId, null);
-  return state ? migrate(state) : null;
+  return readLife(slotId);
+}
+
+/**
+ * Lives that are saved but missing from the list of saved lives (a save that ran out of room between writing the
+ * life and writing the list): each is put back on the list. @returns {number} how many were found
+ */
+export function recoverLostLives() {
+  const keys = storedKeys();
+  if (!keys) return 0;
+  const listed = new Set(read(K_INDEX, []).map((m) => m?.slotId));
+  const lost = [...keys].filter((k) => k.startsWith(K_SLOT) && !listed.has(k.slice(K_SLOT.length))).map((k) => k.slice(K_SLOT.length));
+  if (!lost.length) return 0;
+  const keepSeed = rng.state();
+  const found = [];
+  for (const id of lost) {
+    const state = readLife(id);
+    if (!state) continue;
+    try { found.push({ ...metaOf(state), slotId: id, updatedAt: state.updatedAt ?? 0 }); } catch (e) { console.error(`Saved life ${id} could not be listed`, e); }
+  }
+  rng.seed(keepSeed); // looking at a life never moves the game's dice
+  if (found.length) write(K_INDEX, [...read(K_INDEX, []), ...found]);
+  return found.length;
 }
 
 /** How many timelines one life may have, the first included. Saved lives are large, and browser storage is small. */
@@ -299,9 +359,8 @@ function saveCopy(state) {
 }
 
 export function loadGame(slotId) {
-  const state = read(K_SLOT + slotId, null);
+  const state = readLife(slotId);
   if (!state) return null;
-  migrate(state);
   rng.seed(state.rngSeed);
   // The loaded life is the one being played: the world's money and currencies are its year's (Historical Eras), so
   // that living the same years again costs the same as it did the first time.
@@ -352,8 +411,9 @@ export function popUndo(slotId) {
   const list = read(K_UNDO + slotId, []);
   const raw = list.pop();
   if (!raw) return null;
-  write(K_UNDO + slotId, list);
-  const state = migrate(JSON.parse(raw));
+  let state;
+  try { state = migrate(JSON.parse(raw)); } catch (e) { console.error('The year could not be taken back', e); return null; }
+  write(K_UNDO + slotId, list); // only once the earlier year has been read back whole
   rng.seed(state.rngSeed);
   alignWorld(state); // a year taken back has that year's prices again
   return state;

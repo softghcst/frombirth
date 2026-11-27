@@ -108,29 +108,105 @@ export function merge(a, b) {
 /**
  * Makes this device hold exactly what the bundle holds. Lives that are not
  * changing are left untouched (no rewriting megabytes for nothing).
+ *
+ * All or nothing: every new or changed life is written first, then the lists. If anything cannot be written (the
+ * device's storage is full, say), everything already written is put back as it was, nothing is removed, and an
+ * Error is thrown. Lives that the bundle no longer holds are removed only once everything else is in place.
  * @returns {{added:number, updated:number, removed:number}}
  */
 export function apply(bundle) {
   const before = read(K_INDEX, []);
   const counts = { added: 0, updated: 0, removed: 0 };
+  const undo = []; // [key, the raw value it had (null: there was none)]
+  const put = (key, raw) => {
+    let had = null;
+    try { had = localStorage.getItem(key); } catch { /* unreadable: treated as absent */ }
+    try { localStorage.setItem(key, raw); } catch { return false; }
+    undo.push([key, had]);
+    return true;
+  };
+  const rollback = () => {
+    for (const [key, had] of undo.reverse()) {
+      try { if (had == null) localStorage.removeItem(key); else localStorage.setItem(key, had); } catch { /* best effort */ }
+    }
+  };
+  const fail = () => {
+    rollback();
+    throw new Error('There is not enough storage on this device to bring these saves in. Nothing here was changed. Delete a life you no longer need, or free some space, and try again.');
+  };
+  const replacing = [];
+  for (const [id, s] of Object.entries(bundle.slots)) {
+    const had = before.find((m) => m.slotId === id);
+    let present = false;
+    try { present = localStorage.getItem(K_SLOT + id) != null; } catch { /* treated as absent */ }
+    if (had && had.updatedAt === s.updatedAt && present) continue;
+    if (!put(K_SLOT + id, JSON.stringify(s))) fail();
+    replacing.push(id);
+    counts[had ? 'updated' : 'added'] += 1;
+  }
+  // A life here that the bundle neither holds nor says was deleted (one this device could not read, say) is kept, and
+  // stays on the list: only a deletion on purpose removes a life.
+  const kept = before.filter((m) => !bundle.slots[m.slotId] && !bundle.deleted?.slots?.[m.slotId]);
+  if (!put(K_INDEX, JSON.stringify([...bundle.index, ...kept])) || !put(K_GRAVE, JSON.stringify(bundle.graveyard))
+    || !put(K_PEOPLE, JSON.stringify(bundle.people)) || !put(K_GONE, JSON.stringify(bundle.deleted))) fail();
+  // Everything is in place: now the years that could be taken back for a changed life (they belong to the old copy),
+  // and the lives the bundle no longer holds, can go.
+  for (const id of replacing) { try { localStorage.removeItem(K_UNDO + id); } catch { /* ignore */ } }
   for (const m of before) {
-    if (bundle.slots[m.slotId]) continue;
+    if (bundle.slots[m.slotId] || !bundle.deleted?.slots?.[m.slotId]) continue;
     try { localStorage.removeItem(K_SLOT + m.slotId); localStorage.removeItem(K_UNDO + m.slotId); } catch { /* ignore */ }
     counts.removed += 1;
   }
-  for (const [id, s] of Object.entries(bundle.slots)) {
-    const had = before.find((m) => m.slotId === id);
-    if (had && had.updatedAt === s.updatedAt && localStorage.getItem(K_SLOT + id)) continue;
-    write(K_SLOT + id, s);
-    // The years that could be taken back belong to the old copy of this life.
-    try { localStorage.removeItem(K_UNDO + id); } catch { /* ignore */ }
-    counts[had ? 'updated' : 'added'] += 1;
-  }
-  write(K_INDEX, bundle.index);
-  write(K_GRAVE, bundle.graveyard);
-  write(K_PEOPLE, bundle.people);
-  write(K_GONE, bundle.deleted);
   return counts;
+}
+
+/**
+ * Checks a bundle before anything is done with it, and tidies what can be tidied safely. A life that is not a life
+ * (no player) is left out and reported; nothing that is a life is ever dropped. Duplicate entries become one; a life
+ * without an entry in the list of saved lives is given a plain one, so it can be found on the title screen.
+ * @returns {{bundle:Bundle, problems:string[]}}
+ */
+export function validate(b) {
+  const problems = [];
+  if (!b || typeof b !== 'object' || typeof b.slots !== 'object' || b.slots === null || Array.isArray(b.slots)) {
+    throw new Error('That is not a From Birth transfer code, or part of it is missing.');
+  }
+  const slots = {};
+  for (const [id, s] of Object.entries(b.slots)) {
+    if (!s || typeof s !== 'object' || !s.player || typeof s.player !== 'object' || typeof s.player.firstName !== 'string') {
+      problems.push(`A saved life (${id}) is damaged and was left out.`);
+      continue;
+    }
+    if (s.slotId !== id) s.slotId = id;
+    slots[id] = s;
+  }
+  const index = [];
+  const seen = new Set();
+  for (const m of Array.isArray(b.index) ? b.index : []) {
+    if (!m?.slotId || !slots[m.slotId] || seen.has(m.slotId)) continue;
+    seen.add(m.slotId);
+    index.push({ ...m, updatedAt: slots[m.slotId].updatedAt ?? m.updatedAt ?? 0 });
+  }
+  for (const [id, s] of Object.entries(slots)) {
+    if (seen.has(id)) continue;
+    const p = s.player;
+    index.push({ slotId: id, name: `${p.firstName} ${p.lastName ?? ''}`.trim(), age: p.age ?? 0, month: s.month ?? 0, gender: p.gender,
+      appearance: p.appearance, countryId: p.countryId, netWorth: 0, dead: p.alive === false, updatedAt: s.updatedAt ?? 0, timeline: s.timeline ?? null });
+  }
+  const once = (list, what) => {
+    const out = []; const ids = new Set();
+    for (const x of Array.isArray(list) ? list : []) {
+      if (!x || typeof x !== 'object' || !x.id) { problems.push(`A damaged ${what} was left out.`); continue; }
+      if (ids.has(x.id)) continue;
+      ids.add(x.id); out.push(x);
+    }
+    return out;
+  };
+  const deleted = emptyGone();
+  for (const kind of Object.keys(deleted)) {
+    for (const [id, t] of Object.entries(b.deleted?.[kind] ?? {})) if (Number.isFinite(t)) deleted[kind][id] = t;
+  }
+  return { bundle: { v: 1, at: Number(b.at) || 0, slots, index, graveyard: once(b.graveyard, 'grave'), people: once(b.people, 'person'), deleted }, problems };
 }
 
 /** A short summary that is the same for two bundles holding the same things. */
@@ -197,8 +273,9 @@ export async function decode(text) {
   let b;
   try { b = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('That transfer code is damaged. Try copying it again.'); }
   if (b?.v !== 1 || typeof b.slots !== 'object') throw new Error('That is not a From Birth transfer code, or part of it is missing.');
-  b.index ??= []; b.graveyard ??= []; b.people ??= []; b.deleted = { ...emptyGone(), ...b.deleted };
-  return b;
+  const { bundle, problems } = validate(b);
+  for (const p of problems) console.warn('transfer code:', p);
+  return bundle;
 }
 
 /**
@@ -229,4 +306,18 @@ export async function importCode(text, mode = 'combine') {
   return describe(incoming);
 }
 
-export const exportCode = async () => encode(collect());
+/**
+ * Everything on this device as a transfer code, read back and compared before it is handed over, so a code that
+ * would not load again is never given out. Throws a plain-words Error if it does not read back the same.
+ */
+export async function exportCode() {
+  const bundle = collect();
+  const code = await encode(bundle);
+  if (!(await verify(code, bundle))) throw new Error('The transfer code did not read back correctly, so it was not given out. Try again; your saves here are unchanged.');
+  return code;
+}
+
+/** Whether a code reads back as exactly what the bundle holds. */
+export async function verify(code, bundle) {
+  try { return fingerprint(await decode(code)) === fingerprint(validate(bundle).bundle); } catch { return false; }
+}

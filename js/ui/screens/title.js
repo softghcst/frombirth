@@ -15,7 +15,7 @@ import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
 import { ageLabel } from '../../engine/turns.js';
 import { icon } from '../kit.js';
 import { landingNow } from '../../landing.js';
-import { pickModal } from '../modals.js';
+import { pickModal, messageModal } from '../modals.js';
 
 // Head and shoulders: the part of an avatar a portrait shows.
 const BUST = '40 30 440 440';
@@ -36,6 +36,9 @@ if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLook(); });
   setInterval(refreshLook, 60 * 1000);
 }
+
+/** A saved life that could not be opened: said plainly, and the save is left exactly as it is (save.js readLife). */
+const cannotOpen = () => messageModal({ title: 'This life could not be opened', body: 'Its save is still on this device, untouched. Make a transfer file of your saves (Settings → Transfer saves) and keep it somewhere safe; a later version of the game may be able to open it.', tone: 'bad' });
 
 /**
  * @param {HTMLElement} app
@@ -118,7 +121,7 @@ export function renderTitle(app, hooks) {
       const act = await pickModal({ title: slot.name, cancel: 'Back', options: [{ value: 'open', label: slot.dead ? 'Choose who carries on' : 'Continue this life' },
         ...(multi ? [{ value: 'compare', label: 'Compare timelines', sub: 'Every telling of this life, side by side' }] : []),
         { value: 'delete', label: 'Delete this life', sub: slot.dead ? 'The grave stays.' : 'No grave is made.' }] });
-      if (act === 'open') { const st = loadGame(slot.slotId); if (st) hooks.onPlay(st); }
+      if (act === 'open') { const st = loadGame(slot.slotId); if (st) hooks.onPlay(st); else cannotOpen(); }
       if (act === 'compare') compareTimelines(slot.timeline.root);
       if (act !== 'delete') return undefined;
       const sure = await confirmModal({
@@ -137,7 +140,7 @@ export function renderTitle(app, hooks) {
     if (e.target.closest('[data-settings]')) return openSettings({ onChange: () => renderTitle(app, hooks) }).then(() => renderTitle(app, hooks));
     if (load) {
       const state = loadGame(load.dataset.load);
-      if (state) hooks.onPlay(state);
+      if (state) hooks.onPlay(state); else cannotOpen();
     } else if (del) {
       const slot = slots.find((s) => s.slotId === del.dataset.delete);
       const sure = await confirmModal({
