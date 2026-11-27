@@ -426,11 +426,15 @@ const VIEWS = {
     return out;
   },
   stories(p) {
-    const open = X.publicCases(p).filter((c) => !X.myStories(p).some((s) => s.caseId === c.caseId));
-    return X.myStories(p).slice().reverse().map((s) => card(`Story: ${W.investigation(s.invId).file.title}`, kv([['Done', s.steps.join(', ') || 'nothing yet'], ['Status', s.published ? `Published (${s.accuracy})${s.correction ? ', corrected' : ''}` : 'In progress']])
-      + s.claims.map((cl) => `<p>• ${esc(cl.text)} <span class="muted">${cl.sourced ? '(sourced)' : '(one person\'s account)'}</span></p>`).join('')
-      + stack(s.published ? (s.accuracy === 'contains an error' && !s.correction ? btn('correct', 'Run a correction', { arg: s.id }) : '') : Object.entries(X.STORY_STEPS).map(([id, x]) => btn('storyStep', x.label, { arg: `${s.id}|${id}`, cls: x.restricted ? 'danger' : '' })).join('') + btn('publish', 'Publish', { arg: s.id })))).join('')
-      + (open.length ? card('Cases in court you could cover', open.map((c) => kv([[c.title, c.outcome]]) + stack(btn('startStory', 'Work on a story', { arg: c.caseId }))).join('')) : '');
+    // Court stories are reported in the newsroom (engine/journalism.js), one notebook for every case. Stories begun
+    // here before then are kept as they ran.
+    const covering = new Set(Object.values(store.state.newsroom?.stories ?? {}).filter((x) => x.reporterId === p.id && x.links?.caseId).map((x) => x.links.caseId));
+    const open = X.publicCases(p).filter((c) => !covering.has(c.caseId));
+    const older = X.myStories(p).slice().reverse().map((s) => card(`Earlier story: ${W.investigation(s.invId).file.title}`, kv([['Status', s.published ? `Published (${s.accuracy})${s.correction ? ', corrected' : ''}` : 'Never finished']])
+      + (s.published && s.accuracy === 'contains an error' && !s.correction ? stack(btn('correct', 'Run a correction', { arg: s.id })) : ''))).join('');
+    return card('Court reporting', muted('Your court stories are reported, checked and edited in your newsroom: the public record, people willing to talk, and your editor.') + stack(btn('newsroom', 'Open your newsroom')))
+      + (open.length ? card('Cases in court you could cover', open.map((c) => kv([[c.title, c.outcome]]) + stack(btn('coverCase', 'Cover it', { arg: c.caseId, sub: 'It goes into your assignments.' }))).join('')) : '')
+      + older;
   },
   press(p) {
     const list = X.publicCases(p);
@@ -762,9 +766,8 @@ const ACTIONS = {
   focus: (a, x) => x.say(PO.setPriority(a)),
   board: (a, x) => x.say(PO.proposeBoard(a === 'create')),
   sheriff: (a, x) => x.say(PO.runForSheriff()),
-  startStory: (a, x) => x.say(X.startStory(a)),
-  storyStep: (a, x) => { const [s2, st] = a.split('|'); return x.say(X.storyStep(s2, st)); },
-  publish: (a, x) => x.say(X.publishStory(a)),
+  coverCase: async (a, x) => { const jn = await import('../engine/journalism.js'); const r = jn.coverCase(a); await x.say(r); if (r.ok) { const ui = await import('./journalism.js'); ui.openJournalism(x.api, { view: 'story', arg: r.storyId }); } },
+  newsroom: async (_, x) => { const ui = await import('./journalism.js'); ui.openJournalism(x.api); },
   correct: (a, x) => x.say(X.correctStory(a)),
   openReview: (a, x) => x.say(W.openReview(a)),
   profile: async (a, x) => { const { openNpc } = await import('./tabs/people.js'); openNpc(store.state.npcs[a], x.api); },

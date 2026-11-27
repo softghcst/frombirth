@@ -171,6 +171,11 @@ export default [
     ['Go back through your notes, point by point', 'What the evidence holds stays. What it does not is corrected.', 'letter:review', 'good'],
     ['Ignore it', 'Letters like this come in all the time.', 'letter:ignore'],
   ]),
+  scene('jn_press_request', '{reporter}, a reporter at {outlet}, asks for an interview about {topic}.', [
+    ['Talk to them, on the record', 'You answer their questions plainly. The piece runs with your words in it.', 'press:talk', 'good'],
+    ['Give a short statement', 'A line, and nothing more. They print it.', 'press:brief'],
+    ['Decline', 'That is your right. The story runs from the public record, saying you declined to comment.', 'press:decline'],
+  ]),
   scene('jn_retirement_interview', 'After {years} years in journalism, a young reporter asks to interview you about your career, and whether you are thinking of stopping.', [
     ['Say yes, it is time', 'Your last byline is an interview, about you. Fitting.', 'retire:yes', 'good'],
     ['Say there are stories left', 'There are.', 'retire:no'],

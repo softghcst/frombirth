@@ -36,7 +36,6 @@ import { integrityYear } from './integrity.js';
 import { booksYear } from './books.js';
 import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
-import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
 import { considerYear } from './autoPromotion.js';
 import { settleAncestor } from './family.js';
@@ -90,7 +89,7 @@ export function tickInvestigations() {
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
-  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.
