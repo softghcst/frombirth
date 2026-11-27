@@ -180,6 +180,6 @@ and every heritage has several designs.
     image for this one). Upturned almond with slightly fuller lashes, a brown iris and a clearly visible black pupil.
     *Latino, Middle Eastern & North African, South Asian, Southeast Asian, European*
 
-How many designs each heritage has: East Asian 6, Southeast Asian 7, South Asian 5, Central Asian 6, Middle Eastern &
-North African 7, Sub-Saharan African 5, European 7, Latino 7, Indigenous American 4, Pacific Islander 4, Aboriginal &
+How many designs each heritage has: European 7, Southeast Asian 7, East Asian 6, Latino 6, Middle Eastern & North
+African 6, South Asian 5, Central Asian 5, Sub-Saharan African 4, Indigenous American 4, Pacific Islander 3, Aboriginal &
 Torres Strait Islander 3.
