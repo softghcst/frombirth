@@ -11,6 +11,7 @@ import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openWorld } from '../world.js';
 import { browse } from '../../engine/world.js';
 import { randomAppearance } from '../../avatar/inherit.js';
+import { heritageFor } from '../../avatar/heritage.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
@@ -263,7 +264,7 @@ export function renderCreator(app, hooks) {
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
     rollName('first');
     rollName('last');
-    look = randomAppearance(undefined, choice.sex || grownGender()); // the face they are born with: a trans boy's changes with hormones, later
+    look = randomAppearance(undefined, choice.sex || grownGender(), heritageFor(c.id)); // the face they are born with: a trans boy's changes with hormones, later
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
     setPick('origin', weightedKey({ none: 94, birth: 3, childhood: 1.5, kinship: 1.5 }).replace('none', ''));

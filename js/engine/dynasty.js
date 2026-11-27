@@ -23,6 +23,8 @@ import { COUNTRIES } from '../data/countries.js';
 import { MONARCHIES, REIGN_NOTES, SCANDALS } from '../data/royalty.js';
 import { inheritAppearance, randomAppearance, ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { skinDepth, normalize, part, DEPTH } from '../avatar/catalog.js';
+import { heritageFor, oneOf } from '../avatar/heritage.js';
+import { partnerHeritage } from './genetics.js';
 import { makeNpc } from './npcFactory.js';
 import { lineOfSuccession, childrenOf, bloodParent, barred, relationTo, audit } from './succession.js';
 
@@ -62,7 +64,9 @@ function freeName(d, c, gender, avoid = []) {
 }
 
 const lookOf = (a, b, gender) => ensureStyled(inheritAppearance(a.look, b?.look), gender);
-const strangerLook = (near, gender) => ensureStyled(randomAppearance(Math.round(clamp(skinDepth(near) + rng.int(-1, 1), DEPTH.ivory, DEPTH.espresso)), gender), gender);
+// Someone marrying into the house: most often of their partner's heritage (one of theirs), otherwise of the country's.
+const strangerLook = (near, gender, countryId) => ensureStyled(randomAppearance(Math.round(clamp(skinDepth(near) + rng.int(-1, 1), DEPTH.ivory, DEPTH.espresso)), gender,
+  partnerHeritage({ appearance: near, bornIn: countryId }) ?? heritageFor(countryId)), gender);
 
 function wed(d, a, b, year, quiet) {
   a.spouseId = b.id; b.spouseId = a.id;
@@ -75,7 +79,7 @@ function outsider(d, c, partner, year) {
   d.naming = 'outsider';
   const name = freeName(d, c, gender);
   delete d.naming;
-  return newPerson(d, { name, gender, born: partner.born + rng.int(-4, 5), look: strangerLook(partner.look, gender) });
+  return newPerson(d, { name, gender, born: partner.born + rng.int(-4, 5), look: strangerLook(partner.look, gender, d.countryId) });
 }
 
 /** A child of a couple, with a face from both. */
@@ -136,7 +140,8 @@ export function buildHouse(c, year, seat) {
     const spouseBefore = prev ? d.people[prev.spouseId] : null;
     const [mo, fa] = prev ? (prev.gender === 'female' ? [prev, spouseBefore] : [spouseBefore, prev]) : [null, null];
     const who = newPerson(d, { name: last && seat ? seat.blood.firstName : freeName(d, c, gender), gender, born: years[i], blood: true,
-      parents: prev ? [mo.id, fa.id] : [], look: prev ? lookOf(mo, fa, gender) : ensureStyled(randomAppearance(seat ? skinDepth(seat.blood.appearance) : undefined, gender), gender) });
+      parents: prev ? [mo.id, fa.id] : [], look: prev ? lookOf(mo, fa, gender) : ensureStyled(randomAppearance(seat ? skinDepth(seat.blood.appearance) : undefined, gender,
+        (seat && oneOf(seat.blood.appearance?.inherited?.heritage)) || heritageFor(c.id)), gender) });
     if (prev) record(d, years[i], `${who.name} was born, heir to the house.`, [who.id]);
     // Brothers and sisters, all younger: remembered, but their lines are not followed in the early years.
     if (prev) {
@@ -473,7 +478,7 @@ export function eligibleMember(d, gender, age) {
     const [mo, fa] = parent.gender === 'female' ? [parent, sp] : [sp, parent];
     return bear(d, c, mo, fa, Math.max(born, parent.born + 20), { gender });
   }
-  return newPerson(d, { name: freeName(d, c, gender), gender, born, blood: true, look: ensureStyled(randomAppearance(undefined, gender), gender) });
+  return newPerson(d, { name: freeName(d, c, gender), gender, born, blood: true, look: ensureStyled(randomAppearance(undefined, gender, heritageFor(c.id)), gender) });
 }
 
 // ---------- The throne changing hands ----------
@@ -494,7 +499,7 @@ export function accede(d, why = 'death') {
     // The line has run out: parliament sends for the nearest relative it can find.
     const c = COUNTRIES[d.countryId];
     const gender = d.law.order === 'maleOnly' ? 'male' : rng.pick(['male', 'female']);
-    const cousin = newPerson(d, { name: freeName(d, c, gender), gender, born: year - rng.int(30, 55), blood: true, look: strangerLook(old.look, gender) });
+    const cousin = newPerson(d, { name: freeName(d, c, gender), gender, born: year - rng.int(30, 55), blood: true, look: strangerLook(old.look, gender, c.id) });
     cousin.story.push({ year, text: `With no heir left, ${cousin.name}, of a distant branch of the family, was called to the throne.` });
     grow(d, c, cousin, year);
     nextId = cousin.id;

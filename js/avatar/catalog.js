@@ -20,6 +20,7 @@ import * as PAL from '../avatarPalettes.js';
 import { BABY_HAIR_BY_TEXTURE, KID_HAIR, KID_OUTFITS, HAIR_TYPE, SUITS, FITTED_TEXTURE, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
+import { cleanHeritage } from './heritage.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
 const parts = (folder, keep = () => true) => AVATAR_MANIFEST[folder].filter(keep).map((p) => ({ id: p.id, name: p.label, file: p.file, tags: p.tags ?? {} }));
@@ -235,6 +236,9 @@ export function normalize(a, seed = 'x') {
     inherited[key] = has(key, id) ? id : seeded(pool, seed, key).id;
   }
   inherited.tweaks = cleanTweaks(src.tweaks);
+  // Where their family comes from (js/avatar/heritage.js), when it is known; older saves have none.
+  const heritage = cleanHeritage(src.heritage);
+  if (heritage) inherited.heritage = heritage;
   inherited.marks = Array.isArray(src.marks) ? src.marks.filter((id) => has('marks', id))
     : hash(`${seed}:marks`) % 9 === 0 ? ['freckles'] : [];
 
