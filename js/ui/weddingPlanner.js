@@ -348,7 +348,7 @@ export function openWeddingPlanner(api, npc, { intro = true } = {}) {
 // ---------- With the scenes turned off (Settings) ----------
 
 /** Whether weddings are planned and lived as scenes. Kept in this browser for every life, like Haptics; on by default. */
-export const WEDDING_SCENES_KEY = 'pathways.weddingScenes';
+export const WEDDING_SCENES_KEY = 'frombirth.weddingScenes';
 export function weddingScenesOn() {
   try { return localStorage.getItem(WEDDING_SCENES_KEY) !== 'off'; } catch { return true; }
 }

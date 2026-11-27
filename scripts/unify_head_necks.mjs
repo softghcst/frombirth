@@ -320,7 +320,7 @@ const paths = (svg) => {
 for (const [name, r] of Object.entries(results)) {
   r.chin = chins[name];
   const orig = paths(read(name));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1" ${MARK}${r.chin.face ? ` data-face-chin="${r.chin.face}"` : ''} data-outline-chin="${r.chin.outline}">`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-frombirth="1" ${MARK}${r.chin.face ? ` data-face-chin="${r.chin.face}"` : ''} data-outline-chin="${r.chin.outline}">`
     + `<g id="art"><path style="fill:${OUTLINE}" fill-rule="evenodd" d="${join(orig.outline, r.sil)}"/>`
     + `<path id="skin" style="fill:var(--skin-color,${SKIN})" fill-rule="evenodd" d="${join(orig.skin, r.skin)}"/></g></svg>`;
   writeFileSync(file(name), svg);

@@ -425,7 +425,7 @@ function coherent(where) {
   const p = P(); p.age = 40; p.flags.livesWithParents = false;
   delete S().hoods;
   const json = JSON.stringify(S());
-  disk.set(`pathways:slot:${S().slotId}`, json);
+  disk.set(`frombirth:slot:${S().slotId}`, json);
   saveGame(S());
   store.state = loadGame(S().slotId);
   check(H().cur && N.currentHome(S()), 'an older save loads into a neighborhood');

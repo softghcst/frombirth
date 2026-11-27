@@ -86,7 +86,7 @@ const clear = (page) => page.evaluate(() => { window.__buzz = []; window.__ticks
   await page.waitForTimeout(100);
   await page.locator('#modal-root .modal [data-ok]').last().click();
   check((await page.evaluate(() => window.__buzz)).length === 0, 'turned off, nothing buzzes: not the news, not the tap');
-  check(await page.evaluate(() => localStorage.getItem('pathways.haptics')) === 'off', 'and it stays off on this device');
+  check(await page.evaluate(() => localStorage.getItem('frombirth.haptics')) === 'off', 'and it stays off on this device');
   // The setting is in Settings, and says what it does.
   await page.evaluate(async () => { document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); (await import('/js/ui/settings.js')).openSettings(); });
   await page.waitForTimeout(300);

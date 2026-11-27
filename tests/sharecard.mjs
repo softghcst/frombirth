@@ -18,8 +18,8 @@ check(f.facts[0][1] === 'Oaxaca, Mexico' && /1,234,567/.test(f.facts[2][1]) && f
 check(cardFacts(grave({ counters: { countriesLived: 4 } })).facts[3].join(' ') === 'Lived in 4 countries', 'a life in several countries says so');
 check(cardFacts(grave({ milestones: [{ age: 5, text: 'Lost a tooth.' }] })).highlights.length === 0, 'nothing ordinary is held up as a highlight');
 check(cardFacts(grave({ countryId: 'zz' })).facts[0][1] === 'Oaxaca', 'an unknown country does not break it');
-const t = shareText(grave(), 'https://example.org/pathways/');
-check(t.startsWith('Ada Moreno (1990 – 2071).') && t.includes('in Oaxaca, Mexico') && t.includes('At 23: Graduated') && t.endsWith('https://example.org/pathways/'), `the words: ${t}`);
+const t = shareText(grave(), 'https://example.org/frombirth/');
+check(t.startsWith('Ada Moreno (1990 – 2071).') && t.includes('in Oaxaca, Mexico') && t.includes('At 23: Graduated') && t.endsWith('https://example.org/frombirth/'), `the words: ${t}`);
 check(!/undefined|NaN/.test(t + JSON.stringify(f)), 'no gaps in the words');
 
 // The portrait: every part a canvas could not load is put inside the SVG itself.

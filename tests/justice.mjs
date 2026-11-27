@@ -499,7 +499,7 @@ function framedBy(offenseId, reliability = 0.85) {
   p.legal = JSON.parse(JSON.stringify(old));
   delete store.state.justice;
   const slot = store.state.slotId;
-  mem.set(`pathways.slot.${slot}`, JSON.stringify(store.state));
+  mem.set(`frombirth.slot.${slot}`, JSON.stringify(store.state));
   store.state = loadGame(slot);
   const q = store.state.player;
   check(q.legal.record[0].crimeId === 'burglary' && q.legal.record[0].legacy && q.legal.record[0].convicted, 'an old conviction is kept');

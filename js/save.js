@@ -23,12 +23,30 @@ import { giveBirthday } from './engine/birthday.js';
 import { giveNativeLanguages } from './engine/languages.js';
 
 export const SCHEMA_VERSION = 2;
-const K_INDEX = 'pathways.index';
-const K_SLOT = 'pathways.slot.';
-const K_GRAVE = 'pathways.graveyard';
-const K_UNDO = 'pathways.undo.';
+const K_INDEX = 'frombirth.index';
+const K_SLOT = 'frombirth.slot.';
+const K_GRAVE = 'frombirth.graveyard';
+const K_UNDO = 'frombirth.undo.';
 /** How many years back "age down" can go. */
 export const UNDO_YEARS = 3;
+
+/**
+ * The game was called Pathways before it was released, and kept its data under "pathways." keys. That data is
+ * not carried over (the change came before release): it is cleared once, so it takes up no space.
+ */
+export function forgetOldName(storages = [globalThis.localStorage, globalThis.sessionStorage]) {
+  let removed = 0;
+  for (const st of storages) {
+    try {
+      if (!st) continue;
+      const old = [];
+      for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k?.startsWith('pathways.') || k?.startsWith('pathways:')) old.push(k); }
+      for (const k of old) { st.removeItem(k); removed += 1; }
+    } catch { /* storage unavailable */ }
+  }
+  return removed;
+}
+forgetOldName();
 
 function read(key, fallback) {
   try {
