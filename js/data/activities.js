@@ -82,9 +82,10 @@ export const HOLIDAYS = [
   { id: 'adventure', kind: 'getaway', name: 'A trekking adventure', cost: 7000, mood: 12, health: 4, risky: 0.06 },
   { id: 'world', kind: 'getaway', name: 'A month going round the world', cost: 22000, mood: 18, intellect: 3, charm: 2 },
 
-  { id: 'disneyland', kind: 'park', name: 'Three days at Disneyland, California', cost: 2800, mood: 12, kids: 14, home: 'us', farMult: 1.7 },
-  { id: 'disney_world', kind: 'park', name: 'A week at Walt Disney World, Florida', cost: 6000, mood: 15, kids: 18, home: 'us', farMult: 1.5 },
-  { id: 'universal', kind: 'park', name: 'Four days at Universal Studios', cost: 3600, mood: 13, kids: 13, home: 'us', farMult: 1.6, thrill: true },
+  // The parks are invented (ids kept: they are saved). Real parks' names are their owners' trademarks.
+  { id: 'disneyland', kind: 'park', name: 'Three days at Wonderhaven, the famous theme park in California', cost: 2800, mood: 12, kids: 14, home: 'us', farMult: 1.7 },
+  { id: 'disney_world', kind: 'park', name: 'A week at Wonderhaven Resort, the theme park kingdom in Florida', cost: 6000, mood: 15, kids: 18, home: 'us', farMult: 1.5 },
+  { id: 'universal', kind: 'park', name: 'Four days at Reelworld Studios, the movie theme park', cost: 3600, mood: 13, kids: 13, home: 'us', farMult: 1.6, thrill: true },
   { id: 'local_park', kind: 'park', name: 'A weekend at the nearest theme park', cost: 600, mood: 7, kids: 8 },
 
   { id: 'cruise_week', kind: 'cruise', name: 'A week\'s cruise', cost: 3800, mood: 11, health: 1, kids: 7 },
