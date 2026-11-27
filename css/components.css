@@ -1559,3 +1559,8 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 /* The shareable card's preview in the share window. */
 .share-preview { text-align: center; }
 .share-preview img { width: 100%; max-width: 360px; max-height: 52vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+
+/* A line under a row's name that is still long wraps to a second line rather than being cut off mid-word. */
+.row .main small, .nav-row .nr-main small, .sec-row .nr-main small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.nr-bar small { display: inline; -webkit-line-clamp: unset; }
+.row .main strong { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }

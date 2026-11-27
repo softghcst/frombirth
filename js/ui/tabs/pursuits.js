@@ -182,7 +182,7 @@ export default {
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
         ${!p.legal.incarceration ? athleticsCard() : ''}
-        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
+        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents: music, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
         ${/* At school, every club (the school's and those outside it) is under School › Activities: not here as well. */ ''}
         ${inSchool || p.age > clubLife.CLUB_AGE_LIMIT ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
         ${!inSchool && p.age >= 6 && p.age <= clubLife.CLUB_AGE_LIMIT && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>

@@ -61,7 +61,8 @@ const money = (n, c = country()) => fmtMoney(n, c);
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nameOf = (who) => (who === 'player' ? 'You' : who ? `${store.state.npcs[who]?.firstName ?? ''} ${store.state.npcs[who]?.lastName ?? ''}`.trim() || 'Someone' : '');
 // "Broadway musical" for a major-stage show in New York (engine/entertainment.js tierName), else "Regional theater musical".
-const kindName = (prod) => `${ent.tierName(prod)} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
+// "Community musical", "Student and short film" (not "...film film"): the tier, then the kind unless the tier says it.
+const kindName = (prod) => { const t = ent.tierName(prod); const k = PRODUCTION_KINDS[prod.kind].name.toLowerCase(); return new RegExp(`${k}$`, 'i').test(t) ? t : `${t} ${k}`; };
 const row = (act, arg, main, sub, side = '', n = null, cls = '') => `<button type="button" class="row world-row${cls ? ` ${cls}` : ''}" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
@@ -243,8 +244,8 @@ const VIEWS = {
         const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`;
         const open = board.filter((x) => !x.why);
         const shut = board.filter((x) => x.why);
-        const q = (x) => `${cap(ent.scriptWord(x.production))}, ${ent.directorWord(x.production)}`;
-        return `${open.length ? open.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), `${x.applied ? 'Auditioned · ' : ''}${q(x)} · ${kindName(x.production)} · ${x.role.character}`, fee(x))).join('')
+        // One short line: what it is and the part. The script and the director are in the notice itself.
+        return `${open.length ? open.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), `${x.applied ? 'Auditioned · ' : ''}${kindName(x.production)} · ${x.role.character}`, fee(x))).join('')
           : '<p class="empty">Nothing open to you right now. New productions are announced every year.</p>'}
         ${shut.length ? `<details class="card" style="margin-top:8px"><summary>Not open to you (${shut.length})</summary>${shut.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), x.why, fee(x))).join('')}</details>` : ''}`;
       })()

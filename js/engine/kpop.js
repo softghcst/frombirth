@@ -182,16 +182,16 @@ export function auditions() {
 /** Why the player cannot apply to an audition, or ''. */
 export function whyNotApply(au, p = player()) {
   const i = idolOf(p);
-  if (!available()) return 'There is no idol industry yet.';
-  if (au.status !== 'open' || au.year !== year()) return 'This call has closed.';
-  if (p.age < au.ages[0] || p.age > au.ages[1]) return `This audition is for ages ${au.ages[0]} to ${au.ages[1]}.`;
-  if (au.lineup !== 'any' && au.lineup !== p.gender) return `This audition is for a ${au.lineup === 'female' ? 'girl' : 'boy'} group project.`;
-  if (au.places !== 'worldwide' && !au.places.includes(p.countryId)) return `This is an in-person audition in ${COUNTRIES[au.places[0]].name}.`;
-  if (i.apps.some((id) => K().apps[id]?.auditionId === au.id)) return 'You have already applied to this one.';
-  if (i.traineeId && K().contracts[i.traineeId]?.status === 'active') return 'You are already a trainee.';
-  if (i.groupId && K().groups[i.groupId]?.status !== 'disbanded' && idolMember(p)) return 'You are already in a group.';
-  if (i.acts.apps >= 3) return 'You have applied to three auditions this year; that is enough to prepare properly for.';
-  if (p.legal.incarceration) return 'Not from a cell.';
+  if (!available()) return 'No idol industry yet';
+  if (au.status !== 'open' || au.year !== year()) return 'This call has closed';
+  if (p.age < au.ages[0] || p.age > au.ages[1]) return `For ages ${au.ages[0]} to ${au.ages[1]}`;
+  if (au.lineup !== 'any' && au.lineup !== p.gender) return `For a ${au.lineup === 'female' ? 'girl' : 'boy'} group`;
+  if (au.places !== 'worldwide' && !au.places.includes(p.countryId)) return `In person, in ${COUNTRIES[au.places[0]].name}`;
+  if (i.apps.some((id) => K().apps[id]?.auditionId === au.id)) return 'You applied already';
+  if (i.traineeId && K().contracts[i.traineeId]?.status === 'active') return 'You are a trainee already';
+  if (i.groupId && K().groups[i.groupId]?.status !== 'disbanded' && idolMember(p)) return 'You are in a group already';
+  if (i.acts.apps >= 3) return 'Three auditions a year is enough';
+  if (p.legal.incarceration) return 'Not from a cell';
   return '';
 }
 const idolMember = (p = player()) => { const g = K().groups[idolOf(p).groupId]; return g && g.members.some((m) => m.who === 'player' && m.to == null); };
@@ -2531,13 +2531,13 @@ export function legacyRoutes(p = player()) {
 }
 export function whyNotLegacy(agencyId, p = player()) {
   const i = idolOf(p);
-  if (!legacyRoutes(p).some((o) => o.agencyId === agencyId)) return 'No one in your family was with this agency.';
-  if (p.age < 12 || p.age > 23) return 'The agency sees family members between twelve and twenty-three.';
-  if (trainee(p)) return 'You are already a trainee.';
-  if (myGroup(p)) return 'You are already in a group.';
-  if (i.acts.did[`legacy:${agencyId}`]) return 'Once a year.';
-  if (i.acts.apps >= 3) return 'You have applied to three auditions this year; that is enough to prepare properly for.';
-  if (p.legal?.incarceration) return 'Not from a cell.';
+  if (!legacyRoutes(p).some((o) => o.agencyId === agencyId)) return 'No family history with this agency';
+  if (p.age < 12 || p.age > 23) return 'For ages 12 to 23';
+  if (trainee(p)) return 'You are a trainee already';
+  if (myGroup(p)) return 'You are in a group already';
+  if (i.acts.did[`legacy:${agencyId}`]) return 'Once a year';
+  if (i.acts.apps >= 3) return 'Three auditions a year is enough';
+  if (p.legal?.incarceration) return 'Not from a cell';
   return '';
 }
 /** A private audition at a parent's (or grandparent's) agency: no open call, straight to the callback and assessment. */
