@@ -38,7 +38,7 @@ const addKin = (role, age, extra = {}) => { const n = makeNpc({ role, countryId:
 const lastOf = (type, id) => zoo.eventsOf(id).filter((e) => e.type === type).at(-1);
 const year = (n = 1) => { for (let i = 0; i < n; i++) { S().year += 1; P().age += 1; for (const x of Object.values(S().npcs)) if (x.alive) x.age += 1; } };
 function adult(age = 30, cash = 300000, country = 'us') {
-  for (;;) { store.state = createLife({ countryId: country }); if (!P().royal && !P().npcIds.some((id) => S().npcs[id].role === 'pet')) break; }
+  for (;;) { store.state = createLife({ countryId: country, ...(country === 'us' ? { city: 'Denver' } : {}) }); if (!P().royal && !P().npcIds.some((id) => S().npcs[id].role === 'pet')) break; }
   const p = P(); p.age = age; p.birthYear = S().year; S().year += age;
   for (const n of Object.values(S().npcs)) n.age += age;
   p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = cash; p.finance.loans = [];

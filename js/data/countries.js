@@ -34,7 +34,7 @@ const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m 
 
 const LIST = [
   C('us', 'United States', '🇺🇸', 'USD', '$', 1, 0.24, 0.20,
-    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver', 'Orlando'],
+    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver', 'Orlando', 'Los Angeles', 'San Francisco', 'San Diego', 'Houston', 'Dallas', 'Miami', 'Boston', 'Philadelphia', 'Pittsburgh', 'Washington, D.C.', 'Baltimore', 'Detroit', 'Minneapolis', 'Phoenix', 'Las Vegas', 'Portland', 'Salt Lake City', 'Nashville', 'Memphis', 'New Orleans', 'Charlotte', 'Birmingham', 'Anchorage', 'Little Rock', 'Hartford', 'Wilmington', 'Honolulu', 'Boise', 'Indianapolis', 'Des Moines', 'Wichita', 'Louisville', 'Portland, Maine', 'Jackson', 'Kansas City', 'Billings', 'Omaha', 'Manchester', 'Newark', 'Albuquerque', 'Fargo', 'Columbus', 'Oklahoma City', 'Providence', 'Charleston', 'Sioux Falls', 'Burlington', 'Richmond', 'Charleston, West Virginia', 'Milwaukee', 'Cheyenne'],
     'James Marcus Ethan Caleb Diego Tyler Owen Andre Noah Wesley',
     'Olivia Hannah Maya Jasmine Claire Sofia Naomi Paige Riley Tessa',
     'Carter Nguyen Brooks Ramirez Sullivan Patel Hayes Coleman Whitfield Ortiz Bennett Okafor'),

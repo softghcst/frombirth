@@ -42,7 +42,7 @@ const section = (msg) => { if (!problems.length) ok.push(msg); };
 
 /** A fresh adult in a country, with no investigative record, keen and capable. */
 function life(countryId = 'us', age = 24, o = {}) {
-  do { store.state = createLife({ countryId }); } while (store.state.player.royal);
+  do { store.state = createLife({ countryId, ...(countryId === 'us' ? { city: 'Chicago' } : {}) }); } while (store.state.player.royal);
   const p = store.state.player;
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = false; p.education.enrolled = false;
   p.legal.record = []; p.stats.health = 85; p.stats.intellect = 72; p.stats.charm = 68; p.hidden.karma = 60;

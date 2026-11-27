@@ -69,7 +69,7 @@ section('law: a region overrides its country for the people who live there');
 // 5. Moving within the country.
 p = life('us', 'Atlanta'); hire(CAREERS.find((c) => c.id === 'office'), 0, 60);
 const cash = p.finance.cash; const jobs = p.counters.jobsHeld; const papers = JSON.stringify([p.citizenships, p.residency]);
-check(towns.moveOptions().length === 6 && towns.moveOptions().every((o) => o.versus && o.line), 'six other cities are offered, each compared with home');
+check(towns.moveOptions().length === COUNTRIES.us.cities.length - 1 && towns.moveOptions().every((o) => o.versus && o.line), 'every other city is offered, each compared with home');
 let r = towns.relocate('Seattle');
 check(r.ok && p.city === 'Seattle' && p.countryId === 'us' && p.finance.cash === cash - towns.moveCost(), 'the move happens and costs what it said');
 check(JSON.stringify([p.citizenships, p.residency]) === papers, 'papers do not change: it is the same country');
