@@ -578,6 +578,9 @@ export function settlePromotions(p = player()) {
   if (!r) return [];
   const out = [];
   for (const app of r.apps.filter((x) => x.kind === 'promotion' && x.status === 'pending' && x.due <= now())) {
+    const ladder = r.family === 'federal' ? FEDERAL_RANKS : r.job?.detective ? DETECTIVE_RANKS : POLICE_RANKS;
+    // Asked for on another ladder (a patrol rank, before becoming a detective): it lapses.
+    if (!ladder[app.rank]) { app.status = 'lapsed'; continue; }
     app.status = app.outcome;
     if (app.outcome !== 'promoted') { out.push(`${name(app.rivalId)} got the promotion. Your time may come.`); regard('reliability', 0); continue; }
     const table = r.family === 'federal' ? FEDERAL_RANKS : r.job.detective ? DETECTIVE_RANKS : POLICE_RANKS;

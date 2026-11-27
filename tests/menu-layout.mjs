@@ -100,7 +100,9 @@ await page.waitForSelector('[data-act="military"]', { state: 'attached', timeout
 await page.evaluate(() => document.querySelector('[data-act="military"]').click()); await page.waitForTimeout(250);
 await page.locator('#modal-root .choice-btn', { hasText: 'Enlist' }).click(); await page.waitForTimeout(250);
 const branches = await page.locator('#modal-root select#m-pick option').allInnerTexts();
-check(branches.length >= 3, `the branch is picked from a dropdown (${branches.join(', ')})`);
+// Every branch the country has is offered: most have several; some (Switzerland's) have one.
+const here = await page.evaluate(async () => (await import('/js/engine/military.js')).branches().length);
+check(branches.length >= 1 && branches.length === here, `the branch is picked from a dropdown of the country's branches (${branches.join(', ')})`);
 await page.locator('#modal-root [data-go]').click(); await page.waitForTimeout(300);
 check(/contract/i.test(await page.locator('#modal-root .modal').last().innerText()), 'enlisting says what was signed');
 await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(300);
