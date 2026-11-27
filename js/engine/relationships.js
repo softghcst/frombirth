@@ -49,7 +49,10 @@ export function roleLabel(npc) {
     }
     case 'stepparent': return npc.flags.calledParent ? byGender(npc, 'Stepdad', 'Stepmom', 'Stepparent') : byGender(npc, 'Stepfather', 'Stepmother', 'Stepparent');
     case 'stepsibling': return byGender(npc, 'Stepbrother', 'Stepsister', 'Stepsibling');
-    case 'stepchild': return byGender(npc, 'Stepson', 'Stepdaughter', 'Stepchild');
+    case 'stepchild': {
+      const via = store.state.npcs[npc.flags.stepVia];
+      return npc.flags.marriedIn || via?.role === 'spouse' ? byGender(npc, 'Stepson', 'Stepdaughter', 'Stepchild') : `${via?.firstName ?? 'Partner'}'s ${byGender(npc, 'son', 'daughter', 'child')}`;
+    }
     case 'fosterchild': return byGender(npc, 'Foster son', 'Foster daughter', 'Foster child');
     case 'spouse': return byGender(npc, 'Husband', 'Wife', 'Spouse');
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
@@ -195,7 +198,7 @@ export function tickRelationships() {
     const family = npc.role === 'parent' || npc.role === 'sibling';
     const atHome = (p.flags.livesWithParents && !away && family)
       || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id
-      || (p.flags.livesWithParents && npc.flags.inHome) || (npc.role === 'stepchild' && npc.age < 18) || (npc.role === 'fosterchild' && npc.flags.placement);
+      || (p.flags.livesWithParents && npc.flags.inHome) || (npc.role === 'stepchild' && npc.flags.inHome) || (npc.role === 'fosterchild' && npc.flags.placement);
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }

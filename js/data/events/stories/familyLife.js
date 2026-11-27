@@ -21,7 +21,17 @@ export default [
     ['Tell them it is their fault', 'blame', 'You tell them they have ruined everything.', 'bad'],
     ['Go to your room', 'room', 'You go upstairs and shut the door.'],
   ]),
-  scene('stepparent_meet', 'family', [0, 17], 'Dinner, to meet {step} properly. {parent} has clearly cleaned the whole house. {step} brought dessert and is trying very hard.', 'blended', [
+  scene('parents_split_adult', 'family', [18, 120], 'Your parents are separating, after all these years. {mom} and {dad} each call you the same evening, each wanting you to understand.', 'blended', [
+    ['Tell them you love them both', 'both', 'You say you will not choose.', 'good'],
+    ['Take a side', 'side', 'You tell one of them what you really think.'],
+    ['Stay out of it', 'out', 'You keep out of it.'],
+  ]),
+  scene('partner_kids', 'family', [18, 120], '{them} has something to tell you: there is a child in their life, {kid}, and they come first.', 'blended', [
+    ['Ask to meet {kid}', 'meet', 'You say you would like to meet them.', 'good'],
+    ['Take it slowly', 'slow', 'You say there is no hurry.'],
+    ['Admit it is a lot', 'alot', 'You tell {them} it is a lot to take in.', 'bad'],
+  ]),
+  scene('stepparent_meet', 'family', [0, 120], 'Dinner, to meet {step} properly. {parent} has clearly cleaned the whole house. {step} brought dessert and is trying very hard.', 'blended', [
     ['Make them welcome', 'welcome', 'You ask {step} about themselves, and listen to the answers.', 'good'],
     ['Be polite, and no more', 'polite', 'You say please and thank you, and not much else.'],
     ['Make it clear you are not interested', 'cold', 'You eat in silence and leave before dessert.', 'bad'],

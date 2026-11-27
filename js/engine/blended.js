@@ -58,6 +58,20 @@ export function separateParents(state = S(), d = dice(state, 'blended', 'split',
   if (!a || !b || p.flags.parentsStatus !== 'together') return fail('Your parents are not together.');
   const mother = [a, b].find((n) => n.gender === 'female') ?? a;
   const father = mother === a ? b : a;
+  // A grown-up child is told, not asked where to live.
+  if (ageIn(state, lived(state)) >= 18) {
+    p.flags.parentsStatus = 'separated';
+    B(state).split = lived(state);
+    B(state).custody = null;
+    for (const n of [a, b]) { n.flags.partnerId = null; n.flags.separatedAt = lived(state); }
+    p.stats.mood = clamp(p.stats.mood - 6);
+    const text = `${mother.firstName} and ${father.firstName} tell you, over a long phone call, that they are separating. After all these years.`;
+    log(text, 'family', 'bad');
+    milestone('Your parents separated.', 'family');
+    recordEvent(state, 'parents_separated', [p.id, a.id, b.id], text);
+    storyBeat('fl_parents_split_adult', { mom: mother.id, dad: father.id }, { source: 'family' });
+    return done(text, 'bad');
+  }
   const roll = d.next();
   const kind = roll < 0.18 ? 'shared' : 'sole';
   const withNpc = roll < 0.18 ? mother : roll < 0.78 ? mother : father;
@@ -139,7 +153,7 @@ export function parentRemarries(state = S(), parent, d = dice(state, 'blended', 
   step.flags.stepOf = parent.id;
   step.flags.since = lived(state);
   const c = B(state).custody;
-  step.flags.inHome = p.flags.livesWithParents && (!c || c.with === parent.id || p.flags.parentsStatus === 'single');
+  step.flags.inHome = p.age < 18 && p.flags.livesWithParents && (!c || c.with === parent.id || p.flags.parentsStatus === 'single');
   parent.flags.partnerId = step.id;
   // Some bring children of their own.
   const kids = [];
@@ -154,6 +168,7 @@ export function parentRemarries(state = S(), parent, d = dice(state, 'blended', 
     }
   }
   const pw = parent.gender === 'male' ? 'father' : 'mother';
+  if (p.age >= 18) step.meters.relationship = 40 + d.int(0, 20); // met as a grown-up: polite, and no house rules to fight over
   const text = `Your ${pw} has met someone: ${step.firstName} ${step.lastName}.${kids.length ? ` ${step.firstName} has ${kids.length === 1 ? `a ${kids[0].gender === 'male' ? 'son' : 'daughter'}, ${kids[0].firstName} (${kids[0].age})` : `two children, ${kids[0].firstName} and ${kids[1].firstName}`}.` : ''}${step.flags.inHome ? ` Before long, ${step.firstName}${kids.length ? ' and the children' : ''} move in.` : ''}`;
   log(text, 'family', 'neutral');
   milestone(`Gained a stepparent: ${step.firstName} ${step.lastName}.`, 'family');
@@ -196,8 +211,9 @@ export function stepActions(npc, state = S()) {
     if (npc.flags.inHome && p.age < 18) out.push({ id: 'fl:step:room', label: 'Sort out sharing the house' });
   }
   if (npc.role === 'stepchild') {
-    out.push({ id: 'fl:step:bond', label: `Spend time with ${npc.firstName}`, why: used('bond') ? 'Done this season' : '' });
-    if (npc.age < 18 && !npc.flags.adoptAsked) out.push({ id: 'fl:step:adopt', label: `Adopt ${npc.firstName}`, why: npc.meters.relationship < 60 ? 'Get closer first' : '' });
+    if (!npc.flags.met && !npc.flags.marriedIn) out.push({ id: 'fl:step:meet', label: `Meet ${npc.firstName}` });
+    else out.push({ id: 'fl:step:bond', label: `Spend time with ${npc.firstName}`, why: used('bond') ? 'Done this season' : '' });
+    if (npc.flags.marriedIn && npc.age < 18 && !npc.flags.adoptAsked) out.push({ id: 'fl:step:adopt', label: `Adopt ${npc.firstName}`, why: npc.meters.relationship < 60 ? 'Get closer first' : '' });
   }
   return out;
 }
@@ -257,6 +273,16 @@ export function stepAct(id, npc, state = S()) {
       log(text, 'family', 'good');
       return done(text);
     }
+    case 'meet': {
+      const via = state.npcs[npc.flags.stepVia];
+      npc.flags.met = true;
+      const good = d.chance(0.55 + (via?.meters.relationship ?? 50) / 400);
+      bump(npc, good ? d.int(8, 14) : d.int(1, 4));
+      const text = good ? `You meet ${npc.firstName} at the park, on neutral ground. ${npc.age < 10 ? 'Within ten minutes they are showing you how high they can swing.' : 'They are wary, and then, slowly, not.'}` : `${npc.firstName} looks at you as if you were a substitute teacher. It is a start.`;
+      log(text, 'family', good ? 'good' : 'neutral');
+      recordEvent(state, 'met_partner_child', [p.id, npc.id], text);
+      return done(text, good ? 'good' : 'neutral');
+    }
     case 'adopt': return adoptStepchild(npc, state);
     default: return fail('Nothing happens.');
   }
@@ -265,7 +291,7 @@ export function stepAct(id, npc, state = S()) {
 /** Adopting a stepchild: their other parent must consent (or be gone), and the child, if old enough, must want it. */
 export function adoptStepchild(npc, state = S()) {
   const p = state.player;
-  if (npc.role !== 'stepchild' || npc.age >= 18) return fail('Only a stepchild under 18 can be adopted.');
+  if (npc.role !== 'stepchild' || npc.age >= 18 || !npc.flags.marriedIn) return fail('Only a stepchild under 18, once you are married to their parent, can be adopted.');
   if (npc.meters.relationship < 60) return fail(`${npc.firstName} is not ready for that.`);
   npc.flags.adoptAsked = state.year;
   const d = dice(state, 'blended', 'adopt', npc.id);
@@ -296,6 +322,12 @@ export function adoptStepchild(npc, state = S()) {
 export function onMarriage(spouse, state = S()) {
   if (!spouse || spouse.flags.stepKidsChecked) return [];
   spouse.flags.stepKidsChecked = true;
+  // Children met while dating (partnerKids) are already in the family: the wedding makes them stepchildren.
+  const known = stepchildren(state).filter((k) => k.flags.stepVia === spouse.id);
+  if (spouse.flags.kidsChecked) {
+    for (const k of known) { k.flags.marriedIn = true; recordEvent(state, 'stepchildren', [state.player.id, spouse.id, k.id], `${k.firstName} is your stepchild now.`); }
+    return known;
+  }
   const d = dice(state, 'blended', 'spousekids', spouse.id);
   const chance = clamp((spouse.age - 24) * 0.03, 0, 0.4, 0);
   if (!d.chance(Math.min(0.4, Math.max(0, chance)))) return [];
@@ -305,11 +337,38 @@ export function onMarriage(spouse, state = S()) {
     const kid = withDice(state, `stepchild/${spouse.id}/${i}`, () => addPerson(state, makeNpc({ role: 'stepchild', countryId: state.player.countryId, lastName: spouse.lastName, age: d.int(1, Math.max(1, Math.min(17, spouse.age - 20))), relationship: 35 + d.int(0, 25) })));
     kid.parentIds = [spouse.id];
     kid.flags.stepVia = spouse.id;
+    kid.flags.marriedIn = true;
+    kid.flags.met = true;
     kids.push(kid);
   }
   const text = `Marrying ${spouse.firstName} means ${kids.length === 1 ? `${kids[0].firstName} (${kids[0].age}), ${spouse.firstName}'s ${kids[0].gender === 'male' ? 'son' : 'daughter'}` : `${kids[0].firstName} and ${kids[1].firstName}, ${spouse.firstName}'s children`}, ${kids.length === 1 ? 'is' : 'are'} now your family too.`;
   log(text, 'family', 'neutral');
   recordEvent(state, 'stepchildren', [state.player.id, spouse.id, ...kids.map((k) => k.id)], text);
+  return kids;
+}
+
+/**
+ * Someone the player starts dating may already have children. They are known from early on: the children are real
+ * people in the player's life ('stepchild', labeled as the partner's son or daughter until a wedding), met when the
+ * player is ready, at home once the couple lives together, and stepchildren from the wedding.
+ */
+export function partnerKids(partner, state = S(), m = lived(state)) {
+  if (!partner || partner.flags.kidsChecked || partner.flags.stepKidsChecked) return [];
+  partner.flags.kidsChecked = true;
+  const d = dice(state, 'blended', 'partnerkids', partner.id);
+  if (partner.age < 22 || !d.chance(Math.min(0.4, Math.max(0, (partner.age - 24) * 0.03)))) return [];
+  const n = d.chance(0.3) ? 2 : 1;
+  const kids = [];
+  for (let i = 0; i < n; i++) {
+    const kid = withDice(state, `partnerkid/${partner.id}/${i}`, () => addPerson(state, makeNpc({ role: 'stepchild', countryId: state.player.countryId, lastName: partner.lastName, age: d.int(1, Math.max(1, Math.min(17, partner.age - 20))), relationship: 20 + d.int(0, 15) })));
+    kid.parentIds = [partner.id];
+    kid.flags.stepVia = partner.id;
+    kids.push(kid);
+  }
+  const text = `${partner.firstName} tells you, a little nervously, about ${kids.length === 1 ? `${kids[0].gender === 'male' ? 'a son' : 'a daughter'}, ${kids[0].firstName}, who is ${kids[0].age}` : `two children, ${kids[0].firstName} and ${kids[1].firstName}`}.`;
+  log(text, 'love', 'neutral');
+  recordEvent(state, 'partner_children', [state.player.id, partner.id, ...kids.map((k) => k.id)], text);
+  storyBeat('fl_partner_kids', { them: partner.id, kid: kids[0].id }, { source: 'family', must: true });
   return kids;
 }
 
@@ -324,27 +383,44 @@ onMonth('blended', (state, m) => {
     if (!parent?.alive && s.flags.inHome == null) s.flags.inHome = false;
   }
   for (const k of stepsiblings(state)) if (k.age >= 19 && k.flags.inHome) k.flags.inHome = false;
-  // A stepchild whose parent is no longer the player's spouse becomes a former stepchild.
+  // A partner's children: known from the start of a relationship (partners who began before this was kept are left be).
+  for (const id of p.npcIds) { const n = state.npcs[id]; if (n?.alive && n.role === 'partner' && ageIn(state, m) >= 18) partnerKids(n, state, m); }
+  // A partner's or stepparent's children live with the player while the couple lives together; when the relationship
+  // ends, a stepchild is a former stepchild, and a partner's child stays in the player's life only if they grew close.
   for (const k of stepchildren(state)) {
     const via = state.npcs[k.flags.stepVia];
-    if (!via || via.role !== 'spouse' || !via.alive) {
-      if (via && !via.alive) continue; // a widowed stepparent stays one
+    if (via?.role === 'spouse') { k.flags.marriedIn = true; k.flags.inHome = via.alive && k.age < 18; continue; }
+    if (via?.role === 'partner' && via.alive) { k.flags.inHome = !!via.flags.livesTogether && k.age < 18; continue; }
+    if (via && !via.alive && k.flags.marriedIn) continue; // a widowed stepparent stays one
+    k.flags.inHome = false;
+    if (k.flags.marriedIn) {
       k.role = 'relative';
       k.flags.title = 'Former stepchild';
       recordEvent(state, 'stepchild_former', [p.id, k.id], `${k.firstName} is your former stepchild now.`);
+    } else if (k.meters.relationship >= 60) {
+      k.role = 'relative';
+      k.flags.title = 'Former partner\'s child';
+    } else {
+      p.npcIds = p.npcIds.filter((x) => x !== k.id); // they were never really family: they leave the player's life
     }
   }
-  if (ageIn(state, m) >= 18 || p.flags.care || !p.alive) return;
-  // Parents together may part (about one family in seventy each year, more in the first years than later).
-  if (p.flags.parentsStatus === 'together' && parents(state).length === 2 && d('split').chance(0.0011)) separateParents(state, d('splitHow'));
-  // A separated or single parent may meet someone, a year or more after a separation.
+  if (p.flags.care || !p.alive) return;
+  const adult = ageIn(state, m) >= 18;
   const b = B(state);
-  if (['separated', 'single'].includes(p.flags.parentsStatus) && (b.split == null || m - b.split >= 12)) {
-    for (const parent of parents(state)) {
-      if (parent.age > 62 || stepparents(state).some((s) => s.flags.stepOf === parent.id)) continue;
-      if (d('meet', parent.id).chance(0.0045)) parentRemarries(state, parent, d('meetHow', parent.id));
+  const ps = parents(state);
+  // Parents together may part: about one family in seventy a year while the children are young, fewer later on.
+  if (p.flags.parentsStatus === 'together' && ps.length === 2 && ps.every((x) => x.age < 75) && d('split').chance(adult ? 0.0004 : 0.0011)) separateParents(state, d('splitHow'));
+  // A parent left on their own (separated, single, or widowed) may meet someone, a year or more after.
+  if (ps.length === 1 && p.flags.parentsStatus === 'together' && b.widowed == null) b.widowed = m; // the other parent has died
+  const alone = ['separated', 'single'].includes(p.flags.parentsStatus) || b.widowed != null;
+  const since = b.split ?? b.widowed;
+  if (alone && (since == null || m - since >= 12)) {
+    for (const parent of ps) {
+      if (parent.age > 75 || stepparents(state).some((s) => s.flags.stepOf === parent.id && s.alive)) continue;
+      if (d('meet', parent.id).chance(parent.age > 60 ? 0.0015 : adult ? 0.003 : 0.0045)) parentRemarries(state, parent, d('meetHow', parent.id));
     }
   }
+  if (adult) return;
   // A parent and stepparent may have a baby.
   for (const s of stepparents(state)) {
     const parent = state.npcs[s.flags.stepOf];
@@ -364,6 +440,21 @@ export function blendedChoice(story, choice, cast, state = S()) {
     if (choice === 'blame') { if (c?.withNpc) bump(c.withNpc, -4); if (c?.otherNpc) bump(c.otherNpc, -4); return 'You say it is their fault. Neither of them argues.'; }
     p.stats.mood = clamp(p.stats.mood - 2);
     return 'You go to your room and put your headphones on.';
+  }
+  if (story === 'parents_split_adult') {
+    const mom = state.npcs[cast.mom];
+    const dad = state.npcs[cast.dad];
+    if (choice === 'both') { bump(mom, 4); bump(dad, 4); return 'You tell them you love them both, and that this does not have to be a war. They both cry a little.'; }
+    if (choice === 'side') { const [a, b] = (mom?.meters.relationship ?? 0) >= (dad?.meters.relationship ?? 0) ? [mom, dad] : [dad, mom]; bump(a, 6); bump(b, -10); return `You end up on ${a?.firstName ?? 'one'}'s side. ${b?.firstName ?? 'The other'} notices.`; }
+    return 'You tell them it is between the two of them, and change the subject.';
+  }
+  if (story === 'partner_kids') {
+    const partner = state.npcs[cast.them];
+    const kid = state.npcs[cast.kid];
+    if (choice === 'meet') { bump(partner, 6); if (kid) return stepAct('meet', kid, state).text; return ''; }
+    if (choice === 'slow') { bump(partner, 2); return 'You say you would love to meet them, when the time is right for everyone.'; }
+    bump(partner, -10);
+    return `You admit it is a lot. ${partner?.firstName ?? 'They'} goes quiet.`;
   }
   if (story === 'stepparent_meet') {
     const step = state.npcs[cast.step];

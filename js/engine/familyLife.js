@@ -39,11 +39,15 @@ export function migrateFamilyLife(state = store.state) {
   if (!state?.player?.id || !state.npcs) return;
   const fresh = !state.livingFamilies;
   const f = LF(state);
+  // Partners the player was already with when partners' children began to be kept are left as they are (once).
+  const firstPartnerKids = !f.partnerKids;
+  f.partnerKids = 1;
   for (const id of state.player.npcIds ?? []) {
     const n = state.npcs[id];
     if (!n) continue;
     if (n.role === 'partner' && n.flags?.livingTogether && !n.flags.livesTogether) n.flags.livesTogether = true;
     if (fresh && n.role === 'spouse') n.flags.stepKidsChecked = true;
+    if (firstPartnerKids && n.role === 'partner' && n.flags) n.flags.kidsChecked ??= true;
     if (n.role === 'partner' && n.flags?.engaged) (f.love.engagements ??= {})[n.id] ??= { since: lived(state), weddingMonth: null, party: null, told: false };
   }
 }

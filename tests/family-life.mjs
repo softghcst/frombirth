@@ -50,7 +50,7 @@ const npc = (s, role, age, extra = {}) => {
 
 // ---------- Every scene a feature queues exists, and its choices reach the right engine ----------
 {
-  const ids = ['fl_parents_split', 'fl_stepparent_meet', 'fl_pressure_drink', 'fl_pressure_vape', 'fl_pressure_dare', 'fl_pressure_skip', 'fl_bff_trouble', 'fl_rent_arrears', 'fl_eviction_notice', 'fl_wedding_day', 'fl_cold_feet', 'fl_placement_offer', 'fl_kinship', 'fl_care_review'];
+  const ids = ['fl_parents_split', 'fl_parents_split_adult', 'fl_partner_kids', 'fl_stepparent_meet', 'fl_pressure_drink', 'fl_pressure_vape', 'fl_pressure_dare', 'fl_pressure_skip', 'fl_bff_trouble', 'fl_rent_arrears', 'fl_eviction_notice', 'fl_wedding_day', 'fl_cold_feet', 'fl_placement_offer', 'fl_kinship', 'fl_care_review'];
   for (const id of ids) {
     const e = EVENT_BY_ID[id];
     check(e && e.queuedOnly && e.choices.length >= 2, `scene ${id} exists, is queued only, and has choices`);
@@ -63,7 +63,7 @@ const npc = (s, role, age, extra = {}) => {
   s.livingFamilies.care.offer = { key: 'x', age: 7, reason: 'neglect', plan: 12, made: LF.lived(s) };
   resolveChoice(EVENT_BY_ID.fl_placement_offer, 0, { words: { age: '7' } });
   check(care.placements(s).length === 1 && s.npcs[care.placements(s)[0].childId]?.role === 'fosterchild', 'saying yes in the scene places the child');
-  section('scenes: all fourteen exist and route to their engines');
+  section('scenes: all sixteen exist and route to their engines');
 }
 
 // ---------- Blended families ----------
@@ -100,6 +100,67 @@ const npc = (s, role, age, extra = {}) => {
   for (let i = 0; i < 12 && !adopted; i++) { delete kid.flags.adoptAsked; kid.id += 'y'; a.npcs[kid.id] = kid; adopted = blended.adoptStepchild(kid, a).ok; }
   check(adopted && kid.role === 'child' && kid.adopted, 'a stepchild can be adopted with consent');
   section('blended: custody, visits, a teenager\'s say, stepparents, stepchildren and adoption');
+}
+
+// ---------- Parents after the player has grown up ----------
+{
+  const s = life(30, 2020, twoParents);
+  const p = s.player;
+  p.flags.parentsStatus = 'together'; p.flags.livesWithParents = false;
+  const r = blended.separateParents(s);
+  check(r.ok && p.flags.parentsStatus === 'separated' && !blended.custody(s), 'a grown-up\'s parents can separate: no custody to decide');
+  check(s.pendingEvents.some((e) => e.id === 'fl_parents_split_adult'), 'told as a grown-up\'s scene');
+  const mom = blended.custody(s) ?? null;
+  void mom;
+  const parent = s.npcs[p.npcIds.find((id) => s.npcs[id]?.role === 'parent')];
+  const st = blended.parentRemarries(s, parent);
+  check(st.ok && s.npcs[st.stepId].flags.inHome === false, 'a parent\'s new partner, met as a grown-up, is a stepparent who does not live with you');
+  // A widowed parent may find someone too: the monthly step notices the other parent has died.
+  const w = life(40, 2020, twoParents);
+  w.player.flags.parentsStatus = 'together';
+  const [a] = w.player.npcIds.map((id) => w.npcs[id]).filter((n) => n?.role === 'parent');
+  a.alive = false;
+  pass(w, 1);
+  check(w.livingFamilies.blended.widowed != null, 'a parent left widowed is noticed');
+  let met = false;
+  for (let i = 0; i < 400 && !met; i++) { pass(w, 1); met = blended.stepparents(w).length > 0; }
+  check(met, 'and, in time, may meet someone new');
+  section('parents of a grown-up: separation without custody, a new partner, a widowed parent\'s new love');
+}
+
+// ---------- A partner's children ----------
+{
+  const s = life(32);
+  const p = s.player;
+  let partner = null; let kids = [];
+  for (let i = 0; i < 40 && !kids.length; i++) {
+    partner = npc(s, 'partner', 38, { relationship: 75 });
+    kids = blended.partnerKids(partner, s);
+    if (!kids.length) { partner.role = 'ex'; p.npcIds = p.npcIds.filter((x) => x !== partner.id); }
+  }
+  const kid = kids[0];
+  check(kid && kid.role === 'stepchild' && kid.parentIds[0] === partner.id, 'a partner can have children of their own, who are real people');
+  check(roleLabel(kid) === `${partner.firstName}'s ${kid.gender === 'male' ? 'son' : kid.gender === 'female' ? 'daughter' : 'child'}`, `before a wedding they are the partner's child (${roleLabel(kid)})`);
+  check(s.pendingEvents.some((e) => e.id === 'fl_partner_kids'), 'and the partner tells you about them');
+  check(!blended.partnerKids(partner, s).length, 'only once');
+  check(blended.stepActions(kid, s).some((x) => x.id === 'fl:step:meet') && !blended.stepActions(kid, s).some((x) => x.id === 'fl:step:adopt'), 'you can meet them; adoption waits for a wedding');
+  check(FL.familyAct('fl:step:meet', kid).ok && kid.flags.met, 'meeting them');
+  partner.flags.livesTogether = true;
+  pass(s, 1);
+  check(kid.flags.inHome === (kid.age < 18), 'living with their parent, a child lives with you too');
+  partner.role = 'spouse'; partner.marriedAtAge = p.age;
+  pass(s, 1);
+  check(kid.flags.marriedIn && /Step(son|daughter|child)/.test(roleLabel(kid)), `married: a stepchild (${roleLabel(kid)})`);
+  check(blended.stepchildren(s).filter((k) => k.flags.stepVia === partner.id).length === kids.length, 'no second set of children at the wedding');
+  // Breaking up before a wedding: a child you never grew close to leaves your life.
+  const t = life(33);
+  let p2 = null; let k2 = [];
+  for (let i = 0; i < 40 && !k2.length; i++) { p2 = npc(t, 'partner', 40, { relationship: 70 }); k2 = blended.partnerKids(p2, t); }
+  k2[0].meters.relationship = 20;
+  p2.role = 'ex';
+  pass(t, 1);
+  check(!t.player.npcIds.includes(k2[0].id), 'after a breakup, a partner\'s child you never grew close to leaves your life');
+  section('a partner\'s children: told early, met, at home together, stepchildren at the wedding, gone after a breakup');
 }
 
 // ---------- Teenage life ----------
