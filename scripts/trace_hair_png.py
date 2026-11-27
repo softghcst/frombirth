@@ -65,7 +65,7 @@ LANDMARKS = os.path.join(ROOT, 'assets', 'landmarks.json')
 BASE_EAR_Y = 0.0     # where the ears join the head the style was drawn on, and their x: set by drawn_on()
 EAR_X = (0.0, 0.0)
 EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
-GAP_REACH = 30       # the fill behind the jaw and neck reaches this far from hair drawn beside them
+GAP_REACH = 48       # the fill behind the jaw and neck reaches this far from hair drawn beside them
 SIDES_ABOVE_EAR = 14  # data-sides="behind": from this far above the tops of the ears down
 EDGE_START = 4       # that outline starts this far below the top of the shoulders, clear of the neck's own line
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
