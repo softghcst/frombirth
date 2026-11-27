@@ -6,6 +6,8 @@ import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
 import { getPeople, addPerson, removePerson, GENDERS, MAX_PEOPLE } from '../people.js';
 import { exportCode, importCode, collect, describe } from '../sync/bundle.js';
+import { giveFile } from '../platform/files.js';
+import { isNative } from '../platform/native.js';
 import * as cloud from '../sync/cloud.js';
 import { openModal, pickModal, confirmModal, messageModal, inputModal } from './modals.js';
 import { store } from '../state.js';
@@ -359,16 +361,6 @@ async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-function download(text) {
-  const day = new Date().toISOString().slice(0, 10);
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: `from-birth-saves-${day}.txt` });
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-
 async function openTransfer(hooks) {
   const here = describe(collect());
   const pick = await pickModal({
@@ -377,16 +369,22 @@ async function openTransfer(hooks) {
     cancel: 'Back',
     options: [
       { value: 'copy', label: 'Copy a transfer code', sub: 'Paste it into a message or note to yourself, then into the other device.' },
-      { value: 'file', label: 'Save a transfer file', sub: 'On an iPad it goes to the Files app; on a computer, to Downloads.' },
+      { value: 'file', label: 'Save a transfer file', sub: isNative() ? 'Save it to Files, or send it with AirDrop or Mail.' : 'On an iPad it goes to the Files app; on a computer, to Downloads.' },
       { value: 'load', label: 'Load saves from another device', sub: 'Paste a code, or choose a file.' },
     ],
   });
   if (!pick) return;
   if (pick === 'load') return openLoad(hooks);
-  const code = await exportCode();
+  let code;
+  try { code = await exportCode(); } catch (e) { return messageModal({ title: 'No code was made', body: e.message, tone: 'bad' }); }
   if (pick === 'file') {
-    download(code);
-    return messageModal({ title: 'Transfer file saved', body: 'Move the file to the other device (AirDrop, email, or cloud storage all work), then choose Load saves there.' });
+    const day = new Date().toISOString().slice(0, 10);
+    const done = await giveFile(`from-birth-saves-${day}.txt`, code);
+    if (done.how === 'cancelled') return undefined;
+    if (!done.ok) return messageModal({ title: 'No file was made', body: `${done.text} Your saves here are unchanged; try Copy a transfer code instead.`, tone: 'bad' });
+    return messageModal({ title: done.how === 'shared' ? 'Transfer file ready' : 'Transfer file saved', body: done.how === 'shared'
+      ? 'Wherever you sent it (Files, AirDrop, Mail), open Load saves on the other device and choose it there.'
+      : 'Move the file to the other device (AirDrop, email, or cloud storage all work), then choose Load saves there.' });
   }
   if (await copyText(code)) {
     return messageModal({ title: 'Code copied', body: `The code for ${here} is on your clipboard. It is long; that is normal. Paste it on the other device under Load saves.` });

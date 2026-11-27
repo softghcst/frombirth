@@ -1,5 +1,6 @@
 // Appearance: Light, Dark, or the System setting. Kept in this browser, apart from any one life, so it
 // applies on the title screen too. index.html applies the saved choice before the first paint.
+import { tryNative } from './platform/native.js';
 export const THEME_KEY = 'frombirth.theme';
 export const THEMES = ['system', 'light', 'dark'];
 export const THEME_NAMES = { system: 'System', light: 'Light', dark: 'Dark' };
@@ -22,6 +23,9 @@ export function applyTheme(theme = getTheme()) {
   if (theme === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', isDark(theme) ? '#231C2D' : '#F1EBFA');
+  // In the app: the clock and battery in light text on the dark theme, dark text on the light one ('DARK' is the
+  // style for dark backgrounds). The page is drawn under the status bar (viewport-fit=cover, safe-area padding).
+  tryNative('StatusBar', (bar) => bar.setStyle({ style: isDark(theme) ? 'DARK' : 'LIGHT' }));
 }
 
 /** Saves and applies the choice. */

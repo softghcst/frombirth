@@ -11,6 +11,7 @@
 // Nothing here is needed to play. Without a connection, or with the service
 // down, saves stay on the device and are sent the next time it can.
 import { CLOUD } from './config.js';
+import { isNative, WEBSITE } from '../platform/native.js';
 import { collect, merge, apply, encode, decode, onChanged, fingerprint } from './bundle.js';
 
 const K_SESSION = 'frombirth.session';
@@ -171,9 +172,11 @@ export async function signOut() {
 export async function resetPassword(addr) {
   if (!configured()) return result(false, 'Cloud saves are not set up for this copy of the game.');
   try {
-    const back = encodeURIComponent(location.href.split('#')[0].split('?')[0]);
+    // In the app the page's own address (capacitor://localhost) means nothing to an email link: the link opens the
+    // website instead, where the new password is chosen; the app then signs in with it.
+    const back = encodeURIComponent(isNative() ? WEBSITE : location.href.split('#')[0].split('?')[0]);
     await call(`/auth/v1/recover?redirect_to=${back}`, { method: 'POST', body: { email: tidyEmail(addr) } });
-    return result(true, `If there is an account for ${tidyEmail(addr)}, a link to choose a new password is on its way.`);
+    return result(true, `If there is an account for ${tidyEmail(addr)}, a link to choose a new password is on its way.${isNative() ? ' It opens the From Birth website: choose the new password there, then come back and sign in here with it.' : ''}`);
   } catch (e) { return result(false, e.message); }
 }
 

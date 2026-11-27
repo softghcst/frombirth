@@ -18,10 +18,23 @@ import { alignWorld } from './engine/eras.js';
 import { resetWorld } from './engine/history.js';
 import { applyTheme } from './theme.js';
 import { watchTitles } from './ui/titles.js';
+import { isNative } from './platform/native.js';
+import { restoreFromBackup, startBackup } from './platform/saveBackup.js';
+import { watchKeyboard } from './platform/keyboard.js';
+import { recoverLostLives } from './save.js';
+import { messageModal } from './ui/modals.js';
 
 watchTitles();
 applyTheme(); // Light, Dark or System (Settings → Appearance)
 watchTaps(); // a light tap under the finger for Age up, answers and main buttons (Settings → Haptics)
+watchKeyboard(); // in the app: tapping outside a field puts the keyboard away
+
+// Before anything is shown: lives saved but missing from the list are put back on it, and in the app, anything the
+// device's own backup holds that is missing here is brought back (js/platform/saveBackup.js). Never more than a few
+// seconds: the game opens either way.
+let found = 0;
+try { found = recoverLostLives(); } catch (e) { console.error('recovering lost lives', e); }
+const restored = isNative() ? await Promise.race([restoreFromBackup(), new Promise((r) => { setTimeout(() => r(null), 4000); })]) : null;
 
 const app = document.getElementById('app');
 
@@ -113,11 +126,17 @@ cloud.onPulled(() => { if (onTitle) showTitle(); });
 cloud.onStatus((s) => { const line = document.querySelector('[data-sync-line]'); if (line) line.textContent = cloudLine(s); });
 cloud.startAutoSync();
 if (arrived === 'recovery') askNewPassword();
+startBackup(); // in the app: a second copy of the saves, kept as a file
+if (restored || found) {
+  const n = (restored ? restored.added + restored.updated : 0) + found;
+  messageModal({ title: 'Saves recovered', body: `${n === 1 ? 'One saved life was' : `${n} saved lives were`} missing from this device's list and ${n === 1 ? 'has' : 'have'} been brought back${restored ? ' from the app\'s own backup' : ''}.`, tone: 'good' });
+}
 
 // Offline support: once the service worker is running, hand it every file
 // this page loaded, so the game works without a connection from the first visit.
+// The app has every file on the device already, and needs no service worker.
 const secure = location.protocol === 'https:' || location.hostname === 'localhost';
-if ('serviceWorker' in navigator && secure) {
+if ('serviceWorker' in navigator && secure && !isNative()) {
   navigator.serviceWorker.register('./sw.js')
     .then(() => navigator.serviceWorker.ready)
     .then((reg) => {

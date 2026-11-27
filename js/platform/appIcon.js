@@ -3,7 +3,10 @@
 //     window.FromBirthNative.setAlternateIcon(name | null).
 //   Web and installed web app: the browser tab's icon changes at once. An icon already on a home screen does not:
 //     browsers fix it when the app is added, and Afterglow is the icon the install uses.
+//   The From Birth app without that call (this version): the choice is kept and shown in Settings; the home screen
+//     icon stays Afterglow, and Settings says so in those words, not the browser's.
 import { iconSrc, DEFAULT_ICON } from '../appIcon.js';
+import { isNative } from './native.js';
 
 const nativeShell = () => (typeof window !== 'undefined' && typeof window.FromBirthNative?.setAlternateIcon === 'function' ? window.FromBirthNative : null);
 const standalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch { return false; } };
@@ -24,6 +27,7 @@ export function applyAppIcon(id) {
     const link = document.querySelector('link[rel="icon"]');
     if (link) link.setAttribute('href', `./${iconSrc(id, 32)}`);
   }
+  if (isNative()) return { changedInstalled: false, note: id === DEFAULT_ICON ? '' : 'Your choice is saved. In this version of the app, the icon on your home screen stays Afterglow.' };
   const installed = standalone();
   return { changedInstalled: false, note: id === DEFAULT_ICON ? ''
     : installed ? 'Your choice is saved. An icon already on your home screen stays Afterglow: browsers set it when the app is added, and this one cannot change it afterwards.'

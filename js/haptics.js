@@ -7,6 +7,9 @@
 //     when an on/off switch (<input type="checkbox" switch>) is flipped, so a hidden one is flipped during a tap.
 //     One light tick, only from a real tap; not an official feature, so it may stop working in a later iOS.
 //   Desktops: nothing, quietly.
+//   The From Birth app (Capacitor): the system's own haptics, with a different feel for good and bad news.
+import { plugin } from './platform/native.js';
+
 export const HAPTICS_KEY = 'frombirth.haptics';
 
 /** Patterns, in milliseconds: buzz, pause, buzz… On iPhone each is a single light tick. */
@@ -16,6 +19,15 @@ const PATTERNS = {
   good: [10, 60, 16], // good news
   bad: [28, 50, 28],  // bad news
   heavy: 45,         // a death, a disaster
+};
+
+/** The same moments in the app, as the system's haptics (@capacitor/haptics). */
+const NATIVE = {
+  tap: (h) => h.impact({ style: 'LIGHT' }),
+  select: (h) => h.impact({ style: 'LIGHT' }),
+  good: (h) => h.notification({ type: 'SUCCESS' }),
+  bad: (h) => h.notification({ type: 'WARNING' }),
+  heavy: (h) => h.impact({ style: 'HEAVY' }),
 };
 
 export function hapticsOn() {
@@ -51,6 +63,12 @@ function appleTick() {
 export function haptic(kind = 'tap') {
   if (!hapticsOn()) return;
   const pattern = PATTERNS[kind] ?? PATTERNS.tap;
+  const native = plugin('Haptics');
+  if (native) {
+    const call = NATIVE[kind] ?? NATIVE.tap;
+    try { Promise.resolve(call(native)).catch(() => {}); } catch { /* never let a buzz break the game */ }
+    return;
+  }
   try {
     if (canVibrate()) navigator.vibrate(pattern);
     else if (isAppleTouch()) appleTick();
