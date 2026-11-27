@@ -26,7 +26,7 @@ export const MENU_RULES = [
   [/^my legal career$|^law$/i, '⚖️', 'Law school, the bar, cases and the courtroom'],
   [/^law enforcement & investigations$|^my investigations$|^law enforcement$/i, '🕵️', 'Police, detectives, federal agents and private investigators'],
   [/^medicine$/i, '🩺', 'Medical school, training, posts and patients'],
-  [/^special careers$/i, '🌟', 'Fame, sport, politics, law enforcement, law and medicine'],
+  [/^special careers$/i, '🌟', 'Fame, sport, politics, law, medicine'],
   [/^my fame$/i, '⭐', 'Acting, music and being known'],
   [/^k-pop idol$/i, '🎤', 'Auditions, training and debut'],
   // The special careers, each with a picture of its own (their lines come from the careers themselves).
