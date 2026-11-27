@@ -254,9 +254,6 @@ scenario('J. championship: won through completed competition only', () => {
 // ---------- K. Injury recovery ----------
 scenario('K. injury: hurt, cared for, rehabilitated, and back when ready', () => {
   let inj = null; let e = null;
-  // (A life can end in the years this takes, from causes that have nothing to do with sport: then it starts again.)
-  for (let attempt = 0; attempt < 3; attempt++) {
-  inj = null;
   for (let t = 0; t < 8 && !inj; t++) {
     grownTo(17);
     sp.takeUp('soccer'); e = sp.entryOf('soccer');
@@ -270,8 +267,6 @@ scenario('K. injury: hurt, cared for, rehabilitated, and back when ready', () =>
   check(S().sports.paid[`rehab/${inj.id}`]?.cat === 'health', 'the physiotherapy is booked as health care');
   e.plan.hours = 5;
   for (let i = 0; i < 6 && inj.status === 'out'; i++) { advanceYear(); S().pendingEvents = []; for (const x of life.openDecisions()) life.answer(x.id, x.kind === 'rehab' ? 'physio' : x.options[0].id); }
-  if (P().alive) break;
-  }
   check(inj.status === 'healed' && inj.healed > inj.year, 'healed, in a later year');
   year();
   const s = sp.seasonOf(e.seasons.at(-1));

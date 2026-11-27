@@ -14,6 +14,7 @@ import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
+import { migrateFamilyLife } from './engine/blended.js';
 import { migrateMedicine } from './engine/medicine/core.js';
 import { migrateInvestigations } from './engine/investigations/core.js';
 import { ensureEra, alignWorld } from './engine/eras.js';
@@ -21,7 +22,6 @@ import { adoptOldSport } from './engine/sportsLife.js';
 import { americanize } from './engine/spelling.js';
 import { giveBirthday } from './engine/birthday.js';
 import { giveNativeLanguages } from './engine/languages.js';
-import { migrateFamilyLife } from './engine/familyLife.js';
 import { migrateOrigins } from './engine/origins.js';
 
 export const SCHEMA_VERSION = 2;
@@ -142,7 +142,6 @@ function migrate(state) {
   migrateHealth(state);
   // Contraception (engine/health/contraception.js): made lazily from the old birth-control switch; nothing invented.
   migrateContraception(state);
-  try { migrateFamilyLife(state); } catch (e) { console.warn('familyLife', e); }
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
@@ -198,6 +197,7 @@ function migrate(state) {
   // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
   ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateFamilyLife(state); // parents, step-parents and half-siblings, from what the save already says (engine/blended.js)
   migrateDigital(state);
   // The medical career (engine/medicine): a doctor keeps their job and level; nothing of their training is invented.
   migrateMedicine(state);

@@ -1,356 +1,357 @@
-// Foster Care & Guardianship, from the carer's side (the player as a child in care is engine/guardianship.js, which
-// this does not touch). An adult can apply to foster: a home study and training, then approval. Placements are offered
-// by the agency; a child placed is a real NPC ('fosterchild') with a reason they are in care, a plan, and a birth
-// family they may see. A placement ends in reunification, adoption (the child becomes the player's own, as
-// children.js adopts), long-term guardianship, a move elsewhere, or aging out at 18. Separately, a relative's child
-// whose parent cannot cope can come to live with the player as kinship care, and the player can then ask the court for
-// legal guardianship. The agency pays a monthly allowance toward each child's keep.
+// Foster care and kinship care, with the player as the carer. A child who comes to live with the player is a real
+// person with a family of their own: parents who stay their parents, a reason they are in care that is about their
+// family's circumstances (never poverty alone, never a crime invented for them), and a plan that is decided by the
+// agency and a court at reviews, not by the carer. Most plans aim at the child going home. Some end in a relative's
+// care, a guardianship, or, where parents' rights have ended in law, an adoption through the ordinary adoption route.
 //
-//   LF().care = { carer: { status:'none'|'applying'|'approved'|'closed', applied, approved, training, capacity },
-//                 placements: [{ id, childId, kind:'foster'|'kinship'|'guardianship', start, plan, reason, visits,
-//                                 end, outcome }], owed, acted: {} }
-import { store, log, milestone } from '../state.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
-import { COUNTRIES } from '../data/countries.js';
+//   p.fostering = {
+//     status: 'none'|'applying'|'approved'|'declined'|'closed', appliedYear, approvedYear, declinedWhy, agency,
+//     steps: { training, background, home },          the approval steps, each a year when it was done
+//     placements: [{ id, childId, kind:'foster'|'kinship', start, end, status, why, goal, rights:'intact'|'ended',
+//                    parentIds, agency, contact, reviews:[{ year, said, progress }], progress, outcome, guardian? }]
+//   }
+// The child: role 'fosterchild' while placed, with flags.placementId; their parents: role 'fosterfamily' (titled
+// "{child}'s mother"), in the world and in the player's life only as the child's family. Nobody is made twice.
+//
+// Simplified model, labeled as such: approval is a year of training, a background check and a home study; the
+// carer's authority is day-to-day care only; reviews are once a world year (3-, 6- and 12-month turns alike).
+import { keyedDice, onOwnDice } from './keyedDice.js';
+import { clamp, uid } from '../util.js';
+import { store, player, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
-import { birthdayFor, dateNow } from './birthday.js';
-import { adoptionInfoFor } from './birthTag.js';
+import { inheritAppearance } from './genetics.js';
+import { remember } from './conditions.js';
+import { convictionsOf } from './records.js';
+import { recordEvent } from './chronicle.js';
 import { storyBeat } from './storyDirector.js';
-import { LF, lived, nowMonth, ageIn, recordEvent, dice, withDice, onMonth, done, fail, careOk } from './livingFamilies.js';
-import { recordPlayerAdoption } from './origins.js';
+import { ensureLife } from './npcLives.js';
+import { adoptionInfoFor } from './birthTag.js';
+import { dateNow } from './birthday.js';
+import * as N from './neighborhood.js';
+import { COUNTRIES } from '../data/countries.js';
 
+/** This file's dice: keyed to the life, the year and what is being decided (engine/keyedDice.js), never the game's own. */
+let rng = keyedDice('foster');
+const roll = (tag) => { const s = store.state; rng = keyedDice(`foster/${s.slotId}/${s.player.id}/${s.year}/${tag}`); };
+/** Makes people on dice of their own: the game's sequence of rolls is left where it was. */
+const people = (tag, fn) => onOwnDice(`foster-people/${store.state.slotId}/${store.state.year}/${tag}`, fn);
+
+const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const S = () => store.state;
-const K = (state = S()) => { const c = LF(state).care; c.carer ??= { status: 'none', training: 0, capacity: 1 }; c.placements ??= []; c.owed ??= 0; c.acted ??= {}; return c; };
-const turnKey = (state = S()) => `${state.year}:${state.month ?? 0}`;
-const bump = (n, d) => { if (n) n.meters.relationship = clamp(n.meters.relationship + d); };
-export const FOSTER_AGE = 21;
-/** The agency's allowance toward a child's keep, base units a month. */
-export const ALLOWANCE = 450;
-export const REASONS = [
-  { id: 'neglect', text: 'their parent could not look after them properly', back: 0.45 },
-  { id: 'addiction', text: 'their mother is in treatment for addiction', back: 0.55 },
-  { id: 'illness', text: 'their father is in the hospital, with nobody else to step in', back: 0.75 },
-  { id: 'prison', text: 'their only parent is in prison', back: 0.35 },
-  { id: 'abandoned', text: 'they were left alone, and nobody came back', back: 0.1 },
-  { id: 'violence', text: 'it was not safe for them at home', back: 0.25 },
-];
+const npc = (id) => S().npcs[id] ?? null;
+const word = (n, m, f, x) => (n?.gender === 'male' ? m : n?.gender === 'female' ? f : x);
 
-export const carer = (state = S()) => K(state).carer;
-export const placements = (state = S(), open = true) => K(state).placements.filter((x) => !open || x.end == null);
-export const childOf = (x, state = S()) => state.npcs[x.childId] ?? null;
+/** Licensed foster care as the game models it begins here; before, children in need were boarded out informally. */
+export const FOSTER_FROM = 1950;
+/** The youngest a foster carer can be (simplified: one age everywhere). */
+export const CARER_AGE = 21;
+/** How many children can be placed with one household at once. */
+export const MAX_PLACED = 2;
+/** Why children come into care in this model: the family's circumstances, told plainly and without blame. */
+export const REASONS = {
+  illness: { line: 'a parent is seriously ill and in the hospital for a long while', recover: 0.45 },
+  crisis: { line: 'the family is going through a crisis and cannot care for them just now', recover: 0.4 },
+  prison: { line: 'their parent is serving a prison sentence', recover: 0.3 },
+  coping: { line: 'their parent is getting help, and cannot look after them while they do', recover: 0.35 },
+};
 
-/** Why the player cannot apply to foster now, or ''. */
-export function whyNotFoster(state = S()) {
-  const p = state.player;
-  if (p.age < FOSTER_AGE) return `Foster carers must be ${FOSTER_AGE} or older.`;
-  if (p.legal?.incarceration) return 'Not from where you are.';
-  if (p.flags.livesWithParents) return 'You need a home of your own, with a room for a child.';
-  if ((p.legal?.record ?? []).some((r) => r.violent || r.kind === 'violent')) return 'A record of violence rules it out.';
-  const s = carer(state).status;
-  if (s === 'applying') return 'Your application is being assessed.';
-  if (s === 'approved') return '';
+const fost = (p = player()) => {
+  const f = (p.fostering ??= { status: 'none', steps: {}, placements: [] });
+  f.steps ??= {}; f.placements ??= [];
+  return f;
+};
+export const fostering = () => fost();
+export const placements = () => fost().placements;
+export const activePlacements = () => placements().filter((x) => x.status === 'active');
+export const placementOf = (childId) => placements().find((x) => x.childId === childId && x.status === 'active') ?? null;
+export const simplified = (countryId = player().countryId) => countryId !== 'us';
+
+/** Why the player cannot apply to foster now, or ''. Being poor, young-ish or single is never a reason. */
+export function applyBlock(p = player()) {
+  const f = fost(p);
+  if (S().year < FOSTER_FROM) return `There is no licensed foster care here in ${S().year}.`;
+  if (p.age < CARER_AGE) return `Foster carers have to be ${CARER_AGE} or older.`;
+  if (p.legal?.incarceration) return 'Not from a cell.';
+  if (p.flags.livesWithParents) return 'You need a home of your own for a child to live in.';
+  if (p.education?.enrolled && p.education.housing === 'dorm') return 'Not from student housing.';
+  if (f.status === 'applying') return 'Your application is with the agency.';
+  if (f.status === 'approved') return 'You are approved already.';
+  if (f.status === 'declined' && f.declinedYear >= S().year - 2) return 'The agency declined your application. You can apply again in a few years.';
   return '';
 }
-export function applyToFoster(state = S()) {
-  const p = state.player;
-  const why = whyNotFoster(state);
-  if (why) return fail(why);
-  const c = carer(state);
-  if (c.status === 'approved') return fail('You are an approved foster carer.');
-  c.status = 'applying';
-  c.applied = nowMonth(state);
-  const text = 'You fill in the application to become a foster carer. A social worker will visit for the home study: references, checks, and long conversations about your own childhood.';
-  log(text, 'care', 'neutral');
-  recordEvent(state, 'foster_applied', [p.id], text);
-  return done(text, 'neutral');
-}
-/** Training: up to three sessions, one a season, before or after approval. Better-prepared carers' placements go better. */
-export function training(state = S()) {
-  const c = carer(state);
-  if (!['applying', 'approved'].includes(c.status)) return fail('Apply to foster first.');
-  if (c.training >= 3) return fail('You have done all the training on offer.');
-  const k = K(state);
-  if (k.acted.training === turnKey(state)) return fail('One session a season.');
-  k.acted.training = turnKey(state);
-  c.training += 1;
-  const what = ['Trauma and attachment: why a child may test you hardest when they feel safest.', 'Working with birth families: contact visits, and what to say when a child asks why.', 'Caring for teenagers: independence, risk, and keeping a door open.'][c.training - 1];
-  const text = `Training session ${c.training} of 3. ${what}`;
-  log(text, 'care', 'good');
-  return done(text);
-}
-export function setCapacity(n, state = S()) {
-  const c = carer(state);
-  if (c.status !== 'approved') return fail('Only an approved carer can say how many children they can take.');
-  c.capacity = clamp(Math.round(n), 1, 3);
-  return done(`You tell the agency you can take up to ${c.capacity} ${c.capacity === 1 ? 'child' : 'children'} at a time.`);
-}
-export function stopFostering(state = S()) {
-  const c = carer(state);
-  if (c.status !== 'approved' && c.status !== 'applying') return fail('You are not a foster carer.');
-  if (placements(state).some((x) => x.kind === 'foster')) return fail('Not while a child is placed with you.');
-  c.status = 'closed';
-  return done('You tell the agency you are stepping back from fostering. They thank you, and mean it.', 'neutral');
-}
 
-/** A child placed with the player: a real NPC, with a reason and a plan. */
-function place(state, d, offer) {
-  const p = state.player;
-  const child = withDice(state, `foster/${offer.key}`, () => {
-    const n = makeNpc({ role: 'fosterchild', countryId: p.countryId, age: offer.age, relationship: 25 + d.int(0, 20) });
-    state.npcs[n.id] = n;
-    p.npcIds.push(n.id);
-    n.lastInteractionAge = p.age;
-    return n;
-  });
-  const ok = careOk(state, child.id, p.id);
-  if (!ok.ok) return ok;
-  child.birthday ??= birthdayFor(child.id);
-  child.stats = { mood: 45, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
-  const reason = REASONS.find((r) => r.id === offer.reason);
-  const x = { id: `place_${child.id}`, childId: child.id, kind: 'foster', start: nowMonth(state), plan: offer.plan, reason: reason.id, visits: 0, end: null, outcome: null };
-  K(state).placements.push(x);
-  child.flags.placement = x.id;
-  child.flags.title = 'Foster child';
-  const text = `${child.firstName}, ${child.age}, arrives with a social worker and a bin bag of clothes. They are with you because ${reason.text}. The plan is ${offer.plan >= 24 ? 'long-term' : `about ${offer.plan} months`}.`;
-  log(text, 'care', 'neutral');
-  milestone(`Fostered ${child.firstName}.`, 'family');
-  recordEvent(state, 'placement', [p.id, child.id], text);
-  return done(text, 'neutral', { childId: child.id });
-}
-
-/** Accept or turn down an offered placement (from the agency's call). */
-export function answerOffer(yes, state = S()) {
-  const k = K(state);
-  const offer = k.offer;
-  if (!offer) return fail('There is no placement on offer.');
-  k.offer = null;
-  if (!yes) return done('You tell the agency not this time. They understand: they will call again.', 'neutral');
-  return place(state, dice(state, 'care', 'place', offer.key), offer);
-}
-
-// ---------- Actions with a child in care ----------
-
-export function careActions(npc, state = S()) {
-  const x = placements(state).find((y) => y.childId === npc.id);
-  if (!x) return [];
-  const used = (id) => K(state).acted[`${id}/${npc.id}`] === turnKey(state);
-  const out = [
-    { id: 'fl:care:time', label: `Spend time with ${npc.firstName}`, why: used('time') ? 'Done this season' : '' },
-    { id: 'fl:care:school', label: 'Go to the school meeting', why: npc.age < 5 || used('school') ? (npc.age < 5 ? 'Not at school yet' : 'Done this season') : '' },
-  ];
-  if (x.kind === 'foster' && x.reason !== 'abandoned') out.push({ id: 'fl:care:visit', label: 'Take them to see their birth family', why: used('visit') ? 'Done this season' : '' });
-  if (x.kind === 'foster' && npc.meters.relationship >= 60 && npc.age < 18) out.push({ id: 'fl:care:adopt', label: `Ask to adopt ${npc.firstName}`, why: nowMonth(state) - x.start < 6 ? 'After six months together' : '' });
-  if (x.kind === 'kinship') out.push({ id: 'fl:care:guardian', label: 'Apply for legal guardianship', why: nowMonth(state) - x.start < 6 ? 'After six months together' : '' });
-  return out;
-}
-export function careAct(id, npc, state = S()) {
-  const p = state.player;
-  const k = K(state);
-  const x = placements(state).find((y) => y.childId === npc.id);
-  if (!x) return fail('They are not in your care.');
-  const once = (key) => { if (k.acted[`${key}/${npc.id}`] === turnKey(state)) return false; k.acted[`${key}/${npc.id}`] = turnKey(state); return true; };
-  const d = dice(state, 'care', id, npc.id, lived(state));
-  const trained = carer(state).training;
-  npc.lastInteractionAge = p.age;
-  if (id === 'time') {
-    if (!once('time')) return fail('You have done that this season.');
-    bump(npc, d.int(3, 7) + trained);
-    npc.stats && (npc.stats.mood = clamp(npc.stats.mood + 4));
-    const text = d.pick([`You teach ${npc.firstName} to make pancakes. The first three are a disaster. The fourth is perfect.`, `${npc.firstName} lets you read them a story, and is asleep before the end.`, `A Saturday at the park. ${npc.firstName} laughs, really laughs, for the first time since they came.`]);
-    log(text, 'care', 'good');
-    return done(text);
-  }
-  if (id === 'school') {
-    if (!once('school')) return fail('You have done that this season.');
-    bump(npc, 4);
-    const text = `You sit on a tiny chair across from ${npc.firstName}'s teacher. You leave with a plan, and a teacher who knows someone is watching out for them.`;
-    log(text, 'care', 'good');
-    return done(text);
-  }
-  if (id === 'visit') {
-    if (!once('visit')) return fail('You have done that this season.');
-    x.visits += 1;
-    const good = d.chance(0.6 + trained * 0.05);
-    bump(npc, good ? 5 : -2);
-    const text = good ? `A contact visit at the family center. ${npc.firstName} holds on to their parent for a long time at the end.` : `Their parent does not come. ${npc.firstName} waits by the window for forty minutes, and then says it does not matter.`;
-    log(text, 'care', good ? 'good' : 'bad');
-    return done(text, good ? 'good' : 'bad');
-  }
-  if (id === 'adopt') return adoptFromCare(npc, state);
-  if (id === 'guardian') return seekGuardianship(npc, state);
-  return fail('Nothing happens.');
-}
-
-function closePlacement(state, x, outcome, text) {
-  x.end = nowMonth(state);
-  x.outcome = outcome;
-  const n = childOf(x, state);
-  if (n) delete n.flags.placement;
-  recordEvent(state, `care_${outcome}`, [state.player.id, x.childId], text);
-}
-/** Adopting a child from care: the agency and a court agree; they become the player's child for good. */
-export function adoptFromCare(npc, state = S()) {
-  const p = state.player;
-  const x = placements(state).find((y) => y.childId === npc.id && y.kind === 'foster');
-  if (!x) return fail('They are not fostered with you.');
-  if (nowMonth(state) - x.start < 6) return fail('The agency will consider it after six months together.');
-  if (npc.meters.relationship < 60) return fail(`${npc.firstName} needs to feel settled first.`);
-  const d = dice(state, 'care', 'adopt', npc.id);
-  const back = REASONS.find((r) => r.id === x.reason)?.back ?? 0.4;
-  if (x.visits >= 2 && back >= 0.5 && d.chance(0.6)) {
-    const text = `The agency says no, for now: the plan is still for ${npc.firstName} to go home, and their parent is doing everything asked of them.`;
-    log(text, 'care', 'neutral');
-    return fail(text);
-  }
-  npc.role = 'child';
-  npc.adopted = true;
-  npc.lastName = p.lastName;
-  delete npc.flags.title;
-  npc.adoptionInfo = adoptionInfoFor(npc, { date: dateNow(), countryId: p.countryId, city: p.city, by: [p.id] });
-  npc.flags.adoptionCard = 'new';
-  npc.flags.fromCare = true;
-  recordPlayerAdoption(npc, [p.id]); // the adoption's own record (engine/origins.js)
-  bump(npc, 10);
-  p.hidden.karma = clamp(p.hidden.karma + 6);
-  const text = `The court makes it final. ${npc.firstName} is your child now, and takes your name. They ask if they can stay up late to celebrate. Of course they can.`;
-  closePlacement(state, x, 'adopted', text);
-  log(text, 'care', 'good');
-  milestone(`Adopted ${npc.firstName} from foster care.`, 'family');
-  return done(text);
-}
-/** Kinship care becomes legal guardianship: a court order, with a fee. */
-export function seekGuardianship(npc, state = S()) {
-  const p = state.player;
-  const x = placements(state).find((y) => y.childId === npc.id && y.kind === 'kinship');
-  if (!x) return fail('They are not living with you under kinship care.');
-  if (nowMonth(state) - x.start < 6) return fail('The court will hear it after six months.');
+/** Starts an application: training, a background check and a home study, over the year ahead. */
+export function applyToFoster() {
+  roll('apply');
+  const p = player();
+  const why = applyBlock(p);
+  if (why) return result(false, why, 'neutral');
+  const f = fost(p);
   const c = COUNTRIES[p.countryId];
-  const fee = localMoney(800, c);
-  if (p.finance.cash < fee) return fail(`The court fees come to ${fmtMoney(fee, c)}.`);
-  p.finance.cash -= fee;
-  x.kind = 'guardianship';
-  npc.flags.guardian = p.id;
-  bump(npc, 5);
-  const text = `The family court grants you legal guardianship of ${npc.firstName}. You can sign the school forms now, and the doctor's. It cost ${fmtMoney(fee, c)}.`;
-  log(text, 'care', 'good');
-  milestone(`Became ${npc.firstName}'s legal guardian.`, 'family');
-  recordEvent(state, 'guardianship', [p.id, npc.id], text);
-  return done(text);
+  f.status = 'applying';
+  f.appliedYear = S().year;
+  f.steps = {};
+  f.agency = `${p.city} ${rng.pick(['Family Services', 'Children\'s Services', 'Foster Care Agency', 'Child and Family Agency'])}`;
+  return result(true, `You applied to ${f.agency}. Over the next year: training evenings, a background check and a home study, someone walking round your home with a clipboard.${simplified(c.id) ? ' (How this works differs by country; this is a simplified version.)' : ''}`);
 }
 
-/** Takes a relative's child in (from the kinship scene). */
-export function takeInRelative(childId, state = S()) {
-  const p = state.player;
-  const n = state.npcs[childId];
-  const ok = careOk(state, childId, p.id);
-  if (!ok.ok) return ok;
-  if (placements(state).some((x) => x.childId === childId)) return fail('They already live with you.');
-  const x = { id: `kin_${childId}_${nowMonth(state)}`, childId, kind: 'kinship', start: nowMonth(state), plan: 24, reason: 'family', visits: 0, end: null, outcome: null };
-  K(state).placements.push(x);
-  n.flags.livesWith = 'player';
-  n.flags.placement = x.id;
-  bump(n, 8);
-  const text = `${n.firstName} comes to live with you. Their things fit in two suitcases. You clear a room.`;
-  log(text, 'care', 'good');
-  milestone(`Took in ${n.firstName}.`, 'family');
-  recordEvent(state, 'kinship', [p.id, n.id], text);
-  return done(text);
+/** The application moves on once a year: training, the check, the home study, then a decision. */
+function tickApplication(p) {
+  const f = fost(p);
+  if (f.status !== 'applying' || S().year <= f.appliedYear) return;
+  f.steps.training ??= S().year;
+  f.steps.background ??= S().year;
+  f.steps.home ??= S().year;
+  // Simplified: a criminal record (sealed ones included) ends the application; so does having no stable home.
+  if (convictionsOf(p, { sealed: true, juvenile: false }).length) return decline(f, 'The background check found a criminal record.');
+  if (p.flags.livesWithParents || p.legal?.incarceration) return decline(f, 'You no longer have a home of your own for a child to live in.');
+  f.status = 'approved';
+  f.approvedYear = S().year;
+  log(`${f.agency} approved you as a foster carer. They will be in touch when a child needs a home like yours.`, 'system', 'good');
+  milestone(`Approved as a foster carer, at ${p.age}.`, 'family');
+  recordEvent({ key: `foster:approved:${p.id}:${S().year}`, type: 'foster_approved', title: 'Approved as a foster carer', significance: 1, privacy: 'private' });
+  return undefined;
 }
 
-// ---------- Each month ----------
-
-onMonth('care', (state, m) => {
-  const p = state.player;
-  const k = K(state);
-  const c = k.carer;
-  const d = (...key) => dice(state, 'care', ...key, m);
-  // The home study takes three months; approval depends on the checks and how the conversations went.
-  if (c.status === 'applying' && m - c.applied >= 3) {
-    const okd = d('approve').chance(clamp(0.6 + (p.hidden.karma - 50) / 150 + c.training * 0.08, 0.2, 0.97));
-    c.status = okd ? 'approved' : 'none';
-    if (okd) c.approved = m;
-    const text = okd ? 'The fostering panel approves you. You are a foster carer now, and the agency may call at any hour.' : 'The panel decides not to approve you this time. You can apply again.';
-    log(text, 'care', okd ? 'good' : 'bad');
-    recordEvent(state, okd ? 'foster_approved' : 'foster_refused', [p.id], text);
-  }
-  const open = placements(state);
-  // The allowance toward each fostered or kinship child's keep.
-  const country = COUNTRIES[p.countryId];
-  for (const x of open) k.owed += localMoney(ALLOWANCE * (x.kind === 'foster' ? 1 : 0.6), country); // guardianship and kinship: a smaller allowance
-  // An approved carer with room is offered placements, every few months.
-  if (c.status === 'approved' && !k.offer && open.filter((x) => x.kind === 'foster').length < (c.capacity ?? 1) && p.alive && !p.legal?.incarceration && d('offer').chance(0.18)) {
-    const r = d('offerHow');
-    const reason = r.pick(REASONS).id;
-    k.offer = { key: `${m}`, age: r.int(0, 16), reason, plan: r.pick([6, 9, 12, 18, 24]), made: m };
-    storyBeat('fl_placement_offer', { words: { age: String(k.offer.age) } }, { source: 'family', must: true });
-  }
-  if (k.offer && m - k.offer.made > 2) k.offer = null; // the agency found someone else
-  // Each placement moves on: aging out, the plan's end (home, adoption, or a longer stay), a bad turn.
-  for (const x of open) {
-    const n = childOf(x, state);
-    if (!n?.alive) { closePlacement(state, x, 'ended', 'The placement ended.'); continue; }
-    if (n.age >= 18) {
-      const text = `${n.firstName} turns 18 and ages out of care. ${n.meters.relationship >= 60 ? 'They stay in touch, and come for Sunday dinner.' : 'They leave with a box of things and your number.'}`;
-      if (x.kind === 'foster') { n.role = n.meters.relationship >= 50 ? 'relative' : 'friend'; n.flags.title = 'Former foster child'; }
-      closePlacement(state, x, 'aged_out', text);
-      log(text, 'care', 'neutral');
-      continue;
-    }
-    if (x.kind !== 'foster') continue;
-    if (m - x.start >= x.plan) {
-      const back = REASONS.find((y) => y.id === x.reason)?.back ?? 0.4;
-      const home = d('home', x.id).chance(clamp(back + x.visits * 0.05, 0, 0.9));
-      if (home) {
-        const text = `${n.firstName}'s parent has done everything the court asked. ${n.firstName} goes home. You pack their things with them, and both of you cry.`;
-        n.role = 'relative'; n.flags.title = 'Former foster child'; n.meters.relationship = clamp(n.meters.relationship + 5);
-        closePlacement(state, x, 'reunified', text);
-        log(text, 'care', 'good');
-      } else {
-        x.plan += 12;
-        storyBeat('fl_care_review', { them: n.id }, { source: 'family', must: true });
-      }
-    } else if (n.meters.relationship < 15 && d('breakdown', x.id).chance(0.08)) {
-      const text = `It is not working, and everyone can see it. The agency moves ${n.firstName} to another home. You keep their drawing on the fridge.`;
-      n.role = 'relative'; n.flags.title = 'Former foster child';
-      closePlacement(state, x, 'moved', text);
-      log(text, 'care', 'bad');
-    }
-  }
-  // A relative's child whose parent cannot cope: once in a long while, family asks the player to step in.
-  if (ageIn(state, m) >= 25 && !p.legal?.incarceration && !p.flags.livesWithParents && d('kin').chance(0.0015)) {
-    const kids = p.npcIds.map((id) => state.npcs[id]).filter((n) => n?.alive && ['niece', 'grandchild'].includes(n.role) && n.age < 16 && !placements(state).some((x) => x.childId === n.id));
-    const kid = d('kinWho').pick(kids);
-    if (kid) storyBeat('fl_kinship', { them: kid.id }, { source: 'family', must: true });
-  }
-});
-
-/** The year's allowance, paid at the turn of the year (a yearly step, booked with the rest). */
-export function payAllowance(state = S()) {
-  const k = K(state);
-  if (!k.owed) return 0;
-  const paid = Math.round(k.owed);
-  state.player.finance.cash += paid;
-  k.owed = 0;
-  log(`The fostering allowance for the year comes to ${fmtMoney(paid, COUNTRIES[state.player.countryId])}.`, 'care', 'neutral');
-  return paid;
+function decline(f, why) {
+  f.status = 'declined'; f.declinedYear = S().year; f.declinedWhy = why;
+  log(`${f.agency} declined your application to foster. ${why}`, 'system', 'neutral');
 }
 
-/** Choices in the care scenes. */
-export function careChoice(story, choice, cast, state = S()) {
-  const n = cast.them ? state.npcs[cast.them] : null;
-  if (story === 'placement_offer') return answerOffer(choice === 'yes', state).text;
-  if (story === 'kinship') {
-    if (!n) return '';
-    if (choice === 'yes') return takeInRelative(n.id, state).text;
-    if (choice === 'help') { state.player.finance.cash -= Math.min(state.player.finance.cash, localMoney(500, COUNTRIES[state.player.countryId])); bump(n, 2); return 'You send money and call every week. Another relative takes them in.'; }
-    return `You cannot take ${n.firstName} in. They go into foster care, two towns away.`;
-  }
-  if (story === 'care_review') {
-    const x = n && placements(state).find((y) => y.childId === n.id);
-    if (!x) return '';
-    if (choice === 'longterm') { x.plan += 24; bump(n, 5); return `You tell the review you will keep ${n.firstName} for as long as they need. They look at you as if checking you mean it.`; }
-    if (choice === 'adopt') return adoptFromCare(n, state).text;
-    return 'The plan stays as it is, for another year.';
-  }
-  return '';
+/** Whether the agency might call: an approved carer, room in the household, at home. */
+export const canTakePlacement = (p = player()) => fost(p).status === 'approved' && activePlacements().length < MAX_PLACED && !p.legal?.incarceration && !p.flags.livesWithParents;
+
+/**
+ * A child who needs a home, with their family: made once, as real people. The child is not yet the player's; they
+ * become so only if the player says yes.
+ */
+export function referral(o = {}) {
+  roll('referral');
+  return people('referral', () => referralNow(o));
 }
+function referralNow({ age = null, reason = null } = {}) {
+  const p = player();
+  const c = COUNTRIES[p.countryId];
+  const last = rng.pick(c.names.last);
+  const mother = makeNpc({ role: 'fosterfamily', countryId: p.countryId, gender: 'female', lastName: last, age: rng.int(22, 44), relationship: rng.int(30, 55) });
+  const father = rng.chance(0.55) ? makeNpc({ role: 'fosterfamily', countryId: p.countryId, gender: 'male', lastName: last, age: mother.age + rng.int(-2, 6), relationship: rng.int(25, 50) }) : null;
+  const kidAge = age ?? rng.int(1, 15);
+  const child = makeNpc({ role: 'fosterchild', countryId: p.countryId, lastName: last, age: Math.min(kidAge, mother.age - 16), relationship: rng.int(30, 50),
+    appearance: inheritAppearance(mother, father ?? mother) });
+  child.parentIds = [mother.id, ...(father ? [father.id] : [])];
+  for (const parent of [mother, father].filter(Boolean)) { parent.flags.title = `${child.firstName}'s ${word(parent, 'father', 'mother', 'parent')}`; parent.flags.childOf = child.id; }
+  const why = reason ?? rng.pick(Object.keys(REASONS));
+  if (why === 'prison') (father ?? mother).flags.serving = { since: S().year, until: S().year + rng.int(1, 4) };
+  child.flags.careReason = why;
+  child.flags.needs = rng.pick(['some help catching up at school', 'a calm house and a routine', 'to stay at the same school if they can', 'to keep seeing their brother at weekends', 'time before they trust anyone']);
+  for (const n of [mother, father, child].filter(Boolean)) S().npcs[n.id] = n;
+  return { child, parents: [mother, father].filter(Boolean), reason: why };
+}
+
+/** Says yes to a referral: the child comes to live with the player. Their parents stay their parents. */
+export function acceptPlacement(ref, { kind = 'foster' } = {}) {
+  const p = player();
+  if (kind === 'foster' && !canTakePlacement(p)) return result(false, 'You cannot take a placement now.', 'neutral');
+  const f = fost(p);
+  const { child, parents, reason } = ref;
+  const id = uid('place');
+  const pl = { id, childId: child.id, kind, start: S().year, end: null, status: 'active', why: reason, goal: 'reunification', rights: 'intact',
+    parentIds: parents.map((x) => x.id), agency: f.agency ?? `${p.city} Family Services`, contact: reason === 'prison' ? 'visits' : 'regular',
+    reviews: [], progress: rng.int(10, 35), authority: 'day-to-day care' };
+  f.placements.push(pl);
+  child.role = kind === 'kinship' ? child.role : 'fosterchild';
+  child.flags.placementId = id;
+  child.flags.careSince = S().year;
+  child.lastInteractionAge = p.age;
+  for (const n of [child, ...parents]) if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
+  N.syncHousehold(S());
+  log(`${child.firstName} ${child.lastName}, ${child.age}, came to live with you${kind === 'kinship' ? '' : ` through ${pl.agency}`}: ${REASONS[reason]?.line ?? 'their family needs time'}. What ${word(child, 'he', 'she', 'they')} needs most: ${child.flags.needs}.`, 'system', 'good');
+  recordEvent({ key: `foster:placement:${id}`, type: 'care_placement', title: `${child.firstName} came to live with you`, people: [child.id], significance: 2, privacy: 'private' });
+  remember(child, 'placed', `Came to live with you at ${child.age}.`);
+  storyBeat('fc_welcome', { kid: child.id, words: { needs: child.flags.needs } }, { source: 'family', must: true });
+  return result(true, `${child.firstName} is living with you now.`, 'good');
+}
+
+/** Says no to a referral: the agency finds someone else. The child and family are not left in the player's life. */
+export function declineReferral(ref) {
+  for (const n of [ref.child, ...ref.parents]) delete S().npcs[n.id];
+  return result(true, 'You tell the agency you cannot take this placement. They thank you, and find someone else.', 'neutral');
+}
+
+// ---------- The year: reviews, and what they decide ----------
+
+/** Once a world year: applications move on; every placement is reviewed; a child who turns 18 is helped onward. */
+export function tickFostering() {
+  const p = player();
+  if (!p.alive) return;
+  roll('year');
+  fost(p);
+  tickApplication(p);
+  for (const pl of activePlacements()) review(pl);
+  // A relative's child with no parent able to care for them: the family is asked first (kinship care).
+  const kin = kinNeeding()[0];
+  if (kin && !kin.flags.kinAsked) { kin.flags.kinAsked = S().year; storyBeat('kin_care_offer', { kid: kin.id }, { source: 'family', must: true }); }
+  // The agency calls an approved carer with room, about one year in three.
+  if (canTakePlacement(p) && !p.fostering.offer && rng.chance(0.35)) {
+    const ref = referral();
+    p.fostering.offer = { childId: ref.child.id, parentIds: ref.parents.map((x) => x.id), reason: ref.reason, year: S().year };
+    storyBeat('fc_referral', { kid: ref.child.id, words: { reason: REASONS[ref.reason].line, age: String(ref.child.age) } }, { source: 'family', must: true });
+  }
+}
+
+/** The pending referral, as people. */
+export function pendingReferral() {
+  const o = fost().offer;
+  if (!o) return null;
+  const child = npc(o.childId);
+  return child ? { child, parents: o.parentIds.map(npc).filter(Boolean), reason: o.reason } : null;
+}
+export function answerReferral(yes) {
+  const ref = pendingReferral();
+  delete fost().offer;
+  if (!ref) return result(false, 'There is no referral waiting.', 'neutral');
+  return yes ? acceptPlacement(ref) : declineReferral(ref);
+}
+
+function review(pl) {
+  const child = npc(pl.childId);
+  if (!child?.alive) { close(pl, 'ended', 'The placement ended.'); return; }
+  const year = S().year;
+  if (year <= pl.start) return; // the first review is a year in
+  const parents = pl.parentIds.map(npc).filter((n) => n?.alive);
+  // A parent's progress toward having the child home: it follows their circumstances, not the carer's wishes.
+  const r = REASONS[pl.why] ?? REASONS.crisis;
+  // A parent serving a sentence comes out when it is served (flags.serving, set when the child came into care).
+  for (const n of parents) if (n.flags.serving && year >= n.flags.serving.until) delete n.flags.serving;
+  const inside = parents.some((n) => n.flags.serving || (n.flags.inmate && !n.flags.inmate.released));
+  pl.progress = clamp(pl.progress + (inside ? 0 : Math.round(rng.around(r.recover * 40, 14))), 0, 100);
+  const said = [];
+  if (child.age >= 18) { ageOut(pl, child); return; }
+  if (!parents.length) {
+    // No parent left: the plan changes to a permanent home: a relative, a guardianship, or an adoption.
+    pl.goal = 'permanency'; pl.rights = 'ended';
+    said.push('With no parent able to care for them, the plan is now a permanent home.');
+  } else if (pl.progress >= 70) {
+    reunify(pl, child, parents);
+    return;
+  } else if (year - pl.start >= 2 && pl.progress < 25 && pl.goal === 'reunification') {
+    // After years without progress, the court can change the plan; only it can end parents' rights.
+    pl.goal = 'permanency';
+    if (child.age < 14 && rng.chance(0.4)) { pl.rights = 'ended'; said.push('The court has ended the parents\' legal rights. The plan is a permanent home.'); } else said.push('The plan has changed to a permanent home, with the parents still the parents in law.');
+  } else said.push(pl.progress >= 45 ? 'The plan is still for them to go home, and it is going well.' : 'The plan is still for them to go home, in time.');
+  pl.reviews.push({ year, said: said.join(' '), progress: pl.progress, goal: pl.goal, rights: pl.rights });
+  storyBeat('fc_review', { kid: child.id, words: { said: said.join(' ') } }, { source: 'family', weight: 1 });
+  if (pl.goal === 'permanency' && !pl.askedPermanency) {
+    pl.askedPermanency = year;
+    storyBeat('fc_permanency', { kid: child.id, words: { rights: pl.rights === 'ended' ? 'Adoption is possible now, if everyone wants it.' : 'Their parents are still their parents in law: guardianship would keep it so.' } }, { source: 'family', must: true });
+  }
+}
+
+function close(pl, status, line) {
+  pl.status = status; pl.end = S().year; pl.outcome = line;
+  const child = npc(pl.childId);
+  if (child) { delete child.flags.placementId; child.flags.formerPlacement = pl.id; }
+  N.syncHousehold(S());
+}
+
+/** The child goes home to their family: a decision made at a review, by the agency and the court. */
+function reunify(pl, child, parents) {
+  close(pl, 'reunified', `${child.firstName} went home to ${parents.map((n) => n.firstName).join(' and ')}.`);
+  child.role = 'friend';
+  child.flags.title = 'Lived with you in foster care';
+  ensureLife(child);
+  log(`${child.firstName} has gone home to ${parents[0].firstName}. The house is quiet. You are invited to the first birthday back.`, 'system', 'neutral');
+  recordEvent({ key: `foster:reunified:${pl.id}`, type: 'care_reunification', title: `${child.firstName} went home`, people: [child.id, ...pl.parentIds], significance: 2, privacy: 'private' });
+  remember(child, 'wentHome', 'Packed your things with you when you went home, and cried in the car after.');
+  storyBeat('fc_goodbye', { kid: child.id }, { source: 'family', must: true });
+}
+
+/** At 18, the placement ends; the young person is helped toward a home of their own, or stays on for a while. */
+function ageOut(pl, child) {
+  const stays = child.meters.relationship >= 60;
+  close(pl, 'aged out', stays ? `${child.firstName} turned 18 and stayed on while they found their feet.` : `${child.firstName} turned 18 and moved into a place of their own, with help from the agency.`);
+  child.role = 'friend';
+  child.flags.title = 'Lived with you in foster care';
+  ensureLife(child);
+  log(stays ? `${child.firstName} turned 18. The agency's help with housing and college starts now, and ${word(child, 'he', 'she', 'they')} is welcome to stay on with you while it does.` : `${child.firstName} turned 18 and moved into a place of their own, with a grant for the deposit and someone at the agency to call.`, 'system', 'neutral');
+}
+
+/** Becomes the child's legal guardian: care and decisions for them, without ending their parents' place in law. */
+export function becomeGuardian(childId) {
+  const pl = placementOf(childId);
+  const child = npc(childId);
+  if (!pl || pl.goal !== 'permanency') return result(false, 'Guardianship is for when the plan is a permanent home.', 'neutral');
+  close(pl, 'guardianship', `You became ${child.firstName}'s legal guardian.`);
+  pl.guardian = { since: S().year, authority: 'legal guardian', until: 18 };
+  child.role = 'ward';
+  child.flags.guardianOf = player().id;
+  child.flags.title = 'Your ward';
+  N.syncHousehold(S());
+  log(`The court made you ${child.firstName}'s legal guardian. ${child.firstName} keeps ${word(child, 'his', 'her', 'their')} name, and ${word(child, 'his', 'her', 'their')} parents are still ${word(child, 'his', 'her', 'their')} parents.`, 'system', 'good');
+  recordEvent({ key: `foster:guardian:${pl.id}`, type: 'guardianship', title: `Became ${child.firstName}'s guardian`, people: [child.id], significance: 2, privacy: 'private' });
+  return result(true, `You are ${child.firstName}'s legal guardian now.`);
+}
+
+/** Adopts a child in care, where the court has ended the parents' rights: through the ordinary adoption record. */
+export function adoptFromCare(childId) {
+  const p = player();
+  const pl = placementOf(childId);
+  const child = npc(childId);
+  if (!pl || pl.rights !== 'ended') return result(false, 'Adoption is only possible once a court has ended the parents\' legal rights.', 'neutral');
+  if (child.age >= 12 && child.meters.relationship < 55) return result(false, `${child.firstName} is old enough to be asked, and is not ready to say yes. That is allowed.`, 'neutral');
+  close(pl, 'adopted', `${child.firstName} was adopted by you.`);
+  const partner = p.npcIds.map(npc).find((n) => n?.alive && ['spouse', 'partner'].includes(n.role));
+  child.flags.birthParentIds = [...(child.parentIds ?? [])];
+  child.parentIds = partner ? [partner.id] : [];
+  child.role = 'child';
+  child.adopted = true;
+  child.adoptionInfo = adoptionInfoFor(child, { date: dateNow(), countryId: p.countryId, city: p.city, by: [p.id, ...(partner ? [partner.id] : [])] });
+  child.flags.adoptionCard = 'new';
+  child.stats ??= { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
+  N.syncHousehold(S());
+  milestone(`Adopted ${child.firstName}, who had lived with you in foster care.`, 'family');
+  recordEvent({ key: `foster:adopted:${pl.id}`, type: 'adoption', title: `${child.firstName} was adopted`, people: [child.id], significance: 3, privacy: 'private' });
+  return result(true, `The adoption is final. ${child.firstName} is your ${word(child, 'son', 'daughter', 'child')}.`);
+}
+
+// ---------- Kinship care: a relative's child ----------
+
+/** A relative's child under 18 with no parent left to care for them, whom the player could take in. */
+export function kinNeeding() {
+  const p = player();
+  if (p.age < CARER_AGE || p.legal?.incarceration || p.flags.livesWithParents) return [];
+  return p.npcIds.map(npc).filter((k) => k?.alive && k.age < 18 && ['grandchild', 'niece'].includes(k.role) && !k.flags.kinCare
+    && (k.parentIds ?? []).length && k.parentIds.map(npc).every((x) => !x || !x.alive || (x.flags.inmate && !x.flags.inmate.released) || x.flags.serving));
+}
+
+/** Takes in a relative's child. Kinship care: their place in the family is unchanged; the arrangement is a placement. */
+export function takeInKin(childId) {
+  const kid = kinNeeding().find((k) => k.id === childId);
+  if (!kid) return result(false, 'They do not need a home just now.', 'neutral');
+  kid.flags.kinCare = true;
+  return acceptPlacement({ child: kid, parents: (kid.parentIds ?? []).map(npc).filter(Boolean), reason: kid.parentIds.map(npc).some((x) => x?.alive) ? 'prison' : 'crisis' }, { kind: 'kinship' });
+}
+
+/** A choice in a fostering scene (data/events/fostering.js). */
+export function fosterChoice(value, cast = {}) {
+  const child = npc(cast.kid);
+  const bump = (d) => { if (child) child.meters.relationship = clamp(child.meters.relationship + d); };
+  switch (value) {
+    case 'welcome_room': bump(6); return `You show ${child?.firstName} the room. ${child?.firstName} puts one thing on the shelf, and leaves the rest in the bag. That is all right.`;
+    case 'welcome_food': bump(5); return `You ask what ${child?.firstName} likes to eat, and make it. Nobody says much. Everybody eats.`;
+    case 'welcome_space': bump(3); return 'You tell them where everything is, and leave them be. You can hear the radio on, quietly.';
+    case 'ref_yes': return answerReferral(true).text;
+    case 'ref_no': return answerReferral(false).text;
+    case 'review_support': bump(3); return 'You tell the reviewer how things are going, and what you have seen. The plan is theirs to make.';
+    case 'review_concern': return 'You raise your concerns, and they are written down. The decision is the court\'s.';
+    case 'perm_guardian': return becomeGuardian(cast.kid).text;
+    case 'perm_adopt': return adoptFromCare(cast.kid).text;
+    case 'perm_later': return 'You say you need time to think. Nobody rushes you.';
+    case 'kin_yes': return takeInKin(cast.kid).text;
+    case 'kin_no': return 'You say you cannot take them in. Another relative, or a foster carer, will.';
+    case 'bye_hug': bump(4); return `${child?.firstName} hugs you at the door, quickly, and then again.`;
+    case 'bye_keep': bump(2); remember(child, 'keptInTouch', 'Wrote to you after you went home.'); return 'You give them your number, and mean it.';
+    default: return '';
+  }
+}
+

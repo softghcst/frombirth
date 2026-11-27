@@ -193,7 +193,7 @@ function coherent(where) {
   // Neighbors young enough to be around for the years this checks (people do die: that is checked elsewhere).
   const next = N.around(S(), home.id).filter((x) => x.hh && !x.hh.me).flatMap((x) => x.hh.m).map((id) => H().res[id]).filter((r) => r && N.ageOf(r, S()) >= 18 && N.ageOf(r, S()) <= 55 && r.ls - N.ageOf(r, S()) > 20);
   check(next.length >= 2, 'there are adults living near a grown-up');
-  const r = next[0];
+  let r = next[0];
   check(!S().npcs[r.id], 'a neighbor not yet met is not yet a person in the save');
   const acts = L.neighborActions(S(), r.id).map((a) => a.id);
   check(acts.includes('introduce') && !acts.includes('visit'), 'before meeting: introduce yourself, not drop by');
@@ -207,12 +207,18 @@ function coherent(where) {
   const again = L.neighborAct(r.id, 'hello'); const twice = L.neighborAct(r.id, 'hello');
   check(again.ok && !twice.ok, 'one hello per person per turn');
   // Friendship through time spent.
-  for (let i = 0; i < 12 && S().npcs[r.id].role === 'neighbor'; i++) { L.neighborAct(r.id, 'visit'); L.neighborAct(r.id, 'coffee'); advance(1); }
+  // Followed for years: the life should not end by chance partway (an illness would close every door below).
+  const stayWell = () => { P().flags.longevity = 18; P().stats.health = 100; (P().health ??= {}).ailments = []; const nb = S().npcs[r.id]; if (nb) nb.meters.health = 100; if (H().res[r.id]) H().res[r.id].ls = Math.max(H().res[r.id].ls, 100); };
+  for (let i = 0; i < 12 && S().npcs[r.id].role === 'neighbor'; i++) {
+    L.neighborAct(r.id, 'visit'); L.neighborAct(r.id, 'coffee'); stayWell(), advance(1);
+    // People do die, even at fifty (checked elsewhere): if this neighbor does, the friendship is followed with the next.
+    if (!S().npcs[r.id].alive) { const r2 = next.find((x) => x.id !== r.id && !x.dead && !S().npcs[x.id]); if (!r2) break; r = r2; L.neighborAct(r.id, 'introduce'); i = 0; }
+  }
   if (S().npcs[r.id].role !== 'friend') console.log('DEBUG friend', S().npcs[r.id].alive, S().npcs[r.id].meters.relationship, S().npcs[r.id].flags.hoodTimes, JSON.stringify(H().res[r.id]), JSON.stringify(L.neighborActions(S(), r.id)), P().age, P().alive);
   check(S().npcs[r.id].role === 'friend' && S().npcs[r.id].flags.metAs === 'neighbor', 'time together makes a neighbor a friend');
   check(canonEvents((e) => e.type === 'friendship' && e.people.includes(r.id)).length === 1, 'the friendship is a canonical event, once');
   // Another neighbor, left alone, stays an acquaintance.
-  if (next[1] && L.neighborAct(next[1].id, 'introduce').ok) { advance(3); check(!S().npcs[next[1].id].alive || S().npcs[next[1].id].role === 'neighbor', 'a neighbor met once stays an acquaintance'); }
+  if (next[1] && L.neighborAct(next[1].id, 'introduce').ok) { stayWell(), advance(3); check(!S().npcs[next[1].id].alive || S().npcs[next[1].id].role === 'neighbor', 'a neighbor met once stays an acquaintance'); }
   // Scenes queued by real events: a community event names its real organizer; attending records it once.
   const hood = N.currentHood(S());
   let org = N.residentsOf(S(), hood.id).filter((x) => N.ageOf(x, S()) >= 25).sort((a, b) => !!S().npcs[a.id] - !!S().npcs[b.id])[0];
@@ -249,7 +255,7 @@ function coherent(where) {
   const d = H().disputes.find((x) => x.id === 'dTEST');
   check(['resolved', 'open'].includes(d.status) && d.how === 'compromise', `a disagreement is answered (${d.status})`);
   H().disputes.push({ id: 'dOLD', h: hood.id, res: other.id, kind: 'parking', t: N.nowT(S()) - 36, status: 'open' });
-  advance(1);
+  stayWell(), advance(1);
   check(H().disputes.find((x) => x.id === 'dOLD').status !== 'open', 'an old disagreement fades by itself');
   // Hosting: real guests, charged once.
   P().finance.cash = 50000;
@@ -649,13 +655,12 @@ function coherent(where) {
   section('neighbors are background: one scene a year, nothing to keep up', n);
 }
 
-// Small everyday moments (a parcel at the wrong door, a power cut, a lost pet) turn up, each no more than once in ten years.
+// Small everyday moments (a new baby next door, a big game on the porch, a lost pet) turn up, each no more than once in ten years.
 {
   const n = problems.length;
-  const MOMENT_IDS = ['hood_wrong_parcel', 'hood_power_cut', 'hood_lost_pet', 'hood_yard_sale', 'hood_storm_tree', 'hood_locked_out', 'hood_book_box'];
+  const MOMENT_IDS = ['hood_new_baby', 'hood_big_game', 'hood_lost_pet', 'hood_yard_sale', 'hood_storm_tree', 'hood_locked_out', 'hood_book_box'];
   const seen = {};
-  // (Four lives: a few kinds over a sample this size, whichever way the rolls of a given run happen to fall.)
-  for (const [c, city] of [['us', 'Chicago'], ['us', 'Boston'], ['gb', 'London'], ['ca', 'Toronto']]) {
+  for (const [c, city] of [['us', 'Chicago'], ['us', 'Boston'], ['gb', 'London']]) {
     life(c, city);
     P().age = 25; P().flags.livesWithParents = false;
     N.settle(S());

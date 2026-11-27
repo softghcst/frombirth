@@ -25,7 +25,7 @@ export default [
     text: '{love} points out that you already have a toothbrush at theirs, and asks whether you should just find a place together.',
     choices: [
       { label: 'Yes', outcomes: [any('You carry boxes up three flights of stairs and argue, lovingly, about where the sofa goes.', 'good',
-        rel('love', 9), st('mood', 7), flag('livesWithParents', false), npcSet('love', { flags: { livesTogether: true } }))] },
+        rel('love', 9), st('mood', 7), flag('livesWithParents', false), npcSet('love', { flags: { livesTogether: true, livingTogether: true } }))] },
       { label: 'Not yet', outcomes: [any('{love} says that is fine. It is mostly fine.', 'neutral', rel('love', -5))] },
     ],
   },

@@ -14,7 +14,6 @@ import { store, player, npcsByRole, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { CLIQUES, CLIQUE_BY_ID } from '../data/schools.js';
 import { cureCondition, ailmentsOf } from './health/ailments.js';
-import { grounded } from './teenLife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const ed = () => player().education;
@@ -179,7 +178,6 @@ export function houseParty() {
   const e = ed();
   if (!e.enrolled || e.stage !== 'high') return result(false, 'House parties are a high school thing.', 'neutral');
   if (day().party) return result(false, 'One party a year is plenty.', 'neutral');
-  { const g = grounded(); if (g) return result(false, `You are grounded (${g.why}). No parties.`, 'neutral'); }
   day().party = true;
   const guests = mates().filter((n) => n.meters.relationship >= 40);
   const turnout = clamp(0.25 + (popularity() - 50) / 80 + (p.stats.charm - 50) / 150, 0.05, 0.9);
