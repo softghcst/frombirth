@@ -57,7 +57,8 @@ const VIEWS = {
           ...(t.finances.length ? [['Last year', `${fmtMoney(Math.abs(t.finances.at(-1).net), c)} ${t.finances.at(-1).net >= 0 ? 'made' : 'lost'}`]] : [['Money', 'Counted at the end of each year']])])}${growRows(t)}${growBtns(t)}</div>`).join('')}
         ${sisters.length ? `<div class="section-label">Company history</div>${titles.flatMap((t) => t.history.map((h) => ({ ...h, name: t.name }))).sort((x, y) => y.year - x.year).slice(0, 8).map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.name)}: ${esc(h.text)}</span></div>`).join('')}` : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('launch', 'Launch another title', { sub: 'With an editor hired to run it.' })}</div>` : '';
-      if (own || j.freelance) return `${ownCard}${company}${indie}${ways}`;
+      const resume = own && !jn.working(p) ? `<div class="card"><p class="muted" style="margin:0 0 6px">You own ${esc(own.name)}; its staff run it. You are not reporting for it yourself.</p>${btn('resume', 'Start reporting for it again', { sub: 'Journalism becomes your special career again.' })}</div>` : '';
+      if (own || j.freelance) return `${resume}${ownCard}${company}${indie}${ways}`;
       const school = p.age >= 10 && p.age <= 19 && p.education?.enrolled;
       return `<div class="card"><h3>Journalism</h3><p class="muted" style="margin:0">Find the story. Verify the facts. Tell the world. Newsrooms hire interns (students and recent graduates) and junior reporters (from 18, with a degree, an internship, or clips to show).</p>
           ${kv([['Writing', String(Math.round(j.skills.writing))], ['Reporting', String(Math.round(j.skills.reporting))], ['School paper articles', String(j.school.articles)], ...(j.intern ? [['Internship', `${jn.outlet(j.intern.outletId)?.name}, ${j.intern.year}`]] : [])])}</div>
@@ -282,6 +283,7 @@ const ACTIONS = {
     if (b) await x.say(jn.pitchLead(b));
   },
   follow: (id, x) => x.say(jn.followStory(id)),
+  resume: (_, x) => x.say(jn.resumeReporting()),
   disclose: (id, x) => x.say(jn.disclose(id)),
   help: (id, x) => x.say(jn.requestSupport(id)),
   lighter: (_, x) => x.say(jn.askLighterYear()),

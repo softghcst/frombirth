@@ -739,6 +739,26 @@ function report(s) {
   section('politics and medicine from the record: laws really passed, real hospitals and their chiefs');
 }
 
+// 21. Owning is not reporting: leaving journalism, selling up, and an heir with another career.
+{
+  const p = life(40);
+  p.finance.cash = 50_000_000;
+  const kind = Object.keys(OWN_KINDS).find((k) => !jn.startWhy(k, p));
+  jn.startPublication(kind, 'The Owner\'s Paper', 'careful');
+  check(jn.working(p) && sc.current() === 'journalism', 'starting a publication makes journalism the career');
+  const left = sc.leave();
+  check(left.ok && !sc.current() && jn.ownedOutlet(p) && !jn.working(p), 'leaving journalism: still the owner, no longer reporting');
+  jn.J().assigned = null; store.state.year += 1;
+  check(jn.assignYear(p).length === 0, 'no assignments for an owner who is not reporting');
+  check(!sc.whyNot('music', p), 'another special career is open');
+  check(jn.resumeReporting().ok && jn.working(p) && sc.current() === 'journalism', 'they can take reporting up again');
+  // Selling the last title, with nothing else, ends journalism as the career.
+  const o = jn.ownedOutlet(p);
+  o.finances.push({ year: store.state.year, revenue: 100000, costs: 1, net: 99999, audience: o.audience });
+  check(jn.sellPublication().ok && !sc.current(), 'selling the last title frees the special career');
+  section('owning is not reporting: leaving, selling up, and taking it up again');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');

@@ -33,7 +33,7 @@ import { registerEmployer, cityEmployers, employer } from './employers.js';
 import { hire, promote } from './career.js';
 import { levelOf } from './skills.js';
 import { exists } from './fame.js';
-import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial } from './specialCareer.js';
+import { claim as claimSpecial, whyNot as whySpecial, leave as leaveSpecial, current as currentSpecial, release as releaseSpecial } from './specialCareer.js';
 import { publicCases } from './investigations/crossover.js';
 import { J as casesJ } from './cases.js';
 import { polity, headTitle } from './polity.js';
@@ -133,7 +133,24 @@ export const isReporter = (p = player()) => p.career?.careerId === 'journalist' 
 /** A publication the player owns and runs (never the same as being employed by one). */
 export const ownedOutlet = (p = player()) => { const id = p.journalism?.owned; const o = id ? S().outlets[id] : null; return o && !o.closed ? o : null; };
 /** Whether the player is working as a journalist at all: on staff, freelance, or running their own publication. */
-export const working = (p = player()) => isReporter(p) || !!J(p).freelance || !!ownedOutlet(p);
+// An owner reports for their own titles only while journalism is their career: someone who inherited a paper, or who
+// took up something else, owns it (it runs, and is counted each year) without being handed assignments.
+export const working = (p = player()) => isReporter(p) || !!J(p).freelance || (!!ownedOutlet(p) && currentSpecial(p) === 'journalism');
+/** When nothing is left that makes journalism this life's career (no newsroom, no freelance, no title of their own). */
+function releaseIfDone(p = player()) {
+  if (!isReporter(p) && !J(p).freelance && !ownedTitles(p).length) releaseSpecial('journalism', p);
+}
+/** An owner who is not reporting takes it up again: it is their special career once more. */
+export function resumeReporting() {
+  const p = player();
+  if (!ownedOutlet(p)) return result(false, 'You do not own a publication.', 'neutral');
+  if (working(p)) return result(false, 'You are reporting already.', 'neutral');
+  const sc = claimSpecial('journalism', p);
+  if (sc) return result(false, sc, 'neutral');
+  J(p).assigned = null;
+  assignYear(p);
+  return result(true, `You start reporting for ${ownedOutlet(p).name} again.`, 'neutral');
+}
 export const actionsLeft = (p = player()) => { const j = J(p); return j.acts.year === year() ? Math.max(0, ACTIONS_A_YEAR - j.acts.used) : ACTIONS_A_YEAR; };
 function spend(n, p = player()) {
   const j = J(p);
@@ -1420,6 +1437,7 @@ export function closePublication() {
   o.history.push({ year: year(), text: 'Closed.' });
   J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Closed ${o.name}.` });
+  releaseIfDone(p);
   return result(true, `${o.name} publishes its last edition. The archive stays up.`, 'neutral');
 }
 /** Sells the publication: a buyer pays for its readers and its record. Their staff go with it. */
@@ -1437,6 +1455,7 @@ export function sellPublication() {
   o.history.push({ year: year(), text: `Sold for ${fmtMoney(price, country())}.` });
   J(p).owned = (J(p).sisters ?? []).shift() ?? null;
   J(p).history.push({ year: year(), text: `Sold ${o.name}.` });
+  releaseIfDone(p);
   return result(true, `You sell ${o.name} for ${fmtMoney(price, country())}. It carries on under its new owner.`);
 }
 
