@@ -1582,3 +1582,9 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .row .main small, .nav-row .nr-main small, .sec-row .nr-main small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .nr-bar small { display: inline; -webkit-line-clamp: unset; }
 .row .main strong { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+
+/* Family Life (ui/familyLife.js): the stages of a relationship, and why an action is not open yet. */
+.fl-stages { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.fl-stages .chip.past { opacity: 0.55; }
+.fl-stages .chip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.fl-why { display: block; margin: -4px 0 6px; font-size: 0.82rem; }

@@ -41,15 +41,17 @@ import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
+import { familyActions, familyAct } from '../../engine/familyLife.js';
+import { openFamilyLife, familyLifeLine } from '../familyLife.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
+const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 /** Roles always shown at the top of People. */
-const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
-  ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Children and grandchildren', ['child', 'stepchild', 'fosterchild', 'grandchild', 'greatgrandchild']],
+  ['Family', ['parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
   // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
@@ -126,7 +128,7 @@ async function offerHome(api, npc) {
   if (id) await report(api, bonds.house(npc.id, id));
 }
 
-async function proposeTo(api, npc) {
+export async function proposeTo(api, npc) {
   const c = country();
   const cash = player().finance.cash;
   const ring = await pickModal({
@@ -140,7 +142,7 @@ async function proposeTo(api, npc) {
   if (ring) await report(api, love.propose(npc.id, ring));
 }
 
-async function planWedding(api, npc) {
+export async function planWedding(api, npc) {
   if (npc.flags.royal) {
     // A royal match is not planned by the couple: the palace decides whether it happens at all.
     const ask = await confirmModal({ title: 'Ask the palace for consent?',
@@ -373,6 +375,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.alive ? bonds.bondActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
+    ...familyActions(npc), // a stepparent, stepsibling, stepchild or child in care (engine/familyLife.js)
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
     // A method in place (an implant, an IUD, a pill, a permanent method) greys it out, with why underneath.
@@ -498,7 +501,8 @@ export function openNpc(npc, api, back, o = {}) {
         // Something that happened because of it (a scene during the night) plays now, not next year.
         if (store.state.pendingEvents.length) await api.pending?.();
       }
-    } else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
+    } else if (id.startsWith('fl:')) await report(api, familyAct(id, npc));
+    else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
     // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
     if (id !== 'edit' && id !== 'dynasty') back?.();
     return undefined;
@@ -541,7 +545,7 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
+    const top = [['familyLife', 'Family Life', familyLifeLine(), 'home'], ['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
     const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
     const more = [];
     // What is not open yet is shown greyed, with why (the fifth item), so the player can see it is there.
@@ -580,6 +584,7 @@ export default {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'familyLife') return openFamilyLife(api);
       if (id === 'moments') return openMoments(api);
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
