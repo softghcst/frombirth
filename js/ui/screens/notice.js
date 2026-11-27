@@ -1,4 +1,4 @@
-// A moment before the title screen, every time the game opens: the people and events are fiction, and nothing in it
+// A moment before the title screen, when the game is opened afresh (not when a tab that was only away comes back): the people and events are fiction, and nothing in it
 // is advice. It moves on by itself after a couple of seconds; a tap or a key moves on at once. Settings → About
 // Pathways shows the same words.
 //
@@ -12,6 +12,21 @@ const LINES = [
 ];
 /** How long it stays, in milliseconds. */
 export const NOTICE_MS = 2600;
+
+/**
+ * This tab's session (sessionStorage: kept when the phone restores a tab it put to sleep; gone once the tab or app is
+ * closed): whether the notice has been shown, and which life is being played.
+ */
+const SEEN = 'pathways.session.notice';
+const PLAYING = 'pathways.session.playing';
+const get = (k) => { try { return sessionStorage.getItem(k); } catch { return null; } };
+const set = (k, v) => { try { if (v == null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch { /* storage unavailable */ } };
+export const session = {
+  seen: () => get(SEEN) === '1',
+  markSeen: () => set(SEEN, '1'),
+  /** With an argument, sets (or with null clears) the life being played; without, returns it. */
+  playing: (...a) => (a.length ? set(PLAYING, a[0]) : get(PLAYING)),
+};
 
 /** Whether to show it before the title screen. */
 export function noticeDue() {
