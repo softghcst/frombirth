@@ -105,3 +105,81 @@ lid line.
    corners, for a cheerful look.
 11. **Downturned, girl** / 12. **Downturned, boy**: eyes whose outer corners sit slightly lower than the inner corners,
     for a gentle, sweet look.
+
+## Girls' eyes: the full prompt
+
+Upload `kid_eyes_template.png` (first) and `kid_eyes_reference_girl_on_face.png` (second), with this, and replace
+`[DESIGN]` with one of the designs below:
+
+````text
+I am making eyes for a cute 2D cartoon life-simulation game. The FIRST image is a cartoon girl's face (about 7 to 13
+years old) with NO eyes. The SECOND image is the same face WITH the eyes whose STYLE I want.
+
+Draw ONE pair of eyes for the first image, in EXACTLY the style of the second image, but in this shape: [DESIGN].
+
+STYLE (copy it from the second image):
+- A bold dark brown upper lid line (#23140f), thicker than the lower line; a thin lower line, or one only at the outer
+  half of the eye.
+- Small, neat girl's lashes: three or four short flicks at the outer corner of the upper lid. Small and cute, not long
+  or dramatic. No lower lashes.
+- A COLORED iris in one warm brown (#7a4a2a), with a clearly visible round BLACK PUPIL in its center (not a solid
+  one-color iris), a slightly darker ring at the iris's edge, and one big white highlight near the top plus one small
+  one. The iris is large: its top tucks just under the upper lid, and only a little white shows at the sides and below.
+- White eye whites, flat colors, simple soft shading, no gradients, no texture, no shadow.
+- Friendly, bright and appealing, like the second image. The eye is never squinting, sleepy, angry or exaggerated:
+  every shape is drawn as cute and as open as every other.
+
+EXACT SIZE AND POSITION:
+- Output a PNG exactly 1254 x 1254 pixels with a FULLY TRANSPARENT background, with the eyes in exactly the same place
+  as in the second image, so it lines up when laid on top of the first.
+- Left eye centered at x = 507, y = 764; right eye centered at x = 747, y = 764 (x from the left, y from the top).
+  Each eye about 160 pixels wide (x = 428 to 587, and x = 668 to 827) and up to 136 pixels tall (y = 696 to 832).
+- Nothing above y = 690 (the eyebrows end there) or below y = 870, and nothing between x = 600 and x = 655 (the nose).
+- Both eyes the same, mirrored, looking straight ahead.
+
+Draw ONLY the two eyes (lids, lashes, whites, irises). No eyebrows, nose, mouth, skin or face: leave all of that
+transparent.
+````
+
+## Girls' eye designs
+
+Each design is a real, natural eye shape. The heritages after it are where the shape is **more common**, which tells
+the game how often to give it: any child of any heritage can still have any of them. Several designs share heritages,
+and every heritage has several designs.
+
+1. **Round and open.** A round eye, almost as tall as it is wide, with a clear crease above the lid and the whole iris
+   showing.
+   *European, Latino, Middle Eastern & North African, Sub-Saharan African, South Asian, Pacific Islander*
+2. **Classic almond.** Wider than tall, gently pointed at the inner and outer corners, a softly curved upper lid with a
+   visible crease.
+   *South Asian, Middle Eastern & North African, Latino, Southeast Asian, European, Sub-Saharan African*
+3. **Monolid.** An almond eye with a smooth upper lid and no crease above the lash line; the lid line sweeps gently
+   outward. Just as big, open and bright as the others.
+   *East Asian, Central Asian, Southeast Asian, Indigenous American*
+4. **Soft inner fold.** A gently rounded almond with a small, soft fold of skin over the inner corner (an epicanthic
+   fold) and a low, faint crease.
+   *East Asian, Southeast Asian, Central Asian, Indigenous American*
+5. **Double crease almond.** An almond eye with a neat, clearly drawn crease line close above the lashes, slightly
+   upturned at the outer corner.
+   *East Asian, Southeast Asian, Pacific Islander, Central Asian*
+6. **Hooded.** A soft fold of lid that sits low over the crease and partly covers the upper lid, with the eye still open
+   and bright underneath.
+   *European, East Asian, Middle Eastern & North African, Indigenous American, Central Asian*
+7. **Upturned.** An almond whose outer corners lift a little higher than the inner corners, for a cheerful look.
+   *East Asian, Southeast Asian, Latino, Middle Eastern & North African, European*
+8. **Downturned.** Outer corners sitting a little lower than the inner corners, for a gentle, sweet look.
+   *European, South Asian, Sub-Saharan African, Latino, Aboriginal & Torres Strait Islander*
+9. **Deep-set and large.** A large eye set a little deeper under the brow, with a defined crease and a slightly heavier
+   upper lid line; a big, dark-ringed iris.
+   *South Asian, Middle Eastern & North African, Aboriginal & Torres Strait Islander, European*
+10. **Wide and rounded.** A large, wide, rounded eye with a soft crease and a big iris, set a little further apart.
+    *Sub-Saharan African, Pacific Islander, Latino, Aboriginal & Torres Strait Islander*
+11. **Low-crease almond.** A long almond with a low crease close to the lashes and a gently flat upper lid line.
+    *Indigenous American, Central Asian, Southeast Asian, East Asian*
+12. **Upturned with fluttery lashes** (eyes 25's shape; upload `kid_eyes_reference_shape_25_on_face.png` as the second
+    image for this one). Upturned almond with slightly fuller lashes, a brown iris and a clearly visible black pupil.
+    *Latino, Middle Eastern & North African, South Asian, Southeast Asian, European*
+
+How many designs each heritage has: East Asian 6, Southeast Asian 7, South Asian 5, Central Asian 6, Middle Eastern &
+North African 7, Sub-Saharan African 5, European 7, Latino 7, Indigenous American 4, Pacific Islander 4, Aboriginal &
+Torres Strait Islander 3.
