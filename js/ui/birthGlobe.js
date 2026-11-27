@@ -191,7 +191,7 @@ export async function openBirthGlobe(state, o = {}) {
     const lat0 = 12 + (at.lat * 0.9 - 12) * spin;
     const c0 = { cx: w * 0.5, cy: h * 0.46 }; const c1 = center();
     const cx = c0.cx + (c1.cx - c0.cx) * zoom; const cy = c0.cy + (c1.cy - c0.cy) * zoom;
-    const r = base() * (1 + (wide() ? 1.1 : 1.5) * zoom);
+    const r = base() * (1 + (wide() ? 2.1 : 2.3) * zoom);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(sky, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
