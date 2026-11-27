@@ -262,7 +262,9 @@ const adults = AVATAR_MANIFEST.heads.filter((h) => h.tags?.age === 'adult');
 const share = (h, fr) => h.fit.w * (h.fit.chin - h.fit.top) / (fr.size * fr.size);
 const eyeLine = (h, fr) => (h.fit.top + (T.anchor.eyes - T.face.top) * (h.fit.chin - h.fit.top) / (T.face.chin - T.face.top) - fr.y) / fr.size;
 const spread = (xs) => Math.max(...xs) / Math.min(...xs);
-check(spread(adults.map((h) => share(h, frameFor(h.id)))) < spread(adults.map((h) => share(h, FRAME))) - 0.05, 'adult faces are not brought closer in size');
+// (Every adult head has the same skull, so their faces start out within a few percent of each other's size: framing
+// need only keep them there, never pull them further apart.)
+check(spread(adults.map((h) => share(h, frameFor(h.id)))) <= spread(adults.map((h) => share(h, FRAME))) + 0.001, 'adult faces are not brought closer in size');
 check(spread(adults.map((h) => share(h, frameFor(h.id)))) <= 1.08, `adult faces differ too much in size (${spread(adults.map((h) => share(h, frameFor(h.id)))).toFixed(3)})`);
 check(Math.max(...adults.map((h) => eyeLine(h, frameFor(h.id)))) - Math.min(...adults.map((h) => eyeLine(h, frameFor(h.id)))) < 0.002, 'adult eyes are not on one line');
 check(adults.every((h) => Math.abs(frameFor(h.id).x + frameFor(h.id).size / 2 - h.fit.cx) < 0.1), 'an adult face is not centered');

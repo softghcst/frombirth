@@ -113,19 +113,36 @@ export const VENUES = {
  * elsewhere `name` is used. `from`: the year it is first possible.
  */
 export const COMMUNITY_EVENTS = {
-  welcome: { name: 'Welcome gathering', who: 'all', text: 'a get-together to welcome the newest households' },
-  picnic: { name: 'Community picnic', who: 'all', text: 'a picnic in the park, everyone bringing something' },
+  welcome: { scene: 'hood_event_welcome', name: 'Welcome gathering', who: 'all', text: 'a get-together to welcome the newest households' },
+  picnic: { scene: 'hood_event_picnic', name: 'Community picnic', who: 'all', text: 'a picnic in the park, everyone bringing something' },
   street_party: { name: 'Neighborhood festival', who: 'all', blocks: ['street', 'lane'], names: { us: 'Block party', ca: 'Block party', uk: 'Street party', ie: 'Street party', au: 'Street party', nz: 'Street party' },
     text: 'a party in the street, with tables pushed together and music from somebody\'s window' },
-  sale: { name: 'Neighborhood sale', who: 'all', names: { us: 'Yard sale', ca: 'Garage sale', au: 'Garage sale', uk: 'Street sale' }, text: 'a sale of everything people no longer need, laid out in front of the houses' },
-  cleanup: { name: 'Community cleanup', who: 'all', text: 'a morning of picking up litter and clearing the shared spaces' },
-  fundraiser: { name: 'Charity fundraiser', who: 'all', text: 'a fundraiser for a local cause, with cakes and a raffle' },
-  holiday: { name: 'Holiday gathering', who: 'all', text: 'a gathering for the holidays, with food and lights' },
-  sports_day: { name: 'Neighborhood sports day', who: 'all', from: 1880, text: 'races, games and a tug of war' },
-  meeting: { name: 'Community meeting', who: 'adult', text: 'a meeting about the neighborhood: the roads, the park and what people want changed' },
-  festival: { name: 'Local festival', who: 'all', text: 'the local festival, with stalls, music and half the town out' },
+  sale: { scene: 'hood_event_sale', name: 'Neighborhood sale', who: 'all', names: { us: 'Yard sale', ca: 'Garage sale', au: 'Garage sale', uk: 'Street sale' }, text: 'a sale of everything people no longer need, laid out in front of the houses' },
+  cleanup: { scene: 'hood_event_cleanup', name: 'Community cleanup', who: 'all', text: 'a morning of picking up litter and clearing the shared spaces' },
+  fundraiser: { scene: 'hood_event_fundraiser', name: 'Charity fundraiser', who: 'all', text: 'a fundraiser for a local cause, with cakes and a raffle' },
+  holiday: { scene: 'hood_event_holiday', name: 'Holiday gathering', who: 'all', text: 'a gathering for the holidays, with food and lights' },
+  sports_day: { scene: 'hood_event_sports_day', name: 'Neighborhood sports day', who: 'all', from: 1880, text: 'races, games and a tug of war' },
+  meeting: { scene: 'hood_event_meeting', name: 'Community meeting', who: 'adult', text: 'a meeting about the neighborhood: the roads, the park and what people want changed' },
+  festival: { scene: 'hood_event_festival', name: 'Local festival', who: 'all', text: 'the local festival, with stalls, music and half the town out' },
   building: { name: 'Building gathering', who: 'all', blocks: ['building'], text: 'drinks and snacks in the shared courtyard of the building' },
-  harvest: { name: 'Harvest supper', who: 'all', profiles: ['rural', 'smalltown'], text: 'a harvest supper in the hall, with long tables' },
+  harvest: { scene: 'hood_event_harvest', name: 'Harvest supper', who: 'all', profiles: ['rural', 'smalltown'], text: 'a harvest supper in the hall, with long tables' },
+};
+
+/**
+ * What a neighbor may ask a hand with: the words for the life story, and the scene that tells it (each its own, so the
+ * same request does not read the same in every life). `from`: the first year it can be asked.
+ */
+export const NEIGHBOR_NEEDS = {
+  move: { scene: 'hood_hand_move', words: 'move a wardrobe up the stairs' },
+  meal: { scene: 'hood_hand_meal', words: 'have a hot meal brought round while they recover from an operation' },
+  garden: { scene: 'hood_hand_garden', words: 'get the garden back under control' },
+  pet: { scene: 'hood_hand_pet', words: 'have someone feed the animals while they are away' },
+  errand: { scene: 'hood_hand_errand', words: 'get a few things from the shops this week' },
+  gutter: { scene: 'hood_hand_gutter', words: 'clear the leaves out of the gutters before the rain' },
+  kids: { scene: 'hood_hand_kids', words: 'watch the children for an evening' },
+  ride: { scene: 'hood_hand_ride', words: 'get a ride to a hospital appointment', from: 1935 },
+  letter: { scene: 'hood_hand_letter', words: 'make sense of an official letter' },
+  tech: { scene: 'hood_hand_tech', words: 'set up a new computer', from: 1995 },
 };
 
 /** What a player can host. cost: base units, paid once. */

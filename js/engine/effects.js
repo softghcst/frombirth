@@ -64,6 +64,7 @@ import { originsChoice } from './origins.js';
 import { addTrait } from './traits.js';
 import { stageChoice } from './lifeStages.js';
 import { feel } from './sentiments.js';
+import { teenYearsChoice } from './teenYears.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -220,6 +221,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'blended': ctx.note = blendedChoice(e.value, ctx.cast); break;
+      case 'teenYears': ctx.note = teenYearsChoice(e.value, ctx.cast); break;
       case 'foster': ctx.note = fosterChoice(e.value, ctx.cast); break;
       case 'callback': ctx.note = callbackChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;

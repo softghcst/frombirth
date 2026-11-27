@@ -7,6 +7,11 @@ fits the result to every head shape.
 
 ## Steps
 
+For an AI image tool (ChatGPT), use `assets/hair_templates/adult_head_template.png` instead: the same head and framing
+at the tool's own size (1254 x 1254), with a prompt that gives exact pixel positions (`assets/CHATGPT_WOMENS_HAIR_PROMPTS.md`).
+For a drawing app:
+
+
 1. Open `TEMPLATE_base_head.png` (2048 x 2048) as the bottom layer of a new 2048 x 2048 canvas.
 2. Draw the hair on a layer above it, lined up on that head.
 3. Hide the head layer and export the hair alone as a PNG with a transparent background, named after the style

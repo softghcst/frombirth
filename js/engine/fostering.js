@@ -29,6 +29,7 @@ import { adoptionInfoFor } from './birthTag.js';
 import { dateNow } from './birthday.js';
 import * as N from './neighborhood.js';
 import { COUNTRIES } from '../data/countries.js';
+import { enrollFromCare } from './kidschool.js';
 
 /** This file's dice: keyed to the life, the year and what is being decided (engine/keyedDice.js), never the game's own. */
 let rng = keyedDice('foster');
@@ -163,6 +164,9 @@ export function acceptPlacement(ref, { kind = 'foster' } = {}) {
   child.flags.placementId = id;
   child.flags.careSince = S().year;
   child.lastInteractionAge = p.age;
+  // A life of their own (school marks, friends, plans), made on dice of its own, and school from the first week.
+  people(`life/${child.id}`, () => ensureLife(child));
+  enrollFromCare(child);
   for (const n of [child, ...parents]) if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
   N.syncHousehold(S());
   log(`${child.firstName} ${child.lastName}, ${child.age}, came to live with you${kind === 'kinship' ? '' : ` through ${pl.agency}`}: ${REASONS[reason]?.line ?? 'their family needs time'}. What ${word(child, 'he', 'she', 'they')} needs most: ${child.flags.needs}.`, 'system', 'good');

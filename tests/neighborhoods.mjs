@@ -17,6 +17,7 @@ const N = await import('../js/engine/neighborhood.js');
 const L = await import('../js/engine/neighborhoodLife.js');
 const turns = await import('../js/engine/turns.js');
 const estate = await import('../js/engine/realEstate.js');
+const { deathRoll } = await import('../js/engine/death.js');
 const { saveGame, loadGame } = await import('../js/save.js');
 const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { die } = await import('../js/engine/death.js');
@@ -287,6 +288,7 @@ function coherent(where) {
   const n = problems.length;
   life('uk', 'Leeds');
   const p = P(); p.age = 32; p.flags.livesWithParents = false; p.finance.cash = 2000000; p.career.salary = 90000;
+  deathRoll.spared = true; // these checks follow one home through buying, letting and selling: the life should not end by chance partway
   N.settle(S());
   check(N.dwelling(S()).kind === 'rent' && N.currentHome(S()).own !== 'player', 'renting: a home the player lives in and does not own');
   // Roommate: rent shared, never money made.
@@ -331,6 +333,7 @@ function coherent(where) {
   check(!sold.asset && sold.own !== 'player' && sold.sold, 'a sold home is no longer the family\'s');
   check(sold.occ.some((o) => N.hoods(S()).hhs[o.hh]?.me), 'and still remembers the family lived there');
   coherent('after renting, buying, letting and selling');
+  deathRoll.spared = false;
   section('homes and money: ownership, renting, mortgages, roommates and tenants are each kept once, in their own records', n);
 }
 

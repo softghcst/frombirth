@@ -27,7 +27,7 @@ import { hire, unmet } from '../js/engine/career.js';
 import { newborn } from '../js/engine/children.js';
 import { continueAs, heirs } from '../js/engine/legacy.js';
 import { meetSomeone } from '../js/engine/romance.js';
-import { mayVote, polity } from '../js/engine/polity.js';
+import { mayVote, polity, joinParty } from '../js/engine/polity.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { profile } from '../js/engine/world.js';
 import { ROOTS } from '../js/data/economy.js';
@@ -167,6 +167,8 @@ play('E', () => {
 play('F', () => {
   scenario('F');
   p = adult({ countryId: 'us', city: 'Austin' }, 40, 300000);
+  // A mayor with a party behind them: the country's largest (an independent faces a council of other people's parties).
+  { const w = polity('us'); const big = [...w.parties].sort((a, b) => (w.seats[b.id] ?? 0) - (w.seats[a.id] ?? 0))[0]; if (big) joinParty(big.id); }
   politics.takeOffice(politics.offices().find((o) => o.id === 'mayor'));
   check(p.politics?.officeId === 'mayor' && local.runsPlace() && !!towns.moveBlock(), 'mayor of Austin, and tied to it');
   const rent0 = rentFactor('us'); const health0 = healthFactor('us');

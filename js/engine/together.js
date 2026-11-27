@@ -26,6 +26,7 @@ import { storyBeat } from './storyDirector.js';
 import { houseRules, hourText, laterCurfew, earlierCurfew } from './houseRules.js';
 import { groupOf, groupActivity } from './friendGroups.js';
 import { arrangement as blendedArrangement, askToLiveWith, askToSeeMore, askCourtToLookAgain } from './blended.js';
+import { couldBeBest, chooseBestFriend, promOpen, goToPromWith, OUTFITS, outfitCost, PROM_AGE } from './teenYears.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -132,6 +133,16 @@ export const BONDS = [
       if (caught) { trust(n, -15); bump(n, -5); return { text: `${n.firstName} knew. ${cap(he(n))} did not even shout, which was worse. ${cap(he(n))} will check your story for a while now.`, tone: 'bad' }; }
       trust(n, -3); mood(2); return { text: `${n.firstName} believed you. You feel less good about it than you expected.`, tone: 'neutral' };
     } },
+
+  // ---------- Friends, when you are a teenager (engine/teenYears.js) ----------
+  { id: 'bestFriend', group: 'together', roles: FRIEND, age: [10, 17], if: (n) => couldBeBest(n), label: 'Make them your best friend',
+    run: (n) => chooseBestFriend(n) },
+  { id: 'bffDay', group: 'together', roles: FRIEND, age: [10, 17], if: (n) => n.flags.title === 'Best friend', label: 'A whole day with your best friend',
+    run: (n) => { bump(n, 6); mood(5); return rng.pick([`You and ${n.firstName} make a playlist for a road trip neither of you can drive on yet.`, `A whole Saturday at ${n.firstName}'s, talking about everything and nothing.`, `${n.firstName} tells you a secret, and you keep it.`]); } },
+  { id: 'prom', group: 'together', roles: [...FRIEND, 'partner'], age: [PROM_AGE, PROM_AGE], if: (n) => promOpen() && Math.abs(n.age - player().age) <= 2,
+    label: (n) => (n.role === 'friend' ? 'Go to prom together, as friends' : 'Ask them to prom'),
+    options: () => OUTFITS.map((o) => ({ value: o.value, label: o.label, sub: player().flags.livesWithParents ? 'Your family pays' : fmtMoney(outfitCost(o), country()) })),
+    run: (n, outfit) => goToPromWith(n, outfit) },
 
   // ---------- Parents, when you are a teenager ----------
   { id: 'curfew', group: 'ask', roles: PARENT, age: [13, 17], if: () => atHome(), label: 'Ask for a later curfew',
@@ -497,7 +508,7 @@ export const BONDS = [
   { id: 'moveInTogether', group: 'together', roles: ['partner'], age: [18, 120], them: [18, 130], if: (n) => !n.flags.livingTogether, label: 'Move in together',
     run: (n) => {
       if (!rng.chance(clamp((n.meters.relationship - 35) / 50, 0.1, 0.95))) { bump(n, -3); return { text: `${n.firstName} said ${he(n)} is not ready yet. It stung.`, tone: 'neutral' }; }
-      n.flags.livingTogether = store.state.year; player().flags.livesWithParents = false; bump(n, 8); remember(n, 'movedInTogether', 'Moved in with you.'); milestone(`Moved in with ${n.firstName}.`, 'love');
+      n.flags.livingTogether = store.state.year; n.flags.livesTogether = true; player().flags.livesWithParents = false; bump(n, 8); remember(n, 'movedInTogether', 'Moved in with you.'); milestone(`Moved in with ${n.firstName}.`, 'love');
       return `You and ${n.firstName} moved in together. Two of everything, and one of you will have to give up the ugly lamp.`;
     } },
   { id: 'future', group: 'talk', roles: PARTNER, age: [18, 120], label: 'Talk about the future',

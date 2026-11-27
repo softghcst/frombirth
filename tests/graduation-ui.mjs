@@ -99,7 +99,7 @@ const steps2 = await page.locator('[data-step]').evaluateAll((b) => b.map((x) =>
 check(steps2.includes('study') && !steps2.includes('uni') && !steps2.includes('keep'), `after a degree it offers more study straight away, not university again (${steps2})`);
 check((await page.locator('.grad-school').textContent()).includes('Marlowe College'), 'the university is named on the diploma');
 await page.click('[data-step="rest"]');
-await page.waitForTimeout(150);
+await page.waitForFunction(() => !document.querySelector('.grad'), null, { timeout: 3000 }).catch(() => {}); // closing has an animation: on a busy machine it takes a moment
 check(await page.locator('.grad').count() === 0, 'Take some time off just closes it');
 
 check(!errors.length, `no page errors (${errors.join('; ')})`);
