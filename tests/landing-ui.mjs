@@ -82,7 +82,8 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   await page.locator('#modal-root .choice-btn', { hasText: 'Appearance' }).click();
   await page.locator('#modal-root .choice-btn', { hasText: 'Landing Page' }).click();
   await page.waitForSelector('.lpk-grid');
-  check(await page.locator('.lpk-opt[role="radio"]').count() === 4 && await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'auto', 'four choices, following the theme by default');
+  check(await page.locator('.lpk-opt[role="radio"]').count() === 5 && await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'auto', 'five choices, following the theme by default');
+  check(/light mode/.test(await page.locator('[data-landing-opt="auto"]').innerText()) && /8pm/.test(await page.locator('[data-landing-opt="clock"]').innerText()), 'each says plainly what it follows');
   check(await page.evaluate(() => [...document.querySelectorAll('.lpk-thumb')].every((t) => /hero_/.test(getComputedStyle(t).backgroundImage) || t.classList.contains('lpk-auto'))), 'each shows a picture of its scene');
   await page.locator('[data-landing-opt="daydream"]').click();
   check(await page.locator('.lpk-opt[aria-checked="true"]').getAttribute('data-landing-opt') === 'daydream', 'Daydream is chosen');
@@ -102,6 +103,26 @@ check(JSON.stringify(layouts.afterglow) === JSON.stringify(layouts.midnight) && 
   check(await look(page) === 'daydream', 'changing the theme or the app icon leaves the landing page alone');
   check(!page.errors.length, `settings: no page errors (${page.errors.join('; ')})`);
   await page.close();
+}
+
+// 2b. The scene keeps up: the device turning dark switches Follow your theme at once; Day and night goes by the clock.
+{
+  const page = await freshPage({ scheme: 'light' });
+  await page.reload(); await toTitle(page);
+  check(await look(page) === 'afterglow', 'a light device shows Afterglow');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.waitForTimeout(200);
+  check(await look(page) === 'midnight', 'when the device turns dark, the open landing page turns to Midnight');
+  await page.close();
+  for (const [hour, want] of [[8, 'afterglow'], [19, 'afterglow'], [20, 'midnight'], [7, 'midnight']]) {
+    const p2 = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
+    await p2.clock.install({ time: new Date(2026, 5, 1, hour, 0, 0) });
+    await p2.goto(`http://localhost:${port}/index.html`);
+    await p2.evaluate(() => { localStorage.clear(); localStorage.setItem('frombirth.landing', 'clock'); });
+    await p2.reload(); await toTitle(p2);
+    check(await look(p2) === want, `Day and night at ${hour}:00 shows ${want} (${await look(p2)})`);
+    await p2.close();
+  }
 }
 
 // 3. The buttons, the lives, the graves, and nothing changed by looking.

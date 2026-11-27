@@ -134,7 +134,7 @@ export function openLandingPage() {
   return new Promise((resolve) => {
     const m = openModal('<div data-landingpick></div>', { dismissable: true, title: 'Landing Page', onDismiss: () => resolve() });
     const root = m.el.querySelector('[data-landingpick]');
-    const thumb = (id) => (id === 'auto'
+    const thumb = (id) => (id === 'auto' || id === 'clock'
       ? '<span class="lpk-thumb lpk-auto"><span style="background-image:url(./assets/branding/hero_afterglow-thumb.webp)"></span><span style="background-image:url(./assets/branding/hero_midnight-thumb.webp)"></span></span>'
       : `<span class="lpk-thumb" style="background-image:url(./assets/branding/hero_${id}-thumb.webp)"></span>`);
     const render = () => {
