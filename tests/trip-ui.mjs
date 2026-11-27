@@ -22,6 +22,8 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const port = server.address().port;
 
+/** Through the journey scene (js/ui/journey.js): a tap takes the window seat and flies on; a moment in the air is answered. */
+const throughJourney = async (page) => { for (let i = 0; i < 30 && await page.locator('.journey-screen').count(); i++) { const ch = page.locator('.journey-screen [data-choice]').first(); const on = page.locator('.journey-screen [data-onward]'); if (await ch.count()) await ch.click().catch(() => {}); else if (await on.count()) await on.click().catch(() => {}); else await page.locator('.journey-screen').click({ position: { x: 5, y: 5 } }).catch(() => {}); await page.waitForTimeout(300); } };
 const problems = [];
 const check = (c, m) => { if (!c) problems.push(m); };
 const browser = await chromium.launch();
@@ -60,9 +62,9 @@ check(/Cancel This Trip/.test(before) && /Your Share/.test(before), 'buttons and
 await go.click();
 // The way there first: the journey on a map, home to Chicago (js/ui/journey.js); a tap skips it.
 await page.waitForSelector('.journey-screen', { timeout: 8000 }).catch(() => {});
-check(/Chicago/.test(await page.locator('.journey-head').innerText().catch(() => '')) && await page.locator('.journey-map animateMotion').count() === 1, 'leaving shows the journey there on a map');
+check(/Chicago/.test(await page.locator('.journey-head').innerText().catch(() => '')) && await page.locator('.journey-screen canvas').count() === 1, 'leaving shows the journey there on the globe');
 if (process.env.SHOT) { await page.waitForTimeout(1500); await page.screenshot({ path: `${process.env.SHOT}/trip-journey.png` }); }
-await page.locator('.journey-screen').click().catch(() => {});
+await throughJourney(page);
 await page.waitForSelector('.journey-screen', { state: 'detached', timeout: 5000 }).catch(() => {});
 // The trip's moments come first, one card at a time: each a scene with choices; answering moves on.
 let moments = 0;

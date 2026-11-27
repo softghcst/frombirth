@@ -7,6 +7,7 @@ import { esc } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { birthOdds } from '../data/births.js';
 import { coords } from '../engine/geo.js';
+import { RAD, rings, drawGlobe, stars, flagsShown } from './globe.js';
 
 export const BIRTH_GLOBE_KEY = 'frombirth.birthGlobe';
 /** Whether a life begins with the globe. On by default; kept in this browser for every life. */
@@ -17,80 +18,12 @@ export function setBirthGlobe(on) {
   try { if (on) localStorage.removeItem(BIRTH_GLOBE_KEY); else localStorage.setItem(BIRTH_GLOBE_KEY, 'off'); } catch { /* storage unavailable */ }
 }
 
-const RAD = Math.PI / 180;
+
 const SPIN_MS = 4400; // spinning down and turning to the place
 const ZOOM_MS = 2600; // the last part of it: closing in
-let RINGS = null;
-
-/** The land outlines as rings of unit vectors on the sphere (from js/data/worldLand.js, x = lon + 180, y = 90 - lat). */
-async function rings() {
-  if (RINGS) return RINGS;
-  const { LAND_PATH } = await import('../data/worldLand.js');
-  RINGS = LAND_PATH.split('M').filter(Boolean).map((part) => {
-    const n = part.replace(/Z/g, '').trim().split(/[\s,]+/).map(Number);
-    const pts = [];
-    for (let i = 0; i + 1 < n.length; i += 2) {
-      const lon = (n[i] - 180) * RAD; const lat = (90 - n[i + 1]) * RAD;
-      pts.push([Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)]);
-    }
-    return pts;
-  }).filter((r) => r.length > 2);
-  return RINGS;
-}
-
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
-
-/**
- * Draws the globe turned so that (lon0, lat0) faces the viewer, radius r, centerd at (cx, cy). Points on the far side
- * are pushed to the rim, which is enough to keep coastlines whole as they turn away.
- */
-function drawGlobe(ctx, land, { cx, cy, r, lon0, lat0 }) {
-  const sl = Math.sin(lon0 * RAD); const cl = Math.cos(lon0 * RAD);
-  const sp = Math.sin(lat0 * RAD); const cp = Math.cos(lat0 * RAD);
-  // The atmosphere, then the sea, shaded from the light.
-  const glow = ctx.createRadialGradient(cx, cy, r * 0.96, cx, cy, r * 1.18);
-  glow.addColorStop(0, 'rgba(140, 200, 255, .55)'); glow.addColorStop(1, 'rgba(140, 200, 255, 0)');
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2); ctx.fill();
-  const sea = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
-  sea.addColorStop(0, '#6FC3F0'); sea.addColorStop(0.65, '#2F7FC4'); sea.addColorStop(1, '#174E8C');
-  ctx.fillStyle = sea; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-  ctx.save();
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = '#9AD17F'; ctx.strokeStyle = '#4E8A45'; ctx.lineWidth = Math.max(0.6, r / 260); ctx.lineJoin = 'round';
-  for (const ring of land) {
-    let seen = false;
-    ctx.beginPath();
-    for (let i = 0; i < ring.length; i++) {
-      const [x0, y0, z0] = ring[i];
-      // Turn the globe: first about the pole by the longitude, then tip it by the latitude.
-      const x1 = x0 * cl + y0 * sl; const y1 = -x0 * sl + y0 * cl;
-      const depth = x1 * cp + z0 * sp; const up = -x1 * sp + z0 * cp;
-      let px = y1; let py = up;
-      if (depth < 0) { const m = Math.hypot(px, py) || 1; px /= m; py /= m; } else seen = true;
-      const sx = cx + px * r; const sy = cy - py * r;
-      if (i) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy);
-    }
-    if (!seen) continue;
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-  // Light from the upper left; night falls off to the lower right.
-  const shade = ctx.createRadialGradient(cx - r * 0.45, cy - r * 0.5, r * 0.2, cx, cy, r * 1.05);
-  shade.addColorStop(0, 'rgba(255, 255, 255, .18)'); shade.addColorStop(0.6, 'rgba(0, 0, 0, 0)'); shade.addColorStop(1, 'rgba(5, 15, 40, .45)');
-  ctx.fillStyle = shade; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  ctx.restore();
-}
-
-/** A night sky of fixed stars, drawn once. */
-function stars(ctx, w, h) {
-  let s = 7;
-  const rand = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < Math.round((w * h) / 2600); i++) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + rand() * 0.6})`;
-    ctx.beginPath(); ctx.arc(rand() * w, rand() * h, rand() * 1.3 + 0.2, 0, Math.PI * 2); ctx.fill();
-  }
-}
 
 /**
  * Shows the globe for a new life. Resolves when the player presses "Be Born".
@@ -115,7 +48,7 @@ export async function openBirthGlobe(state, o = {}) {
     <p class="bg-hint">${reduced ? '' : 'Tap to skip'}</p>
     <section class="bg-card" aria-live="polite">
       <p class="bg-eyebrow">${o.designed ? 'You chose to be born in' : 'You are born in'}</p>
-      <h2 class="bg-country"><span class="bg-flag">${c.flag}</span>${esc(c.name)}</h2>
+      <h2 class="bg-country">${flagsShown() ? `<span class="bg-flag">${c.flag}</span>` : ''}${esc(c.name)}</h2>
       <p class="bg-city">${esc(p.city)} · ${state.year}</p>
       ${odds ? `<div class="bg-odds"><span class="bg-rarity bg-${odds.rarity.tone}">${esc(odds.rarity.name)}</span>
         <p><strong>${pct}%</strong> of the world's babies are born here${odds.oneIn > 1 ? `: about 1 in ${odds.oneIn.toLocaleString('en-US')}` : ''}.</p></div>` : ''}
@@ -152,7 +85,7 @@ export async function openBirthGlobe(state, o = {}) {
     const lat0 = 12 + (at.lat * 0.9 - 12) * spin;
     const c0 = { cx: w * 0.5, cy: h * 0.46 }; const c1 = center();
     const cx = c0.cx + (c1.cx - c0.cx) * zoom; const cy = c0.cy + (c1.cy - c0.cy) * zoom;
-    const r = base() * (1 + 1.5 * zoom);
+    const r = base() * (1 + (wide() ? 2.1 : 2.3) * zoom);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(sky, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -187,7 +120,7 @@ export async function openBirthGlobe(state, o = {}) {
   });
   cancelAnimationFrame(raf);
   window.removeEventListener('resize', onResize);
+  // The life is drawn underneath straight away (the caller plays it when this resolves); the globe fades out over it.
   root.classList.add('bg-out');
-  await new Promise((r) => setTimeout(r, reduced ? 0 : 450));
-  root.remove();
+  setTimeout(() => root.remove(), reduced ? 0 : 450);
 }
