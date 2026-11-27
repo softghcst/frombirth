@@ -241,7 +241,7 @@ const VIEWS = {
       <div class="section-label">Casting notices</div>
       ${board.length ? (() => {
         const fee = (x) => (x.role.fee ? money(Math.round(localWage(x.role.fee, COUNTRIES[x.production.countryId])), COUNTRIES[x.production.countryId]) : 'Unpaid');
-        const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`;
+        const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name}`;
         const open = board.filter((x) => !x.why);
         const shut = board.filter((x) => x.why);
         // One short line: what it is and the part. The script and the director are in the notice itself.
