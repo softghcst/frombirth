@@ -9,7 +9,7 @@ const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceTurn } = await import('../js/engine/turns.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
-const { applyChoice } = await import('../js/engine/eventEngine.js').catch(() => ({}));
+const { resolveChoice } = await import('../js/engine/eventEngine.js');
 const { EVENT_BY_ID } = await import('../js/data/events/index.js');
 const LF = await import('../js/engine/livingFamilies.js');
 const FL = await import('../js/engine/familyLife.js');
@@ -54,8 +54,15 @@ const npc = (s, role, age, extra = {}) => {
   for (const id of ids) {
     const e = EVENT_BY_ID[id];
     check(e && e.queuedOnly && e.choices.length >= 2, `scene ${id} exists, is queued only, and has choices`);
-    for (const c of e?.choices ?? []) for (const o of c.outcomes) for (const fx of o.effects) check(fx.type === 'family' && fx.value.split(':').length === 3, `${id}: each choice is a family effect`);
+    for (const c of e?.choices ?? []) for (const o of c.outcomes) for (const fx of o.effects) check(fx.type === 'familyLife' && fx.value.split(':').length === 3, `${id}: each choice is a family effect`);
   }
+  // Answered through the game's own scene resolver, a choice reaches the family engine (not another 'family' effect).
+  const s = life(30);
+  s.player.flags.livesWithParents = false;
+  s.livingFamilies.care.carer = { status: 'approved', training: 0, capacity: 1 };
+  s.livingFamilies.care.offer = { key: 'x', age: 7, reason: 'neglect', plan: 12, made: LF.lived(s) };
+  resolveChoice(EVENT_BY_ID.fl_placement_offer, 0, { words: { age: '7' } });
+  check(care.placements(s).length === 1 && s.npcs[care.placements(s)[0].childId]?.role === 'fosterchild', 'saying yes in the scene places the child');
   section('scenes: all fourteen exist and route to their engines');
 }
 
@@ -270,7 +277,6 @@ const npc = (s, role, age, extra = {}) => {
   section('turn lengths: identical outcomes');
 }
 
-void applyChoice;
 if (problems.length) { console.log(`PROBLEMS:\n${problems.map((x) => ` - ${x}`).join('\n')}`); process.exit(1); }
 console.log(ok.map((x) => ` ✓ ${x}`).join('\n'));
 console.log('Families grow, split, blend, move out, marry and take children in.');

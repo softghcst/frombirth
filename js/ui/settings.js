@@ -1,5 +1,6 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
+import { birthGlobeOn, setBirthGlobe } from './birthGlobe.js';
 import { openNotice } from './screens/notice.js';
 import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
@@ -16,6 +17,7 @@ import { JERSEY_COLORS } from '../data/sports.js';
 import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
 import { APP_ICONS, APP_ICON_BY_ID, DEFAULT_ICON, getAppIcon, setAppIcon, restoreDefaultIcon, iconSrc } from '../appIcon.js';
 import { applyAppIcon } from '../platform/appIcon.js';
+import { LANDINGS, LANDING_BY_ID, getLanding, setLanding } from '../landing.js';
 import { weddingScenesOn, setWeddingScenes } from './weddingPlanner.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
@@ -67,6 +69,7 @@ export async function openSettings(hooks = {}) {
       options: [
         { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]} · ${APP_ICON_BY_ID[getAppIcon()].name} icon` },
         { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
+        { value: 'globe', label: 'Birth globe', sub: birthGlobeOn() ? 'On: a new life begins with the world spinning to where you are born.' : 'Off: a new life begins straight away.' },
         { value: 'weddings', label: 'Interactive weddings', sub: weddingScenesOn() ? 'On: plan your wedding with a planner, then live the day.' : 'Off: plan it on one page, then a "Just married!" card.' },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
@@ -96,6 +99,7 @@ export async function openSettings(hooks = {}) {
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
     if (pick === 'haptics') { setHaptics(!hapticsOn()); continue; }
     if (pick === 'weddings') { setWeddingScenes(!weddingScenesOn()); continue; }
+    if (pick === 'globe') { setBirthGlobe(!birthGlobeOn()); continue; }
     if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
@@ -114,13 +118,56 @@ async function openAppearance() {
       title: 'Appearance',
       cancel: 'Back',
       options: [...THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}` })),
+        { value: 'landing', label: 'Landing Page', sub: LANDING_BY_ID[getLanding()].name },
         { value: 'icon', label: 'App Icon', sub: `${APP_ICON_BY_ID[getAppIcon()].name}${getAppIcon() === DEFAULT_ICON ? ' (default)' : ''}` }],
     });
     if (!pick) return;
     if (pick === 'icon') { await openAppIcon(); continue; }
+    if (pick === 'landing') { await openLandingPage(); continue; }
     setTheme(pick);
     return;
   }
+}
+
+/**
+ * Settings → Appearance → Landing Page: Afterglow, Midnight or Daydream, or matching light and dark. Each shows its
+ * own scenery. Kept apart from the theme and the app icon.
+ */
+export function openLandingPage() {
+  return new Promise((resolve) => {
+    const m = openModal('<div data-landingpick></div>', { dismissable: true, title: 'Landing Page', onDismiss: () => resolve() });
+    const root = m.el.querySelector('[data-landingpick]');
+    const thumb = (id) => (id === 'auto' || id === 'clock'
+      ? '<span class="lpk-thumb lpk-auto"><span style="background-image:url(./assets/branding/hero_afterglow-thumb.webp)"></span><span style="background-image:url(./assets/branding/hero_midnight-thumb.webp)"></span></span>'
+      : `<span class="lpk-thumb" style="background-image:url(./assets/branding/hero_${id}-thumb.webp)"></span>`);
+    const render = () => {
+      const now = getLanding();
+      root.innerHTML = `<h2 style="margin:0 0 6px">Landing Page</h2>
+        <p class="muted" style="margin:0 0 12px">How the first screen looks. It does not change the rest of the game, or your app icon.</p>
+        <div class="lpk-grid" role="radiogroup" aria-label="Landing page">
+          ${LANDINGS.map((x) => `<button type="button" class="appicon-opt lpk-opt${x.id === now ? ' on' : ''}" role="radio" aria-checked="${x.id === now}" tabindex="${x.id === now ? 0 : -1}" data-landing-opt="${x.id}">
+            <span class="appicon-img lpk-img">${thumb(x.id)}${x.id === now ? '<span class="appicon-check" aria-hidden="true">✓</span>' : ''}</span>
+            <strong>${esc(x.name)}</strong><small>${esc(x.id === 'auto' ? `${x.blurb} (default)` : x.blurb)}</small></button>`).join('')}
+        </div>
+        <div class="btn-stack" style="margin-top:14px"><button type="button" class="btn primary" data-done>Done</button></div>`;
+    };
+    const choose = (id) => { setLanding(id); render(); root.querySelector(`[data-landing-opt="${id}"]`)?.focus(); };
+    root.addEventListener('click', (e) => {
+      const opt = e.target.closest('[data-landing-opt]');
+      if (opt) return choose(opt.dataset.landingOpt);
+      if (e.target.closest('[data-done]')) { m.close(); resolve(); }
+      return undefined;
+    });
+    root.addEventListener('keydown', (e) => {
+      const opt = e.target.closest('[data-landing-opt]');
+      if (!opt || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+      e.preventDefault();
+      const ids = LANDINGS.map((x) => x.id);
+      const i = ids.indexOf(opt.dataset.landingOpt);
+      choose(ids[(i + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : ids.length - 1)) % ids.length]);
+    });
+    render();
+  });
 }
 
 /**

@@ -3,7 +3,7 @@
 // its engine as 'feature:story:choice' (engine/familyLife.js familyLifeChoice).
 import { any } from '../helpers.js';
 
-const f = (value) => ({ type: 'family', value });
+const f = (value) => ({ type: 'familyLife', value });
 const scene = (id, category, ages, text, feature, choices) => ({ id: `fl_${id}`, category, ageRange: ages, queuedOnly: true, text,
   choices: choices.map(([label, choice, line, tone = 'neutral']) => ({ label, outcomes: [any(line, tone, f(`${feature}:${id}:${choice}`))] })) });
 

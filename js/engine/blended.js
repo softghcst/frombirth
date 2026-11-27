@@ -17,6 +17,7 @@ import { clamp } from '../util.js';
 import { makeNpc } from './npcFactory.js';
 import { storyBeat } from './storyDirector.js';
 import { LF, lived, ageIn, recordEvent, dice, withDice, onMonth, done, fail } from './livingFamilies.js';
+import { recordPlayerAdoption } from './origins.js';
 
 const S = () => store.state;
 const B = (state = S()) => LF(state).blended;
@@ -282,6 +283,7 @@ export function adoptStepchild(npc, state = S()) {
   npc.adopted = true;
   npc.flags.stepAdopted = true;
   npc.lastName = p.lastName;
+  recordPlayerAdoption(npc, [p.id]); // a record of the adoption, beside the parent they already have (engine/origins.js)
   bump(npc, 10);
   const text = `In a short hearing in a small courtroom, the judge signs the order. ${npc.firstName} is legally your child.`;
   log(text, 'family', 'good');

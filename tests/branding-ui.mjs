@@ -43,17 +43,17 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['small
     await toTitle(page);
     const tag = `${label}/${scheme}`;
     // The logo, as supplied: loaded, its own proportions, alt text, no card, no second title.
-    const logo = await page.evaluate(() => { const i = document.querySelector('.title-hero img.title-logo'); const r = i?.getBoundingClientRect();
+    const logo = await page.evaluate(() => { const i = document.querySelector('.lp-hero img.lp-logo'); const r = i?.getBoundingClientRect();
       return i && { alt: i.alt, loaded: i.complete && i.naturalWidth > 0, w: r.width, h: r.height, left: r.left, right: window.innerWidth - r.right, src: i.getAttribute('src'),
-        text: document.querySelector('.title-hero').innerText.trim(), bg: getComputedStyle(i).backgroundColor, radius: getComputedStyle(i).borderRadius }; });
+        text: document.querySelector('.lp-hero').innerText.trim(), bg: getComputedStyle(i).backgroundColor, radius: getComputedStyle(i).borderRadius }; });
     check(logo && logo.alt === 'From Birth' && logo.loaded && /from_birth_logo/.test(logo.src), `${tag}: the landing page shows the supplied From Birth logo`);
     check(logo && Math.abs(logo.w / logo.h - 1123 / 1401) < 0.01, `${tag}: the logo keeps its proportions (${logo?.w}x${logo?.h})`);
     check(logo && Math.abs(logo.left - logo.right) < 2, `${tag}: the logo is centered`);
-    check(logo && (label === 'desktop' || (logo.w >= 175 && logo.w <= 252)), `${tag}: the logo is phone-sized (${logo?.w})`);
+    check(logo && (label === 'desktop' || (logo.w >= 120 && logo.w <= 182)), `${tag}: the logo is phone-sized (${logo?.w})`);
     check(logo && logo.text === 'Your life. Your choices. Your story.' && !(await page.locator('.title-mark').count()), `${tag}: the tagline, and no second title or old mark (${logo?.text})`);
     check(logo && /rgba\(0, 0, 0, 0\)|transparent/.test(logo.bg) && logo.radius === '0px', `${tag}: no card or square behind the logo`);
-    const actions = await page.evaluate(() => ['[data-random]', '[data-design]', '[data-world]', '[data-settings]'].every((s) => document.querySelector(s)) && /Saved Lives/i.test(document.body.innerText) && /Graveyard/i.test(document.body.innerText));
-    check(actions, `${tag}: Begin a Random Life, Design a Life, The World, Settings, Saved Lives and Graveyard are all there`);
+    const actions = await page.evaluate(() => ['[data-random]', '[data-design]', '[data-world]', '[data-settings]'].every((s) => document.querySelector(s)) && /Your Lives/i.test(document.body.innerText) && /Past Lives/i.test(document.body.innerText));
+    check(actions, `${tag}: Begin a Random Life, Design a Life, The World, Settings, Your Lives and Past Lives are all there`);
     const random = await page.locator('[data-random]').boundingBox();
     check(label === 'desktop' || random.y + random.height <= viewport.height, `${tag}: the first button is still on screen`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${tag}: nothing scrolls sideways`);

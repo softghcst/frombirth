@@ -340,12 +340,15 @@ function fitParts(p) {
   const credits = proCredits(p);
   const reachable = (prod) => TIERS[prod.tier].minCredits <= credits || (f.agent && TIERS[prod.tier].minCredits <= 2);
   const fits = (r) => p.age >= r.ages[0] - 2 && p.age <= r.ages[1] + 4;
+  // A choreographer is hired on top-level dancing, and a child's part is for a child: neither is work the player can go
+  // for just by being the right age, so neither counts toward the parts that suit them, and neither is re-aged.
+  const forAnyone = (r) => r.kind !== 'choreographer' && !(r.kind === 'child' && p.age >= 16);
   const open = [];
   for (const prod of Object.values(ent().productions)) {
     if (prod.status !== 'casting' || prod.countryId !== p.countryId || !reachable(prod)) continue;
     if (prod.tier === 'community' && prod.city !== p.city) continue;
     if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) continue;
-    for (const r of prod.cast) if (r.open && !r.who) open.push({ prod, r });
+    for (const r of prod.cast) if (r.open && !r.who && forAnyone(r)) open.push({ prod, r });
   }
   const want = 4;
   let have = open.filter((x) => fits(x.r)).length;

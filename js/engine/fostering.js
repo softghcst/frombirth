@@ -17,6 +17,7 @@ import { birthdayFor, dateNow } from './birthday.js';
 import { adoptionInfoFor } from './birthTag.js';
 import { storyBeat } from './storyDirector.js';
 import { LF, lived, nowMonth, ageIn, recordEvent, dice, withDice, onMonth, done, fail, careOk } from './livingFamilies.js';
+import { recordPlayerAdoption } from './origins.js';
 
 const S = () => store.state;
 const K = (state = S()) => { const c = LF(state).care; c.carer ??= { status: 'none', training: 0, capacity: 1 }; c.placements ??= []; c.owed ??= 0; c.acted ??= {}; return c; };
@@ -208,6 +209,7 @@ export function adoptFromCare(npc, state = S()) {
   npc.adoptionInfo = adoptionInfoFor(npc, { date: dateNow(), countryId: p.countryId, city: p.city, by: [p.id] });
   npc.flags.adoptionCard = 'new';
   npc.flags.fromCare = true;
+  recordPlayerAdoption(npc, [p.id]); // the adoption's own record (engine/origins.js)
   bump(npc, 10);
   p.hidden.karma = clamp(p.hidden.karma + 6);
   const text = `The court makes it final. ${npc.firstName} is your child now, and takes your name. They ask if they can stay up late to celebrate. Of course they can.`;

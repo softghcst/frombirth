@@ -16,6 +16,7 @@ import { animalDied } from './animals.js';
 import { SPECIES } from '../data/animals.js';
 import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
+import { guardianEstate } from './origins.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -90,6 +91,7 @@ export function inheritFrom(npc) {
   const c = country();
   // Everything they leave, once their own debts and card are paid (engine/npcMoney.js); emptied, so it passes once.
   if (npc.role !== 'spouse' && npc.role !== 'parent' && npc.role !== 'grandparent') return;
+  if (guardianEstate(npc)) return; // a legal guardian is not a legal parent (engine/origins.js)
   const savings = settleNpc(npc);
   if (!savings) return;
   const record = (amount, text) => {

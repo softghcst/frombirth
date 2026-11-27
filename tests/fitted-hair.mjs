@@ -186,8 +186,13 @@ for (const id of legacy) {
     const uses = svg.split(`${file}#hair_base`).length - 1;
     check(uses === 2 && svg.indexOf(`${file}#hair_base`) < svg.indexOf(`${h.file}#art`), `${id} on ${h.id}: not drawn behind the head and again in front`);
   }
-  const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
-  check(!kid.includes('hair_fitted/') && kid.includes(`avatars/hair/${id}.svg`), `a child with ${id} is not drawn with the older file`);
+  // A young child (3 to 6) wears the older file itself; from 7 to 13 a child wears the hair drawn for the kid head
+  // (curation.KID_HAIR) when there is one for them, and never the grown-up fitted file.
+  const look = { appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid' };
+  const young = avatarSvg({ ...look, age: 5 });
+  check(!young.includes('hair_fitted/') && young.includes(`avatars/hair/${id}.svg`), `a young child with ${id} is not drawn with the older file`);
+  const kid = avatarSvg({ ...look, age: 9 });
+  check(!kid.includes('hair_fitted/') && (kid.includes(`avatars/hair/${id}.svg`) || /avatars\/hair\/hair_kid_/.test(kid)), `a child of 9 with ${id} wears neither it nor a kid's drawn style`);
 }
 
 if (problems.length) {

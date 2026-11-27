@@ -43,6 +43,7 @@ import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
 import { familyActions, familyAct } from '../../engine/familyLife.js';
 import { openFamilyLife, familyLifeLine } from '../familyLife.js';
+import { originsRow, openOrigins } from '../origins.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -578,7 +579,7 @@ export default {
         if (rest.length <= 4) return groups(list);
         return `${groups(near)}<details class="more people-more"><summary>Others you know <small class="muted">(${rest.length})</small></summary>${groups(rest, [['Friends', ['friend']], ...GROUPS.filter(([t]) => t !== 'Friends'), ['School', ['classmate']]])}</details>`;
       })() : '<p class="empty">There is nobody in your life right now.</p>'}
-      ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
+      ${navGroup([...nav([...more, ...top, ...keep]), ...[originsRow()].filter(Boolean)], 'More')}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
@@ -586,6 +587,7 @@ export default {
       const id = e.target.closest('[data-top]')?.dataset.top;
       if (id === 'familyLife') return openFamilyLife(api);
       if (id === 'moments') return openMoments(api);
+      if (id === 'origins') return openOrigins(api, (npc) => openNpc(npc, api));
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
