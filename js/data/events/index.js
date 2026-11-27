@@ -17,6 +17,7 @@ import babyhood from './babyhood.js';
 import gifts from './gifts.js';
 import everyday from './everyday.js';
 import everydayLife from './everydayLife.js';
+import everydayMore from './everydayMore.js';
 import identity from './identity.js';
 import countryScenes from './country.js';
 import royal from './royal.js';
@@ -62,5 +63,5 @@ import bondScenes from './stories/bonds.js';
 import originScenes from './stories/origins.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...originScenes, ...bondScenes, ...estateScenes, ...loveScenes, ...familyStoryScenes, ...sleepoverScenes, ...kinHealthScenes, ...militaryScenes, ...lawScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...everydayLife, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...medicineScenes, ...bandFateScenes, ...newsroomScenes, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...reproScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood, ...investigationScenes];
+export const EVENTS = [...originScenes, ...bondScenes, ...estateScenes, ...loveScenes, ...familyStoryScenes, ...sleepoverScenes, ...kinHealthScenes, ...militaryScenes, ...lawScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...babyhood, ...gifts, ...everyday, ...everydayLife, ...everydayMore, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...medicineScenes, ...bandFateScenes, ...newsroomScenes, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...reproScenes, ...sports, ...seasons, ...disasters, ...togetherScenes, ...neighborhood, ...investigationScenes];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
