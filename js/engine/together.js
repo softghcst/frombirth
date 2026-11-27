@@ -449,7 +449,7 @@ export const BONDS = [
   { id: 'moveInTogether', group: 'together', roles: ['partner'], age: [18, 120], them: [18, 130], if: (n) => !n.flags.livingTogether, label: 'Move in together',
     run: (n) => {
       if (!rng.chance(clamp((n.meters.relationship - 35) / 50, 0.1, 0.95))) { bump(n, -3); return { text: `${n.firstName} said ${he(n)} is not ready yet. It stung.`, tone: 'neutral' }; }
-      n.flags.livingTogether = store.state.year; player().flags.livesWithParents = false; bump(n, 8); remember(n, 'movedInTogether', 'Moved in with you.'); milestone(`Moved in with ${n.firstName}.`, 'love');
+      n.flags.livingTogether = store.state.year; n.flags.livesTogether = true; player().flags.livesWithParents = false; bump(n, 8); remember(n, 'movedInTogether', 'Moved in with you.'); milestone(`Moved in with ${n.firstName}.`, 'love');
       return `You and ${n.firstName} moved in together. Two of everything, and one of you will have to give up the ugly lamp.`;
     } },
   { id: 'future', group: 'talk', roles: PARTNER, age: [18, 120], label: 'Talk about the future',

@@ -18,6 +18,7 @@ import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
 import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
 import { stakesWorth } from './business.js';
+import { marriageView } from './engagement.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -362,7 +363,7 @@ export function propose(npcId, ringId) {
   if (p.finance.cash < cost) return result(false, 'You cannot afford that ring.', 'neutral');
   if (!spendAction(npc, 'propose')) return result(false, `You already proposed to ${npc.firstName} this year.`, 'neutral');
   p.finance.cash -= cost;
-  const chance = clamp((npc.meters.relationship - 45) / 45 + ring.bonus, 0.02, 0.97);
+  const chance = clamp((npc.meters.relationship - 45) / 45 + ring.bonus + marriageView(npc), 0.02, 0.97); // what they think of marriage (engine/engagement.js)
   if (!rng.chance(chance)) {
     p.finance.cash += Math.round(cost * 0.6); // the jeweler takes it back, at a loss
     bump(npc, -15);
