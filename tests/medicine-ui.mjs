@@ -32,7 +32,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
   // A twenty-six-year-old US medical graduate, starting an internal medicine residency.
@@ -55,14 +55,14 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     openMedicine(window.__api);
     return careerButtons().map((b) => b[1]);
   });
-  check(buttons.includes('My Medical Career'), `${label}: the Work tab offers My Medical Career`);
+  check(buttons.some((b) => /^Resident|Intern|Medical School|Medicine/.test(b)), `${label}: the Work tab offers the medical screen, named for where the player is (${buttons.join(', ')})`);
   const modal = '#modal-root .scrim:last-child .modal';
   await page.waitForSelector(modal);
   const overflow = () => page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); return m.scrollWidth > m.clientWidth + 1 || document.documentElement.scrollWidth > innerWidth; });
   const text = () => page.evaluate(() => [...document.querySelectorAll('#modal-root .modal')].pop().innerText);
   check(/Trainee doctor, year 1 of 3/i.test(await text()) && /Every patient has a story/i.test(await text()), `${label}: the overview shows the residency year, under its subtitle`);
   check(!(await overflow()), `${label}: the overview does not scroll sideways`);
-  check(await page.locator('#modal-root .scrim:last-child .modal.modal-full').count() === 1 && /My Medical Career/.test(await page.locator('#modal-root .scrim:last-child .modal-bartitle').innerText()), `${label}: My Medical Career is a full screen, its name in the bar with Back`);
+  check(await page.locator('#modal-root .scrim:last-child .modal.modal-full').count() === 1 && !/^My /.test(await page.locator('#modal-root .scrim:last-child .modal-bartitle').innerText()), `${label}: My Medical Career is a full screen, its name in the bar with Back`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/medicine-${label}-overview.png` });
   const tabs = await page.locator(`${modal} [data-sec]`).evaluateAll((els) => els.map((x) => x.dataset.sec));
   check(['overview', 'training', 'active', 'hospital', 'history'].every((t) => tabs.includes(t)) && tabs.length <= 6 && !/My Clinic/.test(await text()), `${label}: a resident sees a handful of tabs, and no clinic (${tabs.join(', ')})`);

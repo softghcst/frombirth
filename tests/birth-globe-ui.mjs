@@ -62,11 +62,14 @@ await page.click('[data-born]');
 await page.waitForFunction(() => window.__gDone === true, null, { timeout: 3000 });
 // Turned off in Settings: a random life begins straight away.
 await page.evaluate(async () => { const g = await import('/js/ui/birthGlobe.js'); g.setBirthGlobe(false); });
-check(await page.evaluate(() => localStorage.getItem('pathways.birthGlobe') === 'off'), 'Settings can turn it off');
-await page.goto(`http://localhost:${port}/index.html`);
-await page.click('[data-random]');
-await page.waitForSelector('[data-year]', { timeout: 8000 });
-check(!(await page.locator('.birth-globe').count()), 'and then a life begins without it');
+check(await page.evaluate(() => localStorage.getItem('frombirth.birthGlobe') === 'off'), 'Settings can turn it off');
+// (The tab's session is cleared first: a tab that was only away comes back to the life being played.)
+await page.evaluate(() => sessionStorage.clear());
+const fresh = page;
+await fresh.goto(`http://localhost:${port}/index.html`);
+await fresh.click('[data-random]');
+await fresh.waitForSelector('[data-year]', { timeout: 8000 });
+check(!(await fresh.locator('.birth-globe').count()), 'and then a life begins without it');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();

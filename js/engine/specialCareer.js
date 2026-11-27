@@ -17,15 +17,15 @@ import { writingOf, published } from './publishing.js';
 import { inOffice } from './politics.js';
 
 export const SPECIAL_CAREERS = [
-  { id: 'acting', name: 'Acting', noun: 'an actor', ico: 'star', blurb: 'Auditions, roles on stage and screen, an agent, awards.' },
-  { id: 'music', name: 'Music', noun: 'a musician', ico: 'sparkle', blurb: 'A solo act or a band: songs, records, gigs and tours.' },
-  { id: 'dance', name: 'Dance', noun: 'a dancer', ico: 'sparkle', blurb: 'Auditions, gigs, competitions and tours.' },
-  { id: 'modeling', name: 'Modeling', noun: 'a model', ico: 'star', blurb: 'An agency, castings, bookings.' },
-  { id: 'writing', name: 'Writing', noun: 'an author', ico: 'book', blurb: 'Books, a literary agent, publishers and the lists.' },
-  { id: 'sports', name: 'Sports', noun: 'a professional athlete', ico: 'trophy', blurb: 'Professional sport: a club, a draft or the tour, seasons and contracts.' },
-  { id: 'journalism', name: 'Journalism', noun: 'a journalist', ico: 'book', blurb: 'A newsroom, a beat, and stories that have to stand up.' },
-  { id: 'kpop', name: 'K-pop Idol', noun: 'an idol', ico: 'star', blurb: 'Auditions, training, a debut and a group.' },
-  { id: 'politics', name: 'Politics', noun: 'a politician', ico: 'compass', blurb: 'Parties, campaigns and office.' },
+  { id: 'acting', name: 'Acting', noun: 'an actor', ico: 'star', blurb: 'Auditions, roles, an agent, awards' },
+  { id: 'music', name: 'Music', noun: 'a musician', ico: 'sparkle', blurb: 'Songs, records, gigs and tours' },
+  { id: 'dance', name: 'Dance', noun: 'a dancer', ico: 'sparkle', blurb: 'Auditions, gigs, competitions' },
+  { id: 'modeling', name: 'Modeling', noun: 'a model', ico: 'star', blurb: 'An agency, castings, bookings' },
+  { id: 'writing', name: 'Writing', noun: 'an author', ico: 'book', blurb: 'Books, an agent, publishers' },
+  { id: 'sports', name: 'Sports', noun: 'a professional athlete', ico: 'trophy', blurb: 'A club, a draft or the tour' },
+  { id: 'journalism', name: 'Journalism', noun: 'a journalist', ico: 'book', blurb: 'A newsroom, a beat, your stories' },
+  { id: 'kpop', name: 'K-pop Idol', noun: 'an idol', ico: 'star', blurb: 'Auditions, training, a debut' },
+  { id: 'politics', name: 'Politics', noun: 'a politician', ico: 'compass', blurb: 'Parties, campaigns and office' },
 ];
 export const SPECIAL_BY_ID = Object.fromEntries(SPECIAL_CAREERS.map((c) => [c.id, c]));
 
@@ -60,7 +60,7 @@ export function current(p = player(), state = store.state) {
  * Any other job is work of another kind: a special career is a full-time career, so it is one or the other.
  */
 const OWN_JOBS = { acting: ['actor'], music: ['singer', 'music_prod'], dance: ['dancer'], modeling: ['modeling'], writing: ['author', 'screenwriting'],
-  sports: ['athlete', 'coaching'], journalism: ['journalist', 'broadcast', 'publishing'], kpop: [], politics: [] };
+  sports: ['athlete', 'coaching'], journalism: ['journalist'], kpop: [], politics: [] };
 
 /** Why this career cannot be taken up now, or ''. o.replacesJob: taking it up is itself a new job (a professional contract). */
 export function whyNot(id, p = player(), state = store.state, o = {}) {

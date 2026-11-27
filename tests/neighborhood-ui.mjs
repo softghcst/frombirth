@@ -63,7 +63,7 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   await settle(page);
   // A grown-up renting their own place, so there is everything to do.

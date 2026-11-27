@@ -15,6 +15,7 @@ import { inOffice, shiftApproval } from '../politics.js';
 import { race } from '../campaign.js';
 import { rep as royalRep, shift as royalShift } from '../reputation.js';
 import { post as newsPost } from '../news.js';
+import { outletsHere, pressWrite } from '../journalism.js';
 import { world, newId, acts, result, recordEvent, reputation, adjustReputation, spendHours } from './core.js';
 import { activeAccountsOf, followerCount } from './accounts.js';
 import { publish } from './content.js';
@@ -110,6 +111,8 @@ export function answerMedia(offerId, yes) {
   if (p.traits.includes('worrier')) p.stats.mood = clamp(p.stats.mood - 2);
   const text = good ? `${m.label} with ${o.outlet}. You were yourself, and it showed.` : `${m.label} with ${o.outlet}. You said one thing badly, and that was the part everyone quoted.`;
   recordEvent({ kind: 'media', charIds: [p.id], summary: text, visibility: 'public', once: `media_${o.id}` });
+  // A feature or interview runs as an article in the press archive, by the outlet's real reporter.
+  if (o.outletId && m.id !== 'panel') o.pubId = pressWrite({ countryId: p.countryId, outletId: o.outletId, headline: `${p.firstName} ${p.lastName} on life online${good ? '' : ', and one line that stuck'}`, aboutId: p.id, kind: 'interview', beat: 'technology', tone: good ? 'good' : 'neutral' })?.id ?? null;
   return result(true, text, good ? 'good' : 'neutral');
 }
 
@@ -122,8 +125,11 @@ export function tickFame() {
   if (!activeAccountsOf(p.id).length) return;
   if (r.recognition >= 40 && !mediaOffers().length && rng.chance(0.3)) {
     const m = rng.pick(MEDIA);
-    const outlet = rng.pick(OUTLETS);
-    world().offers.push({ id: newId('offer'), kind: 'media', media: m.id, outlet, year: store.state.year, status: 'open' });
+    // A real outlet in the player's city (engine/journalism.js): a paper for a feature, any newsroom for an interview.
+    const real = outletsHere(p).filter((x) => !x.ownerId && !x.closed && (m.id !== 'feature' || x.medium === 'print'));
+    const pick = real.length ? rng.pick(real) : null;
+    const outlet = pick?.name ?? rng.pick(OUTLETS);
+    world().offers.push({ id: newId('offer'), kind: 'media', media: m.id, outlet, outletId: pick?.id ?? null, year: store.state.year, status: 'open' });
     log(`${outlet} ${m.text}.`, 'system', 'good');
   }
   // Recognition costs some privacy: strangers recognize you, and some go too far.

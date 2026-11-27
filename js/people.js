@@ -5,7 +5,7 @@
 // they have signed in to cloud saves.
 import { changed, rememberDeleted } from './sync/bundle.js';
 
-const KEY = 'pathways.people';
+const KEY = 'frombirth.people';
 export const MAX_PEOPLE = 80;
 export const GENDERS = [['female', 'Woman'], ['male', 'Man'], ['nonbinary', 'Non-binary']];
 

@@ -63,6 +63,21 @@ const life = (age = 22) => {
   section('a special career is the job: other work waits until it is left');
 }
 
+{
+  // Medicine has its own doors (the match, hospital posts, fellowships): a special career closes them too.
+  const p = life(27);
+  music.formAct('solo');
+  const tr = await import('../js/engine/medicine/training.js');
+  const jobs = await import('../js/engine/medicine/jobs.js');
+  const core = await import('../js/engine/medicine/core.js');
+  core.M();
+  const m = tr.runMatch('residency', ['internal']);
+  check(!m.ok && /musician/.test(m.text) && p.career.careerId == null, `a musician is not matched to a residency (${m.text})`);
+  check(!jobs.applyFor('nowhere').ok && /musician/.test(jobs.applyFor('nowhere').text), 'nor applies for a hospital post');
+  check(!tr.startPost('internal', 'nowhere').ok && p.career.careerId == null, 'nor is given one');
+  section('medicine waits too: no residency or hospital post beside a special career');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('One career at a time.');

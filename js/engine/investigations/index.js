@@ -1,4 +1,4 @@
-// The investigative careers engine (Pathways Detective & Federal Investigations). One yearly step,
+// The investigative careers engine (From Birth Detective & Federal Investigations). One yearly step,
 // run after the working year (engine/yearProcessor.js 'investigations'), and dated steps that are
 // settled whenever the calendar has passed their date (an academy's end, a laboratory report, a
 // court date). Decided when they start and known when their date comes, so 3-, 6- and 12-month
@@ -36,7 +36,6 @@ import { integrityYear } from './integrity.js';
 import { booksYear } from './books.js';
 import { hospitalYear } from './medical.js';
 import { payYear } from './pay.js';
-import { editorYear } from './crossover.js';
 import { alliedYear, alliedCareerYear } from './allied.js';
 import { considerYear } from './autoPromotion.js';
 import { settleAncestor } from './family.js';
@@ -57,9 +56,9 @@ export function investigationRuns(careerId, p = player()) {
 /** Why a job-board application is not how this work is got, or ''. */
 export function investigationBlock(careerId, p = player()) {
   if (!INVESTIGATIVE.includes(careerId)) return '';
-  if (careerId === 'detective') return 'Detectives are selected from serving officers: see My Investigations.';
-  if (careerId === 'police') return 'Police agencies recruit through their own process (assessments, an academy, probation): see My Investigations.';
-  return 'Federal agencies hire through their own application, background investigation and academy: see My Investigations.';
+  if (careerId === 'detective') return 'Detectives are selected from serving officers: see Law Enforcement on the Work tab.';
+  if (careerId === 'police') return 'Police agencies recruit through their own process (assessments, an academy, probation): see Law Enforcement on the Work tab.';
+  return 'Federal agencies hire through their own application, background investigation and academy: see Law Enforcement on the Work tab.';
 }
 
 /** Whether My Investigations has anything to show. */
@@ -90,7 +89,7 @@ export function tickInvestigations() {
   pressYear(p); // a journalist has cases in court to cover (crossover.js)
   for (const line of [...psychYear(p), ...psychCareerYear(p)]) log(line, 'system', 'neutral'); // a forensic psychologist's work (forensicPsych.js)
   // Other careers that meet the same cases: conviction review, accountants and auditors, hospitals, the editor's desk.
-  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...editorYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
+  for (const line of [...integrityYear(p), ...booksYear(p), ...hospitalYear(p), ...alliedYear(p), ...alliedCareerYear(p), ...mediaYear(p)]) log(line, 'system', 'neutral');
   const r = rec(p);
   if (!r) return;
   // The job ended outside this engine (quit, let go, retired, another job): the record stays, the powers go.

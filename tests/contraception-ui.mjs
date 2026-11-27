@@ -33,7 +33,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
   // A twenty-three-year-old in the US, with money and a partner, opening My Health on Reproductive health.

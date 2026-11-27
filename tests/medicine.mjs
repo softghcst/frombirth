@@ -478,7 +478,8 @@ section('the Match: at home, or nationwide with a move');
   mm.job.rank = 'senior'; mm.job.rankSince = store.state.year - 10;
   for (const k of Object.keys(mm.skills)) mm.skills[k] = 90;
   let lost = false;
-  for (let i = 0; i < 12 && !lost && mm.job?.rank === 'senior' && !mm.offer; i++) { year(); lost = /went to .*rival/.test(JSON.stringify(store.state.journal ?? store.state.log ?? '')) || rival.flags.title === 'Medical director'; }
+  // (About one chance in four a year once the record is there: thirty years makes a miss vanishingly unlikely.)
+  for (let i = 0; i < 30 && !lost && mm.job?.rank === 'senior' && !mm.offer; i++) { year(); lost = /went to .*rival/.test(JSON.stringify(store.state.journal ?? store.state.log ?? '')) || rival.flags.title === 'Medical director'; }
   check(lost || !!mm.offer || mm.job?.rank !== 'senior', 'a leadership seat is contested, and either goes to someone or is offered');
   q.age = 66;
   check(career.retire().ok, 'a physician can retire');

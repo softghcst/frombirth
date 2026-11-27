@@ -8,7 +8,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { birthOdds } from '../data/births.js';
 import { coords } from '../engine/geo.js';
 
-export const BIRTH_GLOBE_KEY = 'pathways.birthGlobe';
+export const BIRTH_GLOBE_KEY = 'frombirth.birthGlobe';
 /** Whether a life begins with the globe. On by default; kept in this browser for every life. */
 export function birthGlobeOn() {
   try { return localStorage.getItem(BIRTH_GLOBE_KEY) !== 'off'; } catch { return true; }

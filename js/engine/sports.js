@@ -6,7 +6,7 @@
 //   athletes      one record per person who has played, keyed by their id; it is never deleted. The player's is made
 //                 when they first take up a sport. Each record holds, per sport, that sport's own skills (separate from
 //                 the character's general talents), a ceiling for each skill that comes from their talent, the level
-//                 they play at, their club and team, their coach, their training plan, their Pathways Rating, and
+//                 they play at, their club and team, their coach, their training plan, their Player Rating, and
 //                 every season and event they took part in, by id.
 //   orgs          clubs, academies, school teams, university programs, professional clubs and leagues. They persist:
 //                 the same club is there next year with the same name, coach and rivals.
@@ -32,6 +32,9 @@ import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
 import { seeded, hash, teamGame, tennisMatch, rallyMatch, bout, mark, better, fmtMark, judged, golfRound, prChange, prOfSkill, edge } from './sportsPlay.js';
 import { conditionIdsOf } from './health/ailments.js';
+
+/** Leagues named for real ones get a name of their own (data/sports.js, LEAGUE_NAMES). */
+const MINOR_LEAGUE_TITLES = { 'Dominican Summer League': 'Caribbean Academy League', 'Futures League': 'Korea Minor League', 'G League': 'Development League' };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const fullName = (x) => `${x.firstName} ${x.lastName}`.trim();
@@ -116,7 +119,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
 const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
-/** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
+/** Whether the person uses a wheelchair. From Birth has no wider disability system: this is the one marker the sports engine reads. */
 export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || conditionIdsOf(p).some((id) => /wheelchair|paraly|spinal/.test(id));
 
 /** Saves from before this engine: a school athlete's record becomes an athletic profile, conservatively. */
@@ -288,7 +291,7 @@ const meanSkill = (e) => Object.values(e.skills).reduce((s, v) => s + v, 0) / Ma
 
 /** A plain description of a skill value. */
 export const skillWord = (v) => (v >= 90 ? 'World class' : v >= 80 ? 'Elite' : v >= 68 ? 'Advanced' : v >= 52 ? 'Competitive' : v >= 36 ? 'Developing' : v >= 20 ? 'Learning' : 'Beginner');
-/** The Pathways Rating as a band. */
+/** The Player Rating as a band. */
 export const prWord = (pr) => (pr >= 1900 ? 'World elite' : pr >= 1650 ? 'International' : pr >= 1450 ? 'National' : pr >= 1250 ? 'Regional' : pr >= 1050 ? 'Club' : 'Recreational');
 
 // ---------- What can be played, where and when ----------
@@ -926,7 +929,7 @@ function leagueFor(state, org, team) {
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
     lg = { id, key, kind: 'league', level: org.level, div: org.div ?? null, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
       // A college league is a conference within the program's division.
-      name: /League$/.test(org.minorLevel ?? '') ? org.minorLevel : org.minorLevel === 'Farm team' ? r.pick(['Eastern League', 'Western League']) : org.minorLevel ? `${org.minorLevel === 'Practice squad' ? 'Practice' : org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+      name: /League$/.test(org.minorLevel ?? '') ? (MINOR_LEAGUE_TITLES[org.minorLevel] ?? org.minorLevel) : org.minorLevel === 'Farm team' ? r.pick(['Eastern League', 'Western League']) : org.minorLevel ? `${{ 'Practice squad': 'Practice', AHL: 'Hockey' }[org.minorLevel] ?? org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.

@@ -11,7 +11,7 @@
 import { log, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, INTL_SIGNING as I } from '../data/sports.js';
+import { sportOf, INTL_SIGNING as I, leagueName } from '../data/sports.js';
 import { makeNpc } from './npcFactory.js';
 import { canDropOut, dropOut } from './education.js';
 import { clubOf, toMinors } from './draft.js';
@@ -207,7 +207,7 @@ export const INTL_ANSWERS = {
     // States; a Cuban veteran as high as he is good.
     const start = d.veteran ? (o >= 74 ? null : clamp(Math.round((o - 56) / 4), 2, 5)) : p.age <= 17 && o < 62 ? 0 : clamp(Math.round((o - 52) / 5), 1, 3);
     if (start != null) toMinors(state, e, club, start, I.ladder);
-    const where = start === 0 ? `You report to ${club.name}'s academy in the Dominican Republic: baseball, English classes, and the Dominican Summer League.` : start != null ? `You start in ${I.ladder[start]}.` : 'You go straight to the big club.';
+    const where = start === 0 ? `You report to ${club.name}'s academy in the Dominican Republic: baseball, English classes, and the academies' summer league.` : start != null ? `You start in ${leagueName(I.ladder[start])}.` : 'You go straight to the big club.';
     milestone(`Signed with ${club.name} for a ${life.fmt(state, x.amount)} bonus.`, 'career');
     // The bonus is the family's too (engine/baseball.js).
     const mine = x.amount - toTrainer;

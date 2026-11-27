@@ -70,7 +70,7 @@ function seenBy(conditionId, p) {
   return null;
 }
 
-/** Books a visit with them and attends it now (Pathways moves a year at a time). @returns {object} the appointment */
+/** Books a visit with them and attends it now (From Birth moves a year at a time). @returns {object} the appointment */
 function visit(where, kind, base, what, ref, p) {
   const a = book(kind, { facilityId: where.f.id, providerId: where.npc.id, ref, concern: 'body', note: what }, p);
   a.base = base;

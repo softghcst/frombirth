@@ -397,8 +397,10 @@ export const TRACKS = [
 
   // ---------- Media, journalism and publishing ----------
   T('broadcast', 'Broadcasting', 'media', { req: uni('journalism', 'communications', 'english', 'theater'), schedule: 'irregular', stress: 2, values: ['excitement', 'prestige'], fame: { from: 2, label: 'Broadcaster' },
-    aliases: ['Radio host', 'News anchor', 'Broadcaster'] },
-  L(['Production runner', 24, 30, 2], ['Researcher', 32, 42, 3], ['Radio host', 45, 75, 4, { 'stats.charm': 60 }], ['News anchor', 90, 220, 0, { 'stats.charm': 70 }])),
+    // Entertainment broadcasting: music radio, game shows, daytime television. News is presented by journalists, who
+    // come up through a newsroom (the Journalism special career, engine/journalism.js).
+    aliases: ['Radio host', 'Television presenter', 'Broadcaster'] },
+  L(['Production runner', 24, 30, 2], ['Researcher', 32, 42, 3], ['Radio host', 45, 75, 4, { 'stats.charm': 60 }], ['Television presenter', 90, 220, 0, { 'stats.charm': 70 }])),
   T('copywriting', 'Advertising', 'media', { req: uni('english', 'communications', 'art', 'business', 'journalism'), remote: 'hybrid', values: ['creativity'], aliases: ['Copywriter', 'Advertising creative'] },
     L(['Junior copywriter', 30, 38, 2], ['Copywriter', 42, 58, 3], ['Senior copywriter', 62, 82, 4], ['Creative director', 95, 150, 0])),
   T('publishing', 'Publishing', 'media', { req: uni('english', 'journalism', 'history', 'communications'), remote: 'hybrid', values: ['creativity', 'prestige'], aliases: ['Editor', 'Publisher'] },

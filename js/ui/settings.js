@@ -1,6 +1,7 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
 import { birthGlobeOn, setBirthGlobe } from './birthGlobe.js';
+import { openNotice } from './screens/notice.js';
 import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
 import { getPeople, addPerson, removePerson, GENDERS, MAX_PEOPLE } from '../people.js';
@@ -14,6 +15,8 @@ import * as kit from '../engine/teamIdentity.js';
 import { jerseySvg, inkOn } from './jersey.js';
 import { JERSEY_COLORS } from '../data/sports.js';
 import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
+import { APP_ICONS, APP_ICON_BY_ID, DEFAULT_ICON, getAppIcon, setAppIcon, restoreDefaultIcon, iconSrc } from '../appIcon.js';
+import { applyAppIcon } from '../platform/appIcon.js';
 import { weddingScenesOn, setWeddingScenes } from './weddingPlanner.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
@@ -63,7 +66,7 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
-        { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
+        { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]} · ${APP_ICON_BY_ID[getAppIcon()].name} icon` },
         { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
         { value: 'globe', label: 'Birth globe', sub: birthGlobeOn() ? 'On: a new life begins with the world spinning to where you are born.' : 'Off: a new life begins straight away.' },
         { value: 'weddings', label: 'Interactive weddings', sub: weddingScenesOn() ? 'On: plan your wedding with a planner, then live the day.' : 'Off: plan it on one page, then a "Just married!" card.' },
@@ -81,6 +84,7 @@ export async function openSettings(hooks = {}) {
         ...(store.state?.player?.alive ? [{ value: 'everyday', label: 'Everyday moments', sub: store.state.settings?.everydayScenes === 'popup' ? 'Shown as they happen' : 'In your life story, to answer if you want' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
+        { value: 'about', label: 'About From Birth', sub: 'Fictional characters and events' },
       ],
     });
     if (!pick) return;
@@ -101,19 +105,71 @@ export async function openSettings(hooks = {}) {
     if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
+    if (pick === 'about') await openNotice();
   }
 }
 
-/** Light, Dark or System. Kept on this device for every life, and applied at once. */
+/** Light, Dark or System, and the app icon. Kept on this device for every life, and applied at once. */
 async function openAppearance() {
-  const now = getTheme();
-  const pick = await pickModal({
-    title: 'Appearance',
-    cancel: 'Back',
-    options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
-      })),
+  for (;;) {
+    const now = getTheme();
+    const pick = await pickModal({
+      title: 'Appearance',
+      cancel: 'Back',
+      options: [...THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}` })),
+        { value: 'icon', label: 'App Icon', sub: `${APP_ICON_BY_ID[getAppIcon()].name}${getAppIcon() === DEFAULT_ICON ? ' (default)' : ''}` }],
+    });
+    if (!pick) return;
+    if (pick === 'icon') { await openAppIcon(); continue; }
+    setTheme(pick);
+    return;
+  }
+}
+
+/**
+ * Settings → Appearance → App Icon: the three icons, as they are, in a grid. The choice is kept apart from Light and
+ * Dark. What the platform does with it (js/platform/appIcon.js) is said plainly: a web app cannot change an icon
+ * that is already on a home screen.
+ */
+export function openAppIcon() {
+  return new Promise((resolve) => {
+    let note = '';
+    const m = openModal('<div data-appicon></div>', { dismissable: true, title: 'App Icon', onDismiss: () => resolve() });
+    const root = m.el.querySelector('[data-appicon]');
+    const render = () => {
+      const now = getAppIcon();
+      root.innerHTML = `<h2 style="margin:0 0 6px">App Icon</h2>
+        <p class="muted" style="margin:0 0 12px">Choose the icon for From Birth. Your choice is kept on this device, whatever the light or dark setting.</p>
+        <div class="appicon-grid" role="radiogroup" aria-label="App icon">
+          ${APP_ICONS.map((x) => `<button type="button" class="appicon-opt${x.id === now ? ' on' : ''}" role="radio" aria-checked="${x.id === now}" tabindex="${x.id === now ? 0 : -1}" data-icon="${x.id}">
+            <span class="appicon-img"><img src="./${iconSrc(x.id, 256)}" width="256" height="256" alt="">${x.id === now ? '<span class="appicon-check" aria-hidden="true">✓</span>' : ''}</span>
+            <strong>${esc(x.name)}</strong><small>${x.id === DEFAULT_ICON ? 'Default' : esc(x.blurb)}</small></button>`).join('')}
+        </div>
+        ${note ? `<p class="muted appicon-note" role="status">${esc(note)}</p>` : ''}
+        <div class="btn-stack" style="margin-top:14px">
+          <button type="button" class="btn" data-restore${now === DEFAULT_ICON ? ' disabled' : ''}>Restore Default</button>
+          <button type="button" class="btn primary" data-done>Done</button>
+        </div>`;
+    };
+    const choose = (id) => { setAppIcon(id); note = applyAppIcon(id).note; render(); root.querySelector(`[data-icon="${id}"]`)?.focus(); };
+    root.addEventListener('click', (e) => {
+      const opt = e.target.closest('[data-icon]');
+      if (opt) return choose(opt.dataset.icon);
+      if (e.target.closest('[data-restore]')) { restoreDefaultIcon(); note = applyAppIcon(DEFAULT_ICON).note || 'Afterglow, the default, is restored.'; render(); return undefined; }
+      if (e.target.closest('[data-done]')) { m.close(); resolve(); }
+      return undefined;
+    });
+    // A radio group: the arrow keys move the choice, as they do for any set of radio buttons.
+    root.addEventListener('keydown', (e) => {
+      const opt = e.target.closest('[data-icon]');
+      if (!opt || !['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+      e.preventDefault();
+      const ids = APP_ICONS.map((x) => x.id);
+      const i = ids.indexOf(opt.dataset.icon);
+      choose(ids[(i + (['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : ids.length - 1)) % ids.length]);
+    });
+    render();
   });
-  if (pick) setTheme(pick);
 }
 
 // ---------- People you know ----------
@@ -262,7 +318,7 @@ async function copyText(text) {
 function download(text) {
   const day = new Date().toISOString().slice(0, 10);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: `pathways-saves-${day}.txt` });
+  const a = Object.assign(document.createElement('a'), { href: url, download: `from-birth-saves-${day}.txt` });
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -309,7 +365,7 @@ function openLoad(hooks) {
     const m = openModal(`
       <h2>Load saves</h2>
       <div class="field"><label for="t-code">Transfer code</label>
-        <textarea id="t-code" class="code-box" rows="5" placeholder="PATHWAYS1:…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
+        <textarea id="t-code" class="code-box" rows="5" placeholder="FROMBIRTH1:…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
       <div class="field"><label for="t-file">Or a transfer file</label><input id="t-file" type="file" accept=".txt,text/plain"></div>
       <div class="field"><label>What happens to the saves already here</label>
         <div class="picker" data-mode role="radiogroup" aria-label="What happens to the saves already here">
@@ -368,6 +424,8 @@ async function openAccount(hooks) {
         <button class="btn" data-password>Change password</button>
         <button class="btn" data-out>Sign out</button>
         <button class="btn danger" data-wipe>Delete my saves from the cloud</button>
+        <button class="btn danger" data-delete-account>Delete my account</button>
+        <a class="btn" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
         <button class="btn" data-close>Done</button>
       </div>`, { dismissable: true, onDismiss: () => { stop(); resolve(); } });
     const line = m.el.querySelector('[data-line]');
@@ -389,6 +447,10 @@ async function openAccount(hooks) {
       if (e.target.closest('[data-out]')) {
         if (!(await confirmModal({ title: 'Sign out?', body: 'Your lives stay on this device. Changes stop being sent to your account until you sign in again.', yes: 'Sign out' }))) return undefined;
         return then(async () => messageModal({ body: (await cloud.signOut()).text }));
+      }
+      if (e.target.closest('[data-delete-account]')) {
+        if (!(await confirmModal({ title: 'Delete your account?', body: 'Your email address, password and cloud saves are deleted for good. The lives on this device stay, and you can keep playing without an account.', yes: 'Delete my account', danger: true }))) return undefined;
+        return then(async () => { const r = await cloud.deleteAccount(); await messageModal({ body: r.text, tone: r.tone }); });
       }
       if (e.target.closest('[data-wipe]')) {
         if (!(await confirmModal({ title: 'Delete your cloud saves?', body: 'The copy in your account is removed and you are signed out. The lives on this device stay. Other devices keep theirs too, until they sign in again.', yes: 'Delete', danger: true }))) return undefined;
@@ -414,6 +476,7 @@ function openSignIn(hooks) {
           <button type="button" class="btn" data-forgot>Forgot your password?</button>
           <button type="button" class="btn" data-cancel>Back</button>
         </div>
+        <p class="muted" style="margin-top:10px;font-size:0.85rem">Making an account means agreeing to the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>: your email and saves are kept only to sync your lives, and you can delete them at any time.</p>
       </form>`, { dismissable: true, onDismiss: resolve });
     const q = (sel) => m.el.querySelector(sel);
     const note = (t) => { q('[data-note]').textContent = t; };

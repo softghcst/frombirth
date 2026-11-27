@@ -6,6 +6,38 @@ import { COUNTRIES } from '../../data/countries.js';
 import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
 import { epitaphsEarned } from '../../save.js';
 import { openModal } from '../modals.js';
+import { cardFile, shareText } from '../shareCard.js';
+
+/** The share window: the card, and ways to send it on. */
+async function openShare(g) {
+  const m = openModal(`
+    <h2>Share this life</h2>
+    <div class="share-preview" aria-live="polite"><p class="muted">Making the picture…</p></div>
+    <div class="btn-stack" style="margin-top:12px">
+      <button class="btn primary" data-share hidden>Share</button>
+      <a class="btn" data-save download hidden style="text-decoration:none">Save the picture</a>
+      <button class="btn" data-copy>Copy the words</button>
+      <button class="btn" data-close>Close</button>
+    </div>`, { dismissable: true });
+  const el = m.el;
+  const text = shareText(g);
+  let url = null;
+  el.querySelector('[data-close]').addEventListener('click', () => { m.close(); if (url) URL.revokeObjectURL(url); });
+  el.querySelector('[data-copy]').addEventListener('click', async (ev) => {
+    try { await navigator.clipboard.writeText(text); ev.target.textContent = 'Copied'; } catch { ev.target.textContent = 'Could not copy'; }
+  });
+  let file;
+  try { file = await cardFile(g); } catch { el.querySelector('.share-preview').innerHTML = '<p class="muted">The picture could not be made on this device. The words can still be copied.</p>'; return; }
+  url = URL.createObjectURL(file);
+  el.querySelector('.share-preview').innerHTML = `<img src="${url}" alt="${esc(`A gravestone card for ${g.fullName}, ${g.birthYear} to ${g.deathYear}`)}">`;
+  const save = el.querySelector('[data-save]');
+  save.href = url; save.download = file.name; save.hidden = false;
+  const share = el.querySelector('[data-share]');
+  if (navigator.canShare?.({ files: [file] })) {
+    share.hidden = false;
+    share.addEventListener('click', async () => { try { await navigator.share({ files: [file], title: `${g.fullName}, ${g.birthYear}–${g.deathYear}`, text }); } catch { /* the player closed the share sheet */ } });
+  }
+}
 
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 
@@ -95,6 +127,7 @@ export function renderObituary(app, g, hooks) {
       <div class="btn-stack">
         ${hooks.onUndo ? '<button class="btn" data-undo-death>Go back a year</button>' : ''}
         ${hooks.onRestart ? '<button class="btn" data-restart>Start this life again</button>' : ''}
+        <button class="btn" data-share-life>Share this life</button>
         <button class="btn" data-epitaphs>Epitaphs Earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
       </div>
@@ -103,6 +136,7 @@ export function renderObituary(app, g, hooks) {
   window.scrollTo(0, 0);
   app.querySelector('[data-done]').addEventListener('click', () => hooks.onDone());
   app.querySelector('[data-epitaphs]').addEventListener('click', openEpitaphCollection);
+  app.querySelector('[data-share-life]').addEventListener('click', () => openShare(g));
   app.querySelector('[data-restart]')?.addEventListener('click', () => hooks.onRestart());
   app.querySelector('[data-undo-death]')?.addEventListener('click', () => hooks.onUndo());
   for (const b of app.querySelectorAll('[data-heir]')) b.addEventListener('click', () => hooks.onContinue(b.dataset.heir));

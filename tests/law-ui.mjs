@@ -33,7 +33,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear()); await page.reload();
-  await page.evaluate(() => localStorage.setItem('pathways.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]'); await page.waitForSelector('[data-year]');
   const clear = () => page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
   await clear();
   const shot = async (name) => { if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/law-${label}-${name}.png` }); };
@@ -64,10 +64,10 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (!(await page.locator('[data-act="law"]').isVisible())) { await page.click('.sec-row[data-sec="Special careers"]'); await page.waitForTimeout(200); }
   // The row that is on screen: under Special Careers at first, then (once practicing) the first row of the Work tab.
   const rowBtn = page.locator('[data-act="law"]:visible').first();
-  check(await rowBtn.count() === 1 && /My Legal Career/i.test(await rowBtn.innerText()), `${label}: the Work tab has My Legal Career`);
+  check(await rowBtn.count() === 1 && /(^|\s)Law\s*$/m.test(await rowBtn.innerText()), `${label}: the Work tab has Law, named for the field before the player is in it`);
   await rowBtn.click(); await hub().waitFor();
   check(/Every case tells a story/i.test(await hub().innerText()), `${label}: the hub opens, with its subtitle`);
-  const guide = page.locator('#modal-root .modal', { hasText: 'Your Legal Career' }).last();
+  const guide = page.locator('#modal-root .modal', { hasText: 'How it works' }).last();
   check(await guide.count() === 1 && /Handle the Routine Steps/.test(await guide.innerText()), `${label}: the first time, a short guide explains how it works`);
   await guide.locator('[data-guideok]').click(); await page.waitForTimeout(80);
   check(await page.locator('#modal-root [data-guideok]').count() === 0, `${label}: and it closes`);

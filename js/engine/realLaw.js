@@ -9,7 +9,7 @@ const yearNow = () => store.state?.year ?? 2026;
 export function lawsFor(topic, countryId, year = yearNow()) {
   return REAL_LAWS.filter((l) => l.topic === topic && l.countryIds.includes(countryId) && l.from <= year && (l.until ?? Infinity) >= year).sort((a, b) => b.from - a.from);
 }
-/** The law that governs a topic now, or null where Pathways does not list one. */
+/** The law that governs a topic now, or null where From Birth does not list one. */
 export const governing = (topic, countryId, year = yearNow()) => lawsFor(topic, countryId, year)[0] ?? null;
 
 /**

@@ -165,7 +165,7 @@ section('recruitment: eligibility per agency, dated decisions, the academy over 
     `the same outcome on quarterly and yearly turns (${JSON.stringify([quarterly.stage, quarterly.last, quarterly.scene])} vs ${JSON.stringify([yearly.stage, yearly.last, yearly.scene])})`);
   check(yearly.months === '12' && quarterly.months === '12' && quarterly.lines.some((t) => /three more months/.test(t)), `the player hears how long it really was: three months at a time on quarterly turns, the whole year in the scene on a yearly one (${yearly.months})`);
   check(yearly.lines.every((t) => !/three more months/.test(t)), 'a yearly turn does not say three months when it was twelve');
-  check(quarterly.lines.some((t) => /My Investigations/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
+  check(quarterly.lines.some((t) => /on the Work tab/.test(t) && /(writing|observation|interviewing|ethics)/.test(t)), 'it names the skill holding the recruit back and the patrol work that builds it');
   check(yearly.scene && yearly.stage === 'field', 'after the last extension, a last chance to ask for');
   // Asking, or accepting: one final three months, or the job ends.
   store.state = JSON.parse(snapshot); setNow(start + 12); C.settleProbation();
@@ -752,21 +752,21 @@ section('more: six new case types, autonomy for the person harmed, each federal 
   let pub = null;
   for (let i = 0; i < 6 && !pub; i++) { X.npcCourtCase(p); pub = X.publicCases(p)[0]; }
   check(pub && pub.defendant && pub.outcome, 'a case in court is in the public record');
-  X.startStory(pub.caseId);
-  const st = X.myStories(p)[0];
-  check(!X.storyStep(st.id, 'sealed').ok, 'a reporter cannot get the case file');
-  check(!X.publishStory(st.id).ok, 'a story starts from the public record');
-  for (const s2 of ['records', 'sources', 'comment', 'verify']) X.storyStep(st.id, s2);
-  const res = X.publishStory(st.id);
-  check(res.ok && ['verified', 'accurate, unverified'].includes(st.accuracy), `a verified story holds up (${st.accuracy})`);
-  const st2id = (() => { const other = X.publicCases(p).find((c) => c.caseId !== pub.caseId) ?? (X.npcCourtCase(p), X.publicCases(p).find((c) => c.caseId !== pub.caseId)); if (!other) return null; X.startStory(other.caseId); return X.myStories(p).find((s) => s.caseId === other.caseId).id; })();
-  if (st2id) {
-    X.storyStep(st2id, 'records');
-    const s2 = core.W().stories[st2id];
-    s2.claims.push({ text: 'A witness says they saw it all.', sourced: false, accurate: false });
-    X.publishStory(st2id);
-    check(s2.accuracy === 'contains an error' && X.correctStory(st2id).ok && !X.correctStory(st2id).ok, 'an unverified mistake is published as one, and corrected once');
-  }
+  // Court stories are reported in the newsroom: one notebook per case, the real witnesses, records that stay closed.
+  // (The dice are put back afterwards, so the checks that follow see the same rolls as before.)
+  const { rng: dice } = await import('../js/rng.js');
+  const diceAt = dice.state();
+  const jn = await import('../js/engine/journalism.js');
+  jn.migrateJournalist(p);
+  const cov = jn.coverCase(pub.caseId);
+  check(cov.ok && !jn.coverCase(pub.caseId).ok, `a case is covered from the public record, once (${cov.text})`);
+  const st = jn.storyOf(cov.storyId);
+  check(st && st.links.caseId === pub.caseId && st.docs.filter((d) => !d.public).every((d) => !jn.readDoc(st.id, d.id).ok), 'a reporter cannot get the case file or sealed statements');
+  const cinv = Object.values((await import('../js/engine/cases.js')).J().investigations).find((x) => x.file?.courtCaseId === pub.caseId);
+  const wits = st.sources.filter((x) => x.type === 'witness' && x.npcId);
+  check(!cinv || !Object.values(cinv.file.witnesses).some((w) => w.willing >= 0.5 && store.state.npcs[w.id]?.alive) || wits.every((x) => cinv.file.witnesses[x.npcId]), 'the witnesses are the case\'s own');
+  check(pub.outcome === 'convicted' || st.claims.find((c) => / committed the crime$/.test(c.text)).truth === false, 'nobody is guilty in a story unless a court said so');
+  dice.seed(diceAt);
 }
 section('forensic medicine for the court and death investigations, policing decided by those with the authority, journalism from the public record');
 

@@ -3,7 +3,7 @@
 //
 // GAMEPLAY CONFIGURATION. Founding years and the year a sport could be played
 // for money are rounded, documented assumptions for this game, not a history.
-// Every league, club, tour and rating in Pathways is invented. The Pathways
+// Every league, club, tour and rating in From Birth is invented. The From Birth
 // Rating (PR) is the game's own measure and is not any real federation's rating.
 //
 //   kind      'team' | 'racket' (singles and doubles) | 'golf' | 'race' (timed or measured) | 'judged' | 'combat' | 'fitness'
@@ -415,8 +415,8 @@ export const DRAFTS = {
  * September): high school and university seniors; posting after seven seasons, and military service before 28.
  */
 export const COUNTRY_DRAFTS = {
-  jp: { baseball: { name: 'NPB', rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
-  kr: { baseball: { name: 'KBO', rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
+  jp: { baseball: { name: "Japan's league", rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
+  kr: { baseball: { name: "Korea's league", rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
 };
 /** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
 /** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
@@ -454,15 +454,26 @@ export const INTL_SIGNING = {
 //
 // A season in the game is a sample of a real one: the player's numbers are scaled to the length of the real season at
 // their level, so a career adds up to the totals baseball counts (3,000 hits, 500 home runs, 300 wins).
+/**
+ * The names players see for leagues that exist in the real world. The keys stay as they are (they are saved, and the
+ * engine reads them); what is shown is a plain description, since a real league's name is its owner's trademark.
+ */
+export const LEAGUE_NAMES = { MLB: 'the major leagues', NPB: "Japan's top league", KBO: "Korea's top league",
+  'Dominican Summer League': 'the academy summer league', 'Futures League': "Korea's minor league", 'G League': 'the development league', AHL: 'the top minor league' };
+/** As it reads in a sentence ("You start in the development league"). */
+export const leagueName = (key) => LEAGUE_NAMES[key] ?? key;
+/** As a label ("The development league"). */
+export const leagueLabel = (key) => { const s = leagueName(key); return s ? s[0].toUpperCase() + s.slice(1) : s; };
+
 export const BASEBALL = {
   games: { MLB: 162, NPB: 143, KBO: 144, 'Triple-A': 150, 'Double-A': 138, 'High-A': 132, 'Single-A': 132, 'Rookie ball': 60, 'Dominican Summer League': 60,
     'Farm team': 110, 'Futures League': 100, 'Independent League': 100, college: 56, school: 28, other: 30 },
   top: { us: 'MLB', ca: 'MLB', jp: 'NPB', kr: 'KBO' },
   // The rounds of the postseason, as each league names them. The big leagues take twelve clubs: four rest through the
   // wild card round (engine/sports.js playoffs).
-  rounds: { MLB: { 'Wild Card': 'Wild Card Series', Quarterfinal: 'Division Series', Semifinal: 'League Championship Series', Final: 'World Series' },
-    NPB: { Quarterfinal: 'Climax Series, first stage', Semifinal: 'Climax Series, final stage', Final: 'Japan Series' },
-    KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korean Series' } },
+  rounds: { MLB: { 'Wild Card': 'Wild Card Series', Quarterfinal: 'Division Series', Semifinal: 'Semifinal Series', Final: 'Championship Series' },
+    NPB: { Quarterfinal: 'Playoffs, first stage', Semifinal: 'Playoffs, final stage', Final: 'Japan Championship' },
+    KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korea Championship' } },
   milestones: { H: [1000, 2000, 3000], HR: [100, 200, 300, 400, 500, 600, 700], W: [100, 200, 300], SV: [100, 300, 500], K: [1000, 2000, 3000] },
   names: { H: 'hits', HR: 'home runs', W: 'wins', SV: 'saves', K: 'strikeouts' },
   // The World Baseball Classic: 2006, 2009, 2013, 2017, 2023, 2026; assumed every four years after that.
