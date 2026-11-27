@@ -49,7 +49,13 @@ export function headline(card) {
 }
 
 /** What the diploma says was earned. */
-function awardLine(card) {
+function awardLine(card) { return headCase(awardWords(card)); }
+
+/** Title case for the diploma: every word capitalized but the small joining ones (High School Diploma, Bachelor's Degree in Biology). */
+const SMALL = new Set(['in', 'of', 'and', 'the', 'a', 'an', 'for', 'to', 'on']);
+const headCase = (t) => t.split(' ').map((w, i) => (i && SMALL.has(w.toLowerCase()) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
+
+function awardWords(card) {
   const s = card.stage;
   const sub = card.subject ? ` in ${card.subject}` : '';
   if (s === 'high') return cap(card.award ?? 'diploma');
@@ -104,7 +110,7 @@ export function graduationCardHtml(p, card) {
       <div class="grad-certify">has completed</div>
       <div class="grad-award">${esc(awardLine(card))}</div>
       <div class="grad-school">${esc(where)}</div>
-      ${card.mark || card.honors ? `<div class="grad-marks">${card.mark ? `<span>${esc(card.mark)}</span>` : ''}${card.honors ? `<span class="grad-honors">✨ ${esc(cap(card.honors))}</span>` : ''}</div>` : ''}
+      ${card.mark || card.honors ? `<div class="grad-marks">${card.mark ? `<span>${esc(card.mark)}</span>` : ''}${card.honors ? `<span class="grad-honors">✨ ${esc(headCase(card.honors))}</span>` : ''}</div>` : ''}
       <div class="grad-seal" aria-hidden="true"><span>${st.seal}</span></div>
     </div>
   </div>`;

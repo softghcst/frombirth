@@ -229,7 +229,7 @@
 .grad-ribbon { position: absolute; top: -7px; left: 50%; width: 46px; height: 14px; transform: translateX(-50%); border-radius: 3px; background: var(--edge); opacity: 0.9; }
 .grad-certify { font: italic 600 0.78rem/1.3 var(--serif); opacity: 0.75; }
 .grad-name { font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive; font-size: 1.85rem; line-height: 1.05; color: var(--pen); font-weight: 600; margin: 1px 0 3px; }
-.grad-award { font: 700 1rem/1.25 var(--serif); margin-top: 2px; }
+.grad-award { font: 700 1rem/1.25 var(--serif); margin-top: 2px; padding: 0 30px; text-wrap: balance; }
 .grad-school { font: 800 0.66rem/1.3 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; color: var(--deep); padding: 0 34px; }
 .grad-marks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; font: 700 0.74rem/1 var(--sans); }
 .grad-marks span { padding: 4px 9px; border-radius: 999px; background: var(--paper); border: 1px solid var(--edge); }
