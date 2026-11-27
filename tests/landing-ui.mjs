@@ -61,6 +61,9 @@ for (const id of ['afterglow', 'midnight', 'daydream']) {
   const logo = await page.evaluate(() => { const i = document.querySelector('.lp-logo'); return { src: i.getAttribute('src'), alt: i.alt, ok: i.complete && i.naturalWidth > 0, w: i.getBoundingClientRect().width }; });
   check(/from_birth_logo/.test(logo.src) && logo.alt === 'From Birth' && logo.ok && logo.w >= 120 && logo.w <= 182, `${id}: the official logo, phone-sized (${logo.w})`);
   check(await page.locator('.lp-card [data-load]').count() === 1 && /Age 7/.test(await page.locator('.lp-card').first().innerText()), `${id}: the saved life is shown, with its age`);
+  // Measured once the fonts and the logo are in: on a busy machine either can still be loading.
+  await page.evaluate(async () => { await document.fonts.ready; const i = document.querySelector('.lp-logo'); if (i && !i.complete) await new Promise((r) => { i.onload = r; i.onerror = r; setTimeout(r, 3000); }); });
+  await page.waitForTimeout(100);
   layouts[id] = await page.evaluate(() => ['.lp-logo', '[data-random]', '[data-design]', '[data-world]', '[data-settings]', '#lp-lives', '#lp-past'].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }));
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${id}: nothing scrolls sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/landing-${id}.png` });
