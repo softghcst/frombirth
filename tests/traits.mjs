@@ -118,6 +118,63 @@ check(Math.max(...TRAITS.flatMap((t) => Object.entries(t.effects ?? {}).filter((
 check(TRAITS.every((t) => Object.entries(t.effects ?? {}).every(([k, v]) => !k.endsWith('K') || (v >= 0.7 && v <= 1.5))), 'no trait more than halves or doubles anything');
 section('traits change a life a little, every year: friends, quarrels, invitations, practice, mood');
 
+// ---------- 4. Turning points: 13, 18, 45 ----------
+{
+  const LS = await import('../js/engine/lifeStages.js');
+  const { advanceYear } = await import('../js/engine/yearProcessor.js');
+  const { getEvent, resolveChoice } = await import('../js/engine/eventEngine.js');
+  /** Ages a life up to `age`, then answers the turning point, if it came, with choice `i`. */
+  const reach = (life0, age, i) => {
+    life0.age = age - 1; life0.birthYear = store.state.year - age + 1;
+    store.state.pendingEvents = [];
+    advanceYear();
+    const q = store.state.pendingEvents.find((e) => e.id.startsWith('life_stage'));
+    if (q && i != null) resolveChoice(getEvent(q.id), i, q.cast);
+    return q;
+  };
+  p = life(12); p.flags.livesWithParents = true; p.traits = ['bookish'];
+  p.flags.childhood = { acts: { 6: ['art', 'hobby'], 7: ['art', 'toys'], 8: ['art'], 9: ['art', 'hobby'], 10: ['art'], 11: ['art', 'toys'], 12: ['art'] } };
+  const q13 = reach(p, 13, null);
+  check(q13?.id === 'life_stage' && p.flags.stageOffer?.ids.length === 3, 'at thirteen, who are you becoming: three traits to choose from');
+  check(!/[{}]/.test(['t0', 'd0', 't1', 't2', 'stage'].map((k) => q13?.cast.words[k] ?? '{').join('')), 'their names and meanings filled in');
+  const ids = p.flags.stageOffer.ids;
+  resolveChoice(getEvent('life_stage'), 1, q13.cast);
+  check(T.hasTrait(ids[1]) && p.traitSources[ids[1]] === 'teen' && !p.flags.stageOffer, 'choosing one takes it on, "as a teenager"');
+  check(!reach(p, 14, null), 'and the question is not asked again until the next turning point');
+  // Lives fit what they offer: a child who drew every year is offered Creative far more often than one who did not.
+  let artist = 0; let plain = 0;
+  for (let i = 0; i < 40; i++) {
+    p = life(13); p.traits = []; p.flags.childhood = { acts: { 6: ['art'], 7: ['art', 'hobby'], 8: ['art'], 9: ['art', 'toys'], 10: ['art'], 11: ['art'], 12: ['art'] } };
+    if (LS.offerFor(p, 13).ids.includes('creative')) artist += 1;
+    p = life(13); p.traits = []; p.flags.childhood = { acts: { 6: ['swim'], 7: ['tumbling'], 8: ['swim'], 9: ['playground'], 10: ['swim'] } };
+    if (LS.offerFor(p, 13).ids.includes('creative')) plain += 1;
+  }
+  check(artist > plain * 2 && artist >= 20, `what is offered fits the childhood: Creative to ${artist} of 40 young artists, ${plain} of 40 swimmers`);
+  // Forty-five, with three promotions: Ambitious is likely; and something that does not fit can be grown out of.
+  let ambitious = 0;
+  for (let i = 0; i < 30; i++) { p = life(45); p.traits = ['worrier']; p.career = { careerId: 'office', promotions: 3, level: 3, stress: 60 }; if (LS.offerFor(p, 45).ids.includes('ambitious')) ambitious += 1; }
+  check(ambitious >= 18, `three promotions by forty-five: Ambitious is offered (${ambitious} of 30)`);
+  p = life(17); p.traits = ['sunny', 'delicate'];
+  const q18 = reach(p, 18, null);
+  check(q18?.id === 'life_stage_drop' && p.flags.stageOffer.drop && q18.cast.words.drop, 'at eighteen, one trait may be grown out of');
+  const gone = p.flags.stageOffer.drop;
+  resolveChoice(getEvent('life_stage_drop'), 3, q18.cast);
+  check(!T.hasTrait(gone) && p.traits.length === 1, 'growing out of it lets it go');
+  // Full: something new means something old goes.
+  p = life(44); p.traits = ['sunny', 'steady', 'gentle', 'musical', 'hardy'];
+  const q45 = reach(p, 45, null);
+  check(q45?.id === 'life_stage_full' && p.flags.stageOffer.ids.every((id) => !T.clashes(id, p.traits.filter((x) => x !== p.flags.stageOffer.drop))), 'with five traits, taking one on means letting one go');
+  const off = { ...p.flags.stageOffer };
+  resolveChoice(getEvent('life_stage_full'), 0, q45.cast);
+  check(p.traits.length === 5 && T.hasTrait(off.ids[0]) && !T.hasTrait(off.drop) && p.traitSources[off.ids[0]] === 'midlife', 'and the count stays at five');
+  p = life(17); p.traits = ['sunny'];
+  const qn = reach(p, 18, null);
+  resolveChoice(getEvent(qn.id), qn.id === 'life_stage_drop' ? 4 : 3, qn.cast);
+  check(p.traits.length === 1 && T.hasTrait('sunny'), '"none of these" changes nothing');
+  check(!LS.offerFor(p, 30), 'and thirty is not a turning point');
+}
+section('at 13, 18 and 45: three traits that fit the life so far, one to grow out of, and never more than five');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Traits hold together.');
