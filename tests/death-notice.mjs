@@ -31,7 +31,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.click('[data-random]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   // Clear whatever the new life opens with.
   for (let i = 0; i < 20; i++) {

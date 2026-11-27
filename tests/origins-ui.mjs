@@ -31,7 +31,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const shot = async (name) => { if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/origins-${label}-${name}.png`, fullPage: false }); };
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear()); await page.reload();
-  await page.click('[data-design]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-design]');
   await page.waitForSelector('#f-origin');
   const opts = await page.locator('#f-origin option').allInnerTexts();
   check(['Standard family', 'Adopted at birth', 'Adopted during childhood', 'Raised by relatives', 'Surprise me'].every((o) => opts.some((x) => x.toLowerCase() === o.toLowerCase())), `${label}: the designer offers the family origins (${opts})`);

@@ -357,6 +357,8 @@ export const SCENE_FROM = {
   // Mobile phones and the messages they carry
   first_phone: 1998, contraband: 1998, card_school: 1998, jealous: 2002, their_secret: 2002, ex_returns: 1995, headhunter_call: 1998,
   found_phone: 2008, exam_answers: 2008, school_petition: 2007, sibling_video: 1985,
+  // Everyday adult life (data/events/everydayLife.js)
+  car_wont_start: 1930, pay_it_forward: 1960, overcharged_mechanic: 1950, unfair_ticket: 1950, flat_tire_stranger: 1930, blood_drive: 1945, charity_run: 1970, secret_santa: 1950, office_karaoke: 1985, quiz_night: 1970,
   // Social media
   brand_offer: 2010, post_backlash: 2010,
   // Working life

@@ -32,7 +32,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`http://localhost:${port}/index.html`);
   await page.evaluate(() => localStorage.clear()); await page.reload();
-  await page.click('[data-design]');
+  await page.evaluate(() => localStorage.setItem('frombirth.birthGlobe', 'off')); await page.click('[data-design]');
   await page.waitForSelector('#f-country');
   const shown = (sel) => page.locator(sel).isVisible();
   check(!(await shown('#f-region')) && !(await shown('#f-city')), `${label}: nothing below the country until one is chosen`);

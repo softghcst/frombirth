@@ -149,13 +149,14 @@ export const DISAGREEMENTS = {
 };
 
 /**
- * Small everyday moments on the street, each about a real neighbor: one scene each, so the ten-year gap between the
+ * Small everyday moments on the street, each about a real neighbor (and none that the everyday scenes already tell,
+ * like a parcel at the wrong door or a power cut): one scene each, so the ten-year gap between the
  * same scene (engine/neighborhood.js) keeps them from coming round again. `from`: the year it can happen; `blocks`:
  * the kinds of street it belongs to; `pet`: the neighbor needs a pet.
  */
 export const MOMENTS = {
-  parcel: { scene: 'hood_wrong_parcel', from: 1920 },
-  powercut: { scene: 'hood_power_cut', from: 1925 },
+  baby: { scene: 'hood_new_baby' },
+  biggame: { scene: 'hood_big_game', from: 1960 },
   lostpet: { scene: 'hood_lost_pet', pet: true },
   yardsale: { scene: 'hood_yard_sale', from: 1950, blocks: ['street', 'lane'] },
   storm: { scene: 'hood_storm_tree', blocks: ['street', 'lane'] },
