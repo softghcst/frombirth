@@ -46,6 +46,10 @@ export function roleLabel(npc) {
       if (of.role === 'sibling') return byGender(npc, 'Brother-in-law', 'Sister-in-law', 'Sibling-in-law');
       return `${of.firstName}'s ${byGender(npc, 'husband', 'wife', 'spouse')}`;
     }
+    case 'stepparent': return npc.flags.calledParent ? byGender(npc, 'Stepdad', 'Stepmom', 'Stepparent') : byGender(npc, 'Stepfather', 'Stepmother', 'Stepparent');
+    case 'stepsibling': return byGender(npc, 'Stepbrother', 'Stepsister', 'Stepsibling');
+    case 'stepchild': return byGender(npc, 'Stepson', 'Stepdaughter', 'Stepchild');
+    case 'fosterchild': return byGender(npc, 'Foster son', 'Foster daughter', 'Foster child');
     case 'spouse': return byGender(npc, 'Husband', 'Wife', 'Spouse');
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
@@ -61,9 +65,9 @@ export function roleLabel(npc) {
 }
 
 /** Family, by role: their deaths are always told. */
-const KIN_ROLES = ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
+const KIN_ROLES = ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian', 'stepparent', 'stepsibling', 'stepchild', 'fosterchild'];
 
-const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
+const DECAY = { stepparent: 2, stepsibling: 3, stepchild: 2, fosterchild: 2, mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
   neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
@@ -182,10 +186,14 @@ export function tickRelationships() {
 
     // Decay: closeness fades unless you put time in. People you live with are spared.
     const neglected = npc.lastInteractionAge < p.age - 1;
-    const away = npc.role === 'parent' && npc.gender === 'male' && p.flags.parentsStatus === 'separated';
+    // After a separation, the parent the player does not live with (engine/blended.js custody; before custody was
+    // recorded, the father). Step relatives in the household the player lives in are at home.
+    const custodyOther = store.state.livingFamilies?.blended?.custody?.other;
+    const away = npc.role === 'parent' && p.flags.parentsStatus === 'separated' && (custodyOther ? npc.id === custodyOther : npc.gender === 'male');
     const family = npc.role === 'parent' || npc.role === 'sibling';
     const atHome = (p.flags.livesWithParents && !away && family)
-      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
+      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id
+      || (p.flags.livesWithParents && npc.flags.inHome) || (npc.role === 'stepchild' && npc.age < 18) || (npc.role === 'fosterchild' && npc.flags.placement);
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
