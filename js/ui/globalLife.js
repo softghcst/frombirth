@@ -137,14 +137,15 @@ const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'b
  * @param {{view?:string, params?:object}} [start]
  */
 /** The way there, as a scene: home, any changes of plane or ports of call, and the destination, on a map. */
-export async function journeyOf(trip) {
+export async function journeyOf(trip, changed = () => {}) {
   try {
-    const { openJourney, overOf } = await import('./journey.js');
+    const { openJourney, overOf, journeyScenesOn } = await import('./journey.js');
+    if (!journeyScenesOn()) return; // turned off in Settings
     const legs = trip.itinerary?.out ?? [];
     const stops = legs.length ? [legs[0].from, ...legs.map((l) => l.to)] : [trip.origin, trip.destination];
     if (trip.type === 'cruise') stops.push(...travel.portCalls(trip).map((x) => ({ countryId: x.countryId, city: x.port })));
     const kind = { honeymoon: 'Off on the honeymoon', vacation: 'Off on vacation', getaway: 'A weekend away', business: 'Off on business' }[trip.type];
-    await openJourney({ stops, over: trip.type === 'cruise' ? 'sea' : overOf(legs[0]?.mode ?? trip.mode), title: kind });
+    await openJourney({ stops, over: trip.type === 'cruise' ? 'sea' : overOf(legs[0]?.mode ?? trip.mode), title: kind, tripId: trip.id, onChange: changed });
   } catch { /* no map: on with the trip */ }
 }
 
@@ -158,7 +159,7 @@ export async function goOnTrip(api, id, changed = () => api?.changed?.()) {
   if (!start.ok) return start;
   changed();
   const trip = start.trip;
-  await journeyOf(trip); // the plane (or ship, train, car) on its way there, on a map (js/ui/journey.js)
+  await journeyOf(trip, changed); // the plane (or ship, train, car) on its way there, on the globe, with its boarding pass and a moment in the air (js/ui/journey.js)
   const scenes = travel.tripScenes(trip);
   let previous = null;
   for (const [i, sc] of scenes.entries()) {

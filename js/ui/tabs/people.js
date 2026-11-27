@@ -41,17 +41,20 @@ import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 import { navRow, navGroup, icon, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
+import * as fostering from '../../engine/fostering.js';
+import { friendGroups as friendGroupsOf } from '../../engine/friendGroups.js';
+import { openFostering } from '../fostering.js';
 import { originsRow, openOrigins } from '../origins.js';
 import { rootsText } from '../roots.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
+const ORDER = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 /** Roles always shown at the top of People. */
-const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild', 'parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
-  ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Children and grandchildren', ['child', 'stepchild', 'fosterchild', 'ward', 'grandchild', 'greatgrandchild']],
+  ['Family', ['parent', 'stepparent', 'guardian', 'sibling', 'stepsibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
   // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
@@ -60,7 +63,7 @@ const GROUPS = [
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
   ['Your care team', ['clinician']],
-  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
+  ['Others', ['ex', 'fosterfamily', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 export const portrait = (npc) => (npc.role === 'pet'
@@ -376,7 +379,7 @@ export function openNpc(npc, api, back, o = {}) {
   const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.alive ? bonds.bondActions(npc) : []),
-    ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
+    ...((npc.role === 'child' || kid.homeKid(npc)) && npc.alive ? kid.actionsFor(npc) : []), // your own, a stepchild at home, a child in your care
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
     // A method in place (an implant, an IUD, a pill, a permanent method) greys it out, with why underneath.
@@ -463,6 +466,7 @@ export function openNpc(npc, api, back, o = {}) {
         if (how) await report(api, kid.homework(npc.id, how));
       },
       schoolEvent: () => report(api, kid.attend(npc.id)),
+      carePlan: () => report(api, kid.carePlanMeeting(npc.id)),
       kidTutor: async () => {
         const c = country();
         const yes = await confirmModal({ title: 'Pay for a tutor?', body: `Two evenings a week for a year: ${fmtMoney(localMoney(kid.TUTOR_COST, c), c)}.`, yes: 'Pay for it' });
@@ -512,6 +516,22 @@ zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 sportsUi.connect({ openPerson: openNpc });
 hoodUi.connect({ openPerson: openNpc });
 
+/** Your groups of friends: who is in each, since when, and what has happened to them (engine/friendGroups.js). */
+function openFriendGroups(api) {
+  const gs = friendGroupsOf().sort((a, b) => (a.status === b.status ? b.formed - a.formed : a.status === 'together' ? -1 : 1));
+  const body = gs.map((g) => `<div class="card" style="margin-top:10px"><h3>${esc(g.name)}</h3>
+    <p class="muted">${g.status === 'together' ? `Together since ${g.formed}` : `${g.formed}, drifted apart`}${g.school ? ` · from ${esc(g.school)}` : ''}${g.at === 'after school' ? ' · still going after school' : ''}</p>
+    ${g.members.map((id) => store.state.npcs[id]).filter(Boolean).map((n) => `<button class="row" data-gnpc="${n.id}"><div class="main"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(rel.roleLabel(n))} · age ${n.age}</small></div></button>`).join('')}
+    ${g.history.length ? `<details class="more"><summary>What happened</summary>${g.history.slice(-8).reverse().map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}</details>` : ''}</div>`).join('');
+  const m = openModal(`<h2>Friend groups</h2>${body}<button class="btn" data-close style="margin-top:14px;width:100%">Close</button>`, { dismissable: true });
+  m.el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) return m.close();
+    const id = e.target.closest('[data-gnpc]')?.dataset.gnpc;
+    if (id) { m.close(); return openNpc(store.state.npcs[id], api); }
+    return undefined;
+  });
+}
+
 /** Look for Love and Adopt a Child, for the Self tab: what you can start yourself. Greyed, with why, until open. */
 export function loveFamilyGroup() {
   const c = country();
@@ -521,12 +541,16 @@ export function loveFamilyGroup() {
   else if (!love.partner()) rows.push(lockedRow('Look for Love', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now', 'heart'));
   if (kids.canAdopt()) rows.push(navRow({ attrs: 'data-lovefam="adopt"', label: 'Adopt a Child', sub: fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), ico: 'child' }));
   else rows.push(lockedRow('Adopt a Child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large', 'child'));
+  // Foster and kinship care (engine/fostering.js): open to look at from 21; applying needs a home of your own.
+  if (pp.age >= 21) rows.push(navRow({ attrs: 'data-lovefam="foster"', label: 'Fostering', sub: fostering.activePlacements().length ? `${fostering.activePlacements().length} living with you` : fostering.fostering().status === 'approved' ? 'Approved carer' : 'Give a child a home for a while', ico: 'child' }));
+  else rows.push(lockedRow('Fostering', fromAge(pp.age, 21), 'child'));
   return navGroup(rows, 'Love and Family');
 }
 
 /** Opens what a Love and Family row starts. */
 export async function openLoveFamily(id, api) {
   if (id === 'love') return lookForLove(api);
+  if (id === 'foster') return openFostering(api);
   if (id === 'adopt') {
     const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
     if (yes) return adoptAndWelcome(api);
@@ -552,6 +576,7 @@ export default {
     // Look for Love and Adopt a Child are on the Self tab (loveFamilyGroup), with your own plans, not here among your people.
     const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
+    { const gs = friendGroupsOf(); if (gs.length) more.unshift(['groups', 'Friend groups', gs.filter((g) => g.status === 'together').map((g) => g.name).join(', ') || 'Groups you were part of', 'people']); }
 
     const row = (n) => `
       <button class="row rel-card" data-npc="${n.id}">
@@ -588,6 +613,7 @@ export default {
       if (id === 'origins') return openOrigins(api, (npc) => openNpc(npc, api));
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
+      if (id === 'groups') return openFriendGroups(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);

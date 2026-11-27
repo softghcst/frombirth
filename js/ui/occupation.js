@@ -2,6 +2,7 @@
 // at work, the job market, offers and recruiters, part-time work, freelancing,
 // special careers, the military, qualifications, history and retirement.
 // Every section reads the engine; every button does something.
+import { interviewThenTake } from './interview.js';
 import { childPayRows } from '../engine/childEarnings.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
@@ -584,7 +585,7 @@ const ACTIONS = {
   leaddecline: (id, x) => x.say(recruit.declineLead(id)),
   cover: (_, x) => x.say(pt.coverShift()),
   async quitside(id, x) { if (await confirmModal({ title: 'Leave this job?', body: 'You will lose the income.', yes: 'Leave', danger: true })) await x.say(pt.quitJob(id)); },
-  takept: (id, x) => x.say(pt.takeJob(id)),
+  async takept(id, x) { const r = await interviewThenTake(id); if (r) await x.say(r); },
   async availability(_, x) {
     const h = await pickModal({ title: 'Hours a week for freelance work', options: AVAILABILITY.map((v) => ({ value: v, label: v ? `${v} hours` : 'None' })) });
     if (h != null) await x.say(free.setAvailability(h));

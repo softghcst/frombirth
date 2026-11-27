@@ -205,9 +205,10 @@ section('C: the trauma emergency');
     for (let i = 0; i < 3 && cm.training; i++) { for (const k of Object.keys(cm.skills)) cm.skills[k] = skill; year(); }
     return cm.completed.some((c) => c.chief) || !!cm.training?.chief;
   });
-  const strongChiefs = chiefRuns(95, Array.from({ length: 16 }, (_, i) => i + 1)).filter(Boolean).length;
+  // At best 85% (engine/medicine/training.js): forty lives, so that all of them being chosen is not a matter of luck (16 lives all chosen came up 7% of the time).
+  const strongChiefs = chiefRuns(95, Array.from({ length: 40 }, (_, i) => i + 1)).filter(Boolean).length;
   const weakChiefs = chiefRuns(25, [1, 2, 3, 4]).filter(Boolean).length;
-  check(strongChiefs >= 8 && strongChiefs < 16 && weakChiefs === 0, `I. chief resident: often the strongest, never certain, never the weakest (${strongChiefs}/16 strong, ${weakChiefs}/4 weak)`);
+  check(strongChiefs >= 20 && strongChiefs < 40 && weakChiefs === 0, `I. chief resident: often the strongest, never certain, never the weakest (${strongChiefs}/40 strong, ${weakChiefs}/4 weak)`);
 }
 section('D, E, I: the fellowship rivalry, the mentor, chief resident');
 

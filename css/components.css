@@ -1594,3 +1594,77 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .lpk-thumb { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; background: center bottom / cover no-repeat; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
 .lpk-auto { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
 .lpk-auto span { background: center bottom / cover no-repeat; }
+
+/* ---------- The birth globe (js/ui/birthGlobe.js): the world spins to where a life begins ---------- */
+.birth-globe { position: fixed; inset: 0; z-index: 70; background: #070B1F; color: #FFFFFF; overflow: hidden; cursor: pointer; animation: sv-fade-in .4s ease both; }
+.birth-globe.bg-out { animation: sv-fade-out .45s ease forwards; pointer-events: none; }
+.bg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bg-hint { position: absolute; left: 0; right: 0; bottom: max(18px, env(safe-area-inset-bottom)); margin: 0; text-align: center; font-size: .85rem; opacity: .6; letter-spacing: .06em; }
+.bg-pin { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+.bg-pin span { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); line-height: 0; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .5)); }
+.bg-pin svg { display: block; }
+.bg-pin i { position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 3px solid #FFE27A; }
+.bg-landed .bg-pin { opacity: 1; }
+.bg-landed .bg-pin span { animation: bg-drop .55s cubic-bezier(.3, 1.6, .5, 1) both; }
+.bg-landed .bg-pin i { animation: bg-ping 1.8s ease-out .4s infinite; }
+.bg-landed .bg-pin i + i { animation-delay: 1.3s; }
+@keyframes bg-drop { from { transform: translate(-50%, -260%); opacity: 0; } to { transform: translate(-50%, -100%); opacity: 1; } }
+@keyframes bg-ping { from { transform: scale(.6); opacity: .9; } to { transform: scale(4.5); opacity: 0; } }
+.bg-card { position: absolute; left: 12px; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); padding: 18px 20px 20px; border-radius: 26px; cursor: default;
+  background: rgba(255, 253, 248, .97); color: #2A1E3A; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); text-align: center;
+  transform: translateY(120%); opacity: 0; transition: transform .7s cubic-bezier(.2, 1.2, .4, 1) .45s, opacity .4s ease .45s; }
+.bg-landed .bg-card { transform: none; opacity: 1; }
+.bg-eyebrow { margin: 0; font-size: .8rem; text-transform: uppercase; letter-spacing: .18em; color: #7956A0; font-weight: 700; }
+.bg-country { margin: 4px 0 2px; font-family: var(--serif); font-weight: 700; font-size: clamp(2.1rem, 9vw, 3.2rem); line-height: 1.05; }
+.bg-flag { display: block; font-size: 1.15em; margin-bottom: 2px; }
+.bg-city { margin: 0 0 12px; font-size: 1.05rem; opacity: .75; }
+.bg-odds { margin: 0 0 14px; }
+.bg-odds p { margin: 8px 0 0; font-size: .98rem; }
+.bg-odds strong { font-size: 1.25rem; }
+.bg-rarity { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
+.bg-common { background: #E4E9EF; color: #3D4A5C; }
+.bg-uncommon { background: #D7F2D9; color: #1F6B2C; }
+.bg-rare { background: #D6E8FF; color: #1C4F9C; }
+.bg-veryrare { background: #ECDDFF; color: #5B2A9B; }
+.bg-ultra { background: linear-gradient(90deg, #FFD86B, #FF9BC8, #A99BFF); color: #3A1A4A; box-shadow: 0 0 18px rgba(255, 200, 120, .7); }
+.bg-born { width: 100%; font-size: 1.15rem; }
+@media (min-width: 760px) {
+  .bg-card { left: auto; right: 5vw; top: 50%; bottom: auto; width: min(380px, 36vw); padding: 26px; transform: translate(130%, -50%); }
+  .bg-landed .bg-card { transform: translate(0, -50%); }
+}
+@media (prefers-reduced-motion: reduce) { .birth-globe, .birth-globe * { animation: none !important; transition: none !important; } }
+
+/* ---------- The journey on the globe (js/ui/journey.js): the boarding pass, the moment in the air ---------- */
+.journey-screen.jg { background: #070B1F; overflow: hidden; }
+.jg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.jg .journey-head { background: linear-gradient(180deg, rgba(7, 11, 31, .85), rgba(7, 11, 31, 0)); text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+.jg-card { position: absolute; left: 12px; right: 12px; bottom: calc(40px + env(safe-area-inset-bottom)); z-index: 2; padding: 16px 18px 18px; border-radius: 22px; cursor: default;
+  background: rgba(255, 253, 248, .97); color: #2A1E3A; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); animation: jg-in .5s cubic-bezier(.2, 1.2, .4, 1) both; }
+.jg-card[hidden] { display: none; }
+.jg-card.jg-gone { animation: jg-out .35s ease forwards; pointer-events: none; }
+@keyframes jg-in { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes jg-out { to { transform: translateY(40px); opacity: 0; } }
+.jg-eyebrow { margin: 0 0 6px; font-size: .75rem; text-transform: uppercase; letter-spacing: .16em; color: #7956A0; font-weight: 700; }
+.jg-pass { border-top: 6px solid #7956A0; }
+.jg-route { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 10px; }
+.jg-route div { display: grid; text-align: center; min-width: 0; }
+.jg-route b { font-family: var(--serif); font-size: 2rem; line-height: 1; letter-spacing: .04em; }
+.jg-route small { font-size: .78rem; opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jg-route span { font-size: 1.4rem; color: #7956A0; }
+.jg-meta { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 2px dashed #E4DCEF; border-bottom: 2px dashed #E4DCEF; font-weight: 700; font-size: .92rem; }
+.jg-ask { margin: 12px 0 8px; text-align: center; font-weight: 600; }
+.jg-seats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.jg-board { width: 100%; margin-top: 12px; }
+.jg-text { margin: 0 0 12px; font-size: 1.02rem; line-height: 1.45; }
+.jg-choices { display: grid; gap: 8px; }
+.jg-choices .btn, .jg-moment [data-onward] { width: 100%; }
+.jg-changes { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
+.jg-changes span { padding: 3px 10px; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+.jg-changes .up { background: #D7F2D9; color: #1F6B2C; }
+.jg-changes .down { background: #FBE0E0; color: #9B2C2C; }
+@media (min-width: 760px) {
+  .jg-card { left: auto; right: 5vw; top: 50%; bottom: auto; width: min(380px, 36vw); transform: translateY(-50%); animation-name: jg-in-side; }
+  .jg-card.jg-gone { animation-name: jg-out-side; }
+  @keyframes jg-in-side { from { transform: translate(40px, -50%); opacity: 0; } to { transform: translateY(-50%); opacity: 1; } }
+  @keyframes jg-out-side { to { transform: translate(40px, -50%); opacity: 0; } }
+}

@@ -26,6 +26,8 @@ const check = (c, m) => { if (!c) problems.push(m); };
 const browser = await chromium.launch();
 const toTitle = async (page) => {
   // Past the opening notice, onto the title screen.
+  // (The birth globe is turned off: the loop below presses any 'begin' button, which could start a life and its globe.)
+  await page.evaluate(() => { try { localStorage.setItem('frombirth.birthGlobe', 'off'); } catch { /* storage unavailable */ } });
   for (let i = 0; i < 30 && !(await page.locator('[data-random]').count()); i++) {
     await page.locator('#app button, #modal-root button').filter({ hasText: /continue|start|ok|got it|begin/i }).first().click({ timeout: 500 }).catch(() => {});
     await page.waitForTimeout(150);
