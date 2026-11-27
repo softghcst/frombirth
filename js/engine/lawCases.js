@@ -270,10 +270,11 @@ export function feeModelFor(templateId, countryId, wanted) {
 
 export const template = (c) => CASE_TEMPLATES[c.templateId];
 export const stageOf = (c) => c.stages[c.stageIdx]?.s ?? 'closed';
-export const STAGE_NAME = { intake: 'Intake', discovery: 'Discovery', pretrial: 'Pretrial motions', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
-  disclosure: 'Financial disclosure', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody evaluation', review: 'Case review', services: 'Family services',
-  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Pleadings', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
-  distribution: 'Distribution', diligence: 'Due diligence', closing: 'Closing', closed: 'Closed', record: 'The trial record', briefing: 'Briefing', argument: 'Oral argument' };
+// Stages in plain words: what is happening, not the legal term for it.
+export const STAGE_NAME = { intake: 'First meeting', discovery: 'Gathering evidence', pretrial: 'Requests to the judge before trial', trial: 'Trial', verdict: 'Verdict', hearing: 'Hearing', filing: 'Filing',
+  disclosure: 'Sharing finances', negotiation: 'Negotiation', judgment: 'Judgment', evaluation: 'Custody assessment', review: 'Case review', services: 'Family services',
+  interview: 'Interview', decision: 'Decision', demand: 'Demand letter', pleadings: 'Opening papers', drafting: 'Drafting', signing: 'Signing', done: 'Done', inventory: 'Inventory',
+  distribution: 'Distribution', diligence: 'Checking the deal', closing: 'Closing', closed: 'Closed', record: 'Reviewing the trial', briefing: 'Written arguments', argument: 'Arguing in court' };
 /** The side's evidence: for the defense, what favors the client; for a prosecutor (or the agency's counsel), what the state relies on. */
 const ours = (c, e) => (c.role === 'prosecution' || CHILD_ROLES[c.role]?.side === 'other' ? e.favors === 'other' : e.favors === 'client');
 const DECIDING = ['trial', 'hearing', 'interview', 'argument', 'decision', 'judgment', 'verdict', 'closing', 'signing', 'distribution', 'done'];
@@ -342,6 +343,13 @@ export function routineAll() {
   for (const c of lawOf(player()).caseIds.map(caseById).filter((x) => x && !x.done)) { const r = routine(c); if (r.ok) done.push(c.title); }
   return done.length ? result(true, `Routine work done on ${done.length === 1 ? done[0] : `${done.length} cases`}. What is left needs your judgment.`, 'good', { cases: done })
     : result(false, 'Nothing routine is waiting.', 'neutral');
+}
+/** Routine work done for the player (on) or left to them (off). @returns {object} result */
+export function setAutoRoutine(on, p = player()) {
+  const L = lawOf(p);
+  L.autoRoutine = !!on;
+  if (on) routineAll();
+  return result(true, on ? 'Routine work is done for you now: meeting clients, going through the evidence and routine filings. The decisions that matter stay yours.' : 'You handle the routine work yourself again.', 'neutral');
 }
 /** Whether a case has routine steps waiting. */
 export const hasRoutine = (c) => !c.done && ((c.clientId && !c.tasks.interview) || !c.tasks.review || proceduralDue(c).length > 0);
@@ -955,7 +963,10 @@ export function progressCases(p = player()) {
   const load = open.reduce((s, c) => s + c.level, 0);
   for (const c of open) {
     let guard = 0;
-    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) advanceStage(c, load, p);
+    // With routine work left to the office (L.autoRoutine), each stage's routine steps are done as the case reaches it,
+    // so a long turn misses no filing a shorter one would have made.
+    if (L.autoRoutine && hasRoutine(c)) routine(c);
+    while (!c.done && !c.awaiting && c.due <= now && guard++ < 12) { advanceStage(c, load, p); if (L.autoRoutine && hasRoutine(c)) routine(c); }
     // A day in court left unattended for six months is handled routinely, never in the turn it fell due.
     if (c.awaiting && !c.done && now - c.awaiting.since >= 6 && c.awaiting.turn !== now) {
       note(c, 'You were not there to make the decisions: the case was handled routinely.');

@@ -157,6 +157,36 @@ export default [
 
   // ---------- Children who act ----------
   {
+    id: 'child_money_parent', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'parent')], cast: { keeper: 'parent' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
+    id: 'child_money_grandparent', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'grandparent')], cast: { keeper: 'grandparent' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
+    id: 'child_money_guardian', category: 'money', ageRange: [18, 19], once: true, priority: true,
+    requires: [need('flags.childMoneyGone', '==', 'guardian')], cast: { keeper: 'guardian' }, castRequires: [need('cast.keeper.flags.managesChildPay', '==', true)],
+    text: 'The account {keeper} kept for the money you earned on set is nearly empty. Most of it went on the house, the car, holidays, the bills. "We raised you," {keeper} says. "What did you think it was for?"',
+    choices: [
+      { label: 'Let it go', outcomes: [any('It is done. You decide the relationship matters more than the money. Some days you even believe it.', 'neutral', { type: 'work', value: 'childMoney:forgive' }, rel('keeper', 4), st('mood', -6))] },
+      { label: 'Ask for some of it back', outcomes: [any('You sit down at the kitchen table and say it plainly.', 'neutral', { type: 'work', value: 'childMoney:ask' }, rel('keeper', -8), st('mood', -3))] },
+      { label: 'Take them to court', outcomes: [any('A lawyer, a filing, a hearing. Every family dinner after this will be quieter.', 'bad', { type: 'work', value: 'childMoney:sue' }, rel('keeper', -45), st('mood', -10))] },
+    ],
+  },
+  {
     id: 'set_forgot_lines', workplaces: ['stage'], category: 'on set', ageRange: [5, 17], cooldown: 3, requires: [onSet],
     text: 'Forty adults are waiting, the camera is rolling, and your line has gone completely out of your head.',
     choices: [

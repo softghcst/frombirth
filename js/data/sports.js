@@ -254,6 +254,24 @@ export const isGamesYear = (y) => y >= WORLD_GAMES.founded && y % WORLD_GAMES.ev
 /** What a finish at the games is worth: a medal for the first three, whichever way the event is decided. */
 export const MEDAL_FOR = { Champion: 'gold', Final: 'silver', '2nd': 'silver', Semifinal: 'bronze', '3rd': 'bronze' };
 
+/**
+ * Where a sport is played at all, for the few that are not played everywhere (a rink, a pitch, a league that only
+ * some countries have). Any sport not listed here is played in every country. Schools offer every sport their country
+ * plays (engine/schoollife.js sportsHere).
+ */
+export const PLAYED_IN = {
+  american_football: k('us', 'ca', 'mx', 'jp', 'de', 'at', 'uk', 'fi', 'se', 'dk', 'nl', 'fr', 'it', 'es', 'pl', 'cz', 'br', 'au', 'kr', 'pa'),
+  ice_hockey: k('ca', 'us', 'se', 'fi', 'ru', 'cz', 'sk', 'ch', 'at', 'de', 'no', 'dk', 'kz', 'ua', 'fr', 'it', 'uk', 'jp', 'kr', 'cn', 'hu', 'pl', 'ee', 'nl', 'be', 'ro', 'rs', 'hr', 'mn', 'ge', 'il', 'es', 'mx', 'ad'),
+  figure_skating: k('ca', 'us', 'ru', 'jp', 'kr', 'cn', 'fr', 'it', 'de', 'ch', 'at', 'se', 'fi', 'no', 'cz', 'sk', 'ua', 'kz', 'pl', 'hu', 'uk', 'nl', 'ee', 'ge', 'il', 'es', 'ro', 'be', 'dk', 'hr', 'rs', 'mn', 'tw', 'hk', 'ph', 'au', 'mx', 'br', 'ad'),
+  cricket: k('in', 'pk', 'bd', 'af', 'np', 'au', 'uk', 'nz', 'za', 'zw', 'jm', 'bs', 'bz', 'gy', 'ie', 'nl', 'ae', 'qa', 'kw', 'ca', 'us', 'ke', 'ug', 'ng', 'gh', 'fj', 'ws', 'pg', 'my', 'sg', 'hk', 'mv', 'mu', 'sc'),
+  baseball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'cr', 'gt', 'sv', 'jp', 'kr', 'tw', 'cn', 'hk', 'ph', 'au', 'nz', 'nl', 'it', 'de', 'cz', 'es', 'fr', 'uk', 'be', 'at', 'il', 'za', 'br'),
+  softball: k('us', 'ca', 'mx', 'cu', 'do', 'pr', 've', 'pa', 'ni', 'co', 'aw', 'bs', 'gt', 'jp', 'kr', 'tw', 'cn', 'ph', 'au', 'nz', 'nl', 'it', 'cz', 'uk', 'za', 'bz', 'br', 'ar'),
+  rugby: k('nz', 'za', 'uk', 'ie', 'fr', 'au', 'ar', 'fj', 'ws', 'pg', 'it', 'jp', 'ge', 'ro', 'us', 'ca', 'uy', 'cl', 'br', 'es', 'pt', 'de', 'be', 'nl', 'ru', 'ke', 'ug', 'zw', 'tn', 'ma', 'hk', 'sg', 'pf', 'mu'),
+  pickleball: k('us', 'ca', 'mx', 'in', 'es', 'uk', 'au', 'nz', 'ph', 'sg', 'my', 'vn', 'kr', 'jp', 'pr'),
+};
+/** Whether a sport is played in a country at all. */
+export const playedIn = (sportId, countryId) => !PLAYED_IN[sportId] || PLAYED_IN[sportId].includes(countryId);
+
 export const SPORTS = Object.fromEntries(SPORTS_LIST.map((s) => [s.id, s]));
 export const sportOf = (id) => SPORTS[id] ?? null;
 

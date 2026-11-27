@@ -20,6 +20,7 @@ import { residency, rightToLive } from '../citizenship.js';
 import { relocate, moveBlock } from '../cities.js';
 import { techAvailable } from '../digital/tech.js';
 import { storyBeat } from '../storyDirector.js';
+import { oddsWords } from '../odds.js';
 import { I, rec, W, now, at, year, me, nextId, result, note, grow, regard, seeded, once, reputationOf, skillAvg, working, dateWords } from './core.js';
 import { agency, agencyOf, agenciesHere, office, officeOf, federalCities, vacancies, staffer, employerOf } from './agencies.js';
 import { trainingBonus } from './policing.js';
@@ -135,21 +136,45 @@ export function applyPolice(agencyId) {
   if (!once(`apply:${agencyId}`)) return result(false, 'They take one application a year from the same person.', 'neutral');
   studyCredit(p, r);
   const roll = seeded(`${me()}/${a.id}/${year()}`);
-  const scores = {
-    written: clamp(p.stats.intellect * 0.5 + skillAvg(['reasoning', 'law', 'writing'], r) * 0.5 + r.prep.study * 4 + (university(p) ? 4 : 0) + (studied('police', p).length ? 6 : 0) + roll.int(-10, 10)),
-    fitness: clamp(p.stats.health * 0.8 + r.prep.fitness * 6 + roll.int(-10, 10)),
-    interview: clamp(p.stats.charm * 0.5 + skillAvg(['interviewing', 'ethics'], r) * 0.5 + r.interest * 3 + roll.int(-12, 12)),
-    background: clamp(80 - record(p).length * 25 + (p.hidden.karma - 50) / 3 + roll.int(-5, 5)),
-    medical: clamp(p.stats.health + roll.int(-5, 5)),
-  };
-  const pass = scores.written >= 50 && scores.fitness >= 45 && scores.interview >= 45 && scores.background >= 55 && scores.medical >= 45;
+  const base = policeBase(p, r);
+  const scores = Object.fromEntries(Object.entries(base).map(([k, [mean, spread]]) => [k, clamp(mean + roll.int(-spread, spread))]));
+  const pass = Object.entries(POLICE_PASS).every(([k, min]) => scores[k] >= min);
   const app = { id: nextId('app'), kind: 'police', ownerId: a.id, filed: now(), due: now() + 3, scores, outcome: pass ? 'offer' : 'refused', status: 'pending',
-    why: pass ? '' : Object.entries({ written: 50, fitness: 45, interview: 45, background: 55, medical: 45 }).filter(([s, min]) => scores[s] < min).map(([s]) => s)[0] };
+    why: pass ? '' : Object.entries(POLICE_PASS).filter(([s, min]) => scores[s] < min).map(([s]) => s)[0],
+    close: !pass && Object.entries(POLICE_PASS).filter(([s, min]) => scores[s] < min).every(([s, min]) => min - scores[s] <= 4) };
   r.apps.push(app);
   r.family ??= 'police';
   if (r.stage === 'none') r.stage = 'applying';
   note(`Applied to ${a.name}.`, 'career', { log: false });
   return result(true, `Your application to ${a.name} is in: a written assessment, a fitness test, an interview, a background check and a medical. You will hear by ${dateWords(app.due)}.`, 'neutral');
+}
+
+/** What each part of the police assessment asks (out of 100). */
+export const POLICE_PASS = { written: 50, fitness: 45, interview: 45, background: 55, medical: 45 };
+/** Each part's expected score and its spread of luck, before the luck. */
+function policeBase(p, r) {
+  return {
+    written: [p.stats.intellect * 0.5 + skillAvg(['reasoning', 'law', 'writing'], r) * 0.5 + r.prep.study * 4 + (university(p) ? 4 : 0) + (studied('police', p).length ? 6 : 0), 10],
+    fitness: [p.stats.health * 0.8 + r.prep.fitness * 6, 10],
+    interview: [p.stats.charm * 0.5 + skillAvg(['interviewing', 'ethics'], r) * 0.5 + r.interest * 3, 12],
+    background: [80 - record(p).length * 25 + (p.hidden.karma - 50) / 3, 5],
+    medical: [p.stats.health, 5],
+  };
+}
+/** The chance of an offer before applying, in plain words, and the weakest part of the assessment. */
+export function policeOdds(p = player()) {
+  const r = I(p);
+  const base = policeBase(p, r);
+  let chance = 1;
+  let weakest = null;
+  let low = Infinity;
+  for (const [k, [mean, spread]] of Object.entries(base)) {
+    const m = clamp(mean);
+    const pk = Math.max(0, Math.min(1, (m + spread - POLICE_PASS[k] + 1) / (2 * spread + 1)));
+    chance *= pk;
+    if (pk < low) { low = pk; weakest = k; }
+  }
+  return { chance, words: oddsWords(chance), weakest: low < 0.95 ? weakest : null };
 }
 
 const WHY = { written: 'the written assessment', fitness: 'the fitness assessment', interview: 'the interview', background: 'the background check', medical: 'the medical' };
@@ -168,7 +193,7 @@ export function settleApplications(p = player()) {
     const who = agency(app.ownerId)?.name ?? office(app.ownerId)?.name ?? 'The agency';
     // Refused, with nothing else pending: no longer applying (the record of the application stays).
     if (app.kind === 'police' && app.outcome !== 'offer' && r.stage === 'applying' && !r.apps.some((x) => x !== app && x.status === 'pending' && x.kind === 'police')) r.stage = 'none';
-    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time. ${WHY_HELP[app.why] ?? ''} You can apply again next year.`);
+    if (app.kind === 'police') out.push(app.outcome === 'offer' ? `${who} has offered you a place at the academy.` : `${who} will not take your application further: ${WHY[app.why] ?? 'the panel chose others'} was not strong enough this time.${app.close ? ' It was close.' : ''} ${WHY_HELP[app.why] ?? ''} You can apply again next year.`);
     if (app.kind === 'detective') out.push(settleDetective(app));
     if (app.kind === 'license') out.push(settleLicense(app));
   }
@@ -286,7 +311,7 @@ function graduate(p, r) {
 
 /** Extensions of field training a department gives before it decides: about a year of them. */
 export const FTO_EXTENSIONS = 4;
-const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
+export const FTO_SKILLS = ['writing', 'observation', 'interviewing', 'ethics'];
 
 /**
  * The field training officer's reviews, one at the end of each stretch of training that has passed: the first at the
@@ -399,6 +424,26 @@ export function patrol(id) {
 }
 
 // ---------- Detective selection ----------
+
+/** Patrol work done for the player each year (on), or left to them (off). */
+export function setAutoPatrol(on) {
+  const r = I();
+  r.autoPatrol = !!on;
+  if (on) for (const { id } of patrolLeft(r)) patrol(id);
+  return result(true, on ? 'Your routine patrol work is done for you each year now. Cases and choices stay yours.' : 'You choose your patrol work yourself again.', 'neutral');
+}
+/** The year's patrol work, done for a player who asked for it (the yearly step, engine/investigations/index.js). */
+export function autoPatrolYear(r = rec()) {
+  if (!r?.autoPatrol) return;
+  for (const { id } of patrolLeft(r)) patrol(id);
+}
+
+/** Patrol work not yet done this year (each can be done once a year). */
+export function patrolLeft(r = rec()) {
+  if (!r || !['field', 'probation', 'officer'].includes(r.stage) || r.job?.detective) return [];
+  const done = r.acted?.year === year() ? r.acted : {};
+  return Object.entries(PATROL).filter(([id]) => !done[`patrol:${id}`]).map(([id, x]) => ({ id, label: x.label, skills: x.skills }));
+}
 
 /** Why an officer cannot apply for detective work yet, or []. Experience, not arrests, decides. */
 export function detectiveUnmet(p = player()) {

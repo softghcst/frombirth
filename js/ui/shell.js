@@ -22,6 +22,7 @@ import { idolWork } from '../engine/kpop.js';
 import { portrait } from './tabs/people.js';
 import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
+import { careerWaiting } from './tabs/work.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
 import { careWaiting, checkupDue, answerCheckup } from '../engine/health/index.js';
@@ -249,6 +250,10 @@ export function mountGame(app, hooks) {
     const waiting = player().alive ? careWaiting() : null;
     const self = app.querySelector('.tab-btn[data-tab="self"]');
     if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
+    // And on Work when the player's own career needs them: patients waiting, a day in court (ui/tabs/work.js).
+    const workBtn = app.querySelector('.tab-btn[data-tab="work"]');
+    const busyWork = player().alive && careerWaiting();
+    if (workBtn) { workBtn.classList.toggle('badge', busyWork); workBtn.setAttribute('aria-label', busyWork ? 'Work & School (your career needs you)' : 'Work & School'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
     // A section takes the whole screen below the header: the dock steps aside until the player goes back.

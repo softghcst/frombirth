@@ -2,6 +2,7 @@
 // at work, the job market, offers and recruiters, part-time work, freelancing,
 // special careers, the military, qualifications, history and retirement.
 // Every section reads the engine; every button does something.
+import { childPayRows } from '../engine/childEarnings.js';
 import { player, country, store } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -118,6 +119,7 @@ function jobCard(p) {
     [car.type === 'freelance' ? 'Earnings this year' : car.payModel === 'hourly' ? 'Pay (at contracted hours)' : 'Salary', `${money(c.salary)} a year${car.payModel === 'commission' ? ' + commission' : car.payModel === 'tips' ? ' + tips' : ''}`],
     ['Hours', `${c.hours}${c.extra > 0 ? ` + ${c.extra} overtime` : c.extra < 0 ? ` − ${-c.extra}` : ''} a week · ${car.schedule.replace('_', '-')}${c.remote !== 'none' ? ` · ${c.remote === 'remote' ? 'from home' : 'hybrid'}` : ''}`],
     ['In this role', years(c.yearsInRole)],
+    ...childPayRows(car, p),
     ...(away ? [['On leave', away]] : []),
     ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honors ? ` · ${c.military.honors} honors` : ''}`]] : []),
     ...(c.missions ? [['Space missions', String(c.missions)]] : []),
@@ -137,7 +139,7 @@ function mainActions(p) {
     ${btn('harder', 'Work harder this year', { sub: 'Effort shows most when there is room to improve. It costs you.' })}
     ${btn('slack', 'Take it easy this year')}
     ${car.type !== 'freelance' ? btn('raise', 'Ask for a raise') : ''}
-    ${car.type !== 'freelance' && car.levels[c.level + 1] ? btn('promo', 'Put yourself forward for promotion') : ''}
+    ${car.type !== 'freelance' && car.levels[c.level + 1] ? btn('promo', `Put yourself forward for promotion (your chances: ${place.promotionOdds()})`) : ''}
     ${lat.length ? btn('lateral', 'Move across to another track', { sub: lat.map((x) => x.name).join(', ') }) : ''}
     ${btn('hours', 'Change your hours')}
     ${car.remote !== 'none' && car.type !== 'freelance' ? btn('remote', 'Ask to work from home') : ''}
@@ -189,7 +191,7 @@ const VIEWS = {
       <p class="muted" style="margin:6px 0">${views.length} ${views.length === 1 ? 'opening' : 'openings'}</p>
       <div class="world-list">${views.slice(0, 60).map((v) => `<button type="button" class="row world-row" data-act="posting" data-arg="${v.post.id}">
         <div class="main"><strong>${esc(v.post.title)}</strong><small>${esc(v.employer.name)} · ${esc(v.post.city)}${v.post.remote !== 'none' ? ` · ${v.post.remote}` : ''}${v.post.partTime ? ` · ${v.post.hours} h/week` : ''}</small>
-        <small>${v.eligible ? esc(v.note ?? '') : esc(v.reasons[0])}</small></div>
+        <small>${v.eligible ? esc([v.odds ? `Your chances: ${v.odds.words}` : '', v.note].filter(Boolean).join(' · ')) : esc(v.reasons[0])}</small></div>
         <div class="side">${money(v.post.pay[0], COUNTRIES[v.post.countryId])}<br>–${money(v.post.pay[1], COUNTRIES[v.post.countryId])}</div></button>`).join('') || '<p class="empty">Nothing matching right now. New openings appear every year.</p>'}</div>`;
   },
 
@@ -302,7 +304,7 @@ const VIEWS = {
       ${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div>${ids.map((id) => CAREER_BY_ID[id]).filter(Boolean).map((t) => {
     const why = career.unmet(t);
     const mine = work.career().careerId === t.id;
-    return btn('special', `${t.name}: ${t.levels[0].title}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
+    return btn('special', `${t.name}: ${career.localTitle(t, 0)}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
   }).join('')}`).join('')}
       ${btn('castingboard', 'Casting notices: film, television, stage and voice', { cls: 'primary', sub: 'Real parts in real productions, in My Fame.' })}
       <div class="section-label">Politics</div><p class="muted">${esc(pol)}</p>
@@ -460,7 +462,7 @@ const ACTIONS = {
     if (!v) return;
     const cty = COUNTRIES[v.post.countryId];
     const body = `${v.employer.name}, ${v.post.city.replace(/\.$/, '')}. ${market.describe(v.employer)}. ${v.culture.blurb} Pays ${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year for ${v.post.hours} hours a week${v.post.remote !== 'none' ? ` (${v.post.remote})` : ''}. They ask for about ${years(v.want)} of relevant experience; you have ${v.have}.${v.eligible ? '' : ` ${v.reasons.join(' ')}`}`;
-    const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? v.note : v.reasons[0] }] });
+    const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? [v.odds ? `Your chances: ${v.odds.words}. ${v.odds.help}` : '', v.note].filter(Boolean).join(' ') : v.reasons[0] }] });
     if (go) await applyTo(id, x);
   },
   accept: async (id, x) => {

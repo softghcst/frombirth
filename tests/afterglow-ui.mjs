@@ -142,14 +142,14 @@ for (const scheme of ['light', 'dark']) {
   }
   while (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
   check(await page.locator('.dock').isVisible(), `${scheme}: back brings the dock back`);
-  // Everything about work is on the Work tab: jobs, and athletics and politics under Special careers. Back steps out one level at a time.
+  // Sport for fun, for a club or a school is under Pursuits; Sports under Special careers is for when sport is the job.
   await page.click('.tab-btn[data-tab="pursuits"]');
-  check(!(await page.locator('[data-panel-body] [data-go="athletics"]').count()), `${scheme}: My Athletics is no longer in Pursuits`);
+  check(await page.locator('[data-panel-body] [data-go="athletics"]').count() === 1, `${scheme}: Sports is in Pursuits, for playing`);
   await page.click('[data-panel-close]');
   await page.click('.tab-btn[data-tab="work"]');
   const title = () => page.locator('[data-panel-title]').innerText();
   await page.click('.sec-row[data-sec="Special careers"]');
-  check(await title() === 'Special Careers' && await page.locator('.sec-body.shown [data-act="sc:sports"]').isVisible(), `${scheme}: Sports is inside Special careers, on the Work tab`);
+  check(await title() === 'Special Careers' && /Sports/.test(await page.locator('.sec-body.shown').innerText()) && !(await page.locator('.sec-body.shown [data-act="sc:sports"]').count()), `${scheme}: Sports is listed in Special careers, closed until sport is the job`);
   await page.click('[data-panel-close]');
   check(await title() === 'Work & School', `${scheme}: back from Special careers goes to the Work & School list`);
   await page.click('[data-panel-close]');

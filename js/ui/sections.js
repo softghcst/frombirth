@@ -67,7 +67,7 @@ function build(container, prefix) {
       const go = document.createElement('button');
       go.className = 'nav-row sec-row';
       go.dataset.act = card.dataset.direct;
-      go.innerHTML = rowInner(title, card.dataset.directSub ?? '', false);
+      go.innerHTML = rowInner(card.dataset.directTitle ?? title, card.dataset.directSub ?? '', card.dataset.directDot === '1');
       card.before(go);
     }
     const row = document.createElement('button');
