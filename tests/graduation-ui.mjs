@@ -100,7 +100,7 @@ check(steps2.includes('study') && !steps2.includes('uni') && !steps2.includes('k
 check((await page.locator('.grad-school').textContent()).includes('Marlowe College'), 'the university is named on the diploma');
 await page.click('[data-step="rest"]');
 await page.waitForTimeout(150);
-check(await page.locator('#modal-root .scrim').count() === 0, 'Take some time off just closes it');
+check(await page.locator('.grad').count() === 0, 'Take some time off just closes it');
 
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();

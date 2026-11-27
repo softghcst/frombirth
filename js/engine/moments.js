@@ -14,6 +14,7 @@
 // the game keeps. Availability by era and place is the `since` and `countries`
 // of each occasion (data/occasions.js), so a later historical-eras system has
 // one place to narrow it.
+import { keyedDice } from './keyedDice.js';
 import { store, player, country, livingNpcs, npcsByRole, log, milestone } from '../state.js';
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { rng } from '../rng.js';
@@ -102,6 +103,7 @@ export function thisYear() {
     const o = OCCASIONS[id];
     if (available(o) && atSchool && p.age >= 16) add({ key: id, occasion: id, group: 'school', label: o.name, sub: o.blurb });
   }
+  if (available(OCCASIONS.homecoming) && atSchool && p.education.stage !== 'middle' && p.age >= 14) add({ key: 'homecoming', occasion: 'homecoming', group: 'school', label: OCCASIONS.homecoming.name, sub: OCCASIONS.homecoming.blurb });
   if (available(OCCASIONS.school_dance) && atSchool) add({ key: 'school_dance', occasion: 'school_dance', group: 'school', label: OCCASIONS.school_dance.name, sub: OCCASIONS.school_dance.blurb });
   const graduated = (p.education.degrees ?? []).find((d) => d.age === p.age);
   if (graduated && available(OCCASIONS.graduation_party)) add({ key: 'graduation', occasion: 'graduation_party', group: 'school', label: 'A party for your graduation', sub: 'You finished. That is worth a party.' });
@@ -184,8 +186,19 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
   if (o.styles && !o.styles.includes(style)) style = o.styles[0];
   if (!o.styles) style = null;
   // Only people who are really in the player's life, and each once.
-  const people = [...new Set(guests)].map(npc).filter(inLife);
+  const people = [...new Set(guests)].map(npc).filter(inLife)
+    // A school dance is for people of school age: a teenager does not bring an adult (and nobody brings a child).
+    .filter((n) => o.kind !== 'school' || p.age >= 18 || n.age < 19 || ['parent', 'guardian'].includes(n.role));
   if (item.forId && !people.some((n) => n.id === item.forId) && npc(item.forId)) people.unshift(npc(item.forId));
+  // Asking someone to a dance is asking: they can say no. A partner already going with you does not need asking.
+  const declined = [];
+  if (o.guests === 'date') {
+    for (const n of [...people]) {
+      if (['partner', 'spouse'].includes(n.role)) continue;
+      const yes = clamp(0.3 + (n.meters.relationship - 40) / 80 + (p.stats.charm - 50) / 200, 0.1, 0.9);
+      if (!keyedDice(`date/${store.state.slotId}/${store.state.year}/${key}/${n.id}`).chance(yes)) { declined.push(n); people.splice(people.indexOf(n), 1); }
+    }
+  }
   const cost = costOf(item, people.length, style);
   const paidBy = familyPays() ? 'family' : 'you';
   if (paidBy === 'you' && cost > 0 && p.finance.cash < cost) return result(false, `It would cost ${fmtMoney(cost, c)}. You have ${fmtMoney(Math.max(0, p.finance.cash), c)}.`, 'neutral');
@@ -213,9 +226,9 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
   const memorable = o.memorable || (o.milestone && (item.forId ? MILESTONE_BIRTHDAYS.includes(npc(item.forId)?.age) : MILESTONE_BIRTHDAYS.includes(p.age)))
     || (o.memorableYears ?? []).includes(yrs) || !!begun;
   const who = people.map((n) => n.firstName);
-  const text = describe(item, style, who, cost, paidBy, begun);
+  const text = `${declined.length ? `${declined.map((n) => n.firstName).join(' and ')} said no, kindly. You went ${people.length ? 'anyway' : 'with your friends'}. ` : ''}${describe(item, style, who, cost, paidBy, begun)}`;
   log(text, 'system', 'good');
-  s.log.push({ key, label: item.label, guests: people.map((n) => n.id), style, cost: paidBy === 'you' ? cost : 0, memorable });
+  s.log.push({ key, label: item.label, guests: people.map((n) => n.id), style, cost: paidBy === 'you' ? cost : 0, memorable, ...(declined.length ? { declined: declined.map((n) => n.id) } : {}) });
   if (memorable) {
     milestone(milestoneText(item, yrs, begun), 'life');
     for (const n of people) remember(n, `moment:${key}:${store.state.year}`, `${item.label}, the year you were ${p.age}.`);
