@@ -39,7 +39,7 @@ export function medicalBlock(careerId, p = player()) {
   if (!MEDICAL_CAREERS.includes(careerId)) return '';
   const degree = p.education.degrees.some((d) => d.type === 'medical' || d.type === 'podiatric');
   if (!degree && !p.medicine) return '';
-  return 'Physicians are placed by residency programs and appointed by hospitals: see My Medical Career.';
+  return 'Physicians are placed by residency programs and appointed by hospitals: see Medicine on the Work tab.';
 }
 
 /** The yearly step. */

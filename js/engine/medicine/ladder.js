@@ -224,7 +224,7 @@ export function postYear() {
   if (m.job.contract?.locum && m.job.contract.until <= year()) {
     const e0 = employer(m.job.hospitalId);
     note(`Finished a temporary post at ${e0?.name ?? 'the hospital'}.`, 'career', { log: false });
-    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from My Medical Career.`, 'system', 'neutral');
+    log(`Your year as a locum at ${e0?.name ?? 'the hospital'} is over. Apply for another post from the Work tab.`, 'system', 'neutral');
     m.job = null;
     endJob('temporary post ended');
     return;
@@ -276,7 +276,7 @@ export function postYear() {
     }
     m.offer = { rank: step.id, year: year(), hospitalId: h.id };
     storyBeat('med_leadership_offer', { words: { post: RANKS[step.id].title.toLowerCase(), hospital: employer(h.id).name } }, { source: 'medicine', must: true });
-    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from My Medical Career.`, 'system', 'good');
+    log(`${employer(h.id).name} has offered you the post of ${RANKS[step.id].title.toLowerCase()}. Answer from the Work tab.`, 'system', 'good');
     return;
   }
 }

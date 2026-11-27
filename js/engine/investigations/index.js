@@ -57,9 +57,9 @@ export function investigationRuns(careerId, p = player()) {
 /** Why a job-board application is not how this work is got, or ''. */
 export function investigationBlock(careerId, p = player()) {
   if (!INVESTIGATIVE.includes(careerId)) return '';
-  if (careerId === 'detective') return 'Detectives are selected from serving officers: see My Investigations.';
-  if (careerId === 'police') return 'Police agencies recruit through their own process (assessments, an academy, probation): see My Investigations.';
-  return 'Federal agencies hire through their own application, background investigation and academy: see My Investigations.';
+  if (careerId === 'detective') return 'Detectives are selected from serving officers: see Law Enforcement on the Work tab.';
+  if (careerId === 'police') return 'Police agencies recruit through their own process (assessments, an academy, probation): see Law Enforcement on the Work tab.';
+  return 'Federal agencies hire through their own application, background investigation and academy: see Law Enforcement on the Work tab.';
 }
 
 /** Whether My Investigations has anything to show. */

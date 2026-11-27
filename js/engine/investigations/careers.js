@@ -355,7 +355,7 @@ function fieldReviews(p, r, j) {
   const weakest = [...FTO_SKILLS].sort((a, b) => (r.skills[a] ?? 0) - (r.skills[b] ?? 0))[0];
   const act = Object.values(PATROL).find((x) => x.skills.includes(weakest));
   const left = FTO_EXTENSIONS - j.ftoExtensions;
-  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" in My Investigations is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
+  log(`${fto} wants ${added === 3 ? 'three' : added === 6 ? 'six' : added === 9 ? 'nine' : 'twelve'} more months of field training before signing you off: your ${weakest} is not there yet.${act ? ` "${act.label}" on the Work tab is the way to build it.` : ''} ${left ? `The department will extend field training ${left === 1 ? 'once more' : `${left} more times`} at most.` : 'There will be no more extensions after this.'}`, 'system', 'bad');
 }
 
 /** The department lets a trainee go who has not passed field training. */

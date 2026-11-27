@@ -17,6 +17,7 @@ import { nextStep } from '../engine/career.js';
 import { employer } from '../engine/employers.js';
 import { caseLaws, eraNotes } from '../engine/realLaw.js';
 import { COMPLEXITY, SIMULATION_NOTE, COURSE_BY_ID } from '../data/law.js';
+import { screenName } from './careerNames.js';
 
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
 const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}" ${attrs}>${esc(label)}</button>`;
@@ -416,7 +417,7 @@ const GUIDE = [
   ['What it is not', 'Pathways cites real laws, but how a case turns out is a game. It is not legal advice.'],
 ];
 export function openGuide() {
-  const m = openModal(`<div class="eyebrow">How it works</div><h2>Your Legal Career</h2>
+  const m = openModal(`<div class="eyebrow">How it works</div><h2>${esc(screenName('law'))}</h2>
     ${GUIDE.map(([t, d], i) => `<div class="kv law-guide"><span><strong>${i + 1}. ${esc(t)}</strong></span></div><p class="muted">${esc(d)}</p>`).join('')}
     <div class="btn-row">${btn('Got It', 'data-guideok', 'primary')}</div>`, { dismissable: true });
   m.el.querySelector('[data-guideok]').addEventListener('click', () => m.close());
@@ -426,7 +427,7 @@ export function openGuide() {
 export function openLawCareer(api, start = {}) {
   let tab = start.tab ?? 'overview';
   let caseId = start.caseId ?? null;
-  const m = openModal('<div class="law-hub"></div>', { dismissable: true, full: true, title: 'My Legal Career' });
+  const m = openModal('<div class="law-hub"></div>', { dismissable: true, full: true, title: screenName('law') });
   const host = m.el.querySelector('.law-hub');
   const draw = () => {
     const ts = tabs();
