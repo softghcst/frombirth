@@ -77,6 +77,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   for (const h of hubs) { await page.click(`${modal} [data-hub="${h}"]`); check(!(await overflow()), `${label}: hospital ${h} does not scroll sideways`); }
   await page.click(`${modal} [data-sec="active"]`);
   check(/Active cases \(3 of 3/i.test(await text()), `${label}: a resident has three active cases this year`);
+  check(/Needs you[\s\S]*Active cases[\s\S]*My patients/i.test(await text()), `${label}: the Patients page puts the open cases first, under "Needs you"`);
   // Work the first case: a test, a diagnosis, a plan.
   await page.locator(`${modal} [data-act="case"]`).first().click();
   await page.waitForTimeout(100);

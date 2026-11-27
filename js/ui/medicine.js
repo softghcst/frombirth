@@ -73,7 +73,7 @@ export function medicineOpen(p = player()) {
 // ---------- Which tabs this life has ----------
 
 const TABS = [['overview', 'Overview'], ['education', 'Medical Education'], ['training', 'Training & Residency'], ['specialization', 'Specialization'],
-  ['patients', 'My Patients'], ['active', 'Active Cases'], ['decisions', 'Clinical Decisions'], ['procedures', 'Procedures'], ['hospital', 'My Hospital'],
+  ['active', 'Active Cases'], ['patients', 'My Patients'], ['decisions', 'Clinical Decisions'], ['procedures', 'Procedures'], ['hospital', 'My Hospital'],
   ['development', 'Professional Development'], ['clinic', 'My Clinic'], ['history', 'Career History']];
 
 function tabsFor(p, m) {
@@ -99,10 +99,13 @@ function tabsFor(p, m) {
   });
 }
 
-/** Fewer tabs: related sections on one page, each under its own heading. A page with one section keeps its own name. */
+/**
+ * Fewer tabs: related sections on one page, each under its own heading. A page with one section keeps its own name.
+ * On the Patients page the open cases come first, under "Needs you"; the record of past patients follows.
+ */
 const MED_GROUPS = [
   ['training', 'Training', ['education', 'training', 'specialization']],
-  ['active', 'Patients', ['patients', 'active', 'decisions', 'procedures']],
+  ['active', 'Patients', ['active', 'patients', 'decisions', 'procedures']],
   ['hospital', 'Hospital & Clinic', ['hospital', 'clinic']],
   ['history', 'Career', ['development', 'history']],
 ];
@@ -114,10 +117,12 @@ function pagesFor(sections) {
     const g = MED_GROUPS.find(([, , ids]) => ids.includes(id));
     const members = g ? sections.filter(([x]) => g[2].includes(x)) : [[id, label]];
     members.forEach(([x]) => used.add(x));
-    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members });
+    out.push({ id: g ? g[0] : id, label: g && members.length > 1 ? g[1] : members[0][1], members: members.length > 1 ? members.map(([x, l]) => [x, GROUPED_LABEL[x] ?? l]) : members });
   }
   return out;
 }
+/** A section's heading when it shares a page. */
+const GROUPED_LABEL = { active: 'Needs you' };
 
 /** Skills by plain names, for "what is holding you back". */
 const SKILL_WORDS = { reasoning: 'clinical judgment', technical: 'hands-on skill', communication: 'bedside manner', teamwork: 'teamwork', professionalism: 'professionalism', leadership: 'leadership', management: 'management', research: 'research' };

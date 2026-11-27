@@ -94,12 +94,14 @@ await engine(async () => {
   store.notify();
 });
 await tab('work'); await audit('work-doctor');
-const medRow = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /My Medical Career/i.test(x.innerText)); if (b) b.click(); return !!b; });
-if (medRow) {
-  await page.waitForTimeout(300); await audit('medicine-hub');
-  const medTabs = await page.evaluate(() => [...document.querySelectorAll('#modal-root [role="tab"]')].map((b) => b.innerText.trim()));
-  for (const [i, t] of medTabs.entries()) { await page.evaluate((k) => document.querySelectorAll('#modal-root [role="tab"]')[k].click(), i); await audit(`medicine-${t.replace(/\W+/g, '-').toLowerCase()}`); }
-}
+// The career screens open straight from their modules: the Work tab's entry to them depends on the job held.
+const openScreen = (mod, fn) => page.evaluate(async ([m, f]) => { (await import(m))[f]({ changed() {}, rerender() {} }); }, [mod, fn]);
+const tabsIn = (sel) => page.evaluate((q) => [...document.querySelectorAll(q)].map((b) => b.innerText.trim()), sel);
+const clickTab = (sel, i) => page.evaluate(([q, k]) => document.querySelectorAll(q)[k].click(), [sel, i]);
+const slug = (t) => t.replace(/\W+/g, '-').toLowerCase();
+await openScreen('/js/ui/medicine.js', 'openMedicine'); await page.waitForTimeout(300); await audit('medicine-hub');
+const medSel = '#modal-root [data-med] [role="tab"]';
+for (const [i, t] of (await tabsIn(medSel)).entries()) { await clickTab(medSel, i); await audit(`medicine-${slug(t)}`); }
 await clear();
 
 // A detective.
@@ -114,9 +116,15 @@ await engine(async () => {
   r.caseIds.push(inv.id);
   store.notify();
 });
-await tab('work');
-const invRow = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Law Enforcement & Investigations|My Investigations/i.test(x.innerText)); if (b) b.click(); return !!b; });
-if (invRow) { await page.waitForTimeout(300); await audit('investigations-hub'); }
+await openScreen('/js/ui/investigations.js', 'openInvestigations'); await page.waitForTimeout(300);
+await page.evaluate(() => document.querySelectorAll('#modal-root .modal:not(:has([data-inv])) [data-ok]').forEach((b) => b.click())); await page.waitForTimeout(150);
+await audit('investigations-hub');
+const invSel = '#modal-root [data-inv] [role="tab"]';
+for (const [i, t] of (await tabsIn(invSel)).entries()) { await clickTab(invSel, i); await audit(`investigations-${slug(t)}`); }
+await page.evaluate(() => document.querySelector('#modal-root [data-inv] [data-sec="cases"]')?.click()); await page.waitForTimeout(150);
+await page.evaluate(() => document.querySelector('#modal-root [data-inv] [data-act="openCase"]')?.click()); await page.waitForTimeout(300);
+const caseSel = '#modal-root [data-case] [role="tab"]';
+for (const [i, t] of (await tabsIn(caseSel)).entries()) { await clickTab(caseSel, i); await audit(`case-${slug(t)}`); }
 await clear();
 
 console.log(JSON.stringify({ report: report.filter((r) => r.hscroll || r.off.length || r.small.length), errors, screens: report.map((r) => r.name) }, null, 1));

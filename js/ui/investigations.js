@@ -810,13 +810,16 @@ function laterPaths(p, list) {
 }
 /**
  * Tabs, a handful of them: related sections share one page, each under its own heading. A page with one section keeps
- * that section's name. Roles that are someone's main work (the bench, death investigations...) keep a tab of their own.
+ * that section's name, so a role that is someone's main work (the bench, death investigations...) still reads as its own tab.
  */
 const TAB_GROUPS = [
   ['agencies', 'Agencies', ['agency', 'federal', 'team']],
   ['cases', 'Cases', ['cases', 'archive', 'cold', 'reviews']],
   ['career', 'Career', ['career', 'legacy']],
   ['other', 'Other Work', ['private', 'allied', 'integrity', 'hospital', 'policy']],
+  // One person can hold several of these roles at once: a psychologist evaluating competency, a reporter with stories.
+  ['forensic', 'Forensic Work', ['psych', 'death', 'competency']],
+  ['press', 'Reporting', ['press', 'stories']],
 ];
 function tabsFor(sections) {
   const out = [];
