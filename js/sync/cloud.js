@@ -303,6 +303,24 @@ export async function deleteCloudSaves() {
   } catch (e) { return result(false, e.message); }
 }
 
+/**
+ * Deletes the account itself (the email address and password) and its saves, through the database function in
+ * docs/cloud-saves.sql. What is on this device stays. If the project has not been given that function yet, the saves
+ * are still removed, and the player is told the address needs the owner's help to remove.
+ */
+export async function deleteAccount() {
+  try {
+    await asPlayer('/rest/v1/rpc/delete_my_account', { method: 'POST', body: {} });
+  } catch (e) {
+    if (e.code !== 404) return result(false, e.message);
+    const r = await deleteCloudSaves();
+    return r.ok ? result(true, `${r.text} Your saves are gone from the cloud, but the account itself could not be removed from here: write to the address in the privacy policy and it will be.`) : r;
+  }
+  setSyncState({ version: 0, syncedAt: 0, dirty: false, error: '' });
+  await signOut();
+  return result(true, 'Your account and everything in it have been deleted. The lives on this device stay.');
+}
+
 // ---------- Automatic syncing ----------
 
 let timer = null;

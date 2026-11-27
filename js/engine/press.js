@@ -16,6 +16,7 @@ import { ensureTerms, look, offered, clearOffer, triesLeft, askLowerCut } from '
 import { fameOf, gain, regard, recognitionIn, exists } from './fame.js';
 import { ent, org, orgsOf, production, workOf, proCredits, playerSkill, article, pool, stageTraining } from './entertainment.js';
 import { makeNpc } from './npcFactory.js';
+import { nationalPress } from './journalism.js';
 import { canFit } from './worklife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -142,7 +143,8 @@ export function makeOffers(p = player()) {
   f.offersYear = year();
   f.offers = f.offers.filter((o) => o.status === 'open' && o.year >= year() - 0).slice(-6);
   const known = recognitionIn(p.countryId, p);
-  const outlets = orgsOf(p.countryId).filter((x) => x.kind === 'outlet');
+  // The national press (engine/journalism.js): the magazine, the broadcaster and the papers.
+  const outlets = nationalPress(p.countryId).filter((x) => ['magazine', 'network', 'national'].includes(x.kind));
   // A premiere for anything of the player's out this year.
   for (const c of f.credits.filter((x) => production(x.productionId)?.reception?.year === year())) {
     const prod = production(c.productionId);
@@ -225,6 +227,9 @@ export function answer(articleId, how) {
   if (how === 'correction') {
     if (a.true) return result(false, 'The outlet stands by the story: it is accurate. You cannot have a true story corrected.');
     a.corrected = true;
+    // The correction runs under the same article in the press archive (engine/journalism.js).
+    const pub = a.pubId && store.state.newsroom?.pubs?.[a.pubId];
+    if (pub) pub.corrections.push({ at: store.state.year * 12, text: `Correction: this report about ${p.firstName} ${p.lastName} was not accurate.` });
     article({ kind: 'correction', outletId: a.outletId, about: 'player', accuracy: 'correction', text: `Correction: an earlier report about ${p.firstName} ${p.lastName} was not accurate.` });
     regard({ favor: 3, why: 'a false story corrected' }, p);
     return result(true, 'The outlet prints a correction. Fewer people read it than read the story, but it is there.');

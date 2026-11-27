@@ -36,7 +36,7 @@ export const WORDS = {
   retail: ['Corner', 'Penny', 'Fresh', 'Harvest', 'Thread', 'Trove'],
   trades: ['Ironbridge', 'Keystone', 'Plumbline', 'Cornerstone', 'Hammer'],
   science: ['Helix', 'Aurora', 'Catalyst', 'Tidewater', 'Fieldstone'],
-  transport: ['Swift', 'Waypoint', 'Bluewing', 'Compass', 'Railway'],
+  transport: ['Longhaul', 'Waypoint', 'Bluewing', 'Compass', 'Railway'],
   safety: ['Sentinel', 'Guardian', 'Shield'],
   media: ['Herald', 'Gazette', 'Signal', 'Lantern', 'Chronicle'],
   arts: ['Silver Screen', 'Velvet', 'Marquee', 'Spotlight', 'Harmony'],

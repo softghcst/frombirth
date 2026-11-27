@@ -39,3 +39,17 @@ end $$;
 drop trigger if exists saves_touch on public.saves;
 create trigger saves_touch before update on public.saves
   for each row execute function public.saves_touch();
+
+-- Deleting an account: a signed-in player can remove their own account (the email address and password) and, with
+-- it, their saves (the `on delete cascade` above). Settings → Cloud saves → Delete my account calls this.
+-- Run this part on its own if the table was set up before it was added.
+create or replace function public.delete_my_account() returns void
+  language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  delete from public.saves where user_id = auth.uid();
+  delete from auth.users where id = auth.uid();
+end $$;
+
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

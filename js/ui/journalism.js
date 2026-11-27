@@ -57,7 +57,8 @@ const VIEWS = {
           ...(t.finances.length ? [['Last year', `${fmtMoney(Math.abs(t.finances.at(-1).net), c)} ${t.finances.at(-1).net >= 0 ? 'made' : 'lost'}`]] : [['Money', 'Counted at the end of each year']])])}${growRows(t)}${growBtns(t)}</div>`).join('')}
         ${sisters.length ? `<div class="section-label">Company history</div>${titles.flatMap((t) => t.history.map((h) => ({ ...h, name: t.name }))).sort((x, y) => y.year - x.year).slice(0, 8).map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.name)}: ${esc(h.text)}</span></div>`).join('')}` : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('launch', 'Launch another title', { sub: 'With an editor hired to run it.' })}</div>` : '';
-      if (own || j.freelance) return `${ownCard}${company}${indie}${ways}`;
+      const resume = own && !jn.working(p) ? `<div class="card"><p class="muted" style="margin:0 0 6px">You own ${esc(own.name)}; its staff run it. You are not reporting for it yourself.</p>${btn('resume', 'Start reporting for it again', { sub: 'Journalism becomes your special career again.' })}</div>` : '';
+      if (own || j.freelance) return `${resume}${ownCard}${company}${indie}${ways}`;
       const school = p.age >= 10 && p.age <= 19 && p.education?.enrolled;
       return `<div class="card"><h3>Journalism</h3><p class="muted" style="margin:0">Find the story. Verify the facts. Tell the world. Newsrooms hire interns (students and recent graduates) and junior reporters (from 18, with a degree, an internship, or clips to show).</p>
           ${kv([['Writing', String(Math.round(j.skills.writing))], ['Reporting', String(Math.round(j.skills.reporting))], ['School paper articles', String(j.school.articles)], ...(j.intern ? [['Internship', `${jn.outlet(j.intern.outletId)?.name}, ${j.intern.year}`]] : [])])}</div>
@@ -76,6 +77,8 @@ const VIEWS = {
     return `<div class="card"><h3>${esc(p.career.title)}, ${esc(o.name)}</h3>${kv([['Beat', BEATS[j.beat].name], ['Since', String(j.since)], ['Time left this year', `${jn.actionsLeft(p)} of ${ACTIONS_A_YEAR} actions`], ['Workload', jn.workload(p).text], ['Stories published', String(jn.myPubs(p).length)]])}
         ${ed ? row('person', ed.id, `${ed.firstName} ${ed.lastName}`, 'Your editor', `${Math.round(ed.meters.relationship)}%`, ed) : ''}
         <div class="btn-stack" style="margin-top:6px">${btn('beat', 'Change beat', { sub: BEATS[j.beat].blurb })}</div>
+        ${(() => { const theirs = Object.values(jn.S().pubs).filter((x) => x.outletId === o.id && x.reporterId !== p.id).sort((a, b) => b.at - a.at).slice(0, 4);
+    return theirs.length ? `<div class="section-label">Recently in ${esc(o.name)}</div>${theirs.map((x) => `<div class="kv"><span>"${esc(x.headline)}"</span><span>${esc(x.byline)}, ${x.year}</span></div>`).join('')}` : ''; })()}
         ${j.leave === store.state.year ? '<p class="muted" style="margin:6px 0 0">You are on leave this year. No assignments; the desk is kept for you.</p>' : ''}</div>
       ${jn.isEditor(p) ? `<div class="card"><h3>Your desk</h3>${kv([['Leadership', `${Math.round(j.rep.leadership ?? 50)}/100`]])}<p class="muted" style="margin:6px 0">Your reporters' drafts, with what their notes support. What you let through, you answer for.</p>
         ${jn.desk(p).map((d) => { const n = npc(d.reporterId); return `<div class="card"><h3>${esc(d.title)}</h3><p class="muted" style="margin:0 0 6px">By ${esc(n ? `${n.firstName} ${n.lastName}` : 'a reporter')}</p>
@@ -156,7 +159,7 @@ const VIEWS = {
   pub(p, id) {
     const x = jn.S().pubs[id];
     if (!x) return '<p class="empty">Not found.</p>';
-    return `<div class="card jn-article"><h3>${esc(x.headline)}</h3><p class="muted" style="margin:0 0 8px">By ${esc(x.byline)} · ${esc(x.outlet)} · ${esc(when(x.at))}</p><p style="margin:0">${esc(x.body)}</p>
+    return `<div class="card jn-article"><h3>${esc(x.headline)}</h3><p class="muted" style="margin:0 0 8px">By ${esc(x.byline)} · ${esc(x.outlet)} · ${esc(when(x.at))}</p><p style="margin:0">${esc(x.body ?? x.headline)}</p>
         ${x.corrections.map((c) => `<p class="muted" style="margin:8px 0 0"><strong>${esc(c.text)}</strong> (${esc(when(c.at))})</p>`).join('')}</div>
       ${x.sources.length ? `<div class="section-label">Sources</div>${x.sources.map((s) => (s.npcId && npc(s.npcId) ? row('person', s.npcId, s.name, ATTRIBUTION[s.attribution].name, '', npc(s.npcId)) : `<div class="kv"><span>${esc(s.name)}</span><span>${esc(ATTRIBUTION[s.attribution].name)}</span></div>`)).join('')}` : ''}
       ${x.segment ? `<div class="card"><h3>On air</h3>${kv([['Delivery', `${x.segment.delivery}/100`], ['What you did', x.segment.choices.map((c) => jn.LIVE_CHOICES[c].label.toLowerCase()).join(', ')]])}${x.segment.note ? `<p class="muted" style="margin:4px 0 0">${esc(x.segment.note)}</p>` : ''}</div>` : ''}
@@ -282,6 +285,7 @@ const ACTIONS = {
     if (b) await x.say(jn.pitchLead(b));
   },
   follow: (id, x) => x.say(jn.followStory(id)),
+  resume: (_, x) => x.say(jn.resumeReporting()),
   disclose: (id, x) => x.say(jn.disclose(id)),
   help: (id, x) => x.say(jn.requestSupport(id)),
   lighter: (_, x) => x.say(jn.askLighterYear()),
