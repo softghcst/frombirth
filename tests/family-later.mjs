@@ -60,12 +60,16 @@ const add = (o) => { const n = makeNpc({ countryId: 'us', ...o }); S().npcs[n.id
 }
 {
   // A widowed parent too, past sixty.
-  grownUp(45);
-  const [a, b] = people().filter((n) => n.role === 'parent');
-  b.alive = false;
-  a.age = 70;
+  // Kept at seventy, they can still die in any of those years: then a new family is tried, as the question is whether a
+  // widowed parent who is living can meet someone.
   let met = false;
-  for (let i = 0; i < 60 && !met; i++) { year(); a.age = 70; met = people().some((n) => n.role === 'stepparent' && n.flags.partnerOf === a.id); }
+  for (let tries = 0; tries < 4 && !met; tries++) {
+    grownUp(45);
+    const [a, b] = people().filter((n) => n.role === 'parent');
+    b.alive = false;
+    a.age = 70;
+    for (let i = 0; i < 60 && !met && a.alive; i++) { year(); a.age = 70; met = people().some((n) => n.role === 'stepparent' && n.flags.partnerOf === a.id); }
+  }
   check(met, 'a widowed parent of seventy can find someone again');
 }
 {
@@ -122,7 +126,9 @@ const add = (o) => { const n = makeNpc({ countryId: 'us', ...o }); S().npcs[n.id
   grownUp(28);
   const partner = add({ role: 'partner', age: 29, relationship: 90 });
   partner.flags.since = 26; partner.lastInteractionAge = -1;
-  const r = T.doBond(partner.id, 'moveInTogether');
+  // At this relationship a partner says yes nineteen times in twenty; asked again if not ready (the question is what a yes does).
+  let r;
+  for (let i = 0; i < 5 && !partner.flags.livesTogether; i++) { partner.lastInteractionAge = -1; r = T.doBond(partner.id, 'moveInTogether'); }
   check(partner.flags.livesTogether === true, `moving in together sets livesTogether (${typeof r === 'object' ? r.text : r})`);
   // An older save: a partner moved in with under the old flag is living together once loaded.
   const old = add({ role: 'partner', age: 30 });
