@@ -14,6 +14,7 @@ import { book, toMinor } from './ledger.js';
 import { recordLoss } from './insurance.js';
 import { recentDefault } from './credit.js';
 import { phaseOf } from './economy.js';
+import { comfortOf, upkeepOf } from './renovations.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -200,6 +201,14 @@ export function moveIn(id, quiet = false) {
   if (!quiet) log(text, 'system', 'good'); else log(`It is yours, and you have moved in. No more rent.`, 'system', 'good');
   return result(true, text);
 }
+
+/** Works out a property's worth again, after something about it has changed (a renovation: engine/renovations.js). */
+export function revalue(a) {
+  a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
+  return a.value;
+}
+/** Yearly running costs as a share of worth: the kind of home, and what its renovations add or save. */
+export const upkeepRate = (a) => Math.max(0.004, PROPERTY_BY_ID[a.catalogId].upkeep + upkeepOf(a));
 
 export function renovationCost(id) {
   return Math.round(assetOf(id).value * 0.08);
@@ -391,7 +400,7 @@ export function tickProperties() {
     a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
     const code = currencyOfProperty(a);
     const local = (n) => (code === c.currency.code ? n : convert(n, c.currency.code, code));
-    payIn(code, local(Math.round(a.value * type.upkeep)), `upkeep on the ${lower(a.name)}`);
+    payIn(code, local(Math.round(a.value * upkeepRate(a))), `upkeep on the ${lower(a.name)}`);
     const due = propertyTaxOn(a);
     if (due) { payIn(code, local(due), `property tax on the ${lower(a.name)}`); f.lifetimeTaxPaid += due; taxPaid += due; }
     book({ cat: 'housing', src: 'year', desc: `Upkeep${due ? ' and property tax' : ''}: ${lower(a.name)}`, split: [['tax', toMinor(due || 0, c.currency.code)]] });
@@ -446,7 +455,7 @@ export function tickProperties() {
     log(`Rent from your property abroad came to about ${fmtMoney(rentAbroad, c)}, paid into your account there after ${fmtMoney(taxAbroad, c)} of local tax.`, 'system', 'good');
   }
   const h = home();
-  if (h) p.stats.mood = clamp(p.stats.mood + Math.round(PROPERTY_BY_ID[h.catalogId].comfort / 3));
+  if (h) p.stats.mood = clamp(p.stats.mood + Math.round((PROPERTY_BY_ID[h.catalogId].comfort + comfortOf(h)) / 3));
 }
 
 export { describe as conditionWord };

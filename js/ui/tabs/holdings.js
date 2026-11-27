@@ -12,6 +12,7 @@ import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { netWorth } from '../../engine/finance.js';
 import * as estate from '../../engine/realEstate.js';
+import * as reno from '../../engine/renovations.js';
 import * as cars from '../../engine/vehicles.js';
 import * as mkt from '../../engine/market.js';
 import * as bank from '../../engine/loans.js';
@@ -227,7 +228,8 @@ function openProperty(a, api) {
     ['You paid', `${fmtMoney(a.purchasePrice, c)} at age ${a.boughtAtAge}`],
     ['Mortgage', a.mortgage ? `${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)} left${a.mortgage.code && a.mortgage.code !== c.currency.code ? ` (about ${fmtMoney(estate.owedOn(a), c)})` : ''}, ${money.fmt(a.mortgage.payment, a.mortgage.code ?? c.currency.code)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
     ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${money.fmt(a.tenant.rent, a.tenant.code ?? c.currency.code)} a year${a.tenant.code && a.tenant.code !== c.currency.code ? ` (about ${fmtMoney(estate.rentAtHome(a), c)})` : ''}` : 'Standing empty'],
-    ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
+    ['Running costs', `${fmtMoney(Math.round(a.value * estate.upkeepRate(a)), c)} a year`],
+    ['Renovations', reno.renovationsOf(a).length ? `${reno.usedOf(a)} of ${reno.spaceOf(a)} spaces used` : `None yet (room for ${reno.spaceOf(a)})`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
     ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', lawOf(estate.placeOf(a).id).kind === 'none' ? `No inheritance tax in ${estate.placeOf(a).name}` : `Taxed in ${estate.placeOf(a).name}: ${inheritanceLine(estate.placeOf(a))}`]] : []),
     ['Property tax', estate.propertyTaxOn(a) ? `${fmtMoney(estate.propertyTaxOn(a), c)} a year (${propertyTaxLabel(estate.placeOf(a))})` : `None in ${estate.placeOf(a).name}`],
@@ -237,7 +239,8 @@ function openProperty(a, api) {
   if (!isHome && !a.tenant) acts.push(['let', `Find a tenant (about ${fmtMoney(estate.rentFor(a), c)} a year)`]);
   if (isHome) acts.push(['moveout', 'Move out and rent somewhere']);
   if (a.tenant) acts.push(['evict', 'Give the tenant notice']);
-  if (a.condition < 95) acts.push(['renovate', `Renovate (${fmtMoney(estate.renovationCost(a.id), c)})`]);
+  acts.push(['renovation', 'Renovation']);
+  if (a.condition < 95) acts.push(['renovate', `Repairs (${fmtMoney(estate.renovationCost(a.id), c)})`]);
   if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)})`]);
   acts.push(['sell', `Sell (you would keep ${fmtMoney(estate.saleProceeds(a), c)})`]);
 
@@ -258,10 +261,84 @@ function openProperty(a, api) {
       const yes = await confirmModal({ title: `Sell the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}?`, body: `${estate.isAbroad(a) ? `It is paid in ${estate.currencyOfProperty(a)}, into your account in that currency. ` : ''}After fees${a.mortgage ? ' and the mortgage' : ''} you would keep ${fmtMoney(estate.saleProceeds(a), c)}.`, yes: 'Sell', danger: true });
       return yes ? report(api, estate.sellProperty(a.id)) : undefined;
     }
+    if (id === 'renovation') return openRenovation(a, api);
     const run = { movein: () => estate.moveIn(a.id), moveout: () => estate.moveOut(), let: () => estate.letOut(a.id),
       evict: () => estate.evict(a.id), renovate: () => estate.renovate(a.id), payoff: () => estate.payOffMortgage(a.id) }[id];
     return report(api, run());
   });
+}
+
+// ---------- Renovation ----------
+
+const STARS = (n) => `${'★'.repeat(Math.round(n))}${'☆'.repeat(5 - Math.round(n))} ${n.toFixed(1)}`;
+/** The odds in words: how often this firm does great work, and how often it goes wrong. */
+const oddsWords = (f) => `${Math.round(f.odds.great * 100)}% great work · ${Math.round(f.odds.poor * 100)}% something goes wrong`;
+
+/** Chooses who does the work. Resolves the firm's id, or null. */
+function pickFirm(a, title, priceOf) {
+  const c = country();
+  return pickModal({ title, body: 'A better firm costs more, and more often does the work well. A cheap one is a gamble.',
+    options: reno.contractors(a).map((f) => ({ value: f.id, label: `${f.name} · ${fmtMoney(priceOf(f.id), c)}`, sub: `${STARS(f.stars)} · ${f.say} ${oddsWords(f)}.` })) });
+}
+
+/** The Renovation screen for a home the player owns: what is done, what could be added, and who would do it. */
+function openRenovation(a, api) {
+  const c = country();
+  const list = reno.renovationsOf(a);
+  const R = (id) => reno.info(id);
+  const rows = list.map((x) => {
+    const r = R(x.id) ?? { name: x.id, icon: '🏠' };
+    const how = x.result === 'poor' ? 'Shoddy work: it needs fixing' : x.result === 'great' ? 'Beautiful work' : 'Good work';
+    return `<div class="card" style="padding:10px 12px;margin:8px 0">
+      <div style="display:flex;gap:10px;align-items:center"><span aria-hidden="true" style="font-size:1.4em">${r.icon}</span>
+        <div style="flex:1;min-width:0"><strong>${esc(r.name)}</strong><br><small class="muted">${esc(`${how} · ${x.by}, ${x.year}`)}</small></div></div>
+      <div class="btn-stack" style="margin-top:8px">
+        ${x.result === 'poor' ? `<button class="btn" data-fix="${esc(x.id)}">Fix it</button>` : ''}
+        <button class="btn" data-remove="${esc(x.id)}">Remove (${fmtMoney(reno.removeCost(a, x.id), c)})</button>
+      </div></div>`;
+  }).join('');
+  const room = reno.spaceOf(a) - reno.usedOf(a);
+  const m = openModal(`
+    <h2>Renovation</h2>
+    <p class="muted">${esc(a.name)} · ${reno.usedOf(a)} of ${reno.spaceOf(a)} spaces used. A home only holds so much, and only what fits it.</p>
+    ${rows || '<p class="empty">Nothing done yet.</p>'}
+    <div class="btn-stack" style="margin-top:12px">
+      <button class="btn primary" data-add ${room <= 0 && !reno.fitting(a).some((x) => x.ok) ? 'disabled' : ''}>Add a renovation</button>
+      <button class="btn" data-close>Close</button>
+    </div>`, { dismissable: true });
+  m.el.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-close]')) return m.close();
+    const add = e.target.closest('[data-add]');
+    const fix = e.target.closest('[data-fix]')?.dataset.fix;
+    const remove = e.target.closest('[data-remove]')?.dataset.remove;
+    if (!add && !fix && !remove) return undefined;
+    m.close();
+    if (remove) {
+      const r = R(remove);
+      const yes = await confirmModal({ title: `Remove the ${r.name.toLowerCase()}?`, yes: 'Remove', danger: true,
+        body: `It costs ${fmtMoney(reno.removeCost(a, remove), c)} to take out, frees its space, and the home is worth what it was without it.` });
+      if (yes) await report(api, reno.removeRenovation(a.id, remove));
+      return openRenovation(a, api);
+    }
+    if (fix) {
+      const firm = await pickFirm(a, 'Who puts it right?', (t) => reno.fixCost(a, fix, t));
+      if (firm) await report(api, reno.fixRenovation(a.id, fix, firm));
+      return openRenovation(a, api);
+    }
+    const choice = await pickModal({ title: 'Add a renovation', body: `Room for ${room} more. Only what would fit a home like this is listed.`,
+      options: reno.fitting(a).map((x) => ({ value: x.r.id, label: `${x.r.icon} ${x.r.name}`, disabled: !x.ok,
+        sub: x.ok ? `${x.r.blurb} From about ${fmtMoney(reno.quote(a, x.r.id, 'budget'), c)}.` : x.why })) });
+    if (!choice) return openRenovation(a, api);
+    const r = R(choice);
+    const firm = await pickFirm(a, `Who builds the ${r.name.toLowerCase()}?`, (t) => reno.quote(a, choice, t));
+    if (!firm) return openRenovation(a, api);
+    const f = reno.contractors(a).find((x) => x.id === firm);
+    const sure = await confirmModal({ title: r.name, yes: 'Hire them',
+      body: `${f.name} will do it for ${fmtMoney(reno.quote(a, choice, firm), c)}. ${oddsWords(f)}.` });
+    if (sure) await report(api, reno.addRenovation(a.id, choice, firm));
+    return openRenovation(a, api);
+  });
+  return m;
 }
 
 // ---------- Vehicles ----------
