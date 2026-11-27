@@ -64,7 +64,7 @@ const startIds = new Set(p.npcIds);
 check(household().includes(mom.id) && household().includes(dad.id), 'before: both parents live in the family household');
 const familyHh = N.hoods().cur.hh;
 
-B.separateParents(mom, dad, { legal: 'divorce' });
+B.separateParents(mom, dad, { legal: 'divorce', court: false });
 const a = B.arrangement();
 check(p.flags.parentsStatus === 'separated', 'the parents have separated');
 check(a && a.primaryId === mom.id && a.otherId === dad.id, 'a care arrangement: mainly with one parent, time with the other');
@@ -173,6 +173,40 @@ check([...startIds].every((id) => back.npcs[id]), 'everyone from the start of th
   const arr = q.family.arrangement;
   check(arr.primaryId === d.id && !d.flags.livesApart, 'when the parent the child lives with dies, the child goes to the other parent');
   check(arr.history.some((h) => h.why === 'a parent died'), 'the arrangement remembers why');
+}
+
+// ---------- 4b. Parents who cannot agree: family court, and child support ----------
+{
+  const q = child(12);
+  const C = await import('../js/engine/familyCourt.js');
+  const { J } = await import('../js/engine/cases.js');
+  const [m, d] = [of('parent').find((n) => n.gender === 'female'), of('parent').find((n) => n.gender === 'male')];
+  d.income = 60000; d.savings = 10000; m.savings = 5000;
+  B.separateParents(m, d, { court: true });
+  const arr = q.family.arrangement;
+  const c = C.openFamilyCase(q);
+  check(c && J().family[c.id] === c && c.stage === 'mediation' && arr.caseId === c.id && arr.basis === 'temporary order', 'a custody case, in the justice record, with the arrangement temporary meanwhile');
+  check(!!store.state.npcs[c.judgeId], 'its judge is a real person');
+  check(arr.support?.payerId === d.id && arr.support.amountYear === 9000, `the parent who moved out pays support: 15% of income (${arr.support?.amountYear})`);
+  const heard = store.state.pendingEvents.find((e) => e.id === 'blend_custody_heard');
+  check(!!heard, 'at twelve, the court asks the child');
+  resolveChoice(EVENT_BY_ID.blend_custody_heard, 1, heard.cast); // "I want to live with {leaving}"
+  check(c.heard?.wish === d.id && c.heard.age === 12, 'and what they said is on the case');
+  // Money does not decide it: the same case, with the father very rich, comes out the same.
+  const snap = JSON.stringify(store.state);
+  const mSav0 = m.savings;
+  year();
+  const decided = { primary: q.family.arrangement.primaryId, by: C.familyCases(q)[0].decision?.by };
+  check(C.familyCases(q)[0].stage === 'decided' && ['agreement', 'judge'].includes(decided.by), `a year on, decided (${decided.by})`);
+  check(['agreed in mediation', 'court order'].includes(q.family.arrangement.basis), 'and the arrangement says how');
+  check(chron.events((e) => e.type === 'family_court').length >= 1, 'a canonical event');
+  const supportNow = q.family.arrangement.support;
+  const payee = store.state.npcs[supportNow?.payeeId];
+  check(supportNow && supportNow.paid > 0 && (payee.id === m.id ? payee.savings > mSav0 : true), 'support was paid, from one household to the other');
+  const rich = JSON.parse(snap); store.state = rich;
+  for (const n of Object.values(rich.npcs)) if (n.id === d.id) { n.savings = 1e9; n.wealth = 100; n.meters.money = 100; }
+  year();
+  check(rich.player.family.arrangement.primaryId === decided.primary, 'a rich parent does not win by being rich: the same decision');
 }
 
 // ---------- 5. Old saves: brothers and sisters without parent links ----------

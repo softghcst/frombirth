@@ -30,6 +30,7 @@ import { recordEvent } from './chronicle.js';
 import { houseApart, homeAgain, syncHousehold } from './neighborhood.js';
 import { bioParentIdsOf, legalParentIdsOf, livesApart } from './kinship.js';
 import { COUNTRIES } from '../data/countries.js';
+import { disputed, openCustodyCase, tickFamilyCourt, setSupport, paySupport, hearChild } from './familyCourt.js';
 
 /** This file's dice: keyed to the life, the year and what is being decided (engine/keyedDice.js), never the game's own. */
 let rng = keyedDice('family');
@@ -149,7 +150,7 @@ function separate(p) {
  * Two parents separate: one moves to a home of their own. Both stay the child's parents; the child stays one person.
  * Exported for the vertical-slice tests and for any later story that separates them on purpose.
  */
-export function separateParents(staying, leaving, { legal = 'divorce', farAway = false } = {}) {
+export function separateParents(staying, leaving, { legal = 'divorce', farAway = false, court = null } = {}) {
   roll(`separate/${leaving.id}`);
   const p = player();
   const f = fam();
@@ -179,6 +180,9 @@ export function separateParents(staying, leaving, { legal = 'divorce', farAway =
   remember(leaving, 'separation', `Moved out when you were ${p.age}, and kept coming back for you.`);
   p.stats.mood = clamp(p.stats.mood - (p.age < 6 ? 3 : 8));
   storyBeat('blend_separation', { staying: staying.id, leaving: leaving.id, words: { schedule: SCHEDULES[schedule].line } }, { source: 'family', must: true });
+  // Child support from the parent who moved out (engine/familyCourt.js); and, where the parents cannot agree, a case.
+  setSupport(f.arrangement, leaving, staying);
+  if (court ?? disputed(staying, leaving)) openCustodyCase(staying, leaving, f.arrangement);
   return f.arrangement;
 }
 
@@ -200,6 +204,9 @@ function upkeep(p) {
     log(`You go to live with ${other.firstName} now.`, 'system', 'neutral');
     f.arrangement = a;
   } else if (other && !other.alive) { a.ended = year; a.history.push({ year, why: 'a parent died' }); }
+  if (a.ended) return;
+  tickFamilyCourt(a, swapHome); // a case waiting on mediation or a judge is settled, once
+  paySupport(a); // the year's child support, from one household to the other
 }
 
 /** The child asks to live mainly with the other parent. From twelve, they are listened to; not always agreed with. */
@@ -228,6 +235,7 @@ function swapHome(a, toParent, why) {
   a.schedule ??= 'weekends';
   a.history.push({ year, primaryId: toParent.id, schedule: a.schedule, why });
   toParent.flags.livesApart = false;
+  if (from && a.support && !a.support.ended) setSupport(a, from, toParent); // support now runs the other way
   if (from) { from.flags.livesApart = true; houseApart(store.state, from.id, from.city ?? player().city, 'the child moved'); }
   homeAgain(store.state, toParent.id);
   player().city = toParent.city ?? player().city;
@@ -434,6 +442,9 @@ export function blendedChoice(value, cast = {}) {
     case 'sep_both': bump(staying, 4); bump(leaving, 4); return 'They both said the same thing, separately: it was not because of you.';
     case 'sep_quiet': p.stats.mood = clamp(p.stats.mood - 2); return 'You keep it to yourself. Nobody quite knows how you feel about it, including you.';
     case 'sep_ask': { const r = askToLiveWith(leaving?.id); return r.text; }
+    case 'court_staying': return hearChild(staying?.id);
+    case 'court_leaving': return hearChild(leaving?.id);
+    case 'court_both': return hearChild(null);
     case 'meet_warm': bump(partner, 8); return `${partner?.firstName} seems relieved. So, a little, does ${parent?.firstName}.`;
     case 'meet_time': bump(partner, 3); return 'You are polite, and careful. There is time.';
     case 'meet_cool': bump(partner, -4); bump(parent, -2); return `${parent?.firstName} notices. Nobody says anything about it, yet.`;

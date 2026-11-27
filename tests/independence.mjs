@@ -116,6 +116,21 @@ check(re.player.leases.length === q.player.leases.length && re.player.leases[0].
 check(deposits(re.player).length === 1 && refunds(re.player).length === 1, 'and the deposit, paid once and returned once');
 check(re.player.flags.livesWithParents, 'and where the player lives');
 
+// A full house: no room, however welcome.
+{
+  const k = youngAdult(22);
+  const friend2 = makeNpc({ role: 'friend', countryId: 'us', age: 22, relationship: 70 }); store.state.npcs[friend2.id] = friend2; k.npcIds.push(friend2.id);
+  I.moveOut(I.rentalOptions()[0].profileId, null);
+  const room = I.familyHomeRoom();
+  check(room && room.sleeps >= 4 && room.living >= 1, `the family home sleeps ${room?.sleeps}, and ${room?.living} live there`);
+  const Hh = N.hoods(); const fam = Hh.hhs[Hh.family];
+  const extra = [];
+  while (I.familyHomeRoom().living < I.familyHomeRoom().sleeps) { const n = makeNpc({ role: 'sibling', countryId: 'us', age: 10 }); store.state.npcs[n.id] = n; k.npcIds.push(n.id); fam.m.push(n.id); extra.push(n); }
+  check(/no room/.test(I.moveBackBlock(k)), `a full family home has no room (${I.moveBackBlock(k)})`);
+  fam.m = fam.m.filter((id) => !extra.some((n) => n.id === id));
+  check(!/no room/.test(I.moveBackBlock(k)), 'with room again, the way home is open');
+}
+
 // Under the age of majority, or in care, the way out is closed; a home owner does not "move back" through this.
 {
   const k = youngAdult(19);

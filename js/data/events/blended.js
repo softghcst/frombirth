@@ -28,4 +28,9 @@ export default [
     ['Tell them it is complicated', 'You tell them the truth.', 'wed_honest'],
     ['Ask what you should call {partner}', 'You have been wondering.', 'wed_names'],
   ]),
+  scene('blend_custody_heard', [10, 17], 'A court officer comes to talk to you, at school, in a quiet room with a box of tissues on the table. {staying} and {leaving} cannot agree where you should live, and the court wants to hear what you think. There is no wrong answer.', [
+    ['Say you want to live with {staying}', 'You tell her what you think.', 'court_staying'],
+    ['Say you want to live with {leaving}', 'You tell her what you think.', 'court_leaving'],
+    ['Say you love them both', 'You say you just want to see both of them.', 'court_both'],
+  ]),
 ];

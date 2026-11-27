@@ -106,6 +106,18 @@ export function moveOut(profileId, roommateChoice = null) {
   return result(true, text);
 }
 
+/** How many people a home of each kind sleeps, roughly. [default] Ordinary homes, not mansions or bedsits. */
+export const SLEEPS = { house: 7, rural: 7, townhouse: 6, duplex: 5, apartment: 4, condo: 4, shared: 4, trailer: 4, student: 1 };
+/** Who lives in the family home now, and how many it sleeps. */
+export function familyHomeRoom() {
+  const H = N.hoods();
+  const fam = H.family ? H.hhs[H.family] : null;
+  const home = fam?.home ? H.homes[fam.home] : null;
+  if (!home) return null;
+  const living = fam.m.filter((ref) => { const n = S().npcs[ref]; return ref.startsWith('@') ? false : n ? n.alive : !!H.res[ref] && !H.res[ref].dead; }).length;
+  return { living, sleeps: SLEEPS[home.t] ?? 5, type: home.t };
+}
+
 /** Why the player cannot move back to their family now, or ''. */
 export function moveBackBlock(p = player()) {
   if (p.flags.livesWithParents) return 'You live with your family already.';
@@ -118,6 +130,9 @@ export function moveBackBlock(p = player()) {
   if (!fam?.home || !parents.length) return 'There is no family home to go back to.';
   const home = H.homes[fam.home];
   if (H.list[home.h]?.city !== p.city || H.list[home.h]?.c !== p.countryId) return 'Your family lives in another city.';
+  // There has to be somewhere to sleep: a full house says no, however welcome the player is.
+  const room = familyHomeRoom();
+  if (room && room.living + 1 > room.sleeps) return `There is no room: ${room.living} people already live in the family home, and it sleeps ${room.sleeps}.`;
   if (p.npcIds.some((id) => npc(id)?.role === 'spouse' && npc(id).alive)) return 'You live with your spouse.';
   return '';
 }
