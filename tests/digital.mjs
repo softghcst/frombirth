@@ -644,6 +644,7 @@ section('Keeping in touch');
   join('murmur', 'touch.me');
   const f = friend({ relationship: 85 });
   acc.makeAccount(f.id, 'murmur', 'touch.friend');
+  f.meters.health = 100; // followed into next year: the friend should not die by chance in between
   freshHours();
   let planned = false;
   for (let i = 0; i < 6 && !planned; i++) { delete f.flags.acts; core.world().acts = { year: store.state.year }; msg.contact(f.id, 'dm:murmur', 'plans'); planned = (core.world().plans ?? []).some((x) => x.npcId === f.id); }

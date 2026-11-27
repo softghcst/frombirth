@@ -285,8 +285,9 @@ section('the 40-man roster: three option years, waivers, outright assignments, t
   if (d) {
     sl.answer(d.id, 'indy');
     check(club(e)?.minorLevel === 'Independent League' && contract(e).salary === money(15000), 'for a few thousand a month');
-    year({ minorDeal: 'no', trade: 'yes' });
-    const x = lineOf(e);
+    // A season he plays in (an injury drawn by chance can keep him out of a whole one: no line that year).
+    let x;
+    for (let i = 0; i < 3 && !x; i++) { year({ minorDeal: 'no', trade: 'yes' }); x = lineOf(e); }
     check(x?.level === 'Independent League' && !x.top && !(e.trades ?? []).length, 'its seasons are on the record, not in the big league totals, and nobody trades for him');
     const deal = sl.internals.decide(S(), { kind: 'minorDeal', sportId: 'baseball', orgId: bc.clubIn(S(), 'us', sp.internals.seeded('t')).id, orgName: 'x', key: 'test/minorDeal', text: 'x', options: [{ id: 'yes', label: 'y' }] });
     sl.answer(deal.id, 'yes');

@@ -15,21 +15,21 @@ const base = { category: 'neighborhood', queuedOnly: true, hood: true, cooldown:
 export default [
   // ---------- Small everyday moments (data/neighborhoods.js MOMENTS) ----------
   {
-    ...base, id: 'hood_wrong_parcel', ageRange: [10, 120],
-    text: 'A parcel for {person} has been left at your door by mistake. It rattles a little.',
+    ...base, id: 'hood_new_baby', ageRange: [12, 120],
+    text: '{person} and their family have just brought a new baby home. The curtains have been closed for three days.',
     choices: [
-      { label: 'Take it round to them', outcomes: [any('{person} had been waiting for it all week. They asked you in for a cup of something, and you stayed longer than you meant to.', 'good', hood({ do: 'meet', rel: 40 }), st('mood', 2))] },
-      { label: 'Leave a note through their door', outcomes: [any('{person} came to collect it that evening, with thanks and a chocolate bar.', 'neutral', hood({ do: 'meet', rel: 34 }))] },
-      { label: 'Leave it on their step', outcomes: [any('It was gone by the morning. You hope it was them who took it.', 'neutral')] },
+      { label: 'Leave a cooked meal on their step', outcomes: [any('A casserole and a note: no need to return the dish. {person} told you later it was the first proper meal they had eaten all week.', 'good', hood({ do: 'meet', rel: 44 }), hid('karma', 2))] },
+      { label: 'Knock with a small present', outcomes: [any('A tired, happy face at the door, and a glimpse of a very small person asleep.', 'good', hood({ do: 'meet', rel: 38 }), st('mood', 3))] },
+      { label: 'Keep the noise down for a while', outcomes: [any('Nobody notices, which is the point.', 'neutral', hid('karma', 1))] },
     ],
   },
   {
-    ...base, id: 'hood_power_cut', ageRange: [6, 120],
-    text: 'The power goes off along the whole street one evening. Through the window you can see {person} on their step with a torch, looking up and down the road.',
+    ...base, id: 'hood_big_game', ageRange: [8, 120],
+    text: 'The national team is in the final, and {person} has wheeled a television out onto the front porch for the whole street.',
     choices: [
-      { label: 'Go out and see if everyone is all right', outcomes: [any('Half the street was out. Someone brought candles, someone brought a guitar, and {person} told stories about the last time this happened.', 'good', hood({ do: 'meet', rel: 40 }), st('mood', 4))] },
-      { label: 'Check on {person} in particular', outcomes: [any('They were fine, and glad someone thought to ask. You sat on their step until the lights came back.', 'good', hood({ do: 'meet', rel: 44 }), hid('karma', 1))] },
-      { label: 'Light a candle and wait it out inside', outcomes: [any('An evening of candlelight and no screens. It was oddly nice.', 'neutral', st('mood', 1))] },
+      { label: 'Bring a chair and snacks', outcomes: [any('Thirty neighbors, one television, and a last-minute goal. {person} hugs strangers. So do you.', 'good', hood({ do: 'meet', rel: 42 }), st('mood', 6))] },
+      { label: 'Watch for the first half', outcomes: [any('You catch the first half and the best of the cheering from your kitchen window.', 'neutral', hood({ do: 'meet', rel: 32 }), st('mood', 2))] },
+      { label: 'Close the windows and read', outcomes: [any('The cheering comes through the windows anyway.', 'neutral')] },
     ],
   },
   {
