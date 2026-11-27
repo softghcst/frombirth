@@ -519,7 +519,11 @@ function place(rec) {
   // The family's animals stay with the birth family: they leave the child's list, not the world.
   for (const pet of p.npcIds.map(npcOf).filter((n) => n?.role === 'pet')) pet.flags.stayedWith = birth[0]?.id ?? null;
   for (const n of [...parents, ...adopt.siblings, ...adopt.grandparents, ...adopt.pets]) state.npcs[n.id] = n;
-  p.npcIds = [...parents, ...adopt.siblings, ...together, ...adopt.grandparents, ...adopt.pets, ...keepOpen].map((n) => n.id);
+  // The child's own people stay: teachers, classmates and friends from the same town and school. Only the birth family
+  // (and the family's animals) leave the household. Rebuilding the list from the new family alone used to drop them all,
+  // so a child adopted at seven had no teachers until middle school.
+  const ownPeople = p.npcIds.map(npcOf).filter((n) => n && n.alive && n.flags.birthOf !== p.id && n.role !== 'pet' && !together.includes(n) && !keepOpen.includes(n));
+  p.npcIds = [...new Set([...parents, ...adopt.siblings, ...together, ...adopt.grandparents, ...adopt.pets, ...keepOpen, ...ownPeople].map((n) => n.id))];
   p.flags.parentsStatus = adopt.status;
   p.flags.livesWithParents = true;
   for (const t of together) t.lastName = surnameFor(c.id, lastName, t.gender);

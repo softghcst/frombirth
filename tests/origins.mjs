@@ -92,6 +92,15 @@ const mother = () => npc(rec().birthParentIds.find((id) => npc(id)?.flags.birthK
   check(birthIds.every((id) => npc(id) && (r.contact === 'open' ? true : !P().npcIds.includes(id)) && npc(id).role !== 'parent'), 'the birth parents are the same people, no longer the household parents');
   check(birthIds.every((id) => O.knows(id, 'named')), 'a child of that age remembers the names of the people they lived with');
   check(Object.keys(S().npcs).length >= before && !Object.values(S().npcs).some((x) => x.id !== pid && x.firstName === P().firstName && x.flags.birthOf === pid && x.age === P().age), 'no second copy of the child');
+  // The child's own people stay: a placement at school age does not take away teachers, classmates or friends.
+  {
+    const q = adoptee('childhood', (x) => x.placementAge >= 7);
+    years(q.age < rec().placementAge - 1 ? rec().placementAge - 1 - q.age : 0);
+    const mine = () => P().npcIds.map(npc).filter((x) => x?.alive && (x.flags.tag === 'teacher' || ['classmate', 'friend'].includes(x.role)));
+    const before = mine().map((x) => x.id);
+    years(2);
+    check(rec().status === 'final' && before.length > 0 && before.every((id) => !npc(id)?.alive || P().npcIds.includes(id)), `adopted at ${rec().placementAge}: the teachers, classmates and friends the child had are still in their life (${before.length})`);
+  }
   section('adopted during childhood: a coherent timeline and a real placement', n);
 }
 
