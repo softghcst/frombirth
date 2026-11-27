@@ -1,5 +1,6 @@
 // The scenes of adoption and birth families (engine/origins.js). Never drawn: each is queued by the engine when the
 // world makes it true, and what it reveals is already in the save before it is shown. Results come one a year.
+// The parents' words agree with one parent or two (engine/origins.js parentWords): {parents} {tell} you; {They} {have}.
 import { any } from '../helpers.js';
 
 const fx = (id, i) => ({ type: 'origins', value: `${id}:${i}` });
@@ -8,26 +9,26 @@ const S = (id, text, choices, extra = {}) => ({ id, category: 'family', ageRange
   choices: choices.map(([label, line, tone = 'neutral'], i) => ({ label, outcomes: [any(line, tone, fx(id, i))] })) });
 
 export default [
-  S('org_story', 'The Story of Your Adoption. {parents} sit with you and a box of photographs, and tell you a story you will hear many times: how you were born, and how you came home to them.', [
-    ['Ask a hundred questions', 'They answer every one they can, and say so when they cannot.', 'good'],
-    ['Just listen', 'You lean against them and listen to the whole thing.', 'good'],
+  S('org_story', 'The Story of Your Adoption. {parents} {sit} with you and a box of photographs, and {tell} you a story you will hear many times: how you were born, and how you came home to {them}.', [
+    ['Ask a hundred questions', '{They} {answer} every one {they} can, and {say} so when {they} cannot.', 'good'],
+    ['Just listen', 'You lean against {them} and listen to the whole thing.', 'good'],
     ['Go back to playing', 'You nod, and go back to your blocks. It is a story; it is yours. There is time.']]),
-  S('org_learn_late', 'Learning About Your Origins. {parents} ask to talk, in the voice that means something important. They tell you that you were adopted, and that they should have told you sooner.', [
-    ['Ask them everything', 'They tell you all they know. Some of it they have been waiting years to say.'],
-    ['Say you need time to think', 'They say of course. They are there when you are ready.'],
-    ['Ask why they waited', 'They try to explain. They were afraid of getting it wrong. It is not a good enough reason, and they know it.', 'bad']]),
+  S('org_learn_late', 'Learning About Your Origins. {parents} {ask} to talk, in the voice that means something important. {They} {tell} you that you were adopted, and that you should have been told sooner.', [
+    ['Ask everything', '{They} {tell} you all {they} {know}. Some of it {they} {have} been waiting years to say.'],
+    ['Say you need time to think', '{They} {say} of course, and {are} there when you are ready.'],
+    ['Ask why it took so long', '{They} {try} to explain: {they} {were} afraid of getting it wrong. It is not a good enough reason, and {they} {know} it.', 'bad']]),
   S('org_question', 'A Question About Your Birth Parents. At bedtime, out of nowhere, you ask: "Do you think my birth mother thinks about me?"', [
-    ['Ask what they know about her', 'They sit on the end of the bed and tell you.'],
-    ['Ask if they think about her too', '"Often," they say. "Every birthday."', 'good'],
+    ['Ask what {they} {know} about her', '{They} {sit} on the end of the bed and {tell} you.'],
+    ['Ask if {they} {think} about her too', '"Often," {they} {say}. "Every birthday."', 'good'],
     ['Let it go for now', 'You fall asleep before they can answer. Some questions keep.']]),
   S('org_photo', 'The Old Photograph. In a drawer you find {photo}.', [
-    ['Ask your parents about it', 'They tell you where it came from, and let you keep it.', 'good'],
+    ['Ask about it', '{They} {tell} you where it came from, and {let} you keep it.', 'good'],
     ['Put it back carefully', 'You put it back exactly where it was. You know where it is.'],
     ['Keep it in your room', 'It goes in the frame on your shelf. Nobody minds.', 'good']]),
-  S('org_conversation', 'A Family Conversation. A school project on family trees turns into a real conversation over dinner. {parents} put their forks down and ask what you would like to know.', [
-    ['Ask what they know', 'They tell you, and the dishes wait.'],
-    ['Tell them how you feel about it', 'You say it is complicated, and that you love them. They say both of those can be true.', 'good'],
-    ['Say you are fine, really', 'You are, mostly. They leave the door open.']]),
+  S('org_conversation', 'A Family Conversation. A school project on family trees turns into a real conversation over dinner. {parents} {put} down {their} fork{forks} and {ask} what you would like to know.', [
+    ['Ask what {they} {know}', '{They} {tell} you, and the dishes wait.'],
+    ['Say how you feel about it', 'You say it is complicated, and that you love {them}. {They} {say} both of those can be true.', 'good'],
+    ['Say you are fine, really', 'You are, mostly. The door is left open.']]),
   S('org_should', 'Should I Search? You are old enough now to look for your birth family yourself, if you want to. Some days you want to know everything. Some days you are not sure.', [
     ['Start looking into it', 'You find out what you would have to do, and where to begin.'],
     ['Not now', 'Not now. Maybe not ever. Maybe next year.'],

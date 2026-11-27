@@ -565,7 +565,8 @@ export default {
       ${list.length ? (() => {
         // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
         // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
-        const close = (n) => CLOSE_ROLES.includes(n.role) || (n.role === 'friend' && (n.meters.relationship >= 40 || n.flags.title === 'Best friend' || n.flags.tag));
+        // Birth family the player is in touch with are family too: shown with the family, not folded away with classmates.
+        const close = (n) => CLOSE_ROLES.includes(n.role) || !!n.flags.birthKin || (n.role === 'friend' && (n.meters.relationship >= 40 || n.flags.title === 'Best friend' || n.flags.tag));
         const groups = (people, roles = GROUPS) => roles.map(([title, rs]) => {
           const group = people.filter((n) => rs.includes(n.role));
           return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';

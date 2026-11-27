@@ -475,6 +475,41 @@ function makeHalf(m) {
   section('three-, six- and twelve-month Age Up consistency', n);
 }
 
+// What a playtest found: wording, repeats, and what a reply can and cannot say.
+{
+  const n = problems.length;
+  const { renderText } = await import('../js/engine/eventEngine.js');
+  // One parent or two: the words agree.
+  let one = null; let two = null;
+  for (let i = 0; i < 300 && !(one && two); i++) { adoptee('birth'); const w = O.parentWords(rec()); if (rec().adoptiveParentIds.length === 1) one ??= w; else two ??= w; }
+  check(one && /^\S+ sits with you .* tells you .* came home to (her|him)\./.test(renderText(EVENT_BY_ID.org_story.text, { words: one }).replace(/^The Story of Your Adoption\. /, '')), `one parent: "sits", "tells", "her" (${one && renderText(EVENT_BY_ID.org_story.text, { words: one })})`);
+  check(two && / sit with you .* tell you .* came home to them\./.test(renderText(EVENT_BY_ID.org_story.text, { words: two })), 'two parents: "sit", "tell", "them"');
+  // A child adopted at 5: their birth mother's age when they were born, not when they were placed.
+  adoptee('childhood'); const r5 = rec(); const m5 = mother(); const atBirth = m5.age; years(r5.placementAge + 8);
+  O.doOriginAction('askBirth'); years(4); O.doOriginAction('askBirth');
+  check(!S().origins.self.facts['mother:age'] || S().origins.self.facts['mother:age'].text.includes(`was ${atBirth} when`), `the birth mother's age at the birth (${atBirth}): ${S().origins.self.facts['mother:age']?.text}`);
+  // The original certificate is asked for once; the agency is not written to every year; a death is reported once.
+  grownNamed(); const seen = years(2).filter((x) => x === 'org_agency').length;
+  check(O.originActions().find((a) => a.id === 'records').why === 'You have your original birth certificate', 'once the certificate is in hand, it is not asked for again');
+  O.doOriginAction('agency'); check(/recently|Waiting|already in touch|has died/.test(O.originActions().find((a) => a.id === 'agency').why), 'the agency is not written to every year');
+  const m = mother(); m.alive = false; m.flags.diedYear = S().year - 1;
+  const before = S().origins.search.requests.length;
+  O.doOriginAction('intermediary'); years(3);
+  check(O.knowsFact(`died:${m.id}`) && O.originActions().find((a) => a.id === 'intermediary').why === 'Nobody in your file left to look for' || !rec().fatherNamed, 'an intermediary does not report the same death again and again');
+  check(S().origins.search.requests.length >= before && seen <= 1, 'the records answer was told once');
+  // Raised by relatives: the birth mother is family, in touch; nobody asks for contact with her through a tracing service.
+  adoptee('kinship'); S().origins.self.awareAge = 3; ageTo(20); S().origins.self.aware = true; years(1);
+  const km = mother();
+  check(!O.relativeActions(km.id).some((a) => a.id === 'request'), 'a birth mother already in your life is not someone to request contact with');
+  // State law: a reform still to come is not described as the law.
+  adoptee('birth', () => true, { city: 'Chicago', year: 1990 }); S().origins.self.aware = true; ageTo(10);
+  const v = O.originsView().search.access;
+  check(/sealed/.test(v) && !/2011/.test(v), `Illinois in 2000: sealed, and the 2011 law is not yet mentioned (${v})`);
+  adoptee('birth', () => true, { city: 'Washington, D.C.', year: 2000 }); S().origins.self.aware = true; ageTo(18);
+  check(/In the District of Columbia/.test(O.originsView().search.access), `the District of Columbia reads with "the" (${O.originsView().search.access.slice(0, 50)})`);
+  section('playtest fixes: one parent or two, ages, no repeated answers, kinship contact, the law of the year', n);
+}
+
 // The first playable slice, end to end.
 {
   const n = problems.length;
