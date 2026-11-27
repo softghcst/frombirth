@@ -1049,7 +1049,7 @@ export function planYear(state, hood, y) {
     }
     const elders = residentsOf(state, hood.id).filter((x) => age(x) >= 70 && y - yearOf(H.hhs[x.hh]?.from ?? T(y)) >= 25 && !state.npcs[x.id]);
     if (pAge >= 14 && elders.length && r.chance(0.2)) ev.push({ m: r.int(0, 11), k: 'elder', res: r.pick(elders).id });
-    // A small everyday moment with a neighbor (a parcel at the wrong door, a power cut, a pet gone missing).
+    // A small everyday moment with a neighbor (a new baby next door, a big game on the porch, a pet gone missing).
     if (pAge >= 8 && nearAdults.length && r.chance(0.3)) {
       const bk = H.blocks[here.b].kind;
       const who = r.pick(nearAdults);
