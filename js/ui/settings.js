@@ -1,5 +1,6 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
+import { openNotice } from './screens/notice.js';
 import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
 import { getPeople, addPerson, removePerson, GENDERS, MAX_PEOPLE } from '../people.js';
@@ -79,6 +80,7 @@ export async function openSettings(hooks = {}) {
         ...(store.state?.player?.alive ? [{ value: 'everyday', label: 'Everyday moments', sub: store.state.settings?.everydayScenes === 'popup' ? 'Shown as they happen' : 'In your life story, to answer if you want' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
+        { value: 'about', label: 'About Pathways', sub: 'Fictional characters and events' },
       ],
     });
     if (!pick) return;
@@ -98,6 +100,7 @@ export async function openSettings(hooks = {}) {
     if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
+    if (pick === 'about') await openNotice();
   }
 }
 
