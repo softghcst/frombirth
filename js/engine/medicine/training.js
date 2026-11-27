@@ -16,6 +16,7 @@ import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { SPECIALTY_BY_ID, PRIMARY, FELLOWSHIPS, PREMED, ROTATIONS, ROTATION_BEFORE, RESIDENT_TITLES, ERA, jurisdiction, jurisdictionIn, qualifiesAs } from '../../data/medicine.js';
 import { hire, endJob } from '../career.js';
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { employer, chronicle } from '../employers.js';
 import { citiesOf, relocate, moveCost } from '../cities.js';
 import { M, med, year, grow, note, once, result, roll, specialtyName, qualified, ancestorAt, medicalFamily, storyOnce } from './core.js';
@@ -218,6 +219,8 @@ export function placeChance(specialtyId, m = med()) {
 export function runMatch(kind, wanted) {
   const p = player();
   const m = M();
+  // A special career is the work (engine/specialCareer.js): a residency waits until it is left.
+  { const sc = jobBlockSpecial('doctor', p); if (sc) { log(`No residency applications this year. ${sc}`, 'system', 'neutral'); return result(false, sc, 'neutral'); } }
   const j = jurisdiction(p.countryId);
   const by = j.selection && !(p.countryId === 'us' && year() < ERA.residencyMatch) ? j.selection : 'direct offers from hospitals';
   const what = kind === 'fellowship' ? 'Fellowship applications' : `Applications through ${by}`;
@@ -534,6 +537,7 @@ export function fellowshipOptions(m = med()) {
 
 /** Chooses the fellowship to apply for (in the last residency year, or later as an attending). */
 export function applyForFellowship(id) {
+  { const sc = jobBlockSpecial('doctor', player()); if (sc) return result(false, sc, 'neutral'); }
   const m = M();
   const t = m.training;
   const f = fellowshipOptions(m).find((x) => x.id === id);
@@ -565,6 +569,7 @@ export function findPost(p, m, specialtyId, preferId = null) {
 export function startPost(specialtyId, hospitalId, rank = 'attending') {
   const p = player();
   const m = M();
+  { const sc = jobBlockSpecial('doctor', p); if (sc) return result(false, sc, 'neutral'); }
   const career = careerFor(specialtyId);
   const e = employer(hospitalId);
   hire(career, levelFor(rank, career), 60, `You join ${e.name} as an attending.`, { employerId: hospitalId });

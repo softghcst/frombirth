@@ -739,6 +739,56 @@ function report(s) {
   section('politics and medicine from the record: laws really passed, real hospitals and their chiefs');
 }
 
+// 21. Owning is not reporting: leaving journalism, selling up, and an heir with another career.
+{
+  const p = life(40);
+  p.finance.cash = 50_000_000;
+  const kind = Object.keys(OWN_KINDS).find((k) => !jn.startWhy(k, p));
+  jn.startPublication(kind, 'The Owner\'s Paper', 'careful');
+  check(jn.working(p) && sc.current() === 'journalism', 'starting a publication makes journalism the career');
+  const left = sc.leave();
+  check(left.ok && !sc.current() && jn.ownedOutlet(p) && !jn.working(p), 'leaving journalism: still the owner, no longer reporting');
+  jn.J().assigned = null; store.state.year += 1;
+  check(jn.assignYear(p).length === 0, 'no assignments for an owner who is not reporting');
+  check(!sc.whyNot('music', p), 'another special career is open');
+  check(jn.resumeReporting().ok && jn.working(p) && sc.current() === 'journalism', 'they can take reporting up again');
+  // Selling the last title, with nothing else, ends journalism as the career.
+  const o = jn.ownedOutlet(p);
+  o.finances.push({ year: store.state.year, revenue: 100000, costs: 1, net: 99999, audience: o.audience });
+  check(jn.sellPublication().ok && !sc.current(), 'selling the last title frees the special career');
+  section('owning is not reporting: leaving, selling up, and taking it up again');
+}
+
+// 22. One press world: politics, entertainment, Digital Life and true crime write into the same newsrooms.
+{
+  const p = life(30);
+  const news = await import('../js/engine/news.js');
+  const pol = (await import('../js/engine/polity.js')).polity(p.countryId);
+  const pressList = news.press(pol);
+  const nat = jn.nationalPress(p.countryId);
+  check(pressList.length >= 3 && pressList.every((x) => jn.pressOutlet(x.id) && store.state.npcs[jn.pressOutlet(x.id).editorId]), 'the political press are newsrooms with real editors');
+  check(nat.some((o) => o.kind === 'magazine') && nat.some((o) => o.kind === 'tabloid'), 'the national press has an entertainment magazine and a tabloid');
+  check(jn.nationalPress(p.countryId).length === nat.length, 'made once');
+  const biggest = (await import('../js/data/countries.js')).COUNTRIES[p.countryId].cities[0];
+  p.city = biggest;
+  check(nat.every((o) => jn.outletsHere(p).some((x) => x.id === o.id)), 'a journalist in the biggest city can work at the national press');
+  // A political headline is one article, with a real byline.
+  const before = Object.keys(jn.S().pubs).length;
+  news.post(pol, 'Parliament sits late into the night.', {});
+  const line = pol.news.at(-1);
+  const pub = jn.S().pubs[line.pubId];
+  check(pub && pub.headline === line.text && store.state.npcs[pub.reporterId] && Object.keys(jn.S().pubs).length === before + 1, 'a political news line is one article in the press archive');
+  // The entertainment press: an article about the player, in the same archive; a correction shows on it.
+  const ent = await import('../js/engine/entertainment.js');
+  const a = ent.article({ kind: 'rumor', about: 'player', accuracy: 'rumor', true: false, text: 'Is a famous face quitting?' });
+  const ap = jn.S().pubs[a.pubId];
+  check(ap && ap.links.aboutId === p.id && jn.pressOutlet(a.outletId) && ent.org(a.outletId)?.name === ap.outlet, 'a celebrity story is an article by a real outlet');
+  check(jn.pressAbout(p.id).some((x) => x.id === ap.id), 'and is found among what was written about the player');
+  const press = await import('../js/engine/press.js');
+  check(press.answer(a.id, 'correction').ok && ap.corrections.length === 1, 'a correction runs under the same article');
+  section('one press world: the same newsrooms and one archive for politics, celebrities, corrections and the court record');
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Every story has a source.');

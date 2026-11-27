@@ -6,6 +6,7 @@
 // A leadership post needs a seat to be free and a selection; it is offered, never automatic, and
 // the player may say no. Leaving the hospital (quitting, being let go, taking another job) ends
 // the post; another hospital can be applied to from My Medical Career.
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { clamp } from '../../util.js';
 import { rng } from '../../rng.js';
 import { store, player, log } from '../../state.js';
@@ -291,6 +292,7 @@ export function postOptions(p = player(), m = med()) {
 
 /** Applies for an attending post at a hospital, once a year. Not guaranteed. */
 export function applyForPost(hospitalId) {
+  { const sc = jobBlockSpecial('doctor', player()); if (sc) return result(false, sc, 'neutral'); }
   const p = player();
   const m = M();
   const o = postOptions(p, m).find((x) => x.id === hospitalId);

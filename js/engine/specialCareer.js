@@ -60,7 +60,7 @@ export function current(p = player(), state = store.state) {
  * Any other job is work of another kind: a special career is a full-time career, so it is one or the other.
  */
 const OWN_JOBS = { acting: ['actor'], music: ['singer', 'music_prod'], dance: ['dancer'], modeling: ['modeling'], writing: ['author', 'screenwriting'],
-  sports: ['athlete', 'coaching'], journalism: ['journalist', 'broadcast', 'publishing'], kpop: [], politics: [] };
+  sports: ['athlete', 'coaching'], journalism: ['journalist'], kpop: [], politics: [] };
 
 /** Why this career cannot be taken up now, or ''. o.replacesJob: taking it up is itself a new job (a professional contract). */
 export function whyNot(id, p = player(), state = store.state, o = {}) {

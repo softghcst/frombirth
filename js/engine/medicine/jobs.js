@@ -4,6 +4,7 @@
 // in another city means moving.
 //
 //   m.offers = [{ hospitalId, city, rank, salary, relocation, year, negotiated }]   offers stand until the year ends
+import { jobBlock as jobBlockSpecial } from '../specialCareer.js';
 import { oddsWords, rollRead, afterWords } from '../odds.js';
 import { rng } from '../../rng.js';
 import { clamp, fmtMoney } from '../../util.js';
@@ -91,6 +92,7 @@ export const interviewOdds = (m = M()) => oddsWords(interviewChance(m));
 
 export function applyFor(hospitalId, scope = 'country') {
   const p = player();
+  { const sc = jobBlockSpecial('doctor', p); if (sc) return result(false, sc, 'neutral'); }
   const m = M();
   const o = postings(scope, p, m).find((x) => x.id === hospitalId) ?? postings('country', p, m).find((x) => x.id === hospitalId);
   if (!o) return result(false, 'That hospital has no post in your specialty.', 'neutral');
