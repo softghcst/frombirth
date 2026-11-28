@@ -117,6 +117,11 @@ years old) with NO eyes. The SECOND image is the same face WITH the eyes whose S
 
 Draw ONE pair of eyes for the first image, in EXACTLY the style of the second image, but in this shape: [DESIGN].
 
+Keep the STYLE of the second image (line weight, wing flick and lashes, iris colors, black pupil, highlights), but the
+SHAPE must be clearly different from it, following the description exactly: its height compared with its width, whether
+a crease line shows above the eye, how much the corners tilt, and how much of the iris the upper lid covers. If the
+result would look almost the same as the second image, it is wrong.
+
 STYLE (copy it from the second image):
 - A bold dark brown upper lid line (#23140f), thicker than the lower line; a thin lower line, or one only at the outer
   half of the eye.
@@ -143,42 +148,52 @@ transparent.
 
 ## Girls' eye designs
 
-Each design is a real, natural eye shape. The heritages after it are where the shape is **more common**, which tells
-the game how often to give it: any child of any heritage can still have any of them. Several designs share heritages,
-and every heritage has several designs.
+Each design is a real, natural eye shape, drawn just as cute as every other. The heritages after it are where the shape
+is **more common**, which tells the game how often to give it; any child of any heritage can still have any of them.
+What makes each one look different is in **bold**: check the drawing for it before sending it.
 
-1. **Round and open.** A round eye, almost as tall as it is wide, with a clear crease above the lid and the whole iris
-   showing.
+1. **Soft almond with a wing** (done: your favorite, and the style reference). About 1.7 times as wide as tall, softly
+   pointed corners, a small wing flick.
    *European, Latino, Middle Eastern & North African, Sub-Saharan African, South Asian, Pacific Islander*
-2. **Classic almond.** Wider than tall, gently pointed at the inner and outer corners, a softly curved upper lid with a
-   visible crease.
+2. **Long almond.** **About 2.2 times as wide as tall**, longer and slimmer than design 1, with **sharply pointed inner and
+   outer corners** and a **visible crease line** following the upper lid.
    *South Asian, Middle Eastern & North African, Latino, Southeast Asian, European, Sub-Saharan African*
-3. **Monolid.** An almond eye with a smooth upper lid and no crease above the lash line; the lid line sweeps gently
-   outward. Just as big, open and bright as the others.
+3. **Monolid.** An almond **with NO crease line at all** above the lash line: the upper lid is one smooth, clean thick line
+   that **sweeps straight outward and slightly up** at the outer corner. About 2 times as wide as tall; the iris still big
+   and bright.
    *East Asian, Central Asian, Southeast Asian, Indigenous American*
-4. **Soft inner fold.** A gently rounded almond with a small, soft fold of skin over the inner corner (an epicanthic
-   fold) and a low, faint crease.
+4. **Soft inner fold.** A rounded almond where the **upper lid line curves down over the inner corner** (a soft epicanthic
+   fold), so the **inner corner is hidden and rounded, not pointed**; only a faint, short crease near the outer half.
    *East Asian, Southeast Asian, Central Asian, Indigenous American*
-5. **Double crease almond.** An almond eye with a neat, clearly drawn crease line close above the lashes, slightly
-   upturned at the outer corner.
+5. **Double crease.** An almond with a **thin, clearly drawn crease line running close and parallel above the whole upper
+   lid**, and the outer corner **tilting up a little**. The crease is the feature: draw it plainly.
    *East Asian, Southeast Asian, Pacific Islander, Central Asian*
-6. **Hooded.** A soft fold of lid that sits low over the crease and partly covers the upper lid, with the eye still open
-   and bright underneath.
+6. **Hooded.** A **fold of skin, drawn as a second curved line, that hangs over the upper lid and hides its crease**, and
+   **covers the top quarter of the iris**. The eye still open and bright below it.
    *European, East Asian, Middle Eastern & North African, Indigenous American, Central Asian*
-7. **Upturned.** An almond whose outer corners lift a little higher than the inner corners, for a cheerful look.
+7. **Upturned.** The **outer corners clearly higher than the inner corners** (the eye tilts up toward the temples, about
+   12 degrees), for a cheerful look; a crease line present.
    *East Asian, Southeast Asian, Latino, Middle Eastern & North African, European*
-8. **Downturned.** Outer corners sitting a little lower than the inner corners, for a gentle, sweet look.
+8. **Downturned.** The **outer corners clearly lower than the inner corners** (the eye tilts down toward the temples,
+   about 10 degrees), the upper lid line drooping gently at the outer end, for a sweet, gentle look.
    *European, South Asian, Sub-Saharan African, Latino, Aboriginal & Torres Strait Islander*
-9. **Deep-set and large.** A large eye set a little deeper under the brow, with a defined crease and a slightly heavier
-   upper lid line; a big, dark-ringed iris.
+9. **Deep-set.** A **thick, dark crease line set well above the eye**, curving like a second brow line, with **visible lid
+   between it and the lashes**; the eye itself large, with a **dark ring around the iris**.
    *South Asian, Middle Eastern & North African, Aboriginal & Torres Strait Islander, European*
-10. **Wide and rounded.** A large, wide, rounded eye with a soft crease and a big iris, set a little further apart.
+10. **Big and round.** **Nearly as tall as it is wide (about 1.2 to 1)**, the roundest of all, with **white showing below
+    the iris**, a soft round crease, and the eyes **set a little further apart**.
     *Sub-Saharan African, Pacific Islander, Latino, Aboriginal & Torres Strait Islander*
-11. **Low-crease almond.** A long almond with a low crease close to the lashes and a gently flat upper lid line.
+11. **Low-crease almond.** A long almond with a **very flat, almost straight upper lid line** and a **short crease sitting
+    very close to the lashes**, only at the outer half.
     *Indigenous American, Central Asian, Southeast Asian, East Asian*
 12. **Upturned with fluttery lashes** (eyes 25's shape; upload `kid_eyes_reference_shape_25_on_face.png` as the second
-    image for this one). Upturned almond with slightly fuller lashes, a brown iris and a clearly visible black pupil.
+    image for this one). Upturned, with **fuller lashes than any other design (five or six, curling outward)**, a brown
+    iris and a clearly visible black pupil.
     *Latino, Middle Eastern & North African, South Asian, Southeast Asian, European*
+
+Three quick checks on every drawing, against design 1 and the ones before it: **does the outline look different at a
+glance? Does the crease (or no crease) match? Do the corners tilt the way it says?** If not, ask ChatGPT to fix just that
+("remove the crease line", "make the outer corners lower", "make it rounder, nearly as tall as wide").
 
 How many designs each heritage has: European 7, Southeast Asian 7, East Asian 6, Latino 6, Middle Eastern & North
 African 6, South Asian 5, Central Asian 5, Sub-Saharan African 4, Indigenous American 4, Pacific Islander 3, Aboriginal &
