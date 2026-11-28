@@ -254,6 +254,7 @@ export const KID_EYES = {
   female: {
     eyes_kid_girl_01_round: ['european', 'latino', 'mena', 'african', 'south_asian', 'pacific_islander'],
     eyes_kid_girl_02_long_almond: ['south_asian', 'mena', 'latino', 'southeast_asian', 'european', 'african'],
+    eyes_kid_girl_03_monolid: ['east_asian', 'central_asian', 'southeast_asian', 'indigenous_americas'],
   },
   male: {},
 };
