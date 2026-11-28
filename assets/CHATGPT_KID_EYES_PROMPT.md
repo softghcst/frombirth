@@ -129,7 +129,8 @@ STYLE (copy it from the second image):
   or dramatic. No lower lashes.
 - A COLORED iris in one warm brown (#7a4a2a), with a clearly visible round BLACK PUPIL in its center (not a solid
   one-color iris), a slightly darker ring at the iris's edge, and one big white highlight near the top plus one small
-  one. The iris is large: its top tucks just under the upper lid, and only a little white shows at the sides and below.
+  one. The iris is ONE color all over, only a little darker toward the top: NEVER a dark or black band across
+  its top half (only the round pupil is black). The iris is large: its top tucks just under the upper lid, and only a little white shows at the sides and below.
 - White eye whites, flat colors, simple soft shading, no gradients, no texture, no shadow.
 - Friendly, bright and appealing, like the second image. The eye is never squinting, sleepy, angry or exaggerated:
   every shape is drawn as cute and as open as every other.
