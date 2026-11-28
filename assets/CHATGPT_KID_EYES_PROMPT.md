@@ -30,7 +30,7 @@ and alone, at the template's size and position, each with a colored (brown) iris
 
 | reference | files | for |
 |---|---|---|
-| eyes 8: almond, a brown iris with a black pupil and a highlight, flicked lashes | `kid_eyes_reference_girl_on_face.png`, `kid_eyes_reference_girl.png` | girls' eyes |
+| girls' design 1 (the favorite): almond with a wing flick, a brown iris with a black pupil and two highlights | `kid_eyes_reference_girl_on_face.png`, `kid_eyes_reference_girl.png` | girls' eyes |
 | eyes 9: a heavy, relaxed upper lid, no lashes | `kid_eyes_reference_boy_on_face.png`, `kid_eyes_reference_boy.png` | boys' eyes |
 | eyes 25: upturned almond with fluttery lashes (the shape to copy; it needs a pupil and highlights) | `kid_eyes_reference_shape_25_on_face.png`, `kid_eyes_reference_shape_25.png` | a shape idea |
 
